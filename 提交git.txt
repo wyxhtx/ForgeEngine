@@ -1,0 +1,11 @@
+找到仓库的目录，右键找到gitbash的选项，输入add指令来添加文件到暂存区
+git add .
+
+输入commit指令来将暂存区文件提交到本地仓库
+git commit -m "update"
+
+输入push，将暂存区文件提交到远程仓库
+git push
+
+强制提交
+git push --force origin master
