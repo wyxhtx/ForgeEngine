@@ -1,0 +1,260 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{ebe0857f-db1c-43ea-8db3-34cdefd18183}</ProjectGuid>
+    <RootNamespace>Forge</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Forge</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>E:\tool\API\glfw-3.3.8.bin.WIN64\include;E:\tool\API\VulkanSDK\1.3.268.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>E:\tool\API\VulkanSDK\1.3.268.0\Lib;E:\tool\API\glfw-3.3.8.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>E:\tool\API\glfw-3.3.8.bin.WIN64\include;E:\tool\API\VulkanSDK\1.3.268.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>E:\tool\API\VulkanSDK\1.3.268.0\Lib;E:\tool\API\glfw-3.3.8.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>E:\code\lib\cpp\dynamicLib\glfw-3.3.8.bin.WIN64\include;E:\code\lib\cpp\dynamicLib\VulkanSDK\1.4.321.1\Include;E:\code\lib\cpp\dynamicLib\OpenAL\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>E:\code\lib\cpp\dynamicLib\glfw-3.3.8.bin.WIN64\lib-vc2022;E:\code\lib\cpp\dynamicLib\VulkanSDK\1.4.321.1\Lib;E:\code\lib\cpp\dynamicLib\OpenAL\libs\Win64;E:\code\lib\cpp\dynamicLib\KTX-Software\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;OpenAL32.lib;alut.lib;ktx.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries>MSVCRT</IgnoreSpecificDefaultLibraries>
+      <DelayLoadDLLs>alut.dll;ktx.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>E:\code\lib\cpp\dynamicLib\glfw-3.3.8.bin.WIN64\include;E:\code\lib\cpp\dynamicLib\VulkanSDK\1.4.321.1\Include;E:\code\lib\cpp\dynamicLib\OpenAL\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <Optimization>Disabled</Optimization>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>E:\code\lib\cpp\dynamicLib\glfw-3.3.8.bin.WIN64\lib-vc2022;E:\code\lib\cpp\dynamicLib\VulkanSDK\1.4.321.1\Lib;E:\code\lib\cpp\dynamicLib\OpenAL\libs\Win64;E:\code\lib\cpp\dynamicLib\KTX-Software\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;OpenAL32.lib;alut.lib;ktx.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+      <DelayLoadDLLs>alut.dll;ktx.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <Text Include="提交git.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitattributes" />
+    <None Include=".gitignore" />
+    <None Include="README.md" />
+    <None Include="src\code\vk\tool\temp\shader.frag" />
+    <None Include="src\image\cube_16_64.ktx2" />
+    <None Include="src\image\temple.ktx2" />
+    <None Include="src\library\dll\alut.dll" />
+    <None Include="src\library\dll\ktx.dll" />
+    <None Include="src\library\stb\stb_font_consolas_24_latin1.inl" />
+    <None Include="src\shader\compile.bat" />
+    <None Include="src\shader\glslangValidator.exe" />
+    <None Include="src\shader\mine\mine.frag" />
+    <None Include="src\shader\mine\mine.vert" />
+    <None Include="src\shader\mine\mineFrag.spv" />
+    <None Include="src\shader\mine\mineVert.spv" />
+    <None Include="src\shader\model\model.frag" />
+    <None Include="src\shader\model\model.vert" />
+    <None Include="src\shader\model\modelFrag.spv" />
+    <None Include="src\shader\model\modelVert.spv" />
+    <None Include="src\shader\skybox\skybox.frag" />
+    <None Include="src\shader\skybox\skybox.vert" />
+    <None Include="src\shader\skybox\skyboxFrag.spv" />
+    <None Include="src\shader\skybox\skyboxVert.spv" />
+    <None Include="src\shader\temp.bat" />
+    <None Include="src\shader\terrain\terrain.frag" />
+    <None Include="src\shader\terrain\terrain.vert" />
+    <None Include="src\shader\terrain\terrainFrag.spv" />
+    <None Include="src\shader\terrain\terrainVert.spv" />
+    <None Include="src\shader\uiText\uiText.frag" />
+    <None Include="src\shader\uiText\uiText.vert" />
+    <None Include="src\shader\uiText\uiTextFrag.spv" />
+    <None Include="src\shader\uiText\uiTextVert.spv" />
+    <Resource Include="src\models\Temple_MESH.obj">
+      <FileType>Document</FileType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </Resource>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\code\forge\base\Loop.hpp" />
+    <ClInclude Include="src\code\forge\base\Noise.hpp" />
+    <ClInclude Include="src\code\forge\base\Storage.hpp" />
+    <ClInclude Include="src\code\forge\data\ForgeEnum.h" />
+    <ClInclude Include="src\code\forge\data\ForgeInfo.h" />
+    <ClInclude Include="src\code\forge\data\ForgeList.h" />
+    <ClInclude Include="src\code\forge\data\ForgeStruct.h" />
+    <ClInclude Include="src\code\forge\world\Chunk.hpp" />
+    <ClInclude Include="src\code\forge\world\Plate.hpp" />
+    <ClInclude Include="src\code\vk\base\Device.hpp" />
+    <ClInclude Include="src\code\vk\base\Instance.hpp" />
+    <ClInclude Include="src\code\vk\base\Window.hpp" />
+    <ClInclude Include="src\code\vk\data\Vertex.h" />
+    <ClInclude Include="src\code\vk\data\VkEnum.h" />
+    <ClInclude Include="src\code\vk\data\VkInfo.h" />
+    <ClInclude Include="src\code\vk\data\VkList.h" />
+    <ClInclude Include="src\code\vk\data\VkStruct.h" />
+    <ClInclude Include="src\code\vk\graphic\Buffer.hpp" />
+    <ClInclude Include="src\code\vk\graphic\Pipeline.hpp" />
+    <ClInclude Include="src\code\vk\graphic\RenderPass.hpp" />
+    <ClInclude Include="src\code\vk\graphic\Swapchain.hpp" />
+    <ClInclude Include="src\code\vk\Main.h" />
+    <ClInclude Include="src\code\vk\tool\Camera.hpp" />
+    <ClInclude Include="src\code\vk\tool\temp\copy.txt" />
+    <ClInclude Include="src\code\vk\tool\Log.hpp" />
+    <ClInclude Include="src\code\vk\tool\Music.hpp" />
+    <ClInclude Include="src\library\textures\ktx\khr_df.h" />
+    <ClInclude Include="src\library\textures\ktx\ktx.h" />
+    <ClInclude Include="src\library\textures\ktx\ktxvulkan.h" />
+    <ClInclude Include="src\library\textures\stb_image.h" />
+    <ClInclude Include="src\library\model\tiny_obj_loader.h" />
+    <ClInclude Include="src\library\noise\FastNoiseLite.h" />
+    <ClInclude Include="src\library\vma\vk_mem_alloc.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\code\vk\Main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="src\image\source\cube_16_64.png" />
+    <Image Include="src\image\source\temple.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="src\music\background\Greedy.wav" />
+    <Media Include="src\music\background\Through the Mounta.wav" />
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="src\model\temple.obj">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <FileType>Document</FileType>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+    </Object>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

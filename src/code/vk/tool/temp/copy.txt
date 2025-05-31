@@ -1,0 +1,22 @@
+#pragma once
+
+
+
+class Temp {
+public:
+	Temp() {
+		if (debugInfo::LogSwitch) {
+			Log::printTitle("————————Temp已创建");
+
+			Log::delimiter();
+		}
+	}
+
+	~Temp() {
+		if (debugInfo::LogSwitch) {
+			Log::print("Temp已清除");
+		}
+	}
+private:
+
+};
