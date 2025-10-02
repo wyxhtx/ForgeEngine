@@ -93,14 +93,13 @@ namespace coordsInfo {
     const glm::vec3 worldUp{ 0.0, 1.0, 0.0 };    //y轴做世界坐标系法向量
 }
 
-//todo 暂时关闭光照
-/*
+//todo
 namespace lightInfo {
     glm::vec3 baseLight = glm::vec3(1.0f, 1.0f, 1.0f);        //基础光照
-    glm::vec3 lightPos = glm::vec3(1.0f, 1.0f, 1.0f);         //光照位置
-    float specularStrength = 0.8f;                            //镜面强度
+    //glm::vec3 lightPos = glm::vec3(1.0f, 1.0f, 1.0f);         //光照位置
+
+    //float specularStrength = 0.8f;                            //镜面强度
 }
-*/
 
 namespace bufferInfo {
     uint32_t bufferScenceNodeSize = 4;          //terrain,model,skybox,mine

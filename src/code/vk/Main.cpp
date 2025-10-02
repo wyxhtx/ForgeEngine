@@ -14,8 +14,9 @@ int main() {
     //加载dll
     SetDllDirectoryA(fileInfo::dll);
 
+    //todo
     //编译临时着色器
-    //system("cd src\\shader && temp.bat");
+    system("cd src\\shader && temp.bat");
 
 
 

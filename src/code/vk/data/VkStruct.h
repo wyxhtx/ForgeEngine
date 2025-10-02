@@ -70,26 +70,19 @@ namespace bufferStruct {
         VmaAllocation bufferMemory;
     };
 
-    struct lightUBO {
+    struct baseUBO {
         glm::mat4 base;             //模型矩阵，用于将模型变换到世界坐标系
         glm::mat4 view;             //视图矩阵，用于将世界坐标系变换到观察者坐标系
         glm::mat4 proj;             //投影矩阵，用于将观察者坐标系变换到裁剪坐标系
-        glm::vec3 baseLight;        //基础光源的位置，通常用于计算环境光照
-        float ambientStrength;      //环境光强度，用于控制场景中环境光的亮度
     };
+    
+    //注意着色器内存对齐
+    struct lightUBO {
+        glm::vec3 baseLight;        //基础光照颜色
+        float ambientStrength;      //环境光强度
 
-    struct skyboxUBO {
-        glm::mat4 base;
-        glm::mat4 view;
-        glm::mat4 proj;
-
-        float currentHour;      //当前小时，通过gameTime(游戏运行时长)%24得到
-    };
-
-    struct baseUBO {
-        glm::mat4 base;
-        glm::mat4 view;
-        glm::mat4 proj;
+        glm::vec3 lightPos;         //光源位置
+        float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到
     };
 
 
@@ -101,7 +94,9 @@ namespace bufferStruct {
 
         //统一缓冲
         bufferNode uniform;
-        lightUBO ubo;
+        bufferNode lightUniform;
+        baseUBO ubo;
+        lightUBO lightUbo;
 
         //纹理缓冲
         bufferStruct::imageNode texture;
@@ -127,6 +122,7 @@ namespace bufferStruct {
             }
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
 
             vmaDestroyImage(allocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
@@ -138,7 +134,9 @@ namespace bufferStruct {
         bufferNode index;
 
         bufferNode uniform;
+        bufferNode lightUniform;
         baseUBO ubo;
+        lightUBO lightUbo;
 
         bufferStruct::imageNode texture;
         const char* imageFile;
@@ -157,6 +155,7 @@ namespace bufferStruct {
             vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
 
             vmaDestroyImage(allocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
@@ -168,7 +167,9 @@ namespace bufferStruct {
         bufferNode index;
 
         bufferNode uniform;
-        skyboxUBO ubo;
+        bufferNode lightUniform;
+        baseUBO ubo;
+        lightUBO lightUbo;
 
         VkDescriptorSet descriptorSet;
 
@@ -177,6 +178,7 @@ namespace bufferStruct {
             vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };
 

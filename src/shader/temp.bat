@@ -1,2 +1,2 @@
-.\glslangValidator.exe -V skybox/skybox.vert -o skybox/skyboxVert.spv
-.\glslangValidator.exe -V skybox/skybox.frag -o skybox/skyboxFrag.spv
+.\glslangValidator.exe -V terrain/terrain.vert -o terrain/terrainVert.spv
+.\glslangValidator.exe -V terrain/terrain.frag -o terrain/terrainFrag.spv

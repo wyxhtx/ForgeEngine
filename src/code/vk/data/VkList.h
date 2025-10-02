@@ -13,15 +13,17 @@ namespace bufferList {
 
             //scence
             {
-                std::array<VkDescriptorPoolSize, 2> poolSizeScence = {};				//组合图像采样器描述符
-                poolSizeScence[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;				//顶点阶段描述符
-                poolSizeScence[0].descriptorCount = bufferInfo::bufferScenceNodeSize;	//poolSizeScence.descriptorCount最好填大点AMD显卡不支持自动分配
-                poolSizeScence[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;		//片段阶段描述符
-                poolSizeScence[1].descriptorCount = bufferInfo::bufferScenceNodeSize;
+                std::array<VkDescriptorPoolSize, 3> poolSizeScence = {};				
+                poolSizeScence[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;				//顶点统一缓冲区
+                poolSizeScence[0].descriptorCount = bufferInfo::bufferScenceNodeSize;	
+                poolSizeScence[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;				//片段统一缓冲区
+                poolSizeScence[1].descriptorCount = bufferInfo::bufferScenceNodeSize;	
+                poolSizeScence[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;		//片段纹理采样器
+                poolSizeScence[2].descriptorCount = bufferInfo::bufferScenceNodeSize;
 
                 descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizeScence.size());
                 descriptorPoolInfo.pPoolSizes = poolSizeScence.data();
-                descriptorPoolInfo.maxSets = bufferInfo::bufferScenceNodeSize;
+                descriptorPoolInfo.maxSets = bufferInfo::bufferScenceNodeSize;          //poolSizeScence.descriptorCount最好填大点不支持自动分配
             }
 
             if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &scence.pool) != VK_SUCCESS) {
@@ -54,17 +56,22 @@ namespace bufferList {
 
             //scence
             {
-                std::array<VkDescriptorSetLayoutBinding, 2> bindingOpacScence = {};         //描述符布局绑定描述符
-                bindingOpacScence[0].binding = 0;					                        //顶点阶段描述符
+                std::array<VkDescriptorSetLayoutBinding, 3> bindingOpacScence = {};         //描述符布局绑定描述符
+                bindingOpacScence[0].binding = 0;					                        //顶点统一缓冲区
                 bindingOpacScence[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 bindingOpacScence[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
                 bindingOpacScence[0].descriptorCount = 1;
                 bindingOpacScence[0].pImmutableSamplers = nullptr;
-                bindingOpacScence[1].binding = 1;					                        //片段阶段描述符
-                bindingOpacScence[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                bindingOpacScence[1].binding = 1;                                           //片段统一缓冲区
+                bindingOpacScence[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 bindingOpacScence[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
                 bindingOpacScence[1].descriptorCount = 1;
                 bindingOpacScence[1].pImmutableSamplers = nullptr;
+                bindingOpacScence[2].binding = 2;					                        //片段纹理采样器
+                bindingOpacScence[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                bindingOpacScence[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+                bindingOpacScence[2].descriptorCount = 1;
+                bindingOpacScence[2].pImmutableSamplers = nullptr;
 
                 layoutInfo.bindingCount = static_cast<uint32_t>(bindingOpacScence.size());
                 layoutInfo.pBindings = bindingOpacScence.data();
