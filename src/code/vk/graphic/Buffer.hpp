@@ -18,7 +18,7 @@ public:
 		createUniformBuffer();
 
 		createTexture();
-		samplers.createTextureSampler(Device.device, opaqueTerrain.mipLevel, model.mipLevel);
+		samplers.createTextureSampler(Device.device, opaqueTerrain.mipLevel, temple.mipLevel);
 		createDescriptorSet();
 
 		createDepthResources();
@@ -43,7 +43,7 @@ public:
 		samplers.clear(Device.device);
 
 		opaqueTerrain.clear(Device.device, Device.allocator);
-		model.clear(Device.device, Device.allocator);
+		temple.clear(Device.device, Device.allocator);
 		skybox.clear(Device.device, Device.allocator);
 		mine.clear(Device.device, Device.allocator);
 		uiText.clear(Device.device, Device.allocator);
@@ -68,7 +68,7 @@ private:
 	bufferList::sampler samplers;
 
 	bufferStruct::terrainBufferNode opaqueTerrain{ fileInfo::image::cube,textureInfo::arrayLayer };
-	bufferStruct::modelBufferNode	model{ fileInfo::image::temple };
+	bufferStruct::modelBufferNode	temple{ fileInfo::image::temple };
 	bufferStruct::skyboxBufferNode	skybox;
 	bufferStruct::baseBufferNode	mine;
 	bufferStruct::uiTextBufferNode	uiText;
@@ -97,8 +97,8 @@ private:
 
 		//model
 		loadModel();
-		createVertexBuffer(modelVertex::vertexs.model, model.vertex.buffer, model.vertex.bufferMemory);
-		createIndexBuffer(modelVertex::indexs.model, model.index.buffer, model.index.bufferMemory);
+		createVertexBuffer(modelVertex::vertexs.model, temple.vertex.buffer, temple.vertex.bufferMemory);
+		createIndexBuffer(modelVertex::indexs.model, temple.index.buffer, temple.index.bufferMemory);
 
 		//skybox
 		createVertexBuffer(skyboxVertex::vertexs, skybox.vertex.buffer, skybox.vertex.bufferMemory);
@@ -117,7 +117,7 @@ private:
 		createBuffer(sizeof(opaqueTerrain.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, opaqueTerrain.uniform.buffer, opaqueTerrain.uniform.bufferMemory);
 
 		//model
-		createBuffer(sizeof(model.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, model.uniform.buffer, model.uniform.bufferMemory);
+		createBuffer(sizeof(temple.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, temple.uniform.buffer, temple.uniform.bufferMemory);
 
 		//skybox
 		createBuffer(sizeof(skybox.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, skybox.uniform.buffer, skybox.uniform.bufferMemory);
@@ -131,7 +131,7 @@ private:
 		createTextureKtxArrayNode(opaqueTerrain.texture.image, opaqueTerrain.texture.imageMemory, opaqueTerrain.texture.view, opaqueTerrain.imageFile, opaqueTerrain.arrayLayer, opaqueTerrain.mipLevel);
 
 		//model
-		createTextureKtxNode(model.texture.image, model.texture.imageMemory, model.texture.view, model.imageFile, model.mipLevel);
+		createTextureKtxNode(temple.texture.image, temple.texture.imageMemory, temple.texture.view, temple.imageFile, temple.mipLevel);
 
 		//uiText
 		createTextNode(uiText.texture.image, uiText.texture.imageMemory, uiText.texture.view);
@@ -197,20 +197,20 @@ private:
 		vkUpdateDescriptorSets(Device.device, uint32_t(writeDescriptorSetScence.size()), writeDescriptorSetScence.data(), 0, nullptr);
 
 		//model
-		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &model.descriptorSet) != VK_SUCCESS) {
+		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &temple.descriptorSet) != VK_SUCCESS) {
 			Log::error(__FILE__, __LINE__, "分配描述符集失败");
 			throw;
 		}
 		{
 
-			bufferInfo.range = sizeof(model.ubo);
-			bufferInfo.buffer = model.uniform.buffer;
+			bufferInfo.range = sizeof(temple.ubo);
+			bufferInfo.buffer = temple.uniform.buffer;
 			imageInfo.sampler = samplers.model;
-			imageInfo.imageView = model.texture.view;
+			imageInfo.imageView = temple.texture.view;
 
-			writeDescriptorSetScence[0].dstSet = model.descriptorSet;
+			writeDescriptorSetScence[0].dstSet = temple.descriptorSet;
 			writeDescriptorSetScence[0].pBufferInfo = &bufferInfo;
-			writeDescriptorSetScence[1].dstSet = model.descriptorSet;
+			writeDescriptorSetScence[1].dstSet = temple.descriptorSet;
 			writeDescriptorSetScence[1].pImageInfo = &imageInfo;
 		}
 
@@ -295,7 +295,7 @@ private:
 		opaqueTerrain.ubo.ambientStrength = 1;
 		//opaqueTerrain.ubo.baseLight = lightInfo::baseLight;
 
-		model.ubo.proj = proj;
+		temple.ubo.proj = proj;
 		skybox.ubo.proj = proj;
 		mine.ubo.proj = proj;
 	}
@@ -904,9 +904,9 @@ public:
 
 			//model
 			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
-			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &model.descriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &model.vertex.buffer, offsets);
-			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], model.index.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &temple.descriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &temple.vertex.buffer, offsets);
+			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], temple.index.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs.model.size(), 1, 0, 0, 0);
 
 			//skybox
@@ -965,13 +965,13 @@ public:
 		opaqueTerrain.ubo.view = view;
 
 		//model
-		model.ubo.base = glm::translate(glm::mat4(1), offsetPos);	//位移
-		model.ubo.base *= glm::scale(glm::mat4(1), glm::vec3(0.1f));														//缩放
+		temple.ubo.base = glm::translate(glm::mat4(1), offsetPos);	//位移
+		temple.ubo.base *= glm::scale(glm::mat4(1), glm::vec3(0.1f));														//缩放
 		//model.ubo.base *= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);					//旋转
-		model.ubo.view = view;
+		temple.ubo.view = view;
 
 		//skybox
-		skybox.ubo.base = glm::translate(glm::mat4(1), glm::vec3(pos - playerInfo::logicOriginPos));
+		//skybox.ubo.base = glm::translate(glm::mat4(1), glm::vec3(pos - playerInfo::logicOriginPos));						//着色器屏蔽了模型的位移变换，所以注释掉此处
 		skybox.ubo.currentHour = std::fmod(gameTime, 24.0f);																//取值范围[0,24)，含小数部分
 		skybox.ubo.view = view;
 
@@ -986,7 +986,7 @@ public:
 		showUIText.minepos = box.minepos;
 
 		createMapMemory(opaqueTerrain.uniform.bufferMemory, &opaqueTerrain.ubo, sizeof(opaqueTerrain.ubo));
-		createMapMemory(model.uniform.bufferMemory, &model.ubo, sizeof(model.ubo));
+		createMapMemory(temple.uniform.bufferMemory, &temple.ubo, sizeof(temple.ubo));
 		createMapMemory(skybox.uniform.bufferMemory, &skybox.ubo, sizeof(skybox.ubo));
 		createMapMemory(mine.uniform.bufferMemory, &mine.ubo, sizeof(mine.ubo));
 	}
