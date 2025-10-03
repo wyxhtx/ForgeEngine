@@ -11,12 +11,15 @@ layout(location = 1) in vec3 inTexCoord;
 layout(location = 2) in vec3 inColor;
 layout(location = 3) in vec3 inNormal;
 
-layout(location = 0) out vec3 fragTexCoord;
-layout(location = 1) out vec3 fragColor;
-layout(location = 2) out vec3 fragNormal;
+layout(location = 0) out vec3 fragPos;
+layout(location = 1) out vec3 fragTexCoord;
+layout(location = 2) out vec3 fragColor;
+layout(location = 3) out vec3 fragNormal;
 
 void main() {
     gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
+    fragPos = vec3( ubo.model * vec4(inPosition, 1.0));
+    //fragPos = (ubo.model * vec4(inPosition, 1.0)).xyz;
 	fragTexCoord = inTexCoord;
     fragColor = inColor;
     fragNormal = inNormal;

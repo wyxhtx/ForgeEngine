@@ -986,7 +986,8 @@ public:
 
 		//opaqueTerrain
 		opaqueTerrain.ubo.view = view;
-		opaqueTerrain.lightUbo.ambientStrength = (sin(gameTime) + 1) / 2;
+		//opaqueTerrain.lightUbo.ambientStrength = (sin(gameTime) + 1) / 2;
+		opaqueTerrain.lightUbo.ambientStrength = 1;
 		opaqueTerrain.lightUbo.lightPos = offsetPos;
 
 		//model
