@@ -80,12 +80,12 @@ namespace vertexInfo {
 
     //法线索引
     const std::vector<glm::vec3> normalID = {
-        { 1.0f, 0.0f,  0.0f }, //0
-        {-1.0f, 0.0f,  0.0f }, //1
-        { 0.0f, 1.0f,  0.0f }, //2
-        { 0.0f,-1.0f,  0.0f }, //3
-        { 0.0f, 0.0f,  1.0f }, //4
-        { 0.0f, 0.0f, -1.0f }  //5
+        { 0.0f, 1.0f,  0.0f }, //0上
+        { 0.0f,-1.0f,  0.0f }, //1下
+        {-1.0f, 0.0f,  0.0f }, //2左
+        { 1.0f, 0.0f,  0.0f }, //3右
+        { 0.0f, 0.0f,  1.0f }, //4前
+        { 0.0f, 0.0f, -1.0f }  //5后
     };
 }
 
@@ -93,12 +93,9 @@ namespace coordsInfo {
     const glm::vec3 worldUp{ 0.0, 1.0, 0.0 };    //y轴做世界坐标系法向量
 }
 
-//todo
 namespace lightInfo {
     glm::vec3 baseLight = glm::vec3(1.0f, 1.0f, 1.0f);        //基础光照
-    //glm::vec3 lightPos = glm::vec3(1.0f, 1.0f, 1.0f);         //光照位置
-
-    //float specularStrength = 0.8f;                            //镜面强度
+    float specularStrength = 0.8f;                            //镜面强度
 }
 
 namespace bufferInfo {

@@ -253,7 +253,7 @@ private:
 			writeDescriptorSetSkybox[1] = writeDescriptorSetScence[1];
 		}
 
-		vkUpdateDescriptorSets(Device.device, writeDescriptorSetSkybox.size(), writeDescriptorSetSkybox.data(), 0, nullptr);
+		vkUpdateDescriptorSets(Device.device, uint32_t(writeDescriptorSetSkybox.size()), writeDescriptorSetSkybox.data(), 0, nullptr);
 
 		//mine
 		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &mine.descriptorSet) != VK_SUCCESS) {
@@ -316,9 +316,11 @@ private:
 		opaqueTerrain.ubo.base = glm::translate(glm::mat4(1), glm::vec3(0));
 		opaqueTerrain.ubo.proj = proj;
 		opaqueTerrain.lightUbo.baseLight = lightInfo::baseLight;
+		opaqueTerrain.lightUbo.specularStrength = lightInfo::specularStrength;
 		
 		temple.ubo.proj = proj;
 		temple.lightUbo.baseLight = lightInfo::baseLight;
+		temple.lightUbo.specularStrength = lightInfo::specularStrength;
 
 		skybox.ubo.proj = proj;
 
@@ -928,11 +930,11 @@ public:
 			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)terrainVertex::indexs.opaqueTerrain.size(), 1, 0, 0, 0);
 
 			//model
-			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
+			/*vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
 			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &temple.descriptorSet, 0, nullptr);
 			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &temple.vertex.buffer, offsets);
 			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], temple.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs.model.size(), 1, 0, 0, 0);
+			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs.model.size(), 1, 0, 0, 0);*/
 
 			//skybox
 			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.skybox.pipeline);
@@ -986,9 +988,17 @@ public:
 
 		//opaqueTerrain
 		opaqueTerrain.ubo.view = view;
+
+
+		//todo
 		//opaqueTerrain.lightUbo.ambientStrength = (sin(gameTime) + 1) / 2;
-		opaqueTerrain.lightUbo.ambientStrength = 1;
+		opaqueTerrain.lightUbo.ambientStrength = 0;
+		//opaqueTerrain.lightUbo.lightPos = offsetPos;
+		//opaqueTerrain.lightUbo.lightPos = glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
 		opaqueTerrain.lightUbo.lightPos = offsetPos;
+		opaqueTerrain.lightUbo.viewPos = glm::vec3{ pos - playerInfo::logicOriginPos };
+
+
 
 		//model
 		temple.ubo.base = glm::translate(glm::mat4(1), offsetPos);											//Î»ÒÆ

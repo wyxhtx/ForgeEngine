@@ -6,6 +6,9 @@ layout(binding = 1) uniform UniformBufferObject {
 
 	vec3 lightPos;
 	float currentHour;
+
+	vec3 viewPos;
+	float specularStrength;
 } light;
 
 layout(location = 0) in vec3 fragPos;

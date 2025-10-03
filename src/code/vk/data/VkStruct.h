@@ -83,6 +83,9 @@ namespace bufferStruct {
 
         glm::vec3 lightPos;         //光源位置
         float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到
+
+        glm::vec3 viewPos;          //观察者坐标
+        float specularStrength;     //镜面强度
     };
 
 
