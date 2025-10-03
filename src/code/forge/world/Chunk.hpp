@@ -45,7 +45,7 @@ public:
 
 				for (int i = 0; i < 6; i++) {
 					//如果该面挨着空气则加载
-					if (cubeArray[pos.x + faceList::faceCullId[i].x][pos.y + faceList::faceCullId[i].y][pos.z + faceList::faceCullId[i].z] == cubeEnum::cubeId::air) {
+					if (cubeArray[pos.x + faceInfo::faceCullId[i].x][pos.y + faceInfo::faceCullId[i].y][pos.z + faceInfo::faceCullId[i].z] == cubeEnum::cubeId::air) {
 						if (i == 0 || i == 1) {
 							visibleFaceMap[i][tempPos.y][tempPos] = cubeId;
 						}
@@ -479,78 +479,82 @@ private:
 
 
 
+	//i：		朝向id
+	//faceId：	纹理id
+	//position：	坐标
+	//length：	纹理循环长度
 	void createChunkMesh(int i, int faceId, glm::vec3 position, glm::vec3 length, uint32_t& indexOffset, std::vector<terrainVertex::vertexNode>& chunkVertexs, std::vector<uint32_t>& chunkIndexs) {
 		static std::vector<terrainVertex::vertexNode> tempVertexs;
 
 		todoInfo::visibleOptimization++;
 
-		// 四个顶点构成一个面，顶点uv绑定应按照Z画法，uv绑定朝向与画Z时相同
+		//四个顶点构成一个面，顶点uv绑定应按照Z画法，uv绑定朝向与画Z时相同
 		switch (i) {
 		case 0: {
-			// 上, Y+
+			//上, Y+
 			tempVertexs = {
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
 		case 1: {
-			// 下, Y-
+			//下, Y-
 			tempVertexs = {
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
 		case 2: {
-			// 左, X+
+			//左, X+
 			tempVertexs = {
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
 		case 3: {
-			// 右, X-
+			//右, X-
 			tempVertexs = {
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
 		case 4: {
-			// 前, Z+
+			//前, Z+
 			tempVertexs = {
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
 		case 5: {
-			// 后, Z-
+			//后, Z-
 			tempVertexs = {
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
 		}
 
-		// 顶点输入
+		//顶点输入
 		chunkVertexs.insert(chunkVertexs.end(), tempVertexs.begin(), tempVertexs.end());
-		// 索引输入
+		//索引输入
 		chunkIndexs.insert(chunkIndexs.end(), { 0 + indexOffset, 1 + indexOffset, 2 + indexOffset, 2 + indexOffset, 1 + indexOffset, 3 + indexOffset });
 
 		indexOffset += 4;
@@ -561,62 +565,62 @@ private:
 
 		switch (i) {
 		case 0: {
-			// 上, Y+
+			//上, Y+
 			tempVertexs = {
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
 		case 1: {
-			// 下, Y-
+			//下, Y-
 			tempVertexs = {
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
 		case 2: {
-			// 左, X+
+			//左, X+
 			tempVertexs = {
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
 		case 3: {
-			// 右, X-
+			//右, X-
 			tempVertexs = {
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
 		case 4: {
-			// 前, Z+
+			//前, Z+
 			tempVertexs = {
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
 		case 5: {
-			// 后, Z-
+			//后, Z-
 			tempVertexs = {
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalColorID[i]}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
 			};
 			break;
 		}
@@ -649,7 +653,7 @@ public:
 								short cubeId = cubeArray[x][node.y + 1][z];
 
 								if (cubeId != cubeEnum::cubeId::air) {
-									if (cubeArray[x + faceList::faceCullId[i].x][node.y + 1 + faceList::faceCullId[i].y][z + faceList::faceCullId[i].z] == cubeEnum::cubeId::air) {
+									if (cubeArray[x + faceInfo::faceCullId[i].x][node.y + 1 + faceInfo::faceCullId[i].y][z + faceInfo::faceCullId[i].z] == cubeEnum::cubeId::air) {
 										visibleFaceMap[i][node.y][glm::ivec3{ x - 1,node.y,z - 1 }] = cubeId;
 									}
 								}
@@ -675,7 +679,7 @@ public:
 									short cubeId = cubeArray[x][y + 1][z];
 
 									if (cubeId != cubeEnum::cubeId::air) {
-										if (cubeArray[x + faceList::faceCullId[i].x][y + 1 + faceList::faceCullId[i].y][z + faceList::faceCullId[i].z] == cubeEnum::cubeId::air) {
+										if (cubeArray[x + faceInfo::faceCullId[i].x][y + 1 + faceInfo::faceCullId[i].y][z + faceInfo::faceCullId[i].z] == cubeEnum::cubeId::air) {
 											visibleFaceMap[i][y][glm::ivec3{ x - 1,y,z - 1 }] = cubeId;
 										}
 									}
@@ -693,7 +697,7 @@ public:
 								short cubeId = cubeArray[node.x + 1][y][z];
 
 								if (cubeId != cubeEnum::cubeId::air) {
-									if (cubeArray[node.x + 1 + faceList::faceCullId[i].x][y + faceList::faceCullId[i].y][z + faceList::faceCullId[i].z] == cubeEnum::cubeId::air) {
+									if (cubeArray[node.x + 1 + faceInfo::faceCullId[i].x][y + faceInfo::faceCullId[i].y][z + faceInfo::faceCullId[i].z] == cubeEnum::cubeId::air) {
 										visibleFaceMap[i][node.x][glm::ivec3{ node.x,y - 1,z - 1 }] = cubeId;
 									}
 								}
@@ -719,7 +723,7 @@ public:
 									short cubeId = cubeArray[x + 1][y][z];
 
 									if (cubeId != cubeEnum::cubeId::air) {
-										if (cubeArray[x + 1 + faceList::faceCullId[i].x][y + faceList::faceCullId[i].y][z + faceList::faceCullId[i].z] == cubeEnum::cubeId::air) {
+										if (cubeArray[x + 1 + faceInfo::faceCullId[i].x][y + faceInfo::faceCullId[i].y][z + faceInfo::faceCullId[i].z] == cubeEnum::cubeId::air) {
 											visibleFaceMap[i][x][glm::ivec3{ x,y - 1,z - 1 }] = cubeId;
 										}
 									}
@@ -737,7 +741,7 @@ public:
 								short cubeId = cubeArray[x][y][node.z + 1];
 
 								if (cubeId != cubeEnum::cubeId::air) {
-									if (cubeArray[x + faceList::faceCullId[i].x][y + faceList::faceCullId[i].y][node.z + 1 + faceList::faceCullId[i].z] == cubeEnum::cubeId::air) {
+									if (cubeArray[x + faceInfo::faceCullId[i].x][y + faceInfo::faceCullId[i].y][node.z + 1 + faceInfo::faceCullId[i].z] == cubeEnum::cubeId::air) {
 										visibleFaceMap[i][node.z][glm::ivec3{ x - 1,y - 1,node.z }] = cubeId;
 									}
 								}
@@ -763,7 +767,7 @@ public:
 									short cubeId = cubeArray[x][y][z + 1];
 
 									if (cubeId != cubeEnum::cubeId::air) {
-										if (cubeArray[x + faceList::faceCullId[i].x][y + faceList::faceCullId[i].y][z + 1 + faceList::faceCullId[i].z] == cubeEnum::cubeId::air) {
+										if (cubeArray[x + faceInfo::faceCullId[i].x][y + faceInfo::faceCullId[i].y][z + 1 + faceInfo::faceCullId[i].z] == cubeEnum::cubeId::air) {
 											visibleFaceMap[i][z][glm::ivec3{ x - 1,y - 1,z }] = cubeId;
 										}
 									}
@@ -786,7 +790,7 @@ public:
 							short cubeId = cubeArray[x][node.y + 1][z];
 
 							if (cubeId != cubeEnum::cubeId::air) {
-								if (cubeArray[x + faceList::faceCullId[node.x].x][node.y + 1 + faceList::faceCullId[node.x].y][z + faceList::faceCullId[node.x].z] == cubeEnum::cubeId::air) {
+								if (cubeArray[x + faceInfo::faceCullId[node.x].x][node.y + 1 + faceInfo::faceCullId[node.x].y][z + faceInfo::faceCullId[node.x].z] == cubeEnum::cubeId::air) {
 									visibleFaceMap[node.x][node.y][glm::ivec3{ x - 1,node.y,z - 1 }] = cubeId;
 								}
 							}
@@ -799,7 +803,7 @@ public:
 							short cubeId = cubeArray[node.y + 1][y][z];
 
 							if (cubeId != cubeEnum::cubeId::air) {
-								if (cubeArray[node.y + 1 + faceList::faceCullId[node.x].x][y + faceList::faceCullId[node.x].y][z + faceList::faceCullId[node.x].z] == cubeEnum::cubeId::air) {
+								if (cubeArray[node.y + 1 + faceInfo::faceCullId[node.x].x][y + faceInfo::faceCullId[node.x].y][z + faceInfo::faceCullId[node.x].z] == cubeEnum::cubeId::air) {
 									visibleFaceMap[node.x][node.y][glm::ivec3{ node.y,y - 1,z - 1 }] = cubeId;
 								}
 							}
@@ -812,7 +816,7 @@ public:
 							short cubeId = cubeArray[x][y][node.y + 1];
 
 							if (cubeId != cubeEnum::cubeId::air) {
-								if (cubeArray[x + faceList::faceCullId[node.x].x][y + faceList::faceCullId[node.x].y][node.y + 1 + faceList::faceCullId[node.x].z] == cubeEnum::cubeId::air) {
+								if (cubeArray[x + faceInfo::faceCullId[node.x].x][y + faceInfo::faceCullId[node.x].y][node.y + 1 + faceInfo::faceCullId[node.x].z] == cubeEnum::cubeId::air) {
 									visibleFaceMap[node.x][node.y][glm::ivec3{ x - 1,y - 1,node.y }] = cubeId;
 								}
 							}

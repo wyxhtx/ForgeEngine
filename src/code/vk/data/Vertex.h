@@ -7,8 +7,8 @@ namespace terrainVertex {
     struct vertexNode {
         glm::vec3 position;     //坐标
         glm::vec3 texCoord;     //uv
-        glm::vec3 color;        //颜色
         glm::vec3 normal;       //法线
+        glm::vec3 light;        //光照
 
         static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
             std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
@@ -22,25 +22,25 @@ namespace terrainVertex {
         static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
             std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = {};
 
-            attributeDescriptions[0].binding = 0;
+            attributeDescriptions[0].binding  = 0;
             attributeDescriptions[0].location = 0;
-            attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[0].offset = offsetof(vertexNode, position);
+            attributeDescriptions[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[0].offset   = offsetof(vertexNode, position);
 
-            attributeDescriptions[1].binding = 0;
+            attributeDescriptions[1].binding  = 0;
             attributeDescriptions[1].location = 1;
-            attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[1].offset = offsetof(vertexNode, texCoord);
+            attributeDescriptions[1].format   = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[1].offset   = offsetof(vertexNode, texCoord);
 
-            attributeDescriptions[2].binding = 0;
+            attributeDescriptions[2].binding  = 0;
             attributeDescriptions[2].location = 2;
-            attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[2].offset = offsetof(vertexNode, color);
+            attributeDescriptions[2].format   = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[2].offset   = offsetof(vertexNode, normal);
 
-            attributeDescriptions[3].binding = 0;
+            attributeDescriptions[3].binding  = 0;
             attributeDescriptions[3].location = 3;
-            attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[3].offset = offsetof(vertexNode, normal);
+            attributeDescriptions[3].format   = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[3].offset   = offsetof(vertexNode, light);
 
             return attributeDescriptions;
         }

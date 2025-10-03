@@ -17,25 +17,17 @@ namespace terrainList {
 
 namespace cubeList {
 	//方块列表
-	const std::vector<cubeStruct::propertyNode> property = {
-		cubeStruct::propertyNode{{{ 0,  0}, { 0,  2}, { 0,  1}, { 0,  1}, { 0,  1}, { 0,  1}}, cubeEnum::coverageId::grass,			false},
-		cubeStruct::propertyNode{{{ 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}}, cubeEnum::coverageId::dirt,			false},
-		cubeStruct::propertyNode{{{32,  0}, {32,  0}, {32,  1}, {32,  1}, {32,  1}, {32,  1}}, cubeEnum::coverageId::oakLog,		false},
-		cubeStruct::propertyNode{{{32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}}, cubeEnum::coverageId::oakLeaf,		false},
-		cubeStruct::propertyNode{{{ 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}}, cubeEnum::coverageId::stoneSquared,	false},
-	};
-}
+	const std::array<cubeStruct::propertyNode, cubeEnum::cubeId::COUNT> property = []() {
+		std::array<cubeStruct::propertyNode, cubeEnum::cubeId::COUNT> array{};
 
-namespace faceList {
-	//面剔除索引,在此可控制面剔除朝向
-	const std::vector<glm::ivec3> faceCullId{
-		{ 0, 1, 0},
-		{ 0,-1, 0},
-		{ 1, 0, 0},
-		{-1, 0, 0},
-		{ 0, 0, 1},
-		{ 0, 0,-1}
-	};
+		array[cubeEnum::cubeId::grass]			= cubeStruct::propertyNode{ {{ 0,  0}, { 0,  2}, { 0,  1}, { 0,  1}, { 0,  1}, { 0,  1}}, glm::vec3{0}, cubeEnum::coverageId::grass			/*false*/ };
+		array[cubeEnum::cubeId::dirt]			= cubeStruct::propertyNode{ {{ 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}}, glm::vec3{0}, cubeEnum::coverageId::dirt			/*false*/ };
+		array[cubeEnum::cubeId::oakLog]			= cubeStruct::propertyNode{ {{32,  0}, {32,  0}, {32,  1}, {32,  1}, {32,  1}, {32,  1}}, glm::vec3{0}, cubeEnum::coverageId::oakLog		/*false*/ };
+		array[cubeEnum::cubeId::oakLeaf]		= cubeStruct::propertyNode{ {{32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}}, glm::vec3{0}, cubeEnum::coverageId::oakLeaf		/*false*/ };
+		array[cubeEnum::cubeId::stoneSquared]	= cubeStruct::propertyNode{ {{ 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}}, glm::vec3{0}, cubeEnum::coverageId::stoneSquared	/*false*/ };
+
+		return array;
+	}();
 }
 
 namespace noiseList {

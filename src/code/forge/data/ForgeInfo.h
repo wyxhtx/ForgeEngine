@@ -2,7 +2,7 @@
 
 
 
-//存储暂时用不上的东西
+//todo 存储暂时用不上的东西
 namespace todoInfo {
 	int visibleFaceCount;							//区块可见面数量
 	int visibleOptimization;						//区块可见面优化数量
@@ -42,6 +42,19 @@ namespace textureInfo {
 	const int atlasWidth = 64;									//图集宽几个贴图
 	const int atlasHeight = 32;									//图集高几个贴图
 	const uint32_t arrayLayer = atlasWidth * atlasHeight;		//图集层数
+}
+
+//面信息
+namespace faceInfo {
+	//面剔除索引,在此可控制面剔除朝向
+	const std::vector<glm::ivec3> faceCullId{
+		{ 0, 1, 0},
+		{ 0,-1, 0},
+		{ 1, 0, 0},
+		{-1, 0, 0},
+		{ 0, 0, 1},
+		{ 0, 0,-1}
+	};
 }
 
 //存储信息

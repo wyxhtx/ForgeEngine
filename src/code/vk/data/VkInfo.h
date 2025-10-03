@@ -68,16 +68,6 @@ namespace vertexInfo {
         { 1.0f, 1.0f }    //3
     };
 
-    //法线颜色索引
-    const std::vector<glm::vec3> normalColorID = {
-        { 0.0f, 0.0f, 1.0f }, //0-蓝
-        { 0.0f, 1.0f, 0.0f }, //1-绿
-        { 1.0f, 1.0f, 1.0f }, //2-白
-        { 0.0f, 1.0f, 1.0f }, //3-青
-        { 1.0f, 0.0f, 0.0f }, //4-红
-        { 1.0f, 0.0f, 1.0f }  //5-紫
-    };
-
     //法线索引
     const std::vector<glm::vec3> normalID = {
         { 0.0f, 1.0f,  0.0f }, //0上
