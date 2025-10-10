@@ -114,7 +114,7 @@ private:
 
         //输出支持层
         if (debugInfo::LogSwitch) {
-            Log::printTitle("Vulkan 层支持");
+            Log::printTitle("Vulkan_Instance 层支持");
             for (const auto& layer : availableLayers) {
                 Log::print(layer.layerName);
                 Log::print(layer.description);
@@ -122,7 +122,7 @@ private:
             }
             Log::delimiter();
 
-            Log::printTitle("Vulkan 层启用");
+            Log::printTitle("Vulkan_Instance 层启用");
             for (const auto& layer : enableConfigInfo::enableLayer) {
                 Log::print(layer);
             }

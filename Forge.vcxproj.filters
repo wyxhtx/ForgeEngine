@@ -58,9 +58,6 @@
     <None Include="src\code\vk\tool\temp\shader.frag" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="src\models\Temple_MESH.obj" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">
       <Filter>头文件</Filter>
     </ClInclude>

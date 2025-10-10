@@ -4,16 +4,16 @@
 
 class Chunk {
 public:
-	short cubeArray[plateInfo::chunkMapLength][plateInfo::chunkMapLength][plateInfo::chunkMapLength]{};	//方块数组，最外一圈存储其他区块边缘数据,方便区块间面检测,使用范围1~32，其他数据0和33
-	std::unordered_set<storageStruct::cubeDeltaNode, storageStruct::cubeDeltaNodeHash> cubeDeltaSet;	//方块变更集合
+	short cubeArray[plateInfo::chunkMapLength][plateInfo::chunkMapLength][plateInfo::chunkMapLength]{};	//方块数组，最外一圈存储相邻区块边缘方块数据，方便区块间面检测，使用范围[1,32]，边缘方块数据0和33
+	std::unordered_set<storageStruct::cubeDeltaNode, storageStruct::cubeDeltaNodeHash> cubeDeltaSet;	//方块变更集合，为变存法服务
 
-	int isVisible = 0;												//标识区块是否可见，如果全空或者全满为不可见，但是不能排除1~32全空边缘不空的情况
+	int isVisible = 0;												//标识区块是否可见，如果全空或者全满为不可见，但是不能排除1~32全空但边缘非空的情况
 
 	//由InitChunk初始化
-	glm::dvec3 originOffset{};										//区块原点偏移量,用于plate类里joinChunkMesh方法处理原点已迁移时的情况
-	glm::dvec3 chunkPos{};											//区块坐标，区块在chunkMap中的坐标
-	glm::dvec3 logicalWorldPos{};									//逻辑世界坐标,用于地形生成
-	glm::ivec3 actualWorldPos{};									//实际世界坐标,用于构建网格
+	glm::dvec3 originOffset{};										//区块原点偏移（d世界坐标系），用于plate类里joinChunkMesh方法处理世界原点（playerInfo::logicOriginPos）迁移时的情况
+	glm::dvec3 chunkPos{};											//区块坐标（区块坐标系），区块在Plate.chunkMap中的坐标
+	glm::dvec3 logicalWorldPos{};									//区块逻辑世界坐标（d世界坐标系）（对应cubeArray[0][0][0]处），用于地形生成
+	glm::ivec3 actualWorldPos{};									//区块实际世界坐标（i世界坐标系）（对应cubeArray[0][0][0]处），用于构建网格
 
 	//由createChunkMeshData初始化,chunkVertexs,chunkIndexs,IndexOffset都能判断区块是否应该加载网格，34立方区块全空或全实不加载网格
 	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组
@@ -29,19 +29,20 @@ public:
 		actualWorldPos = glm::ivec3(logicalWorldPos - origin);
 	}
 
+	//创建区块网格数据
 	void createChunkMeshData() {
-		static std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];	//区块坐标为键，方块ID为值，存储所有可见面
+		static std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];	//区块坐标为键，方块ID为值，存储所有可见面，[0,31]
 		static int chunkLengthMax = plateInfo::chunkLength + 1;									//探极值时，因为31不为空时wSet.max不赋值，所以多探一位32必为空，33做边界值
 		static int chunkLengthMin = -2;															//坐标迁移到左下角时，同理多探一位-1，-2做边界值
 
 
 
 		//获取可见面集合
-		for (const glm::ivec3& pos: plateList::chunkLoop) {
-			short cubeId = cubeArray[pos.x][pos.y][pos.z];
+		for (const glm::ivec3& pos: plateList::cubeLoop) {
+			short cubeId = cubeArray[pos.x][pos.y][pos.z];	//[1,32]
 
 			if (cubeId != cubeEnum::cubeId::air) {
-				glm::ivec3 tempPos = pos - 1;			//对xyz分别-1偏移到0~31
+				glm::ivec3 tempPos = pos - 1;				//从[1,32]偏移到[0,31]
 
 				for (int i = 0; i < 6; i++) {
 					//如果该面挨着空气则加载
@@ -66,7 +67,7 @@ public:
 		//区块网格由0~5六个朝向组成，每个朝向由0~31三十二层组成
 		for (int i = 0; i < 6; i++) {
 			for (int j = 0; j < plateInfo::chunkLength; j++) {
-				if (!visibleFaceMap[i][j].empty()) {
+				if (!visibleFaceMap[i][j].empty()) {		//[0,31]
 					int size = (int)chunkVertexs.size();
 
 					while (!visibleFaceMap[i][j].empty()) {
@@ -634,27 +635,28 @@ private:
 
 public:
 	//todo 不适用于放置方块
+	//更新区块网格数据
 	void updateChunkMeshData(const std::unordered_set<glm::ivec3>& cubePosSet, const std::unordered_set<glm::ivec2>& abutCubePosSet) {
-		static std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];
-		static std::unordered_set<int> faceSet[6];
+		static std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];					//区块截层可见面集合，[0,31]
+		static std::unordered_set<int> faceSet[6];																//区块截层集合，根据两个方块列表（cubePosSet、abutCubePosSet），截取需要更新网格的区块层，[0,31]
 
-		static int chunkLengthMax = plateInfo::chunkLength - 1;
-
+		//标识各朝向对应的最大层和最小层，为优化区块截层网格的生成服务
 		int layerMax[6]{ 0,0,0,0,0,0 };
-		int layerMin[6]{ plateInfo::chunkLength,plateInfo::chunkLength,plateInfo::chunkLength,plateInfo::chunkLength,plateInfo::chunkLength,plateInfo::chunkLength };
+		int layerMin[6]{ plateInfo::lengthDecrement,plateInfo::lengthDecrement,plateInfo::lengthDecrement,plateInfo::lengthDecrement,plateInfo::lengthDecrement,plateInfo::lengthDecrement };
 
-		//获取区块截层集合faceSet，以及区块截层可见面集合visibleFaceMap
+		//根据cubePosSet，获取faceSet和visibleFaceMap
 		for (const auto& node : cubePosSet) {
 			for (int i = 0; i < 6; i++) {
 				if (i == 0 || i == 1) {
+					//获取该层visibleFaceMap
 					if (faceSet[i].find(node.y) == faceSet[i].end()) {
 						for (int x = 1; x <= plateInfo::chunkLength; x++) {
 							for (int z = 1; z <= plateInfo::chunkLength; z++) {
-								short cubeId = cubeArray[x][node.y + 1][z];
+								short cubeId = cubeArray[x][node.y + 1][z];										//xz为[1,32]，node.y需+1从[0,31]偏移到[1,32]
 
 								if (cubeId != cubeEnum::cubeId::air) {
 									if (cubeArray[x + faceInfo::faceCullId[i].x][node.y + 1 + faceInfo::faceCullId[i].y][z + faceInfo::faceCullId[i].z] == cubeEnum::cubeId::air) {
-										visibleFaceMap[i][node.y][glm::ivec3{ x - 1,node.y,z - 1 }] = cubeId;
+										visibleFaceMap[i][node.y][glm::ivec3{ x - 1,node.y,z - 1 }] = cubeId;	//node.y为[0,31]，xz需-1从[1,32]偏移到[0,31]
 									}
 								}
 							}
@@ -663,15 +665,17 @@ public:
 						faceSet[i].insert(node.y);
 					}
 
+					//检测变更方块邻层是否需要更新，如果位于"上0"或"下31"则无需更新
 					int y = node.y;
 
 					if (i == 0 && node.y != 0 && cubeArray[node.x + 1][node.y][node.z + 1] != cubeEnum::cubeId::air) {
 						y--;
 					}
-					else if (i == 1 && node.y != chunkLengthMax && cubeArray[node.x + 1][node.y + 2][node.z + 1] != cubeEnum::cubeId::air) {
+					else if (i == 1 && node.y != plateInfo::lengthDecrement && cubeArray[node.x + 1][node.y + 2][node.z + 1] != cubeEnum::cubeId::air) {
 						y++;
 					}
 
+					//获取邻层visibleFaceMap
 					if (y != node.y) {
 						if (faceSet[i].find(y) == faceSet[i].end()) {
 							for (int x = 1; x <= plateInfo::chunkLength; x++) {
@@ -712,7 +716,7 @@ public:
 					if (i == 2 && node.x != 0 && cubeArray[node.x][node.y + 1][node.z + 1] != cubeEnum::cubeId::air) {
 						x--;
 					}
-					else if (i == 3 && node.x != chunkLengthMax && cubeArray[node.x + 2][node.y + 1][node.z + 1] != cubeEnum::cubeId::air) {
+					else if (i == 3 && node.x != plateInfo::lengthDecrement && cubeArray[node.x + 2][node.y + 1][node.z + 1] != cubeEnum::cubeId::air) {
 						x++;
 					}
 
@@ -756,7 +760,7 @@ public:
 					if (i == 4 && node.z != 0 && cubeArray[node.x + 1][node.y + 1][node.z] != cubeEnum::cubeId::air) {
 						z--;
 					}
-					else if (i == 5 && node.z != chunkLengthMax && cubeArray[node.x + 1][node.y + 1][node.z + 2] != cubeEnum::cubeId::air) {
+					else if (i == 5 && node.z != plateInfo::lengthDecrement && cubeArray[node.x + 1][node.y + 1][node.z + 2] != cubeEnum::cubeId::air) {
 						z++;
 					}
 
@@ -781,17 +785,18 @@ public:
 			}
 		}
 
-		//获取相邻区块截层集合faceSet
+		//根据abutCubePosSet，获取faceSet和visibleFaceMap
 		for (const auto& node : abutCubePosSet) {
 			if (faceSet[node.x].find(node.y) == faceSet[node.x].end()) {
 				if (node.x == 0 || node.x == 1) {
+					//获取该层visibleFaceMap
 					for (int x = 1; x <= plateInfo::chunkLength; x++) {
 						for (int z = 1; z <= plateInfo::chunkLength; z++) {
-							short cubeId = cubeArray[x][node.y + 1][z];
+							short cubeId = cubeArray[x][node.y + 1][z];											//xz为[1,32]，node.y需+1从[0,31]偏移到[1,32]
 
 							if (cubeId != cubeEnum::cubeId::air) {
 								if (cubeArray[x + faceInfo::faceCullId[node.x].x][node.y + 1 + faceInfo::faceCullId[node.x].y][z + faceInfo::faceCullId[node.x].z] == cubeEnum::cubeId::air) {
-									visibleFaceMap[node.x][node.y][glm::ivec3{ x - 1,node.y,z - 1 }] = cubeId;
+									visibleFaceMap[node.x][node.y][glm::ivec3{ x - 1,node.y,z - 1 }] = cubeId;	//node.y为[0,31]，xz需-1从[1,32]偏移到[0,31]
 								}
 							}
 						}
@@ -828,7 +833,7 @@ public:
 			}
 		}
 
-		//清空区块截层网格
+		//根据faceSet，清空区块截层网格
 		for (int i = 0; i < 6; i++) {
 			for (const auto& j : faceSet[i]) {
 				for (std::forward_list<plateStruct::chunkMeshSignListNode>::iterator node = chunkMeshSignList[i].list.begin(), prev = chunkMeshSignList[i].list.before_begin(); node != chunkMeshSignList[i].list.end(); prev = node, ++node) {
@@ -871,7 +876,7 @@ public:
 			faceSet[i].clear();
 		}
 
-		//生成拼接区块截层网格
+		//根据visibleFaceMap，生成拼接区块截层网格
 		for (int i = 0; i < 6; i++) {
 			for (int j = layerMin[i]; j <= layerMax[i]; j++) {
 				if (!visibleFaceMap[i][j].empty()) {

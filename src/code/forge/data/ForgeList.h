@@ -4,9 +4,9 @@
 
 //todo 后期循环直接读取文件，不用每次开局写一遍
 namespace plateList {
-	std::vector<glm::dvec3> palteLoop;						//板块循环列表，用于遍历区块数组
+	std::vector<glm::dvec3> chunkLoop;						//区块循环列表，用于遍历区块数组
 	std::unordered_set<glm::dvec3> structClearLoop;			//结构管理器清理循环列表
-	std::vector<glm::ivec3> chunkLoop;						//区块循环列表,用于遍历方块数组
+	std::vector<glm::ivec3> cubeLoop;						//方块循环列表，用于遍历方块数组，[1,32]
 }
 
 namespace terrainList {

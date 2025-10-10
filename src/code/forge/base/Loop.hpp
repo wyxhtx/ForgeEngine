@@ -22,14 +22,14 @@ public:
 
 private:
 	void createLoop() {
-		/*plateInfo::palteLoop*/
+		/*plateInfo::chunkLoop*/
 		int rangeSquare = plateInfo::sightRange * plateInfo::sightRange;
 
 		for (int x = -plateInfo::sightRange; x < plateInfo::sightRange; x++) {
 			for (int y = -plateInfo::sightRange; y < plateInfo::sightRange; y++) {
 				for (int z = -plateInfo::sightRange; z < plateInfo::sightRange; z++) {
 					if (x * x + y * y + z * z < rangeSquare) {
-						plateList::palteLoop.push_back(glm::dvec3{ x,y,z });
+						plateList::chunkLoop.push_back(glm::dvec3{ x,y,z });
 					}
 				}
 			}
@@ -49,11 +49,11 @@ private:
 			}
 		}
 
-		/*plateInfo::chunkLoop*/
+		/*plateInfo::cubeLoop*/
 		for (int x = 1; x <= plateInfo::chunkLength; x++) {
 			for (int y = 1; y <= plateInfo::chunkLength; y++) {
 				for (int z = 1; z <= plateInfo::chunkLength; z++) {
-					plateList::chunkLoop.push_back(glm::ivec3{ x,y,z });
+					plateList::cubeLoop.push_back(glm::ivec3{ x,y,z });
 				}
 			}
 		}

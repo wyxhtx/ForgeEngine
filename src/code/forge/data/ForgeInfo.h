@@ -72,10 +72,10 @@ namespace playerInfo {
 	//const double min = -pow(2, 31);					//玩家出生点坐标最小值
 	//const glm::dvec3 initSpawnPos = { max, 32, max };
 
-	//const glm::dvec3 initSpawnPos = { 0, 0, 0 };												//玩家出生点
-	const glm::dvec3 initSpawnPos = { 0, 32, 0 };												//玩家出生点
+	//const glm::dvec3 initSpawnPos = { 0, 0, 0 };												//玩家出生点（d世界坐标系）
+	const glm::dvec3 initSpawnPos = { 0, 32, 0 };												//玩家出生点（d世界坐标系）
 
-	//逻辑原点坐标,在逻辑之中表示无限地图
+	//逻辑原点坐标（d世界坐标系），在逻辑之中表示无限地图
 	glm::dvec3 logicOriginPos = glm::floor(initSpawnPos / (double)plateInfo::originShiftThreshold) * (double)plateInfo::originShiftThreshold;
 
 	//todo目前距离不准待日后矫正
