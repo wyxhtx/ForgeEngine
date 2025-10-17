@@ -133,7 +133,7 @@ private:
 
 	//创建区块，生成方块数组数据
 	void createChunk(Chunk& chunk) {
-		static glm::dvec3 localPos;
+		static glm::dvec3 tempWorldPos;
 		static double length;
 		static std::vector<glm::ivec3> structList;
 
@@ -144,21 +144,21 @@ private:
 
 		//生成区块地形，获取结构队列，[0,33]
 		for (int x = 0; x < plateInfo::chunkMapLength; x++) {
-			localPos.x = worldPos.x + x;
+			tempWorldPos.x = worldPos.x + x;
 
 			for (int z = 0; z < plateInfo::chunkMapLength; z++) {
-				localPos.z = worldPos.z + z;
-				length = std::floor(InitNoise.terrain.GetNoise(localPos.x + 0.1, localPos.z + 0.1) * terrainInfo::undulation + terrainInfo::translation);
+				tempWorldPos.z = worldPos.z + z;
+				length = std::floor(InitNoise.terrain.GetNoise(tempWorldPos.x + 0.1, tempWorldPos.z + 0.1) * terrainInfo::undulation + terrainInfo::translation);
 
 				for (int y = 0; y < plateInfo::chunkMapLength; y++) {
-					localPos.y = worldPos.y + y;
+					tempWorldPos.y = worldPos.y + y;
 
 					//高于地平线生成空气
-					if (localPos.y < plateInfo::groundPlane) {
-						if (localPos.y > length) {
+					if (tempWorldPos.y < plateInfo::groundPlane) {
+						if (tempWorldPos.y > length) {
 							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
 						}
-						else if (localPos.y < length) {
+						else if (tempWorldPos.y < length) {
 							chunk.isVisible++;
 
 							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::stoneSquared;
@@ -167,7 +167,7 @@ private:
 							chunk.isVisible++;
 
 							//todo 后续做生态时外面再套一层细胞噪音
-							if (std::floor(InitNoise.tree.GetNoise(localPos.x, localPos.z) * noiseList::tree::oakPut.undulation + noiseList::tree::oakPut.translation) > noiseList::tree::oakPut.density) {
+							if (std::floor(InitNoise.tree.GetNoise(tempWorldPos.x, tempWorldPos.z) * noiseList::tree::oakPut.undulation + noiseList::tree::oakPut.translation) > noiseList::tree::oakPut.density) {
 								//只压入1~32内的，避免边缘重复
 								if (x > 0 && x < plateInfo::lengthIncrement && y > 0 && y < plateInfo::lengthIncrement && z > 0 && z < plateInfo::lengthIncrement) {
 									structList.push_back(glm::ivec3{ x,y + 1,z });
