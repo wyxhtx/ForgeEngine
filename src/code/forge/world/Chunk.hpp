@@ -31,7 +31,7 @@ public:
 
 	//创建区块网格数据
 	void createChunkMeshData() {
-		static std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];	//区块坐标为键，方块ID为值，存储所有可见面，[0,31]
+		static std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];	//方块坐标为键，方块ID为值，存储所有可见面，[0,31]
 		static int chunkLengthMax = plateInfo::chunkLength + 1;									//探极值时，因为31不为空时wSet.max不赋值，所以多探一位32必为空，33做边界值
 		static int chunkLengthMin = -2;															//坐标迁移到左下角时，同理多探一位-1，-2做边界值
 
