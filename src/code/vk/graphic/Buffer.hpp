@@ -991,8 +991,8 @@ public:
 
 
 		//todo
-		//opaqueTerrain.lightUbo.ambientStrength = (sin(gameTime) + 1) / 2;
-		opaqueTerrain.lightUbo.ambientStrength = 0;
+		opaqueTerrain.lightUbo.ambientStrength = (sin(gameTime) + 1) / 2;
+		//opaqueTerrain.lightUbo.ambientStrength = 0;
 		//opaqueTerrain.lightUbo.lightPos = offsetPos;
 		//opaqueTerrain.lightUbo.lightPos = glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
 		opaqueTerrain.lightUbo.lightPos = offsetPos;

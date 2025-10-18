@@ -39,13 +39,13 @@ public:
 	}
 
 private:
+	Loop InitLoop{};
+	Noise InitNoise{ 0 };
+	Storage InitStorage{};
+
 	//todo日后增加存储非自然区块(即玩家放置过方块)的map，放置方块少的区块把里面的方块放到一个列表里，通过参与地形生成来生成
 	std::unordered_map<glm::dvec3, Chunk> chunkMap;											//存储当前视距内区块
 	std::forward_list<plateStruct::plateMeshSignNode> plateMeshSignList;					//标识区块顶点数组和索引数组的大小，为裁剪区块截层网格服务
-
-	Noise InitNoise{ 0 };
-	Loop InitLoop{};
-	Storage InitStorage{};
 
 	//结构管理器，只管理小于等于32并且无空气的结构，超出32会产生很多问题，比如区块存储加载，方块更新后的网格更新
 	std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec4>> pendingStructManager;	//未加载结构管理器，[0,33]
