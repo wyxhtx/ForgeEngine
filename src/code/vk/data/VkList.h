@@ -193,34 +193,38 @@ namespace pipelineList {
     };
 
     struct pipeline {
-        VkPipeline terrain[pipelineEnum::terrain::count];   //地形管线
-        VkPipeline model;                                   //模型管线
-        VkPipeline skybox;                                  //天空盒管线
-        VkPipeline mine;                                    //挖掘选择框管线
-        VkPipeline uiText;                                  //文本管线
+        VkPipeline terrain[terrainEnum::terrainLayer::count];   //地形管线
+        VkPipeline model;                                       //模型管线
+        VkPipeline skybox;                                      //天空盒管线
+        VkPipeline mine;                                        //挖掘选择框管线
+        VkPipeline uiText;                                      //文本管线
     };
 
     struct procPipeline {
-        //pipelineLayouts和pipelines用于一次传整个列表
+        //pipelineLayouts和pipelines方便传参
         pipelineList::pipelineLayout pipelineLayouts;
         pipelineList::pipeline pipelines;
 
-        pipelineStruct::pipelineNode terrain{
-            pipelineLayouts.scence,pipelines.terrain[pipelineEnum::terrain::Lod_0] 
+        pipelineStruct::pipelineNode terrain[terrainEnum::terrainLayer::count]{
+            {pipelineLayouts.scence,pipelines.terrain[terrainEnum::terrainLayer::Layer_0]},
+            {pipelineLayouts.scence,pipelines.terrain[terrainEnum::terrainLayer::Layer_1]}
         };
 
+        pipelineStruct::pipelineNode model  { pipelineLayouts.scence,pipelines.model };
+        pipelineStruct::pipelineNode skybox { pipelineLayouts.scence,pipelines.skybox };
+        pipelineStruct::pipelineNode mine   { pipelineLayouts.scence,pipelines.mine };
+        pipelineStruct::pipelineNode uiText { pipelineLayouts.uiText,pipelines.uiText };
 
 
-        pipelineStruct::pipelineNode model      { pipelineLayouts.scence,pipelines.model };
-        pipelineStruct::pipelineNode skybox     { pipelineLayouts.scence,pipelines.skybox };
-        pipelineStruct::pipelineNode mine       { pipelineLayouts.scence,pipelines.mine };
-        pipelineStruct::pipelineNode uiText     { pipelineLayouts.uiText,pipelines.uiText };
 
         void cleanupSwapChain(VkDevice& device) {
             vkDestroyPipelineLayout(device, pipelineLayouts.scence, nullptr);
             vkDestroyPipelineLayout(device, pipelineLayouts.uiText, nullptr);
 
-            vkDestroyPipeline(device, terrain.pipeline, nullptr);
+            for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+                vkDestroyPipeline(device, terrain[layer].pipeline, nullptr);
+            }
+
             vkDestroyPipeline(device, model.pipeline, nullptr);
             vkDestroyPipeline(device, skybox.pipeline, nullptr);
             vkDestroyPipeline(device, mine.pipeline, nullptr);

@@ -181,14 +181,16 @@ private:
 			vertexInputInfo.pVertexBindingDescriptions = terrainVertex::vertexNode::getBindingDescription().data();
 			vertexInputInfo.pVertexAttributeDescriptions = terrainVertex::vertexNode::getAttributeDescriptions().data();
 
-			pipelineInfo.layout = procPipelines.terrain.pipelineLayout;
+			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+				pipelineInfo.layout = procPipelines.terrain[layer].pipelineLayout;
+
+				if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.terrain[layer].pipeline) != VK_SUCCESS) {
+					Log::error(__FILE__, __LINE__, std::format("Layer_{} 地形管线创建失败", layer));
+					throw;
+				}
+			}
 		}
 
-		if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.terrain.pipeline) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "管线创建失败");
-			throw;
-		}
-		
 		//model
 		{
 			shaderStages[0] = loadShader(fileInfo::shader::modelVert, VK_SHADER_STAGE_VERTEX_BIT);
@@ -200,11 +202,11 @@ private:
 			vertexInputInfo.pVertexAttributeDescriptions = modelVertex::vertexNode::getAttributeDescriptions().data();
 
 			pipelineInfo.layout = procPipelines.model.pipelineLayout;
-		}
 
-		if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.model.pipeline) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "管线创建失败");
-			throw;
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.model.pipeline) != VK_SUCCESS) {
+				Log::error(__FILE__, __LINE__, "model管线创建失败");
+				throw;
+			}
 		}
 
 		//skybox
@@ -222,11 +224,11 @@ private:
 			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
 			pipelineInfo.layout = procPipelines.skybox.pipelineLayout;
-		}
 
-		if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.skybox.pipeline) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "管线创建失败");
-			throw;
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.skybox.pipeline) != VK_SUCCESS) {
+				Log::error(__FILE__, __LINE__, "skybox管线创建失败");
+				throw;
+			}
 		}
 
 		//mine
@@ -254,11 +256,11 @@ private:
 			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 
 			pipelineInfo.layout = procPipelines.mine.pipelineLayout;
-		}
 
-		if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.mine.pipeline) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "管线创建失败");
-			throw;
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.mine.pipeline) != VK_SUCCESS) {
+				Log::error(__FILE__, __LINE__, "mine管线创建失败");
+				throw;
+			}
 		}
 
 		//uiText
@@ -281,11 +283,11 @@ private:
 			depthStencil.depthWriteEnable = VK_FALSE;
 
 			pipelineInfo.layout = procPipelines.uiText.pipelineLayout;
-		}
 
-		if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.uiText.pipeline) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "管线创建失败");
-			throw;
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.uiText.pipeline) != VK_SUCCESS) {
+				Log::error(__FILE__, __LINE__, "uiText管线创建失败");
+				throw;
+			}
 		}
 	}
 
@@ -374,15 +376,13 @@ public:
 				InitPlate.updatePlatePartMesh();
 
 				//新网格非空再重建命令缓冲区
-				if (terrainVertex::vertexs.terrain.size() && terrainVertex::indexs.terrain.size()) {
+				if (terrainVertex::vertexs.terrain[terrainEnum::terrainLayer::Layer_0].size() && terrainVertex::indexs.terrain[terrainEnum::terrainLayer::Layer_0].size() && terrainVertex::vertexs.terrain[terrainEnum::terrainLayer::Layer_1].size() && terrainVertex::indexs.terrain[terrainEnum::terrainLayer::Layer_1].size()) {
 					tempID = (InitBuffer.command.currentThreadID + 1) % 2;
 				}
 			}
 
 			InitPlate.externalUpdateLock = false;
 		}
-
-
 
 		//更换命令缓冲区后重建命令缓冲区（5~9ms）
 		//r=1时，更新板块会把网格数组清空
@@ -398,8 +398,19 @@ public:
 				}
 			}
 
-			InitBuffer.recreateBuffer(tempID);
-			InitBuffer.createCommandBuffers(tempID, procPipelines);
+			//目前重建命令缓冲区必定是updatePlate或updatePlatePartMesh触发的，通过二者真值表得出此处判断逻辑
+			if (isLayer) {
+				//地形管线全部重建
+				InitBuffer.recreateBuffer(tempID, terrainEnum::terrainLayer::count);
+				InitBuffer.createCommandBuffers(tempID, procPipelines);
+
+				isLayer = false;
+			}
+			else {	
+				//只重建Lod_0地形管线
+				InitBuffer.recreateBuffer(tempID, terrainEnum::terrainLayer::Layer_0);
+				InitBuffer.createCommandBuffers(tempID, procPipelines);
+			}
 
 			InitBuffer.command.currentThreadID = tempID;
 		}
@@ -416,6 +427,7 @@ public:
 
 private:
 	int tempID = InitBuffer.command.currentThreadID;		//命令缓冲区id标识，用于解决线程冲突
+	bool isLayer = false;									//标识updatePlate是否执行
 	
 
 
@@ -426,8 +438,9 @@ private:
 		InitPlate.updatePlate(playerPos);
 
 		//新网格非空再重建命令缓冲区
-		if (terrainVertex::vertexs.terrain.size() && terrainVertex::indexs.terrain.size()) {
+		if (terrainVertex::vertexs.terrain[terrainEnum::terrainLayer::Layer_0].size() && terrainVertex::indexs.terrain[terrainEnum::terrainLayer::Layer_0].size() && terrainVertex::vertexs.terrain[terrainEnum::terrainLayer::Layer_1].size() && terrainVertex::indexs.terrain[terrainEnum::terrainLayer::Layer_1].size()) {
 			tempID = (InitBuffer.command.currentThreadID + 1) % 2;
+			isLayer = true;
 		}
 
 		Log::print("板块刷新用时:\t" + time.end());

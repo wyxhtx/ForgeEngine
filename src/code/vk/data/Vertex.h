@@ -46,14 +46,14 @@ namespace terrainVertex {
         }
     };
 
-    //顶点数组:坐标,uv
+    //顶点数组
     struct {
-        std::vector<vertexNode> terrain;
+        std::vector<vertexNode> terrain[terrainEnum::terrainLayer::count];
     } vertexs;
     
     //索引数组
     struct {
-        std::vector<uint32_t> terrain;
+        std::vector<uint32_t> terrain[terrainEnum::terrainLayer::count];
     } indexs;
 }
 

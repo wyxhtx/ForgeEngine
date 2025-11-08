@@ -2,25 +2,32 @@
 
 
 
-//todo 存储暂时用不上的东西
-namespace todoInfo {
-	int visibleFaceCount;							//区块可见面数量
-	int visibleOptimization;						//区块可见面优化数量
+//面信息
+namespace faceInfo {
+	//面剔除索引,在此可控制面剔除朝向
+	const std::vector<glm::ivec3> faceCullId{
+		{ 0, 1, 0},
+		{ 0,-1, 0},
+		{ 1, 0, 0},
+		{-1, 0, 0},
+		{ 0, 0, 1},
+		{ 0, 0,-1}
+	};
 }
 
 //板块信息
 namespace plateInfo {
 	const int groundPlane = 4096;										//地平面
 	//const int skyPlane = 2;											//天平面，未正式启用
-	//const int sightRange = 2;											//视距		//2.5s左右
-	const int sightRange = 4;											//视距		//3.8s左右
+	//const int sightRange = 2;											//视距							//2.5s左右
+	const int sightRange = 8;											//视距，全layer合起来的总视距		//3.8s左右
 
 	const int chunkLength = 32;											//区块边长	//很多地方都是直接写数字，所以chunkLength变更时很多地方都得改
 	const int chunkMapLength = chunkLength + 2;							//区块Map中的边长
 	const int lengthIncrement = plateInfo::chunkLength + 1;
 	const int lengthDecrement = plateInfo::chunkLength - 1;
 
-	const float cubeSightRange = plateInfo::chunkLength * (plateInfo::sightRange + 2);	//用于updateUniformBuffer
+	const float cubeSightRange = plateInfo::chunkLength * (plateInfo::sightRange + 2);	//决定远裁剪面
 	const int filled = (int)std::pow(plateInfo::chunkMapLength, 3);		//区块边长立方值
 	
 	//const int originShiftThreshold = (int)pow(2, 5);					//测试用32
@@ -35,28 +42,6 @@ namespace terrainInfo {
 	const int translation = 16;			//平移
 }
 
-//贴图信息
-namespace textureInfo {
-	const int tileWidth = 16;									//贴图宽度
-	const int tileHeight = 16;									//贴图高度
-	const int atlasWidth = 64;									//图集宽几个贴图
-	const int atlasHeight = 32;									//图集高几个贴图
-	const uint32_t arrayLayer = atlasWidth * atlasHeight;		//图集层数
-}
-
-//面信息
-namespace faceInfo {
-	//面剔除索引,在此可控制面剔除朝向
-	const std::vector<glm::ivec3> faceCullId{
-		{ 0, 1, 0},
-		{ 0,-1, 0},
-		{ 1, 0, 0},
-		{-1, 0, 0},
-		{ 0, 0, 1},
-		{ 0, 0,-1}
-	};
-}
-
 //存储信息
 namespace storageInfo {
 	const int cubeArraySize = plateInfo::filled * sizeof(short);		//方块数组大小
@@ -64,6 +49,15 @@ namespace storageInfo {
 
 	const int regionLoopLength = 2;										//地区循环边长，即3x3x3的立方体
 	const int regionLength = 32;										//地区边长，至少一倍视距，不然更新板块出bug，不能跟plateInfo::sightRange在一起写死，不然读存区块文件出bug
+}
+
+//贴图信息
+namespace textureInfo {
+	const int tileWidth = 16;									//贴图宽度
+	const int tileHeight = 16;									//贴图高度
+	const int atlasWidth = 64;									//图集宽几个贴图
+	const int atlasHeight = 32;									//图集高几个贴图
+	const uint32_t arrayLayer = atlasWidth * atlasHeight;		//图集层数
 }
 
 //玩家信息，内部元素大多涉及频繁更新
@@ -83,4 +77,10 @@ namespace playerInfo {
 
 	//鼠标按键状态
 	bool mouseButtonLeft = false;
+}
+
+//todo 存储暂时用不上的东西
+namespace todoInfo {
+	int visibleFaceCount;							//区块可见面数量
+	int visibleOptimization;						//区块可见面优化数量
 }

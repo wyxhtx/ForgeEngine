@@ -2,6 +2,28 @@
 
 
 
+namespace cubeStruct {
+    //贪心算法使用范围（1~32）遍历节点
+    struct traversalNode {
+        int max = 1;                            //最短1
+        int min = plateInfo::chunkLength;       //最长32
+    };
+
+    //面朝向结点
+    struct faceNode {
+        int x;
+        int y;
+    };
+
+    //方块属性结点
+    struct propertyNode {
+        std::vector<faceNode> faceId;       //纹理id
+        short coverage;                     //方块覆盖顺序
+
+        //glm::vec3 light;                    //光照属性
+    };
+}
+
 namespace plateStruct {
     //板块网格标识结点
     struct plateMeshSignNode {
@@ -28,28 +50,6 @@ namespace terrainStruct {
     struct treeNode {
         int r;
         int length;
-    };
-}
-
-namespace cubeStruct {
-    //贪心算法使用范围（1~32）遍历节点
-    struct traversalNode {
-        int max = 1;                            //最短1
-        int min = plateInfo::chunkLength;       //最长32
-    };
-
-    //面朝向结点
-    struct faceNode {
-        int x;
-        int y;
-    };
-
-    //方块属性结点
-    struct propertyNode {
-        std::vector<faceNode> faceId;       //纹理id
-        short hardness;                     //硬度，决定结构覆盖顺序
-
-        //glm::vec3 light;                    //光照属性
     };
 }
 

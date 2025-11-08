@@ -22,6 +22,8 @@ public:
 	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMeshData、updateChunkMeshData）
 	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、updatePlate），Chunk（createChunkMeshData、updateChunkMeshData）
 
+	int layerID = terrainEnum::terrainLayer::count;					//区块所在地形管线层																	//Plate（createPlate、updatePlate、updatePlatePartMesh）
+
 
 
 	void InitChunk(const glm::dvec3& origin, const glm::dvec3& chunkPos0) {
@@ -40,7 +42,7 @@ public:
 
 
 		//获取可见面集合
-		for (const glm::ivec3& pos: plateList::cubeLoop) {
+		for (const glm::ivec3& pos: plateList::cubekMapLoop) {
 			short cubeId = cubeArray[pos.x][pos.y][pos.z];	//[1,32]
 
 			if (cubeId != cubeEnum::cubeId::air) {
@@ -482,10 +484,7 @@ private:
 
 
 
-	//i：		朝向id
-	//faceId：	纹理id
-	//position：	坐标
-	//length：	纹理循环长度
+	//i：朝向id、faceId：纹理id、position：坐标、length：纹理循环长度
 	void createChunkMesh(int i, int faceId, glm::vec3 position, glm::vec3 length, uint32_t& indexOffset, std::vector<terrainVertex::vertexNode>& chunkVertexs, std::vector<uint32_t>& chunkIndexs) {
 		static std::vector<terrainVertex::vertexNode> tempVertexs;
 

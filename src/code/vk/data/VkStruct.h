@@ -75,7 +75,7 @@ namespace bufferStruct {
         glm::mat4 view;             //视图矩阵，用于将世界坐标系变换到观察者坐标系
         glm::mat4 proj;             //投影矩阵，用于将观察者坐标系变换到裁剪坐标系
     };
-    
+
     //注意着色器内存对齐
     struct lightUBO {
         glm::vec3 baseLight;        //基础光照颜色
@@ -92,8 +92,8 @@ namespace bufferStruct {
 
     struct terrainBufferNode {
         //网格缓冲
-        bufferNode vertex[bufferInfo::commandThreadSize];
-        bufferNode index[bufferInfo::commandThreadSize];
+        bufferNode vertex[bufferInfo::commandThreadSize][terrainEnum::terrainLayer::count];
+        bufferNode index[bufferInfo::commandThreadSize][terrainEnum::terrainLayer::count];
 
         //统一缓冲
         bufferNode uniform;
@@ -110,6 +110,8 @@ namespace bufferStruct {
         //描述符缓冲
         VkDescriptorSet descriptorSet;
 
+
+
         terrainBufferNode(const char* file, uint32_t layer) {
             imageFile = file;
             arrayLayer = layer;
@@ -120,8 +122,10 @@ namespace bufferStruct {
         //清理结构体，descriptorSet由描述符池管理，无需手动清理
         void clear(VkDevice& device, VmaAllocator& allocator) {
             for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
-                vmaDestroyBuffer(allocator, vertex[i].buffer, vertex[i].bufferMemory);
-                vmaDestroyBuffer(allocator, index[i].buffer, index[i].bufferMemory);
+                for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+                    vmaDestroyBuffer(allocator, vertex[i][layer].buffer, vertex[i][layer].bufferMemory);
+                    vmaDestroyBuffer(allocator, index[i][layer].buffer, index[i][layer].bufferMemory);
+                }
             }
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);

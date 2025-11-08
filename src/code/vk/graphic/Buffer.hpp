@@ -92,8 +92,13 @@ private:
 
 	void createMeshBuffer() {
 		//terrain
-		createVertexBuffer(terrainVertex::vertexs.terrain, terrain.vertex[0].buffer, terrain.vertex[0].bufferMemory);
-		createIndexBuffer(terrainVertex::indexs.terrain, terrain.index[0].buffer, terrain.index[0].bufferMemory);
+		for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+			createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[0][layer].buffer, terrain.vertex[0][layer].bufferMemory);
+			createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[0][layer].buffer, terrain.index[0][layer].bufferMemory);
+
+			createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[1][layer].buffer, terrain.vertex[1][layer].bufferMemory);
+			createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[1][layer].buffer, terrain.index[1][layer].bufferMemory);
+		}
 
 		//model
 		loadModel();
@@ -923,11 +928,13 @@ public:
 			vkCmdBeginRenderPass(command.commandBuffers[threadID][i], &command.renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			//terrain
-			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain.pipeline);
-			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain.pipelineLayout, 0, 1, &terrain.descriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &terrain.vertex[threadID].buffer, offsets);
-			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], terrain.index[threadID].buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)terrainVertex::indexs.terrain.size(), 1, 0, 0, 0);
+			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+				vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain[layer].pipeline);
+				vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain[layer].pipelineLayout, 0, 1, &terrain.descriptorSet, 0, nullptr);
+				vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &terrain.vertex[threadID][layer].buffer, offsets);
+				vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], terrain.index[threadID][layer].buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)terrainVertex::indexs.terrain[layer].size(), 1, 0, 0, 0);
+			}
 
 			//model
 			/*vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
@@ -966,13 +973,25 @@ public:
 		}
 	}
 
-	void recreateBuffer(int threadID) {
+	void recreateBuffer(int threadID, int layerID) {
 		vkFreeCommandBuffers(Device.device, command.commandPool, static_cast<uint32_t>(command.commandBuffers[threadID].size()), command.commandBuffers[threadID].data());
-		vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID].buffer, terrain.vertex[threadID].bufferMemory);
-		vmaDestroyBuffer(Device.allocator, terrain.index[threadID].buffer, terrain.index[threadID].bufferMemory);
 
-		createVertexBuffer(terrainVertex::vertexs.terrain, terrain.vertex[threadID].buffer, terrain.vertex[threadID].bufferMemory);
-		createIndexBuffer(terrainVertex::indexs.terrain, terrain.index[threadID].buffer, terrain.index[threadID].bufferMemory);
+		if (layerID == terrainEnum::terrainLayer::Layer_0) {
+			vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
+			vmaDestroyBuffer(Device.allocator, terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
+
+			createVertexBuffer(terrainVertex::vertexs.terrain[terrainEnum::terrainLayer::Layer_0], terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
+			createIndexBuffer(terrainVertex::indexs.terrain[terrainEnum::terrainLayer::Layer_0], terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
+		}
+		else {
+			for (int layer = 0; layer < layerID; layer++) {
+				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
+				vmaDestroyBuffer(Device.allocator, terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
+
+				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
+				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
+			}
+		}
 	}
 
 	void updateUniformBuffer(const glm::dvec3 pos, const glm::mat4 view, const playerStruct::selectBoxNode box) {

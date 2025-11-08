@@ -22,23 +22,36 @@ public:
 
 private:
 	void createLoop() {
-		/*plateInfo::chunkLoop*/
+		/*plateList::chunkMapLoop*/
 		int rangeSquare = plateInfo::sightRange * plateInfo::sightRange;
 
 		for (int x = -plateInfo::sightRange; x < plateInfo::sightRange; x++) {
 			for (int y = -plateInfo::sightRange; y < plateInfo::sightRange; y++) {
 				for (int z = -plateInfo::sightRange; z < plateInfo::sightRange; z++) {
 					if (x * x + y * y + z * z < rangeSquare) {
-						plateList::chunkLoop.push_back(glm::dvec3{ x,y,z });
+						plateList::chunkMapLoop.push_back(glm::dvec3{ x,y,z });
 					}
 				}
 			}
 		}
 
-		/*plateInfo::structClearLoop*/
+		/*terrainList::layerLoop*/
+		rangeSquare = terrainList::layerSightRange[terrainEnum::terrainLayer::Layer_0] * terrainList::layerSightRange[terrainEnum::terrainLayer::Layer_0];
+
+		for (int x = -plateInfo::sightRange; x < plateInfo::sightRange; x++) {
+			for (int y = -plateInfo::sightRange; y < plateInfo::sightRange; y++) {
+				for (int z = -plateInfo::sightRange; z < plateInfo::sightRange; z++) {
+					if (x * x + y * y + z * z < rangeSquare) {
+						terrainList::layerLoop.insert(glm::dvec3{ x,y,z });
+					}
+				}
+			}
+		}
+
+		/*plateList::structClearLoop*/
 		int structSightRange = plateInfo::sightRange + 2;
 		rangeSquare = structSightRange * structSightRange;
-
+		
 		for (int x = -structSightRange; x < structSightRange; x++) {
 			for (int y = -structSightRange; y < structSightRange; y++) {
 				for (int z = -structSightRange; z < structSightRange; z++) {
@@ -49,11 +62,11 @@ private:
 			}
 		}
 
-		/*plateInfo::cubeLoop*/
+		/*plateList::cubekMapLoop*/
 		for (int x = 1; x <= plateInfo::chunkLength; x++) {
 			for (int y = 1; y <= plateInfo::chunkLength; y++) {
 				for (int z = 1; z <= plateInfo::chunkLength; z++) {
-					plateList::cubeLoop.push_back(glm::ivec3{ x,y,z });
+					plateList::cubekMapLoop.push_back(glm::ivec3{ x,y,z });
 				}
 			}
 		}
