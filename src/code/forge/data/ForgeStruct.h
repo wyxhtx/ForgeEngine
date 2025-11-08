@@ -47,12 +47,9 @@ namespace cubeStruct {
     //方块属性结点
     struct propertyNode {
         std::vector<faceNode> faceId;       //纹理id
-        glm::vec3 light;                    //光照属性
-
         short hardness;                     //硬度，决定结构覆盖顺序
 
-        //todo 暂时无用
-        //bool isTransparent;               //是否透明，决定加载管线
+        //glm::vec3 light;                    //光照属性
     };
 }
 

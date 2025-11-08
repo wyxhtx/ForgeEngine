@@ -217,7 +217,7 @@ namespace bufferStruct {
             numLetters = 0;
         }
 
-        void addText(std::string texts, float x, float y, bufferEnum::TextAlign::Type align) {
+        void addText(std::string texts, float x, float y, bufferEnum::textAlign::Type align) {
             // 字符的起始索引
             const uint32_t firstChar = STB_FONT_consolas_24_latin1_FIRST_CHAR;
 
@@ -238,13 +238,13 @@ namespace bufferStruct {
 
             // 根据对齐方式调整x坐标
             switch (align) {
-            case bufferEnum::TextAlign::alignRight:
+            case bufferEnum::textAlign::alignRight:
                 x -= textWidth;
                 break;
-            case bufferEnum::TextAlign::alignCenter:
+            case bufferEnum::textAlign::alignCenter:
                 x -= textWidth / 2.0f;
                 break;
-            case bufferEnum::TextAlign::alignLeft:
+            case bufferEnum::textAlign::alignLeft:
                 break;
             }
 

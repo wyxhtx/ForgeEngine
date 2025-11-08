@@ -48,12 +48,12 @@ namespace terrainVertex {
 
     //顶点数组:坐标,uv
     struct {
-        std::vector<vertexNode> opaqueTerrain;
+        std::vector<vertexNode> terrain;
     } vertexs;
     
     //索引数组
     struct {
-        std::vector<uint32_t> opaqueTerrain;
+        std::vector<uint32_t> terrain;
     } indexs;
 }
 

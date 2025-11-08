@@ -119,12 +119,12 @@ private:
 
 		//地形网格非空检测
 		if (debugInfo::LogSwitch) {
-			if (terrainVertex::vertexs.opaqueTerrain.size() == 0) {
-				Log::error(__FILE__, __LINE__, "terrainVertex::vertexs.opaqueTerrain未存入数据");
+			if (terrainVertex::vertexs.terrain.size() == 0) {
+				Log::error(__FILE__, __LINE__, "terrainVertex::vertexs.terrain未存入数据");
 			}
 
-			if (terrainVertex::indexs.opaqueTerrain.size() == 0) {
-				Log::error(__FILE__, __LINE__, "terrainVertex::indexs.opaqueTerrain未存入数据");
+			if (terrainVertex::indexs.terrain.size() == 0) {
+				Log::error(__FILE__, __LINE__, "terrainVertex::indexs.terrain未存入数据");
 			}
 		}
 	}
@@ -330,8 +330,8 @@ private:
 	//将区块网格拼接成板块网格
 	//自动内存分配时函数耗时1.8ms，平时函数耗时0.18ms
 	void joinMesh(const glm::dvec3 originOffset, const glm::dvec3 chunkPos) {
-		//等同(uint32_t)(terrainVertex::indexs.opaqueTerrain.size() / 1.5);
-		uint32_t offset = (uint32_t)terrainVertex::vertexs.opaqueTerrain.size();
+		//等同(uint32_t)(terrainVertex::indexs.terrain.size() / 1.5);
+		uint32_t offset = (uint32_t)terrainVertex::vertexs.terrain.size();
 
 		//配置旧区块
 		if (chunkMap[chunkPos].originOffset != originOffset) {
@@ -344,7 +344,7 @@ private:
 			chunkMap[chunkPos].InitChunk(originOffset, chunkPos);
 		}
 
-		terrainVertex::vertexs.opaqueTerrain.insert(terrainVertex::vertexs.opaqueTerrain.end(), chunkMap[chunkPos].chunkVertexs.begin(), chunkMap[chunkPos].chunkVertexs.end());
+		terrainVertex::vertexs.terrain.insert(terrainVertex::vertexs.terrain.end(), chunkMap[chunkPos].chunkVertexs.begin(), chunkMap[chunkPos].chunkVertexs.end());
 
 		//拼接索引
 		std::vector<uint32_t> tempIndexs = chunkMap[chunkPos].chunkIndexs;
@@ -352,7 +352,7 @@ private:
 			i += offset;
 		}
 
-		terrainVertex::indexs.opaqueTerrain.insert(terrainVertex::indexs.opaqueTerrain.end(), tempIndexs.begin(), tempIndexs.end());
+		terrainVertex::indexs.terrain.insert(terrainVertex::indexs.terrain.end(), tempIndexs.begin(), tempIndexs.end());
 	}
 
 public:
@@ -515,8 +515,8 @@ public:
 								++p;
 							}
 
-							terrainVertex::vertexs.opaqueTerrain.erase(terrainVertex::vertexs.opaqueTerrain.begin() + vertexsSize, terrainVertex::vertexs.opaqueTerrain.begin() + vertexsSize + node->vertexsSize);
-							terrainVertex::indexs.opaqueTerrain.erase(terrainVertex::indexs.opaqueTerrain.end() - node->indexsSize, terrainVertex::indexs.opaqueTerrain.end());
+							terrainVertex::vertexs.terrain.erase(terrainVertex::vertexs.terrain.begin() + vertexsSize, terrainVertex::vertexs.terrain.begin() + vertexsSize + node->vertexsSize);
+							terrainVertex::indexs.terrain.erase(terrainVertex::indexs.terrain.end() - node->indexsSize, terrainVertex::indexs.terrain.end());
 
 							plateMeshSignList.erase_after(prev);
 							break;
@@ -538,8 +538,8 @@ public:
 		}
 		//原点迁移，则全删了重拼(r=8时75ms)
 		else {
-			terrainVertex::vertexs.opaqueTerrain.clear();
-			terrainVertex::indexs.opaqueTerrain.clear();
+			terrainVertex::vertexs.terrain.clear();
+			terrainVertex::indexs.terrain.clear();
 			plateMeshSignList.clear();
 
 			for (std::unordered_map<glm::dvec3, Chunk>::iterator it = chunkMap.begin(); it != chunkMap.end(); ) {
@@ -607,12 +607,12 @@ public:
 
 		//地形网格非空检测
 		if (debugInfo::LogSwitch) {
-			if (terrainVertex::vertexs.opaqueTerrain.size() == 0) {
-				Log::error(__FILE__, __LINE__, "terrainVertex::vertexs.opaqueTerrain未存入数据");
+			if (terrainVertex::vertexs.terrain.size() == 0) {
+				Log::error(__FILE__, __LINE__, "terrainVertex::vertexs.terrain未存入数据");
 			}
 
-			if (terrainVertex::indexs.opaqueTerrain.size() == 0) {
-				Log::error(__FILE__, __LINE__, "terrainVertex::indexs.opaqueTerrain未存入数据");
+			if (terrainVertex::indexs.terrain.size() == 0) {
+				Log::error(__FILE__, __LINE__, "terrainVertex::indexs.terrain未存入数据");
 			}
 		}
 	}
@@ -639,20 +639,24 @@ public:
 		initialPos = glm::floor(camera.pos);	//以玩家坐标为起始坐标
 		chunkPos = glm::floor(initialPos / chunkLength);
 
-		//如果起始坐标非空，则直接返回起始坐标
 		if (chunkMap.find(chunkPos) != chunkMap.end()) {
 			//将d世界坐标系偏移到方块坐标系，cubePos范围为[1,32]
-			cubePos = glm::ivec3{ initialPos - chunkMap[chunkPos].logicalWorldPos } + glm::ivec3{ 1 };
+			//此处chunkPos * (double)plateInfo::chunkLength原为chunkMap[chunkPos].logicalWorldPos，因updatePlate执行chunkMap[updatePos] = tempChunkMap[updatePos]后会导致该值错误故更换
+			cubePos = glm::ivec3{ initialPos - chunkPos * (double)plateInfo::chunkLength } + glm::ivec3{ 1 };
+
+			if (debugInfo::LogSwitch) {
+				if (cubePos.x < 1 || cubePos.x > 32 || cubePos.y < 1 || cubePos.y > 32 || cubePos.z < 1 || cubePos.z > 32) {
+					Log::error(__FILE__, __LINE__, "getSelectBox函数cubePos超限");
+				}
+			}
 
 			if (chunkMap[chunkPos].cubeArray[cubePos.x][cubePos.y][cubePos.z] != cubeEnum::cubeId::air) {
 				if (playerInfo::mouseButtonLeft) {
 					createUpdateCubeList(chunkPos, cubePos);
 				}
 
-				//返回i世界坐标系
-				return playerStruct::selectBoxNode{ initialPos - playerInfo::logicOriginPos, 1 };
-				//返回玩家所在区块数组真实坐标
-				//return playerStruct::selectBoxNode{ cubePos, 1 };
+				return playerStruct::selectBoxNode{ initialPos - playerInfo::logicOriginPos, 1 };	//返回i世界坐标系，如果起始坐标非空，则直接返回起始坐标
+				//return playerStruct::selectBoxNode{ cubePos, 1 };									//返回玩家所在区块数组真实坐标
 			}
 		}
 
@@ -691,17 +695,21 @@ public:
 
 			if (chunkMap.find(chunkPos) != chunkMap.end()) {
 				//将d世界坐标系偏移到方块坐标系，cubePos范围为[1,32]
-				cubePos = glm::ivec3{ initialPos - chunkMap[chunkPos].logicalWorldPos } + glm::ivec3{ 1 };
+				cubePos = glm::ivec3{ initialPos - chunkPos * (double)plateInfo::chunkLength } + glm::ivec3{ 1 };
+
+				if (debugInfo::LogSwitch) {
+					if (cubePos.x < 1 || cubePos.x > 32 || cubePos.y < 1 || cubePos.y > 32 || cubePos.z < 1 || cubePos.z > 32) {
+						Log::error(__FILE__, __LINE__, "getSelectBox函数cubePos超限");
+					}
+				}
 
 				if (chunkMap[chunkPos].cubeArray[cubePos.x][cubePos.y][cubePos.z] != cubeEnum::cubeId::air) {
 					if (playerInfo::mouseButtonLeft) {
 						createUpdateCubeList(chunkPos, cubePos);
 					}
 
-					//返回i世界坐标系
-					return playerStruct::selectBoxNode{ initialPos - playerInfo::logicOriginPos, 1 };
-					//返回玩家所在区块数组真实坐标
-					//return playerStruct::selectBoxNode{ cubePos, 1 };
+					return playerStruct::selectBoxNode{ initialPos - playerInfo::logicOriginPos, 1 };	//返回i世界坐标系
+					//return playerStruct::selectBoxNode{ cubePos, 1 };									//返回玩家所在区块数组真实坐标
 				}
 			}
 
@@ -729,8 +737,8 @@ public:
 							++p;
 						}
 
-						terrainVertex::vertexs.opaqueTerrain.erase(terrainVertex::vertexs.opaqueTerrain.begin() + vertexsSize, terrainVertex::vertexs.opaqueTerrain.begin() + vertexsSize + node->vertexsSize);
-						terrainVertex::indexs.opaqueTerrain.erase(terrainVertex::indexs.opaqueTerrain.end() - node->indexsSize, terrainVertex::indexs.opaqueTerrain.end());
+						terrainVertex::vertexs.terrain.erase(terrainVertex::vertexs.terrain.begin() + vertexsSize, terrainVertex::vertexs.terrain.begin() + vertexsSize + node->vertexsSize);
+						terrainVertex::indexs.terrain.erase(terrainVertex::indexs.terrain.end() - node->indexsSize, terrainVertex::indexs.terrain.end());
 
 						plateMeshSignList.erase_after(prev);
 						break;
@@ -742,7 +750,7 @@ public:
 				joinMesh(originPos, chunkPos);
 			}
 			/*
-			//已证实存在下述情况
+			//已证实存在下述情况，变更板块边缘区块导致的
 			else if (debugInfo::LogSwitch) {
 				Log::error(__FILE__, __LINE__, "变更方块所处区块为空");
 			}*/

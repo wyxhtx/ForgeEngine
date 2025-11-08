@@ -18,7 +18,7 @@ public:
 		createUniformBuffer();
 
 		createTexture();
-		samplers.createTextureSampler(Device.device, opaqueTerrain.mipLevel, temple.mipLevel);
+		samplers.createTextureSampler(Device.device, terrain.mipLevel, temple.mipLevel);
 		createDescriptorSet();
 
 		createDepthResources();
@@ -42,7 +42,7 @@ public:
 		descriptors.clear(Device.device);
 		samplers.clear(Device.device);
 
-		opaqueTerrain.clear(Device.device, Device.allocator);
+		terrain.clear(Device.device, Device.allocator);
 		temple.clear(Device.device, Device.allocator);
 		skybox.clear(Device.device, Device.allocator);
 		mine.clear(Device.device, Device.allocator);
@@ -67,7 +67,7 @@ private:
 	bufferList::descriptor descriptors;
 	bufferList::sampler samplers;
 
-	bufferStruct::terrainBufferNode opaqueTerrain{ fileInfo::image::cube,textureInfo::arrayLayer };
+	bufferStruct::terrainBufferNode terrain{ fileInfo::image::cube,textureInfo::arrayLayer };
 	bufferStruct::modelBufferNode	temple{ fileInfo::image::temple };
 	bufferStruct::skyboxBufferNode	skybox;
 	bufferStruct::baseBufferNode	mine;
@@ -91,9 +91,9 @@ private:
 	}
 
 	void createMeshBuffer() {
-		//opaqueTerrain
-		createVertexBuffer(terrainVertex::vertexs.opaqueTerrain, opaqueTerrain.vertex[0].buffer, opaqueTerrain.vertex[0].bufferMemory);
-		createIndexBuffer(terrainVertex::indexs.opaqueTerrain, opaqueTerrain.index[0].buffer, opaqueTerrain.index[0].bufferMemory);
+		//terrain
+		createVertexBuffer(terrainVertex::vertexs.terrain, terrain.vertex[0].buffer, terrain.vertex[0].bufferMemory);
+		createIndexBuffer(terrainVertex::indexs.terrain, terrain.index[0].buffer, terrain.index[0].bufferMemory);
 
 		//model
 		loadModel();
@@ -113,9 +113,9 @@ private:
 	}
 
 	void createUniformBuffer() {
-		//opaqueTerrain
-		createBuffer(sizeof(opaqueTerrain.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, opaqueTerrain.uniform.buffer, opaqueTerrain.uniform.bufferMemory);
-		createBuffer(sizeof(opaqueTerrain.lightUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, opaqueTerrain.lightUniform.buffer, opaqueTerrain.lightUniform.bufferMemory);
+		//terrain
+		createBuffer(sizeof(terrain.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, terrain.uniform.buffer, terrain.uniform.bufferMemory);
+		createBuffer(sizeof(terrain.lightUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, terrain.lightUniform.buffer, terrain.lightUniform.bufferMemory);
 
 		//model
 		createBuffer(sizeof(temple.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, temple.uniform.buffer, temple.uniform.bufferMemory);
@@ -130,8 +130,8 @@ private:
 	}
 
 	void createTexture() {
-		//opaqueTerrain
-		createTextureKtxArrayNode(opaqueTerrain.texture.image, opaqueTerrain.texture.imageMemory, opaqueTerrain.texture.view, opaqueTerrain.imageFile, opaqueTerrain.arrayLayer, opaqueTerrain.mipLevel);
+		//terrain
+		createTextureKtxArrayNode(terrain.texture.image, terrain.texture.imageMemory, terrain.texture.view, terrain.imageFile, terrain.arrayLayer, terrain.mipLevel);
 
 		//model
 		createTextureKtxNode(temple.texture.image, temple.texture.imageMemory, temple.texture.view, temple.imageFile, temple.mipLevel);
@@ -184,24 +184,24 @@ private:
 		allocInfo.descriptorPool = descriptors.scence.pool;
 		allocInfo.pSetLayouts = &descriptors.scence.layout;
 
-		//opaqueTerrain
-		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &opaqueTerrain.descriptorSet) != VK_SUCCESS) {
+		//terrain
+		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &terrain.descriptorSet) != VK_SUCCESS) {
 			Log::error(__FILE__, __LINE__, "分配描述符集失败");
 			throw;
 		}
 		{
-			bufferInfo[0].range = sizeof(opaqueTerrain.ubo);
-			bufferInfo[0].buffer = opaqueTerrain.uniform.buffer;
-			bufferInfo[1].range = sizeof(opaqueTerrain.lightUbo);
-			bufferInfo[1].buffer = opaqueTerrain.lightUniform.buffer;
+			bufferInfo[0].range = sizeof(terrain.ubo);
+			bufferInfo[0].buffer = terrain.uniform.buffer;
+			bufferInfo[1].range = sizeof(terrain.lightUbo);
+			bufferInfo[1].buffer = terrain.lightUniform.buffer;
 			imageInfo.sampler = samplers.terrain;
-			imageInfo.imageView = opaqueTerrain.texture.view;
+			imageInfo.imageView = terrain.texture.view;
 
-			writeDescriptorSetScence[0].dstSet = opaqueTerrain.descriptorSet;
+			writeDescriptorSetScence[0].dstSet = terrain.descriptorSet;
 			writeDescriptorSetScence[0].pBufferInfo = &bufferInfo[0];
-			writeDescriptorSetScence[1].dstSet = opaqueTerrain.descriptorSet;
+			writeDescriptorSetScence[1].dstSet = terrain.descriptorSet;
 			writeDescriptorSetScence[1].pBufferInfo = &bufferInfo[1];
-			writeDescriptorSetScence[2].dstSet = opaqueTerrain.descriptorSet;
+			writeDescriptorSetScence[2].dstSet = terrain.descriptorSet;
 			writeDescriptorSetScence[2].pImageInfo = &imageInfo;
 		}
 
@@ -313,10 +313,10 @@ private:
 		glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)Device.swapChainExtent.width / (float)Device.swapChainExtent.height, 0.1f, plateInfo::cubeSightRange);
 		proj[1][1] *= -1;
 
-		opaqueTerrain.ubo.base = glm::translate(glm::mat4(1), glm::vec3(0));
-		opaqueTerrain.ubo.proj = proj;
-		opaqueTerrain.lightUbo.baseLight = lightInfo::baseLight;
-		opaqueTerrain.lightUbo.specularStrength = lightInfo::specularStrength;
+		terrain.ubo.base = glm::translate(glm::mat4(1), glm::vec3(0));
+		terrain.ubo.proj = proj;
+		terrain.lightUbo.baseLight = lightInfo::baseLight;
+		terrain.lightUbo.specularStrength = lightInfo::specularStrength;
 		
 		temple.ubo.proj = proj;
 		temple.lightUbo.baseLight = lightInfo::baseLight;
@@ -856,22 +856,22 @@ public:
 		//世界坐标
 		oss << std::fixed << std::setprecision(0);	//设置输出流的格式,不保留小数
 		oss << "worldpos:  " << "x:" << std::setw(8) << std::left << showUIText.pos.x << "y:" << std::setw(8) << std::left << showUIText.pos.y << " z:" << std::setw(8) << std::left << showUIText.pos.z;
-		uiText.addText(oss.str(), width, height, bufferEnum::TextAlign::alignLeft);
+		uiText.addText(oss.str(), width, height, bufferEnum::textAlign::alignLeft);
 		oss.str("");
 
 		//区块坐标
 		oss << "chunkpos:  " << "x:" << std::setw(8) << std::left << showUIText.chunkPos.x << "y:" << std::setw(8) << std::left << showUIText.chunkPos.y << " z:" << std::setw(8) << std::left << showUIText.chunkPos.z;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::TextAlign::alignLeft);
+		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlign::alignLeft);
 		oss.str("");
 
 		//选择框坐标
 		oss << "mineboxpos:" << "x:" << std::setw(8) << std::left << showUIText.minepos.x << "y:" << std::setw(8) << std::left << showUIText.minepos.y << " z:" << std::setw(8) << std::left << showUIText.minepos.z;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::TextAlign::alignLeft);
+		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlign::alignLeft);
 		oss.str("");
 
 		//帧率
 		oss << "fps:       " << std::setw(8) << std::left << fps;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::TextAlign::alignLeft);
+		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlign::alignLeft);
 		oss.str("");
 
 		uiText.endTextUpdate(Device.allocator);
@@ -922,12 +922,12 @@ public:
 			vkBeginCommandBuffer(command.commandBuffers[threadID][i], &command.beginInfo);
 			vkCmdBeginRenderPass(command.commandBuffers[threadID][i], &command.renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-			//opaqueTerrain
-			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.opaqueTerrain.pipeline);
-			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.opaqueTerrain.pipelineLayout, 0, 1, &opaqueTerrain.descriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &opaqueTerrain.vertex[threadID].buffer, offsets);
-			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], opaqueTerrain.index[threadID].buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)terrainVertex::indexs.opaqueTerrain.size(), 1, 0, 0, 0);
+			//terrain
+			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain.pipeline);
+			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain.pipelineLayout, 0, 1, &terrain.descriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &terrain.vertex[threadID].buffer, offsets);
+			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], terrain.index[threadID].buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)terrainVertex::indexs.terrain.size(), 1, 0, 0, 0);
 
 			//model
 			/*vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
@@ -968,11 +968,11 @@ public:
 
 	void recreateBuffer(int threadID) {
 		vkFreeCommandBuffers(Device.device, command.commandPool, static_cast<uint32_t>(command.commandBuffers[threadID].size()), command.commandBuffers[threadID].data());
-		vmaDestroyBuffer(Device.allocator, opaqueTerrain.vertex[threadID].buffer, opaqueTerrain.vertex[threadID].bufferMemory);
-		vmaDestroyBuffer(Device.allocator, opaqueTerrain.index[threadID].buffer, opaqueTerrain.index[threadID].bufferMemory);
+		vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID].buffer, terrain.vertex[threadID].bufferMemory);
+		vmaDestroyBuffer(Device.allocator, terrain.index[threadID].buffer, terrain.index[threadID].bufferMemory);
 
-		createVertexBuffer(terrainVertex::vertexs.opaqueTerrain, opaqueTerrain.vertex[threadID].buffer, opaqueTerrain.vertex[threadID].bufferMemory);
-		createIndexBuffer(terrainVertex::indexs.opaqueTerrain, opaqueTerrain.index[threadID].buffer, opaqueTerrain.index[threadID].bufferMemory);
+		createVertexBuffer(terrainVertex::vertexs.terrain, terrain.vertex[threadID].buffer, terrain.vertex[threadID].bufferMemory);
+		createIndexBuffer(terrainVertex::indexs.terrain, terrain.index[threadID].buffer, terrain.index[threadID].bufferMemory);
 	}
 
 	void updateUniformBuffer(const glm::dvec3 pos, const glm::mat4 view, const playerStruct::selectBoxNode box) {
@@ -986,17 +986,16 @@ public:
 
 
 
-		//opaqueTerrain
-		opaqueTerrain.ubo.view = view;
-
+		//terrain
+		terrain.ubo.view = view;
 
 		//todo
-		opaqueTerrain.lightUbo.ambientStrength = (sin(gameTime) + 1) / 2;
-		//opaqueTerrain.lightUbo.ambientStrength = 0;
-		//opaqueTerrain.lightUbo.lightPos = offsetPos;
-		//opaqueTerrain.lightUbo.lightPos = glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
-		opaqueTerrain.lightUbo.lightPos = offsetPos;
-		opaqueTerrain.lightUbo.viewPos = glm::vec3{ pos - playerInfo::logicOriginPos };
+		//terrain.lightUbo.ambientStrength = (sin(gameTime) + 1) / 2;
+		terrain.lightUbo.ambientStrength = 1;
+		//terrain.lightUbo.lightPos = offsetPos;
+		//terrain.lightUbo.lightPos = glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+		terrain.lightUbo.lightPos = offsetPos;
+		terrain.lightUbo.viewPos = glm::vec3{ pos - playerInfo::logicOriginPos };
 
 
 
@@ -1023,8 +1022,8 @@ public:
 		showUIText.chunkPos = glm::floor(pos / (double)plateInfo::chunkLength);
 		showUIText.minepos = box.minepos;
 
-		createMapMemory(opaqueTerrain.uniform.bufferMemory, &opaqueTerrain.ubo, sizeof(opaqueTerrain.ubo));
-		createMapMemory(opaqueTerrain.lightUniform.bufferMemory, &opaqueTerrain.lightUbo, sizeof(opaqueTerrain.lightUbo));
+		createMapMemory(terrain.uniform.bufferMemory, &terrain.ubo, sizeof(terrain.ubo));
+		createMapMemory(terrain.lightUniform.bufferMemory, &terrain.lightUbo, sizeof(terrain.lightUbo));
 		createMapMemory(temple.uniform.bufferMemory, &temple.ubo, sizeof(temple.ubo));
 		createMapMemory(temple.lightUniform.bufferMemory, &temple.lightUbo, sizeof(temple.lightUbo));
 		createMapMemory(skybox.uniform.bufferMemory, &skybox.ubo, sizeof(skybox.ubo));

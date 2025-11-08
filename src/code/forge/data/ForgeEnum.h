@@ -13,7 +13,7 @@ namespace cubeEnum {
 			oakLeaf,			//橡树树叶
 			stoneSquared,		//石料
 
-			COUNT				//枚举长度
+			count				//枚举长度
 		};
 	}
 

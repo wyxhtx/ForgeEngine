@@ -171,7 +171,7 @@ private:
 			pipelineInfo.basePipelineIndex = -1;													// Optional
 		}
 
-		//opaqueTerrain
+		//terrain
 		{
 			shaderStages[0] = loadShader(fileInfo::shader::terrainVert, VK_SHADER_STAGE_VERTEX_BIT);
 			shaderStages[1] = loadShader(fileInfo::shader::terrainFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -181,10 +181,10 @@ private:
 			vertexInputInfo.pVertexBindingDescriptions = terrainVertex::vertexNode::getBindingDescription().data();
 			vertexInputInfo.pVertexAttributeDescriptions = terrainVertex::vertexNode::getAttributeDescriptions().data();
 
-			pipelineInfo.layout = procPipelines.opaqueTerrain.pipelineLayout;
+			pipelineInfo.layout = procPipelines.terrain.pipelineLayout;
 		}
 
-		if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.opaqueTerrain.pipeline) != VK_SUCCESS) {
+		if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.terrain.pipeline) != VK_SUCCESS) {
 			Log::error(__FILE__, __LINE__, "管线创建失败");
 			throw;
 		}
@@ -374,13 +374,15 @@ public:
 				InitPlate.updatePlatePartMesh();
 
 				//新网格非空再重建命令缓冲区
-				if (terrainVertex::vertexs.opaqueTerrain.size() && terrainVertex::indexs.opaqueTerrain.size()) {
+				if (terrainVertex::vertexs.terrain.size() && terrainVertex::indexs.terrain.size()) {
 					tempID = (InitBuffer.command.currentThreadID + 1) % 2;
 				}
 			}
 
 			InitPlate.externalUpdateLock = false;
 		}
+
+
 
 		//更换命令缓冲区后重建命令缓冲区（5~9ms）
 		//r=1时，更新板块会把网格数组清空
@@ -403,13 +405,7 @@ public:
 		}
 		InitPlate.externalUpdateLock = false;
 
-		//当前帧获取的方块更新列表在下一帧更新
-		InitPlate.externalUpdateLock = true;
-		if (!InitPlate.internalUpdateLock) {
-			selectBox = InitPlate.getSelectBox(Camera.node);
-		}
-		InitPlate.externalUpdateLock = false;
-
+		selectBox = InitPlate.getSelectBox(Camera.node);	//当前帧获取的方块更新列表在下一帧更新
 		InitBuffer.updateUniformBuffer(Camera.node.pos, Camera.node.view, selectBox);
 
 		if (InitSwapchain.drawFrame(InitBuffer.command.commandBuffers[InitBuffer.command.currentThreadID])) {
@@ -430,7 +426,7 @@ private:
 		InitPlate.updatePlate(playerPos);
 
 		//新网格非空再重建命令缓冲区
-		if (terrainVertex::vertexs.opaqueTerrain.size() && terrainVertex::indexs.opaqueTerrain.size()) {
+		if (terrainVertex::vertexs.terrain.size() && terrainVertex::indexs.terrain.size()) {
 			tempID = (InitBuffer.command.currentThreadID + 1) % 2;
 		}
 

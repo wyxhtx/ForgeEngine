@@ -66,7 +66,7 @@ private:
 				for (int z = -terrainList::oak.r; z <= terrainList::oak.r; z++) {
 					if (x * x + y * y + z * z < terrainList::oak.r * terrainList::oak.r) {
 						//tempMap[glm::ivec3{ x,y + terrainList::oak.length,z }] = cubeList::cubeId::oakLeaf;
-						tempMap[glm::ivec3{ x,y + terrainList::oak.length,z }] = cubeEnum::cubeId::stoneSquared;
+						tempMap[glm::ivec3{ x,y + terrainList::oak.length,z }] = cubeEnum::cubeId::oakLeaf;
 					}
 				}
 			}

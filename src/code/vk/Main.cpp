@@ -16,7 +16,7 @@ int main() {
 
     //todo
     //±àÒëÁÙÊ±×ÅÉ«Æ÷
-    system("cd src\\shader && temp.bat");
+    //system("cd src\\shader && temp.bat");
 
 
 

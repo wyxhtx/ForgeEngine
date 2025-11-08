@@ -13,7 +13,7 @@ namespace plateInfo {
 	const int groundPlane = 4096;										//地平面
 	//const int skyPlane = 2;											//天平面，未正式启用
 	//const int sightRange = 2;											//视距		//2.5s左右
-	const int sightRange = 8;											//视距		//3.8s左右
+	const int sightRange = 4;											//视距		//3.8s左右
 
 	const int chunkLength = 32;											//区块边长	//很多地方都是直接写数字，所以chunkLength变更时很多地方都得改
 	const int chunkMapLength = chunkLength + 2;							//区块Map中的边长

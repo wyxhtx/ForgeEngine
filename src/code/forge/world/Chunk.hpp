@@ -2,23 +2,25 @@
 
 
 
+//Plate.updatePlate执行的chunkMap[updatePos] = tempChunkMap[updatePos]相当于给区块所有变量赋值，容易导致资源冲突
 class Chunk {
 public:
+	//Storage（saveFullChunk、readFullChunk、readDeltaChunk），Plate（createPlate、updatePlate、getSelectBox、createUpdateCubeList），Chunk（createChunkMeshData、updateChunkMeshData）
 	short cubeArray[plateInfo::chunkMapLength][plateInfo::chunkMapLength][plateInfo::chunkMapLength]{};	//方块数组，最外一圈存储相邻区块边缘方块数据，方便区块间面检测，使用范围[1,32]，边缘方块数据0和33
-	std::unordered_set<storageStruct::cubeDeltaNode, storageStruct::cubeDeltaNodeHash> cubeDeltaSet;	//方块变更集合，为变存法服务
+	std::unordered_set<storageStruct::cubeDeltaNode, storageStruct::cubeDeltaNodeHash> cubeDeltaSet;	//方块变更集合，为变存法服务						//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
 
-	int isVisible = 0;												//标识区块是否可见，如果全空或者全满为不可见，但是不能排除1~32全空但边缘非空的情况
+	int isVisible = 0;												//标识区块是否可见，如果全空或者全满为不可见，但是不能排除1~32全空但边缘非空的情况			//Storage（saveFullChunk、readFullChunk、saveDeltaChunk、readDeltaChunk），Plate（createPlate、createChunk、updatePlate、createUpdateCubeList）
 
 	//由InitChunk初始化
-	glm::dvec3 originOffset{};										//区块原点偏移（d世界坐标系），用于plate类里joinChunkMesh方法处理世界原点（playerInfo::logicOriginPos）迁移时的情况
-	glm::dvec3 chunkPos{};											//区块坐标（区块坐标系），区块在Plate.chunkMap中的坐标
-	glm::dvec3 logicalWorldPos{};									//区块逻辑世界坐标（d世界坐标系）（对应cubeArray[0][0][0]处），用于地形生成
-	glm::ivec3 actualWorldPos{};									//区块实际世界坐标（i世界坐标系）（对应cubeArray[0][0][0]处），用于构建网格
+	glm::dvec3 originOffset{};										//区块原点偏移（d世界坐标系），用于plate类里joinChunkMesh方法处理世界原点迁移时的情况		//Plate（joinMesh），Chunk（InitChunk）
+	glm::dvec3 chunkPos{};											//区块坐标（区块坐标系），区块在Plate.chunkMap中的坐标									//Storage（saveFullChunk、readFullChunk、saveDeltaChunk、readDeltaChunk、saveChunk、readChunk），Plate（createChunk、），Chunk（InitChunk）
+	glm::dvec3 logicalWorldPos{};									//区块逻辑世界坐标（d世界坐标系）（对应cubeArray[0][0][0]处），用于地形生成				//Plate（createChunk），Chunk（InitChunk）
+	glm::ivec3 actualWorldPos{};									//区块实际世界坐标（i世界坐标系）（对应cubeArray[0][0][0]处），用于构建网格				//Chunk（InitChunk、createChunkMeshData、updateChunkMeshData）
 
 	//由createChunkMeshData初始化,chunkVertexs,chunkIndexs,IndexOffset都能判断区块是否应该加载网格，34立方区块全空或全实不加载网格
-	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组
-	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组
-	uint32_t indexOffset = 0;										//区块索引偏移量
+	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组																	//Plate（createPlate、joinMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMeshData、updateChunkMeshData）
+	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMeshData、updateChunkMeshData）
+	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、updatePlate），Chunk（createChunkMeshData、updateChunkMeshData）
 
 
 

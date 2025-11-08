@@ -21,6 +21,14 @@ layout(location = 3) in vec3 fragLight;
 layout(location = 0) out vec4 outColor;
 
 void main() {
+	//透明计算
+	vec4 texColor = texture(texSampler, fragTexCoord);
+
+    if (texColor.a == 0.0) {
+        discard;
+    }
+
+	//光照计算
     vec3 lightDir	= normalize(light.lightPos - fragPosition);
 	vec3 norm		= normalize(fragNormal);
 	float diff		= max(dot(norm, lightDir), 0.0);
@@ -31,7 +39,6 @@ void main() {
 	float spec		= pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular	= light.specularStrength * spec * light.baseLight;
 
-	//vec3 result = (light.ambientStrength + diffuse) * fragColor * texture(texSampler, fragTexCoord).rgb;
-	vec3 result = (light.ambientStrength + diffuse + specular) * texture(texSampler, fragTexCoord).rgb;
+	vec3 result = (light.ambientStrength + diffuse + specular) * texColor.rgb;
     outColor = vec4(result, 1.0);
 }

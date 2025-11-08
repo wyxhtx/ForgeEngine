@@ -17,14 +17,14 @@ namespace terrainList {
 
 namespace cubeList {
 	//方块列表
-	const std::array<cubeStruct::propertyNode, cubeEnum::cubeId::COUNT> property = []() {
-		std::array<cubeStruct::propertyNode, cubeEnum::cubeId::COUNT> array{};
+	const std::array<cubeStruct::propertyNode, cubeEnum::cubeId::count> property = []() {
+		std::array<cubeStruct::propertyNode, cubeEnum::cubeId::count> array{};
 
-		array[cubeEnum::cubeId::grass]			= cubeStruct::propertyNode{ {{ 0,  0}, { 0,  2}, { 0,  1}, { 0,  1}, { 0,  1}, { 0,  1}}, glm::vec3{0}, cubeEnum::coverageId::grass			/*false*/ };
-		array[cubeEnum::cubeId::dirt]			= cubeStruct::propertyNode{ {{ 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}}, glm::vec3{0}, cubeEnum::coverageId::dirt			/*false*/ };
-		array[cubeEnum::cubeId::oakLog]			= cubeStruct::propertyNode{ {{32,  0}, {32,  0}, {32,  1}, {32,  1}, {32,  1}, {32,  1}}, glm::vec3{0}, cubeEnum::coverageId::oakLog		/*false*/ };
-		array[cubeEnum::cubeId::oakLeaf]		= cubeStruct::propertyNode{ {{32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}}, glm::vec3{0}, cubeEnum::coverageId::oakLeaf		/*false*/ };
-		array[cubeEnum::cubeId::stoneSquared]	= cubeStruct::propertyNode{ {{ 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}}, glm::vec3{0}, cubeEnum::coverageId::stoneSquared	/*false*/ };
+		array[cubeEnum::cubeId::grass]			= cubeStruct::propertyNode{ {{ 0,  0}, { 0,  2}, { 0,  1}, { 0,  1}, { 0,  1}, { 0,  1}}, cubeEnum::coverageId::grass };
+		array[cubeEnum::cubeId::dirt]			= cubeStruct::propertyNode{ {{ 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}}, cubeEnum::coverageId::dirt };
+		array[cubeEnum::cubeId::oakLog]			= cubeStruct::propertyNode{ {{32,  0}, {32,  0}, {32,  1}, {32,  1}, {32,  1}, {32,  1}}, cubeEnum::coverageId::oakLog };
+		array[cubeEnum::cubeId::oakLeaf]		= cubeStruct::propertyNode{ {{32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}}, cubeEnum::coverageId::oakLeaf };
+		array[cubeEnum::cubeId::stoneSquared]	= cubeStruct::propertyNode{ {{ 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}}, cubeEnum::coverageId::stoneSquared };
 
 		return array;
 	}();
@@ -32,7 +32,10 @@ namespace cubeList {
 
 namespace noiseList {
 	namespace tree {
-		const noiseStruct::treeNode oakPut{ 16,32,44 };		//橡树噪音参数
+		//const noiseStruct::treeNode oakPut{ 16,32,44 };		//橡树噪音参数
+		
+		//todo 性能测试
+		const noiseStruct::treeNode oakPut{ 16,40,44 };
 	}
 }
 
