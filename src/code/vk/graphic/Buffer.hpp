@@ -92,12 +92,11 @@ private:
 
 	void createMeshBuffer() {
 		//terrain
-		for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-			createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[0][layer].buffer, terrain.vertex[0][layer].bufferMemory);
-			createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[0][layer].buffer, terrain.index[0][layer].bufferMemory);
-
-			createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[1][layer].buffer, terrain.vertex[1][layer].bufferMemory);
-			createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[1][layer].buffer, terrain.index[1][layer].bufferMemory);
+		for (int thread = 0; thread < bufferInfo::commandThreadSize; thread++) {
+			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[thread][layer].buffer, terrain.vertex[thread][layer].bufferMemory);
+				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[thread][layer].buffer, terrain.index[thread][layer].bufferMemory);
+			}
 		}
 
 		//model
@@ -701,12 +700,13 @@ private:
 	void copyBufferToImageArray(uint32_t tileWidth, uint32_t tileHeight, uint32_t atlasWidth, uint32_t atlasHeight, uint32_t texWidth, uint32_t texHeight, uint32_t arrayLayer, VkBuffer buffer, VkImage image) {
 		VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 		std::vector<VkBufferImageCopy> regions{ arrayLayer };			//vulkan存储方式是从左往右从上往下一个个存入像素点数据，所以按下述方法遍历
-		uint32_t pixelOffset = atlasWidth * tileWidth * tileHeight * 4;
+		uint32_t wOffset = tileWidth * 4;
+		uint32_t hOffset = atlasWidth * tileWidth * tileHeight * 4;
 
-		for (uint32_t h = 0; h < atlasHeight; h++) {
-			for (uint32_t w = 0; w < atlasWidth; w++) {
+		for (uint32_t w = 0; w < atlasWidth; w++) {
+			for (uint32_t h = 0; h < atlasHeight; h++) {
 				uint32_t id = w + h * atlasWidth;
-				uint32_t offset = w * 64 + h * pixelOffset;
+				uint32_t offset = w * wOffset + h * hOffset;
 
 				regions[id].bufferOffset = offset;
 				regions[id].bufferRowLength = texWidth;
@@ -979,9 +979,12 @@ public:
 		if (layerID == terrainEnum::terrainLayer::Layer_0) {
 			vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
 			vmaDestroyBuffer(Device.allocator, terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
-
+		
 			createVertexBuffer(terrainVertex::vertexs.terrain[terrainEnum::terrainLayer::Layer_0], terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
 			createIndexBuffer(terrainVertex::indexs.terrain[terrainEnum::terrainLayer::Layer_0], terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
+		
+			Log::print("0");
+		
 		}
 		else {
 			for (int layer = 0; layer < layerID; layer++) {
@@ -991,6 +994,18 @@ public:
 				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
 				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
 			}
+
+			//todo
+			//Log::print("------");
+			//Log::print("线程：" + std::to_string(threadID));
+			//Log::print("层级：0\t顶点\t" + std::to_string(terrainVertex::vertexs.terrain[0].size()) + "\t索引\t" + std::to_string(terrainVertex::indexs.terrain[0].size()));
+			//Log::print("层级：1\t顶点\t" + std::to_string(terrainVertex::vertexs.terrain[1].size()) + "\t索引\t" + std::to_string(terrainVertex::indexs.terrain[1].size()));
+			//
+			//Log::print("层级：0\t顶点\t" + std::string(terrain.vertex[threadID][0].buffer == VK_NULL_HANDLE ? "NULL" : "有效") + "\t索引\t" + std::string(terrain.index[threadID][0].buffer == VK_NULL_HANDLE ? "NULL" : "有效"));
+			//Log::print("层级：1\t顶点\t" + std::string(terrain.vertex[threadID][1].buffer == VK_NULL_HANDLE ? "NULL" : "有效") + "\t索引\t" + std::string(terrain.index[threadID][1].buffer == VK_NULL_HANDLE ? "NULL" : "有效"));
+
+			Log::print("1");
+
 		}
 	}
 

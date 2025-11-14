@@ -23,11 +23,12 @@ public:
 private:
 	void createLoop() {
 		/*plateList::chunkMapLoop*/
-		int rangeSquare = plateInfo::sightRange * plateInfo::sightRange;
+		int range = plateInfo::sightRange;
+		int rangeSquare = range * range;
 
-		for (int x = -plateInfo::sightRange; x < plateInfo::sightRange; x++) {
-			for (int y = -plateInfo::sightRange; y < plateInfo::sightRange; y++) {
-				for (int z = -plateInfo::sightRange; z < plateInfo::sightRange; z++) {
+		for (int x = -range; x < range; x++) {
+			for (int y = -range; y < range; y++) {
+				for (int z = -range; z < range; z++) {
 					if (x * x + y * y + z * z < rangeSquare) {
 						plateList::chunkMapLoop.push_back(glm::dvec3{ x,y,z });
 					}
@@ -35,12 +36,15 @@ private:
 			}
 		}
 
-		/*terrainList::layerLoop*/
-		rangeSquare = terrainList::layerSightRange[terrainEnum::terrainLayer::Layer_0] * terrainList::layerSightRange[terrainEnum::terrainLayer::Layer_0];
 
-		for (int x = -plateInfo::sightRange; x < plateInfo::sightRange; x++) {
-			for (int y = -plateInfo::sightRange; y < plateInfo::sightRange; y++) {
-				for (int z = -plateInfo::sightRange; z < plateInfo::sightRange; z++) {
+
+		/*terrainList::layerLoop*/
+		range = terrainList::layerSightRange[terrainEnum::terrainLayer::Layer_0];
+		rangeSquare = range * range;
+
+		for (int x = -range; x < range; x++) {
+			for (int y = -range; y < range; y++) {
+				for (int z = -range; z < range; z++) {
 					if (x * x + y * y + z * z < rangeSquare) {
 						terrainList::layerLoop.insert(glm::dvec3{ x,y,z });
 					}
@@ -48,13 +52,15 @@ private:
 			}
 		}
 
+
+
 		/*plateList::structClearLoop*/
-		int structSightRange = plateInfo::sightRange + 2;
-		rangeSquare = structSightRange * structSightRange;
+		range = plateInfo::sightRange + 2;
+		rangeSquare = range * range;
 		
-		for (int x = -structSightRange; x < structSightRange; x++) {
-			for (int y = -structSightRange; y < structSightRange; y++) {
-				for (int z = -structSightRange; z < structSightRange; z++) {
+		for (int x = -range; x < range; x++) {
+			for (int y = -range; y < range; y++) {
+				for (int z = -range; z < range; z++) {
 					if (x * x + y * y + z * z < rangeSquare) {
 						plateList::structClearLoop.insert(glm::dvec3{ x,y,z });
 					}
@@ -62,43 +68,53 @@ private:
 			}
 		}
 
+
+
 		/*plateList::cubekMapLoop*/
-		for (int x = 1; x <= plateInfo::chunkLength; x++) {
-			for (int y = 1; y <= plateInfo::chunkLength; y++) {
-				for (int z = 1; z <= plateInfo::chunkLength; z++) {
+		range = plateInfo::chunkLength;
+
+		for (int x = 1; x <= range; x++) {
+			for (int y = 1; y <= range; y++) {
+				for (int z = 1; z <= range; z++) {
 					plateList::cubekMapLoop.push_back(glm::ivec3{ x,y,z });
 				}
 			}
 		}
 
+
+
 		/*terrainList::treeLoop*/
 		std::unordered_map<glm::ivec3, short> tempMap;
+		range = terrainStructureList::terrainStructureProperty[terrainStructureEnum::treeId::oak].r;
+		rangeSquare = range * range;
 		
-		for (int x = -terrainList::oak.r; x <= terrainList::oak.r; x++) {
-			for (int y = -terrainList::oak.r; y <= terrainList::oak.r; y++) {
-				for (int z = -terrainList::oak.r; z <= terrainList::oak.r; z++) {
-					if (x * x + y * y + z * z < terrainList::oak.r * terrainList::oak.r) {
-						//tempMap[glm::ivec3{ x,y + terrainList::oak.length,z }] = cubeList::cubeId::oakLeaf;
-						tempMap[glm::ivec3{ x,y + terrainList::oak.length,z }] = cubeEnum::cubeId::oakLeaf;
+		for (int x = -range; x <= range; x++) {
+			for (int y = -range; y <= range; y++) {
+				for (int z = -range; z <= range; z++) {
+					if (x * x + y * y + z * z < rangeSquare) {
+						tempMap[glm::ivec3{ x,y + terrainStructureList::terrainStructureProperty[terrainStructureEnum::treeId::oak].length,z }] = terrainStructureList::terrainStructureProperty[terrainStructureEnum::treeId::oak].leaf;
 					}
 				}
 			}
 		}
 
-		for (int y = 0; y <= terrainList::oak.length; y++) {
-			tempMap[glm::ivec3{ 0,y,0 }] = cubeEnum::cubeId::oakLog;
+		for (int y = 0; y <= terrainStructureList::terrainStructureProperty[terrainStructureEnum::treeId::oak].length; y++) {
+			tempMap[glm::ivec3{ 0,y,0 }] = terrainStructureList::terrainStructureProperty[terrainStructureEnum::treeId::oak].trunk;
 		}
 
 		for (auto& node : tempMap) {
-			terrainList::treeLoop.push_back(glm::ivec4{ node.first,node.second });
+			terrainStructureList::treeLoop.push_back(glm::ivec4{ node.first,node.second });
 		}
 
-		/*storageList::regionLoop*/
-		rangeSquare = storageInfo::regionLoopLength * storageInfo::regionLoopLength;
 
-		for (int x = -storageInfo::regionLoopLength; x < storageInfo::regionLoopLength; x++) {
-			for (int y = -storageInfo::regionLoopLength; y < storageInfo::regionLoopLength; y++) {
-				for (int z = -storageInfo::regionLoopLength; z < storageInfo::regionLoopLength; z++) {
+
+		/*storageList::regionLoop*/
+		range = storageInfo::regionLoopLength;
+		rangeSquare = range * range;
+
+		for (int x = -range; x < range; x++) {
+			for (int y = -range; y < range; y++) {
+				for (int z = -range; z < range; z++) {
 					if (x * x + y * y + z * z < rangeSquare) {
 						storageList::regionLoop.push_back(glm::dvec3{ x,y,z });
 					}

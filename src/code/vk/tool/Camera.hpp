@@ -4,7 +4,7 @@
 
 class Camera {
 public:
-    playerStruct::CameraNode node;
+    playerStruct::cameraNode node;
 
 
 

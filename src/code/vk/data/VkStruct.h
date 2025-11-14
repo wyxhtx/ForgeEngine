@@ -121,10 +121,10 @@ namespace bufferStruct {
 
         //清理结构体，descriptorSet由描述符池管理，无需手动清理
         void clear(VkDevice& device, VmaAllocator& allocator) {
-            for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
+            for (int thread = 0; thread < bufferInfo::commandThreadSize; thread++) {
                 for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-                    vmaDestroyBuffer(allocator, vertex[i][layer].buffer, vertex[i][layer].bufferMemory);
-                    vmaDestroyBuffer(allocator, index[i][layer].buffer, index[i][layer].bufferMemory);
+                    vmaDestroyBuffer(allocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMemory);
+                    vmaDestroyBuffer(allocator, index[thread][layer].buffer, index[thread][layer].bufferMemory);
                 }
             }
 

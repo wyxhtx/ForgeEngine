@@ -20,13 +20,14 @@ namespace cubeStruct {
         std::vector<faceNode> faceId;       //纹理id
         short coverage;                     //方块覆盖顺序
 
+        //todo 待使用
         //glm::vec3 light;                    //光照属性
     };
 }
 
 namespace plateStruct {
-    //板块网格标识结点
-    struct plateMeshSignNode {
+    //地形网格标识结点
+    struct terrainMeshSignNode {
         glm::dvec3 chunkPos;
         int vertexsSize;
         int indexsSize;
@@ -46,10 +47,14 @@ namespace plateStruct {
     };
 }
 
-namespace terrainStruct {
-    struct treeNode {
-        int r;
-        int length;
+//地形结构结构体
+namespace terrainStructureStruct {
+    //树结构结点
+    struct treeStructureNode {
+        int r;          //树冠半径
+        int length;     //树干高度
+        int leaf;       //树叶
+        int trunk;      //树干
     };
 }
 
@@ -59,7 +64,14 @@ namespace noiseStruct {
     //density，从translation - undulation到translation + undulation - 2递减，中间值位于translation - 1
     //density，满足上述条件，改变u的值对结果没有影响，如1u，16t，15d和2u，16t，15d和4u，16t，15d的结果都是一样的
 
-    struct treeNode {
+    //地形噪音参数结点
+    struct terrainParamNode {
+        int undulation;		    //起伏
+        int translation;	    //平移
+    };
+
+    //树噪音参数结点
+    struct treeParamNode {
         int undulation;		    //起伏
         int translation;	    //平移
         int density;	        //密度
@@ -67,8 +79,7 @@ namespace noiseStruct {
 }
 
 namespace storageStruct {
-    //变存法存储结点
-    //存储玩家变更方块的数组坐标和方块id
+    //变存法存储结点，存储玩家变更方块的方块数组坐标和方块id
     struct cubeDeltaNode {
         short data[4];
 
@@ -96,7 +107,8 @@ namespace storageStruct {
 }
 
 namespace playerStruct {
-    struct CameraNode {
+    //摄像机结点
+    struct cameraNode {
         glm::mat4 view;                         //视图
         glm::quat rota;                         //角度
         glm::dvec3 pos;                         //逻辑坐标,计算时必须用glm::floor来偏移出正确结果,不偏移的话xyz任意一条为0时其上下两部分为0.5和-0.5,此时使用(int)强转结果都为0

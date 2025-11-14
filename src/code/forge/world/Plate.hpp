@@ -2,7 +2,6 @@
 
 
 
-//唯一类,生成世界地形
 class Plate {
 public:
 	glm::dvec3 originPos;																	//板块原点
@@ -43,7 +42,6 @@ private:
 	Noise InitNoise{ 0 };
 	Storage InitStorage{};
 
-	//todo日后增加存储非自然区块(即玩家放置过方块)的map，放置方块少的区块把里面的方块放到一个列表里，通过参与地形生成来生成
 	std::unordered_map<glm::dvec3, Chunk> chunkMap;															//存储当前视距内区块
 	std::forward_list<plateStruct::plateMeshSignNode> plateMeshSignList[terrainEnum::terrainLayer::count];	//标识地形管线各层网格中，区块顶点数组和索引数组的大小，为裁剪区块截层网格服务
 
@@ -368,6 +366,7 @@ public:
 	std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec3>> cubeChangeList;		//方块变更列表，存储变更方块坐标与对应区块坐标，[0,31]
 	bool internalUpdateLock = false;													//板块更新内部锁
 	bool externalUpdateLock = false;													//板块更新外部锁
+	bool isEntireRebuild = false;														//用于判断InitBuffer.recreateBuffer是完全重建还是部分重建
 
 
 
@@ -376,12 +375,15 @@ public:
 		std::unordered_map<glm::dvec3, Chunk> tempChunkMap;								//临时存储区块数据，主要存当前视距内未加载区块，次要存因加载链结构而更新的区块
 		std::unordered_set<glm::dvec3> existChunkLoop;									//当前视距内已加载区块列表 
 		std::vector<glm::dvec3> updateChunkLoop;										//当前视距内未加载区块列表  
+		std::vector<glm::dvec3> tempUpdateChunkLoop;									//用于在第一阶段最后生成拼接existChunkLoop中因加载链结构而需更新的区块网格，避免方块变更于一二阶段之间时执行造成的网格缺失
 
 		glm::dvec3 playerChunkPos = glm::floor(playerPos / (double)plateInfo::chunkLength);
 		glm::dvec3 originShiftPos = glm::abs(playerInfo::logicOriginPos - playerPos);
 		glm::dvec3 tempOriginPos = originPos;
 
 
+
+		InitStorage.updateConfig(playerChunkPos);
 
 		//重设逻辑原点
 		if (originShiftPos.x > (double)plateInfo::originShiftThreshold || originShiftPos.y > (double)plateInfo::originShiftThreshold || originShiftPos.z > (double)plateInfo::originShiftThreshold) {
@@ -400,7 +402,6 @@ public:
 			}
 		}
 
-		//67ms(r=8)
 		//创建当前视距内未加载的区块
 		for (glm::dvec3& updatePos : updateChunkLoop) {
 			tempChunkMap[updatePos].InitChunk(tempOriginPos, updatePos);
@@ -434,7 +435,6 @@ public:
 			}
 		}
 
-		//1.5ms(r=8)
 		//加载链结构，[0,33]
 		for (auto it = pendingStructManager.begin(); it != pendingStructManager.end(); ) {
 			//如果pendingStructManager在updateChunkLoop中，则直接加载链结构
@@ -458,7 +458,7 @@ public:
 			}
 			//如果pendingStructManager在existChunkLoop中，则复制chunkMap数据到tempChunkMap后加载链结构
 			else if (existChunkLoop.find(it->first) != existChunkLoop.end()) {
-				tempChunkMap[it->first].InitChunk(tempOriginPos, it->first);
+				tempChunkMap[it->first].InitChunk(originPos, it->first);
 				tempChunkMap[it->first].isVisible = chunkMap[it->first].isVisible;
 				std::memcpy(tempChunkMap[it->first].cubeArray, chunkMap[it->first].cubeArray, sizeof(chunkMap[it->first].cubeArray));
 
@@ -477,7 +477,7 @@ public:
 				}
 
 				existChunkLoop.erase(it->first);
-				updateChunkLoop.push_back(it->first);
+				tempUpdateChunkLoop.push_back(it->first);
 
 				it = pendingStructManager.erase(it);
 			}
@@ -507,35 +507,30 @@ public:
 
 
 
-		//todo树叶列入透明队列后或许能缓和
-		//todo原点迁移破坏方块时，因为下述函数耗时太长延后更新网格
-		//卸载视距外区块网格
-		//原点未迁移，直接删除视距外已加载区块网格(r=8时35ms)
+		//卸载视距外板块网格
 		if (originPos == playerInfo::logicOriginPos) {
+			//原点未迁移
 			for (std::unordered_map<glm::dvec3, Chunk>::iterator it = chunkMap.begin(); it != chunkMap.end(); ) {
 				const glm::dvec3& updatePos = it->first;
-				int newLayer = terrainEnum::terrainLayer::Layer_1;
+				int oldLayer = chunkMap[updatePos].layerID;
 
-				if (terrainList::layerLoop.find(updatePos - playerChunkPos) != terrainList::layerLoop.end()) {
-					newLayer = terrainEnum::terrainLayer::Layer_0;
-				}
-
-				//删除existChunkLoop外区块及地形层对应区块网格
+				//删除existChunkLoop外区块及对应地形层区块网格
 				if (existChunkLoop.find(updatePos) == existChunkLoop.end()) {
-					for (std::forward_list<plateStruct::plateMeshSignNode>::iterator node = plateMeshSignList[newLayer].begin(), prev = plateMeshSignList[newLayer].before_begin(); node != plateMeshSignList[newLayer].end(); prev = node, ++node) {
+					//删除区块网格
+					for (std::forward_list<plateStruct::plateMeshSignNode>::iterator node = plateMeshSignList[oldLayer].begin(), prev = plateMeshSignList[oldLayer].before_begin(); node != plateMeshSignList[oldLayer].end(); prev = node, ++node) {
 						if (node->chunkPos == updatePos) {
 							std::forward_list<plateStruct::plateMeshSignNode>::iterator p = std::next(node);
 							int vertexsSize = 0;
 
-							while (p != plateMeshSignList[newLayer].end()) {
+							while (p != plateMeshSignList[oldLayer].end()) {
 								vertexsSize += p->vertexsSize;
 								++p;
 							}
 
-							terrainVertex::vertexs.terrain[newLayer].erase(terrainVertex::vertexs.terrain[newLayer].begin() + vertexsSize, terrainVertex::vertexs.terrain[newLayer].begin() + vertexsSize + node->vertexsSize);
-							terrainVertex::indexs.terrain[newLayer].erase(terrainVertex::indexs.terrain[newLayer].end() - node->indexsSize, terrainVertex::indexs.terrain[newLayer].end());
+							terrainVertex::vertexs.terrain[oldLayer].erase(terrainVertex::vertexs.terrain[oldLayer].begin() + vertexsSize, terrainVertex::vertexs.terrain[oldLayer].begin() + vertexsSize + node->vertexsSize);
+							terrainVertex::indexs.terrain[oldLayer].erase(terrainVertex::indexs.terrain[oldLayer].end() - node->indexsSize, terrainVertex::indexs.terrain[oldLayer].end());
 
-							plateMeshSignList[newLayer].erase_after(prev);
+							plateMeshSignList[oldLayer].erase_after(prev);
 							break;
 						}
 					}
@@ -546,13 +541,18 @@ public:
 						InitStorage.saveChunk(chunkMap[updatePos]);
 					}
 
+					//删除区块
 					it = chunkMap.erase(it);
 				}
-				//迁移existChunkLoop内区块网格到对应地形层
+				//迁移existChunkLoop内区块网格到对应地形网格层
 				else {
-					if (chunkMap[updatePos].layerID != newLayer) {
-						int oldLayer = chunkMap[updatePos].layerID;
+					int newLayer = terrainEnum::terrainLayer::Layer_1;
 
+					if (terrainList::layerLoop.find(updatePos - playerChunkPos) != terrainList::layerLoop.end()) {
+						newLayer = terrainEnum::terrainLayer::Layer_0;
+					}
+
+					if (oldLayer != newLayer) {
 						//删除oldLayer中区块网格
 						for (std::forward_list<plateStruct::plateMeshSignNode>::iterator node = plateMeshSignList[oldLayer].begin(), prev = plateMeshSignList[oldLayer].before_begin(); node != plateMeshSignList[oldLayer].end(); prev = node, ++node) {
 							if (node->chunkPos == updatePos) {
@@ -572,9 +572,10 @@ public:
 							}
 						}
 
-						//添加区块网格到newLayer中
-						chunkMap[updatePos].layerID = newLayer;			//重设layerID
+						//重设layerID
+						chunkMap[updatePos].layerID = newLayer;			
 
+						//重拼区块网格到newLayer
 						if (chunkMap[updatePos].indexOffset) {
 							plateMeshSignList[newLayer].push_front(plateStruct::plateMeshSignNode{ updatePos, (int)chunkMap[updatePos].chunkVertexs.size(), (int)chunkMap[updatePos].chunkIndexs.size() });
 							joinMesh(originPos, updatePos, newLayer);
@@ -585,8 +586,10 @@ public:
 				}
 			}
 		}
-		//原点迁移，则全删了重拼(r=8时75ms)
 		else {
+			//原点已迁移
+
+			//清空全部板块网格
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
 				terrainVertex::vertexs.terrain[layer].clear();
 				terrainVertex::indexs.terrain[layer].clear();
@@ -596,6 +599,7 @@ public:
 			for (std::unordered_map<glm::dvec3, Chunk>::iterator it = chunkMap.begin(); it != chunkMap.end(); ) {
 				const glm::dvec3& updatePos = it->first;
 
+				//删除existChunkLoop外区块
 				if (existChunkLoop.find(updatePos) == existChunkLoop.end()) {
 					//保存区块文件
 					if (InitStorage.waitChunkList.find(updatePos) != InitStorage.waitChunkList.end()) {
@@ -603,6 +607,7 @@ public:
 						InitStorage.saveChunk(chunkMap[updatePos]);
 					}
 
+					//删除区块
 					it = chunkMap.erase(it);
 				}
 				else {
@@ -610,9 +615,11 @@ public:
 					if (terrainList::layerLoop.find(updatePos - playerChunkPos) != terrainList::layerLoop.end()) {
 						layer = terrainEnum::terrainLayer::Layer_0;
 					}
-					chunkMap[updatePos].layerID = layer;				//重设layerID
 
-					//重拼plateMeshSignList
+					//重设layerID
+					chunkMap[updatePos].layerID = layer;				
+
+					//重拼区块网格到对应地形网格层
 					if (chunkMap[updatePos].indexOffset) {
 						plateMeshSignList[layer].push_front(plateStruct::plateMeshSignNode{ updatePos, (int)chunkMap[updatePos].chunkVertexs.size(), (int)chunkMap[updatePos].chunkIndexs.size() });
 						joinMesh(originPos, updatePos, layer);
@@ -623,19 +630,46 @@ public:
 			}
 		}
 
+
+
+		//生成拼接因加载链结构而需更新的区块网格
+		for (const glm::dvec3& updatePos : tempUpdateChunkLoop) {
+			InitStorage.readChunk(tempChunkMap[updatePos]);
+
+			if (tempChunkMap[updatePos].isVisible > 0 && tempChunkMap[updatePos].isVisible < plateInfo::filled) {
+				tempChunkMap[updatePos].createChunkMeshData();
+				chunkMap[updatePos] = tempChunkMap[updatePos];
+
+				int layer = terrainEnum::terrainLayer::Layer_1;
+				if (terrainList::layerLoop.find(updatePos - playerChunkPos) != terrainList::layerLoop.end()) {
+					layer = terrainEnum::terrainLayer::Layer_0;
+				}
+				chunkMap[updatePos].layerID = layer;			//重设layerID
+
+				if (chunkMap[updatePos].indexOffset) {
+					plateMeshSignList[layer].push_front(plateStruct::plateMeshSignNode{ updatePos, (int)chunkMap[updatePos].chunkVertexs.size(), (int)chunkMap[updatePos].chunkIndexs.size() });
+					joinMesh(originPos, updatePos, layer);
+				}
+			}
+			else if (debugInfo::LogSwitch) {
+				if (tempChunkMap[updatePos].isVisible < 0 || tempChunkMap[updatePos].isVisible > plateInfo::filled) {
+					Log::error(__FILE__, __LINE__, "区块isVisible超限");
+					std::cout << tempChunkMap[updatePos].isVisible << "\t" << updatePos.x << "\t" << updatePos.y << "\t" << updatePos.z << std::endl;
+				}
+			}
+		}
+
+		isEntireRebuild = true;
 		internalUpdateLock = false;
 
 
 
-		InitStorage.updateConfig(playerChunkPos);
-
-		//120ms(r=8)，生成区块网格
+		//生成区块网格
 		for (const glm::dvec3& updatePos : updateChunkLoop) {
-			//读取区块文件
-			InitStorage.readChunk(tempChunkMap[updatePos]);
+			InitStorage.readChunk(tempChunkMap[updatePos]);	//读取区块文件
 
 			if (tempChunkMap[updatePos].isVisible > 0 && tempChunkMap[updatePos].isVisible < plateInfo::filled) {
-				tempChunkMap[updatePos].createChunkMeshData();		//生成网格
+				tempChunkMap[updatePos].createChunkMeshData();
 			}
 			else if (debugInfo::LogSwitch) {
 				if (tempChunkMap[updatePos].isVisible < 0 || tempChunkMap[updatePos].isVisible > plateInfo::filled) {
@@ -650,7 +684,7 @@ public:
 		while (externalUpdateLock);
 		internalUpdateLock = true;
 
-		//25ms(r=8)，将tempChunkMap装进chunkMap并拼接区块网格
+		//拼接区块网格到对应地形网格层
 		for (const glm::dvec3& updatePos : updateChunkLoop) {
 			chunkMap[updatePos] = tempChunkMap[updatePos];
 
@@ -666,6 +700,7 @@ public:
 			}
 		}
 
+		isEntireRebuild = true;
 		internalUpdateLock = false;
 
 		//地形网格非空检测
@@ -710,7 +745,7 @@ public:
 			cubePos = glm::ivec3{ initialPos - chunkPos * (double)plateInfo::chunkLength } + glm::ivec3{ 1 };
 
 			if (debugInfo::LogSwitch) {
-				if (cubePos.x < 1 || cubePos.x > 32 || cubePos.y < 1 || cubePos.y > 32 || cubePos.z < 1 || cubePos.z > 32) {
+				if (cubePos.x < 1 || cubePos.x > plateInfo::chunkLength || cubePos.y < 1 || cubePos.y > plateInfo::chunkLength || cubePos.z < 1 || cubePos.z > plateInfo::chunkLength) {
 					Log::error(__FILE__, __LINE__, "getSelectBox函数cubePos超限");
 				}
 			}
@@ -763,7 +798,7 @@ public:
 				cubePos = glm::ivec3{ initialPos - chunkPos * (double)plateInfo::chunkLength } + glm::ivec3{ 1 };
 
 				if (debugInfo::LogSwitch) {
-					if (cubePos.x < 1 || cubePos.x > 32 || cubePos.y < 1 || cubePos.y > 32 || cubePos.z < 1 || cubePos.z > 32) {
+					if (cubePos.x < 1 || cubePos.x > plateInfo::chunkLength || cubePos.y < 1 || cubePos.y > plateInfo::chunkLength || cubePos.z < 1 || cubePos.z > plateInfo::chunkLength) {
 						Log::error(__FILE__, __LINE__, "getSelectBox函数cubePos超限");
 					}
 				}
@@ -784,8 +819,8 @@ public:
 		return playerStruct::selectBoxNode{ glm::vec3{0}, 0 };
 	}
 
-	//放置或破坏方块后，更新板块被改变部分的网格
-	void updatePlatePartMesh() {
+	//更新变更方块，放置或破坏方块后，更新板块被改变部分的网格
+	void updateDeltaCube() {
 		//因为forward_list的性质，处理近期处理过的区块更快，平均首次处理0.22，平均近期处理0.06
 		for (const auto& updateCubeNode : cubeChangeList) {
 			glm::dvec3 chunkPos = updateCubeNode.first;
@@ -793,10 +828,8 @@ public:
 			if (chunkMap.find(chunkPos) != chunkMap.end()) {
 				int layer = chunkMap[chunkPos].layerID;
 
-				if (debugInfo::LogSwitch) {
-					if (layer != terrainEnum::terrainLayer::Layer_0) {
-						Log::error(__FILE__, __LINE__, "变更方块所处区块层为Layer_1");
-					}
+				if (layer != terrainEnum::terrainLayer::Layer_0) {
+					isEntireRebuild = true;
 				}
 
 				//从地形网格中删除该区块网格
@@ -820,8 +853,11 @@ public:
 
 				//重拼该区块网格到地形网格中
 				chunkMap[chunkPos].updateChunkMeshData(updateCubeNode.second, cubeAbutChangeList[chunkPos]);
-				plateMeshSignList[layer].push_front(plateStruct::plateMeshSignNode{ chunkPos, (int)chunkMap[chunkPos].chunkVertexs.size(), (int)chunkMap[chunkPos].chunkIndexs.size() });
-				joinMesh(originPos, chunkPos, layer);
+
+				if (chunkMap[chunkPos].indexOffset) {
+					plateMeshSignList[layer].push_front(plateStruct::plateMeshSignNode{ chunkPos, (int)chunkMap[chunkPos].chunkVertexs.size(), (int)chunkMap[chunkPos].chunkIndexs.size() });
+					joinMesh(originPos, chunkPos, layer);
+				}
 			}
 			//已证实存在下述情况，变更板块边缘区块导致的
 			//else if (debugInfo::LogSwitch) {
@@ -851,6 +887,12 @@ private:
 		static const short cubeId = cubeEnum::cubeId::air;
 
 
+
+		if (debugInfo::LogSwitch) {
+			if (chunkMap.find(chunkPos) == chunkMap.end()) {
+				Log::error(__FILE__, __LINE__, "变更方块所处区块为空");
+			}
+		}
 
 		chunkMap[chunkPos].cubeArray[cubePos.x][cubePos.y][cubePos.z] = cubeId;		//[1,32]
 		chunkMap[chunkPos].isVisible--;
