@@ -30,7 +30,7 @@ private:
         // 加载音频文件
         ALuint buffer = alutCreateBufferFromFile(fileInfo::music::throughTheMounta);
         if (buffer == AL_NONE) {
-            Log::error(__FILE__, __LINE__, "音频文件加载失败");
+            Log::printError(__FILE__, __LINE__, "音频文件加载失败");
             alutExit();
             return;
         }

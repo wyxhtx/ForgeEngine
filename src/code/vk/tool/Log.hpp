@@ -18,19 +18,29 @@ namespace Log {
         std::cout << "\t" << text.x << "\t" << text.y << "\t" << text.z << std::endl;
     }
 
-    //输出
-    void print(auto text) {
-        std::cout << "\t" << text << std::endl;
-    }
-
-    //输出报错
-    void error(std::string file, int line, std::string text) {
-        std::cerr << std::endl 
+    //输出报错后暂停
+    void printError(std::string file, int line, std::string text) {
+        std::cerr << std::endl
+            << "------" << "错误" << std::endl
             << "------" << file << std::endl 
             << "------" << line << std::endl 
             << "------" << text << std::endl;
 
         while (true);
+    }
+
+    //输出警告
+    void printWarning(std::string file, int line, std::string text) {
+        std::cerr << std::endl
+            << "------" << "警告" << std::endl
+            << "------" << file << std::endl
+            << "------" << line << std::endl
+            << "------" << text << std::endl;
+    }
+
+    //输出
+    void print(auto text) {
+        std::cout << "\t" << text << std::endl;
     }
 
     //输出行间间隔

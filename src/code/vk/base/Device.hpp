@@ -54,7 +54,7 @@ private:
 	//创建窗口表面
 	void createSurface(GLFWwindow* window) {
 		if (glfwCreateWindowSurface(InitInstance.instance, window, nullptr, &surface) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "窗口表面创建失败");
+			Log::printError(__FILE__, __LINE__, "窗口表面创建失败");
             throw;
 		}
 	}
@@ -66,7 +66,7 @@ private:
         vkEnumeratePhysicalDevices(InitInstance.instance, &deviceCount, nullptr);
 
         if (deviceCount == 0) {
-            Log::error(__FILE__, __LINE__, "无可用显卡");
+            Log::printError(__FILE__, __LINE__, "无可用显卡");
             throw;
         }
 
@@ -142,7 +142,7 @@ private:
             return;
         }
         else {
-            Log::error(__FILE__, __LINE__, "首位显卡不适配");
+            Log::printError(__FILE__, __LINE__, "首位显卡不适配");
             throw;
         }
     }
@@ -178,7 +178,7 @@ private:
         //deviceCreateInfo.pEnabledFeatures = &physicalDeviceFeatures;
 
         if (vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS) {
-            Log::error(__FILE__, __LINE__, "设备创建失败");
+            Log::printError(__FILE__, __LINE__, "设备创建失败");
             throw;
         }
 
@@ -222,7 +222,7 @@ private:
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
         if (!queueFamilyCount) {
-            Log::error(__FILE__, __LINE__, "无可用队列族");
+            Log::printError(__FILE__, __LINE__, "无可用队列族");
             throw;
         }
 
@@ -297,7 +297,7 @@ private:
             }
         }
 
-        Log::error(__FILE__, __LINE__, "无适配队列族");
+        Log::printError(__FILE__, __LINE__, "无适配队列族");
         throw;
     }
     
@@ -362,7 +362,7 @@ public:
 
         //表面功能查询
         if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &node.capabilities)) {
-            Log::error(__FILE__, __LINE__, "表面功能获取失败");
+            Log::printError(__FILE__, __LINE__, "表面功能获取失败");
             throw;
         }
 
@@ -371,7 +371,7 @@ public:
         vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
 
         if (formatCount == 0) {
-            Log::error(__FILE__, __LINE__, "表面格式获取失败");
+            Log::printError(__FILE__, __LINE__, "表面格式获取失败");
             throw;
         }
 
@@ -383,7 +383,7 @@ public:
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
 
         if (presentModeCount == 0) {
-            Log::error(__FILE__, __LINE__, "呈现模式获取失败");
+            Log::printError(__FILE__, __LINE__, "呈现模式获取失败");
             throw;
         }
 

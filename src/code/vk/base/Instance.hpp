@@ -88,12 +88,12 @@ private:
         createInfo.ppEnabledExtensionNames = extensions.data();
 
         if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-            Log::error(__FILE__, __LINE__, "实例创建失败");
+            Log::printError(__FILE__, __LINE__, "实例创建失败");
             throw;
         }
 
         if (debugInfo::LayerSwitch && (createDebugUtilsMessengerEXT(instance, &debugCreateInfo, nullptr, &debugMessenger) != VK_SUCCESS)) {
-            Log::error(__FILE__, __LINE__, "配置回调失败");
+            Log::printError(__FILE__, __LINE__, "配置回调失败");
             throw;
         }
     }
@@ -142,7 +142,7 @@ private:
 
             if (!found) {
                 Log::print(enable);
-                Log::error(__FILE__, __LINE__, "层缺少支持");
+                Log::printError(__FILE__, __LINE__, "层缺少支持");
                 throw;
             }
         }

@@ -101,7 +101,7 @@ private:
         swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
 
         if (vkCreateSwapchainKHR(Device.device, &swapchainCreateInfo, nullptr, &swapchain) != VK_SUCCESS) {
-            Log::error(__FILE__, __LINE__, "交换链创建失败");
+            Log::printError(__FILE__, __LINE__, "交换链创建失败");
         }
         
 
@@ -139,7 +139,7 @@ private:
             imageViewCreateInfo.image = swapChainImages[i];
 
             if (vkCreateImageView(Device.device, &imageViewCreateInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
-                Log::error(__FILE__, __LINE__, "图像窗口创建失败");
+                Log::printError(__FILE__, __LINE__, "图像窗口创建失败");
             }
         }
     }
@@ -159,7 +159,7 @@ private:
 
         for (size_t i = 0; i < swapchainInfo::MAX_FRAMES_IN_FLIGHT; i++) {
             if (vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS || vkCreateFence(Device.device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
-                Log::error(__FILE__, __LINE__, "信号量创建失败");
+                Log::printError(__FILE__, __LINE__, "信号量创建失败");
                 throw;
             }
         }
@@ -254,7 +254,7 @@ private:
             }
         }
 
-        Log::error(__FILE__, __LINE__, "深度格式获取失败");
+        Log::printError(__FILE__, __LINE__, "深度格式获取失败");
         throw;
     }
 
@@ -273,7 +273,7 @@ public:
             return true;
         }
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-            Log::error(__FILE__, __LINE__, "获取交换链映像失败");
+            Log::printError(__FILE__, __LINE__, "获取交换链映像失败");
             throw;
         }
 
@@ -293,7 +293,7 @@ public:
         submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
 
         if (vkQueueSubmit(Device.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
-            Log::error(__FILE__, __LINE__, "提交绘制命令缓冲区失败");
+            Log::printError(__FILE__, __LINE__, "提交绘制命令缓冲区失败");
             throw;
         }
 
@@ -314,7 +314,7 @@ public:
             return true;
         }
         else if (result != VK_SUCCESS) {
-            Log::error(__FILE__, __LINE__, "呈现交换链图像失败");
+            Log::printError(__FILE__, __LINE__, "呈现交换链图像失败");
             throw;
         }
 
@@ -333,7 +333,7 @@ public:
     void recreateSwapChain() {
         //重建交换链
         if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(Device.physicalDevice, Device.surface, &swapchainSupport.capabilities)) {
-            Log::error(__FILE__, __LINE__, "重建交换链时表面功能获取失败");
+            Log::printError(__FILE__, __LINE__, "重建交换链时表面功能获取失败");
             throw;
         }
 
@@ -345,7 +345,7 @@ public:
         VkSwapchainKHR tempSwapchain;
 
         if (vkCreateSwapchainKHR(Device.device, &swapchainCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
-            Log::error(__FILE__, __LINE__, "重建交换链创建失败");
+            Log::printError(__FILE__, __LINE__, "重建交换链创建失败");
             throw;
         }
 
@@ -374,7 +374,7 @@ public:
             imageViewCreateInfo.image = swapChainImages[i];
 
             if (vkCreateImageView(Device.device, &imageViewCreateInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
-                Log::error(__FILE__, __LINE__, "图像窗口创建失败");
+                Log::printError(__FILE__, __LINE__, "图像窗口创建失败");
             }
         }
     }

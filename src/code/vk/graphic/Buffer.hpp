@@ -85,7 +85,7 @@ private:
 		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 		if (vkCreateCommandPool(Device.device, &poolInfo, nullptr, &command.commandPool) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "命令池创建失败");
+			Log::printError(__FILE__, __LINE__, "命令池创建失败");
 			throw;
 		}
 	}
@@ -180,7 +180,7 @@ private:
 		//报错时启用
 		/*VkResult  result = vkAllocateDescriptorSets(Device.device, &allocInfo, &model.descriptorSet);
 		if (result != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, std::to_string(result));
+			Log::printError(__FILE__, __LINE__, std::to_string(result));
 			throw;
 		}*/
 
@@ -190,7 +190,7 @@ private:
 
 		//terrain
 		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &terrain.descriptorSet) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "分配描述符集失败");
+			Log::printError(__FILE__, __LINE__, "分配描述符集失败");
 			throw;
 		}
 		{
@@ -213,7 +213,7 @@ private:
 
 		//model
 		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &temple.descriptorSet) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "分配描述符集失败");
+			Log::printError(__FILE__, __LINE__, "分配描述符集失败");
 			throw;
 		}
 		{
@@ -239,7 +239,7 @@ private:
 		std::array<VkWriteDescriptorSet, 2> writeDescriptorSetSkybox = {};
 
 		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &skybox.descriptorSet) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "分配描述符集失败");
+			Log::printError(__FILE__, __LINE__, "分配描述符集失败");
 			throw;
 		}
 		{
@@ -261,7 +261,7 @@ private:
 
 		//mine
 		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &mine.descriptorSet) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "分配描述符集失败");
+			Log::printError(__FILE__, __LINE__, "分配描述符集失败");
 			throw;
 		}
 		{
@@ -280,7 +280,7 @@ private:
 
 		//uiText
 		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &uiText.descriptorSet) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "分配描述符集失败");
+			Log::printError(__FILE__, __LINE__, "分配描述符集失败");
 			throw;
 		}
 
@@ -422,7 +422,7 @@ private:
 		result = ktxTexture2_CreateFromNamedFile(image, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
 
 		if (result != KTX_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "KTX贴图加载失败");
+			Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
 			throw;
 		}
 
@@ -459,7 +459,7 @@ private:
 		result = ktxTexture2_TranscodeBasis(ktxTexture, KTX_TTF_BC7_RGBA, 0);
 
 		if (result != KTX_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "KTX贴图加载失败");
+			Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
 			throw;
 		}
 
@@ -534,7 +534,7 @@ private:
 		viewInfo.subresourceRange.layerCount = arrayLayer;
 
 		if (vkCreateImageView(Device.device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "纹理图像视图创建失败");
+			Log::printError(__FILE__, __LINE__, "纹理图像视图创建失败");
 			throw;
 		}
 	}
@@ -617,7 +617,7 @@ private:
 		allocInfo.requiredFlags = properties;
 
 		if (vmaCreateImage(Device.allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "图像创建失败");
+			Log::printError(__FILE__, __LINE__, "图像创建失败");
 			throw;
 		}
 	}
@@ -686,7 +686,7 @@ private:
 		}
 		else {
 			// 如果出现无法识别的布局转换，输出错误信息并抛出异常
-			Log::error(__FILE__, __LINE__, "无支持的布局转换");
+			Log::printError(__FILE__, __LINE__, "无支持的布局转换");
 			throw;
 		}
 
@@ -816,14 +816,14 @@ public:
 		pipelineLayoutInfo.pSetLayouts = &descriptors.scence.layout;
 
 		if (vkCreatePipelineLayout(Device.device, &pipelineLayoutInfo, nullptr, &pipelineLayout.scence) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "管线布局创建失败");
+			Log::printError(__FILE__, __LINE__, "管线布局创建失败");
 		}
 
 		//uiText
 		pipelineLayoutInfo.pSetLayouts = &descriptors.uiText.layout;
 
 		if (vkCreatePipelineLayout(Device.device, &pipelineLayoutInfo, nullptr, &pipelineLayout.uiText) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "管线布局创建失败");
+			Log::printError(__FILE__, __LINE__, "管线布局创建失败");
 		}
 	}
 
@@ -845,7 +845,7 @@ public:
 			framebufferInfo.pAttachments = attachments.data();
 
 			if (vkCreateFramebuffer(Device.device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
-				Log::error(__FILE__, __LINE__, "帧缓冲创建失败");
+				Log::printError(__FILE__, __LINE__, "帧缓冲创建失败");
 				throw;
 			}
 		}
@@ -914,7 +914,7 @@ public:
 		command.allocInfo.commandBufferCount = (uint32_t)command.commandBuffers[threadID].size();
 
 		if (vkAllocateCommandBuffers(Device.device, &command.allocInfo, command.commandBuffers[threadID].data()) != VK_SUCCESS) {
-			Log::error(__FILE__, __LINE__, "基础命令缓冲创建失败");
+			Log::printError(__FILE__, __LINE__, "基础命令缓冲创建失败");
 			throw;
 		}
 
@@ -929,11 +929,13 @@ public:
 
 			//terrain
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain[layer].pipeline);
-				vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain[layer].pipelineLayout, 0, 1, &terrain.descriptorSet, 0, nullptr);
-				vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &terrain.vertex[threadID][layer].buffer, offsets);
-				vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], terrain.index[threadID][layer].buffer, 0, VK_INDEX_TYPE_UINT32);
-				vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)terrainVertex::indexs.terrain[layer].size(), 1, 0, 0, 0);
+				if (terrainVertex::vertexs.terrain[layer].size() && terrainVertex::indexs.terrain[layer].size()) {
+					vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain[layer].pipeline);
+					vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain[layer].pipelineLayout, 0, 1, &terrain.descriptorSet, 0, nullptr);
+					vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &terrain.vertex[threadID][layer].buffer, offsets);
+					vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], terrain.index[threadID][layer].buffer, 0, VK_INDEX_TYPE_UINT32);
+					vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)terrainVertex::indexs.terrain[layer].size(), 1, 0, 0, 0);
+				}
 			}
 
 			//model
@@ -968,26 +970,17 @@ public:
 
 			vkCmdEndRenderPass(command.commandBuffers[threadID][i]);
 			if (vkEndCommandBuffer(command.commandBuffers[threadID][i]) != VK_SUCCESS) {
-				Log::error(__FILE__, __LINE__, "记录命令缓冲区失败");
+				Log::printError(__FILE__, __LINE__, "记录命令缓冲区失败");
 			}
 		}
 	}
 
-	void recreateBuffer(int threadID, int layerID) {
+	void recreateBuffer(int threadID, bool isLayer) {
 		vkFreeCommandBuffers(Device.device, command.commandPool, static_cast<uint32_t>(command.commandBuffers[threadID].size()), command.commandBuffers[threadID].data());
 
-		if (layerID == terrainEnum::terrainLayer::Layer_0) {
-			vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
-			vmaDestroyBuffer(Device.allocator, terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
-		
-			createVertexBuffer(terrainVertex::vertexs.terrain[terrainEnum::terrainLayer::Layer_0], terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.vertex[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
-			createIndexBuffer(terrainVertex::indexs.terrain[terrainEnum::terrainLayer::Layer_0], terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].buffer, terrain.index[threadID][terrainEnum::terrainLayer::Layer_0].bufferMemory);
-		
-			Log::print("0");
-		
-		}
-		else {
-			for (int layer = 0; layer < layerID; layer++) {
+		if (isLayer) {
+			int layer = terrainEnum::terrainLayer::Layer_0;		//先重建当前线程网格缓冲区
+			if (terrainVertex::vertexs.terrain[layer].size() && terrainVertex::indexs.terrain[layer].size()) {
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
 				vmaDestroyBuffer(Device.allocator, terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
 
@@ -995,17 +988,22 @@ public:
 				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
 			}
 
-			//todo
-			//Log::print("------");
-			//Log::print("线程：" + std::to_string(threadID));
-			//Log::print("层级：0\t顶点\t" + std::to_string(terrainVertex::vertexs.terrain[0].size()) + "\t索引\t" + std::to_string(terrainVertex::indexs.terrain[0].size()));
-			//Log::print("层级：1\t顶点\t" + std::to_string(terrainVertex::vertexs.terrain[1].size()) + "\t索引\t" + std::to_string(terrainVertex::indexs.terrain[1].size()));
-			//
-			//Log::print("层级：0\t顶点\t" + std::string(terrain.vertex[threadID][0].buffer == VK_NULL_HANDLE ? "NULL" : "有效") + "\t索引\t" + std::string(terrain.index[threadID][0].buffer == VK_NULL_HANDLE ? "NULL" : "有效"));
-			//Log::print("层级：1\t顶点\t" + std::string(terrain.vertex[threadID][1].buffer == VK_NULL_HANDLE ? "NULL" : "有效") + "\t索引\t" + std::string(terrain.index[threadID][1].buffer == VK_NULL_HANDLE ? "NULL" : "有效"));
+			layer = terrainEnum::terrainLayer::Layer_1;
+			if (terrainVertex::vertexs.terrain[layer].size() && terrainVertex::indexs.terrain[layer].size()) {
+				createTerrainVertexBuffer(threadID, layer);
+				createTerrainIndexBuffer(threadID, layer);
+			}
+		}
+		else {
+			int layer = terrainEnum::terrainLayer::Layer_0;
 
-			Log::print("1");
+			if (terrainVertex::vertexs.terrain[layer].size() && terrainVertex::indexs.terrain[layer].size()) {
+				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
+				vmaDestroyBuffer(Device.allocator, terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
 
+				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
+				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
+			}
 		}
 	}
 
@@ -1086,4 +1084,46 @@ public:
 
 private:
 	bufferStruct::showUITextNode showUIText{};
+
+
+
+	//创建地形顶点缓冲
+	void createTerrainVertexBuffer(int threadID, int layer) {
+		VkDeviceSize bufferSize = sizeof(terrainVertex::vertexs.terrain[layer][0]) * terrainVertex::vertexs.terrain[layer].size();
+		VkBuffer tempBuffer;
+		VmaAllocation tempMemory;
+
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer, tempMemory);
+		createMapMemory(tempMemory, terrainVertex::vertexs.terrain[layer].data(), (size_t)bufferSize);
+
+		for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
+			int thread = (threadID + i) % 2;
+
+			vmaDestroyBuffer(Device.allocator, terrain.vertex[thread][layer].buffer, terrain.vertex[thread][layer].bufferMemory);
+			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[thread][layer].buffer, terrain.vertex[thread][layer].bufferMemory);
+			copyBuffer(tempBuffer, terrain.vertex[thread][layer].buffer, bufferSize);
+		}
+
+		vmaDestroyBuffer(Device.allocator, tempBuffer, tempMemory);
+	}
+
+	//创建地形索引缓冲
+	void createTerrainIndexBuffer(int threadID, int layer) {
+		VkDeviceSize bufferSize = sizeof(terrainVertex::indexs.terrain[layer][0]) * terrainVertex::indexs.terrain[layer].size();
+		VkBuffer tempBuffer;
+		VmaAllocation tempMemory;
+
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer, tempMemory);
+		createMapMemory(tempMemory, terrainVertex::indexs.terrain[layer].data(), (size_t)bufferSize);
+
+		for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
+			int thread = (threadID + i) % 2;
+
+			vmaDestroyBuffer(Device.allocator, terrain.index[thread][layer].buffer, terrain.index[thread][layer].bufferMemory);
+			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.index[thread][layer].buffer, terrain.index[thread][layer].bufferMemory);
+			copyBuffer(tempBuffer, terrain.index[thread][layer].buffer, bufferSize);
+		}
+
+		vmaDestroyBuffer(Device.allocator, tempBuffer, tempMemory);
+	}
 };

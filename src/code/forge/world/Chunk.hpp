@@ -6,27 +6,26 @@
 class Chunk {
 public:
 	//Storage（saveFullChunk、readFullChunk、readDeltaChunk），Plate（createPlate、updatePlate、getSelectBox、createUpdateCubeList），Chunk（createChunkMeshData、updateChunkMeshData）
-	short cubeArray[plateInfo::chunkMapLength][plateInfo::chunkMapLength][plateInfo::chunkMapLength]{};	//方块数组，最外一圈存储相邻区块边缘方块数据，方便区块间面检测，使用范围[1,32]，边缘方块数据0和33
-	std::unordered_set<storageStruct::cubeDeltaNode, storageStruct::cubeDeltaNodeHash> cubeDeltaSet;	//方块变更集合，为变存法服务						//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
+	short cubeArray[plateInfo::cubeArrayLength][plateInfo::cubeArrayLength][plateInfo::cubeArrayLength]{};	//方块数组，最外一圈存储相邻区块边缘方块数据，方便区块间面检测，使用范围[1,32]，边缘方块数据0和33
+	std::unordered_set<storageStruct::cubeDeltaNode, storageStruct::cubeDeltaNodeHash> cubeDeltaSet;		//方块变更集合，为变存法服务					//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
 
 	int isVisible = 0;												//标识区块是否可见，如果全空或者全满为不可见，但是不能排除1~32全空但边缘非空的情况			//Storage（saveFullChunk、readFullChunk、saveDeltaChunk、readDeltaChunk），Plate（createPlate、createChunk、updatePlate、createUpdateCubeList）
+	int layerID = terrainEnum::terrainLayer::count;					//区块所在地形管线层																	//Plate（createPlate、updatePlate、updatePlatePartMesh）
 
 	//由InitChunk初始化
-	glm::dvec3 originOffset{};										//区块原点偏移（d世界坐标系），用于plate类里joinChunkMesh方法处理世界原点迁移时的情况		//Plate（joinMesh），Chunk（InitChunk）
+	glm::dvec3 originOffset{};										//区块原点偏移（d世界坐标系），用于plate类里joinChunkMesh方法处理世界原点迁移时的情况		//Plate（joinTerrainMesh），Chunk（InitChunk）
 	glm::dvec3 chunkPos{};											//区块坐标（区块坐标系），区块在Plate.chunkMap中的坐标									//Storage（saveFullChunk、readFullChunk、saveDeltaChunk、readDeltaChunk、saveChunk、readChunk），Plate（createChunk、），Chunk（InitChunk）
 	glm::dvec3 logicalWorldPos{};									//区块逻辑世界坐标（d世界坐标系）（对应cubeArray[0][0][0]处），用于地形生成				//Plate（createChunk），Chunk（InitChunk）
 	glm::ivec3 actualWorldPos{};									//区块实际世界坐标（i世界坐标系）（对应cubeArray[0][0][0]处），用于构建网格				//Chunk（InitChunk、createChunkMeshData、updateChunkMeshData）
 
 	//由createChunkMeshData初始化,chunkVertexs,chunkIndexs,IndexOffset都能判断区块是否应该加载网格，34立方区块全空或全实不加载网格
-	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组																	//Plate（createPlate、joinMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMeshData、updateChunkMeshData）
-	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMeshData、updateChunkMeshData）
+	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组																	//Plate（createPlate、joinTerrainMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMeshData、updateChunkMeshData）
+	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinTerrainMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMeshData、updateChunkMeshData）
 	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、updatePlate），Chunk（createChunkMeshData、updateChunkMeshData）
 
-	int layerID = terrainEnum::terrainLayer::count;					//区块所在地形管线层																	//Plate（createPlate、updatePlate、updatePlatePartMesh）
 
 
-
-	void InitChunk(const glm::dvec3& origin, const glm::dvec3& chunkPos0) {
+	void InitChunk(const glm::dvec3 origin, const glm::dvec3 chunkPos0) {
 		originOffset = origin;
 		chunkPos = chunkPos0;
 		logicalWorldPos = chunkPos * (double)plateInfo::chunkLength;
@@ -78,7 +77,7 @@ public:
 						std::unordered_map<glm::ivec3, short>& node = visibleFaceMap[i][j];
 						glm::ivec3 pos = node.begin()->first;
 						short cubeId = node.begin()->second;
-						int faceId = cubeList::property[cubeId].faceId[i].x + cubeList::property[cubeId].faceId[i].y * textureInfo::atlasWidth;
+						int faceId = cubeList::cubeProperty[cubeId].faceId[i].x + cubeList::cubeProperty[cubeId].faceId[i].y * textureInfo::atlasWidth;
 
 						cubeStruct::traversalNode wSet;
 						cubeStruct::traversalNode hSet;
@@ -905,7 +904,7 @@ public:
 						std::unordered_map<glm::ivec3, short>& node = visibleFaceMap[i][j];
 						glm::ivec3 pos = node.begin()->first;
 						short cubeId = node.begin()->second;
-						int faceId = cubeList::property[cubeId].faceId[i].x + cubeList::property[cubeId].faceId[i].y * textureInfo::atlasWidth;
+						int faceId = cubeList::cubeProperty[cubeId].faceId[i].x + cubeList::cubeProperty[cubeId].faceId[i].y * textureInfo::atlasWidth;
 
 						cubeStruct::traversalNode wSet;
 						cubeStruct::traversalNode hSet;

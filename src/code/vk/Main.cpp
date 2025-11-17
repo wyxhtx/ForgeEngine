@@ -7,7 +7,7 @@ int main() {
     HANDLE hMutex = CreateMutexA(nullptr, TRUE, windowInfo::gameName);
 
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
-        Log::error(__FILE__, __LINE__, "同一时间只能启用一个游戏进程");
+        Log::printError(__FILE__, __LINE__, "同一时间只能启用一个游戏进程");
         return 0;
     }
 

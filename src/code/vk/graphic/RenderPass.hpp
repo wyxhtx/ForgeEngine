@@ -93,7 +93,7 @@ private:
 
         //创建渲染路径
         if (vkCreateRenderPass(Device.device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
-            Log::error(__FILE__, __LINE__, "渲染路径创建失败");
+            Log::printError(__FILE__, __LINE__, "渲染路径创建失败");
             throw;
         }
     }

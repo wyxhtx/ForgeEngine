@@ -27,7 +27,7 @@ namespace bufferList {
             }
 
             if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &scence.pool) != VK_SUCCESS) {
-                Log::error(__FILE__, __LINE__, "描述符池创建失败");
+                Log::printError(__FILE__, __LINE__, "描述符池创建失败");
                 throw;
             }
 
@@ -43,7 +43,7 @@ namespace bufferList {
             }
 
             if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &uiText.pool) != VK_SUCCESS) {
-                Log::error(__FILE__, __LINE__, "描述符池创建失败");
+                Log::printError(__FILE__, __LINE__, "描述符池创建失败");
                 throw;
             }
         }
@@ -78,7 +78,7 @@ namespace bufferList {
             }
 
             if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &scence.layout) != VK_SUCCESS) {
-                Log::error(__FILE__, __LINE__, "描述符布局配置失败");
+                Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
                 throw;
             }
 
@@ -95,7 +95,7 @@ namespace bufferList {
             }
 
             if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &uiText.layout) != VK_SUCCESS) {
-                Log::error(__FILE__, __LINE__, "描述符布局配置失败");
+                Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
                 throw;
             }
         }
@@ -154,7 +154,7 @@ namespace bufferList {
             samplerInfo.maxLod = static_cast<float>(terrainMipLevel);
 
             if (vkCreateSampler(device, &samplerInfo, nullptr, &terrain) != VK_SUCCESS) {
-                Log::error(__FILE__, __LINE__, "地形贴图采样器创建失败");
+                Log::printError(__FILE__, __LINE__, "地形贴图采样器创建失败");
                 throw;
             }
 
@@ -162,7 +162,7 @@ namespace bufferList {
             samplerInfo.maxLod = static_cast<float>(modelMipLevel);
 
             if (vkCreateSampler(device, &samplerInfo, nullptr, &model) != VK_SUCCESS) {
-                Log::error(__FILE__, __LINE__, "模型贴图采样器创建失败");
+                Log::printError(__FILE__, __LINE__, "模型贴图采样器创建失败");
                 throw;
             }
 
@@ -173,7 +173,7 @@ namespace bufferList {
             samplerInfo.maxLod = 0.0f;
 
             if (vkCreateSampler(device, &samplerInfo, nullptr, &uiText) != VK_SUCCESS) {
-                Log::error(__FILE__, __LINE__, "文本贴图采样器创建失败");
+                Log::printError(__FILE__, __LINE__, "文本贴图采样器创建失败");
                 throw;
             }
         }
