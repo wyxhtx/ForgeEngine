@@ -34,9 +34,9 @@ public:
 
 	//创建区块网格数据
 	void createChunkMeshData() {
-		static std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];	//方块坐标为键，方块ID为值，存储所有可见面，[0,31]
-		static int chunkLengthMax = plateInfo::chunkLength + 1;									//探极值时，因为31不为空时wSet.max不赋值，所以多探一位32必为空，33做边界值
-		static int chunkLengthMin = -2;															//坐标迁移到左下角时，同理多探一位-1，-2做边界值
+		std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];	//方块坐标为键，方块ID为值，存储所有可见面，[0,31]
+		int chunkLengthMax = plateInfo::chunkLength + 1;									//探极值时，因为31不为空时wSet.max不赋值，所以多探一位32必为空，33做边界值
+		int chunkLengthMin = -2;															//坐标迁移到左下角时，同理多探一位-1，-2做边界值
 
 
 
@@ -485,7 +485,7 @@ private:
 
 	//i：朝向id、faceId：纹理id、position：坐标、length：纹理循环长度
 	void createChunkMesh(int i, int faceId, glm::vec3 position, glm::vec3 length, uint32_t& indexOffset, std::vector<terrainVertex::vertexNode>& chunkVertexs, std::vector<uint32_t>& chunkIndexs) {
-		static std::vector<terrainVertex::vertexNode> tempVertexs;
+		std::vector<terrainVertex::vertexNode> tempVertexs;
 
 		todoInfo::visibleOptimization++;
 
@@ -562,7 +562,7 @@ private:
 	}
 
 	void updateChunkMesh(int i, int vertexsSize, int faceId, glm::vec3 position, glm::vec3 length, uint32_t& indexOffset, std::vector<terrainVertex::vertexNode>& chunkVertexs, std::vector<uint32_t>& chunkIndexs) {
-		static std::vector<terrainVertex::vertexNode> tempVertexs;
+		std::vector<terrainVertex::vertexNode> tempVertexs;
 
 		switch (i) {
 		case 0: {
@@ -637,8 +637,8 @@ public:
 	//todo 不适用于放置方块
 	//更新区块网格数据
 	void updateChunkMeshData(const std::unordered_set<glm::ivec3>& cubePosSet, const std::unordered_set<glm::ivec2>& abutCubePosSet) {
-		static std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];					//区块截层可见面集合，[0,31]
-		static std::unordered_set<int> faceSet[6];																//区块截层集合，根据两个方块列表（cubePosSet、abutCubePosSet），截取需要更新网格的区块层，[0,31]
+		std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];						//区块截层可见面集合，[0,31]
+		std::unordered_set<int> faceSet[6];																		//区块截层集合，根据两个方块列表（cubePosSet、abutCubePosSet），截取需要更新网格的区块层，[0,31]
 
 		//标识各朝向对应的最大层和最小层，为优化区块截层网格的生成服务
 		int layerMax[6]{ 0,0,0,0,0,0 };
@@ -898,8 +898,8 @@ public:
 					}
 
 					while (!visibleFaceMap[i][j].empty()) {
-						static int chunkLengthMax = plateInfo::chunkLength + 1;	//探极值时，因为31不为空时wSet.max不赋值，所以多探一位32必为空
-						static int chunkLengthMin = -2;							//坐标迁移到左下角时，同理多探一位-1
+						const int chunkLengthMax = plateInfo::chunkLength + 1;	//探极值时，因为31不为空时wSet.max不赋值，所以多探一位32必为空
+						const int chunkLengthMin = -2;							//坐标迁移到左下角时，同理多探一位-1
 
 						std::unordered_map<glm::ivec3, short>& node = visibleFaceMap[i][j];
 						glm::ivec3 pos = node.begin()->first;

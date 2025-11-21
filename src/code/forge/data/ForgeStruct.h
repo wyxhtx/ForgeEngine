@@ -45,6 +45,55 @@ namespace plateStruct {
         std::forward_list<plateStruct::chunkMeshSignListNode> list;	    //标识区块顶点数组
         int vertexsSentinel = 0;                                        //标识区块各朝向顶点列表长度
     };
+
+    //结构管理器结点
+    struct structManagerNode {
+        std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec4>> node;
+    };
+
+    //结构分区管理器结点
+    struct structPartManagerNode {
+        std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec4>> pending;     //未加载
+        std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec4>> active;      //已加载
+    };
+
+    //聚类分区结点
+    struct kMeansNode {
+        std::vector<std::vector<glm::dvec3>> node;
+
+        
+
+        kMeansNode(const std::vector<glm::dvec3>& chunkLoop, const int& maxThreadCount) {
+            const int ndim = 3;                                     //三维
+            const int nobs = static_cast<int>(chunkLoop.size());    //长度
+            const int ncenters = maxThreadCount;                    //分区
+
+            std::vector<double> matrix(ndim * nobs);
+
+
+
+            node.resize(maxThreadCount);
+
+            //将glm::dvec3数组转换为库要求的列优先矩阵格式 (ndim x nobs)
+            for (int i = 0; i < nobs; ++i) {
+                matrix[i * ndim + 0] = chunkLoop[i].x;
+                matrix[i * ndim + 1] = chunkLoop[i].y;
+                matrix[i * ndim + 2] = chunkLoop[i].z;
+            }
+
+            //将矩阵转换为K-means算法需要的矩阵格式
+            kmeans::SimpleMatrix<int, double> kmat(ndim, nobs, matrix.data());
+
+            //执行聚类算法，使用kmeans++初始化和Lloyd算法优化
+            kmeans::Results<int, int, double> res = kmeans::compute(kmat, kmeans::InitializeKmeanspp<int, double, int, double>(), kmeans::RefineLloyd<int, double, int, double>(), ncenters);
+
+            for (int i = 0; i < nobs; ++i) {
+                node[res.clusters[i]].push_back(chunkLoop[i]);
+            }
+        }
+
+        kMeansNode() = delete;    //禁用默认构造函数
+    };
 }
 
 //地形结构结构体

@@ -157,6 +157,111 @@
     <ClInclude Include="src\code\vk\graphic\Buffer.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\aarand\aarand.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\sanisizer\arithmetic.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\sanisizer\cap.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\sanisizer\cast.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\sanisizer\comparisons.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\sanisizer\create.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\sanisizer\float.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\sanisizer\nd_offset.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\sanisizer\ptrdiff.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\sanisizer\sanisizer.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\sanisizer\utils.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\subpar\range.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\subpar\simple.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\subpar\subpar.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\compute_centroids.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\compute_wcss.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\copy_into_array.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\Details.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\Initialize.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\InitializeKmeanspp.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\InitializeNone.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\InitializeRandom.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\InitializeVariancePartition.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\is_edge_case.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\kmeans.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\Matrix.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\parallelize.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\QuickSearch.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\Refine.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\RefineHartiganWong.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\RefineLloyd.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\RefineMiniBatch.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\remove_unused_centers.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\SimpleMatrix.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\algorithm\kmeans\utils.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\code\vk\Main.cpp">

@@ -3,16 +3,17 @@
 
 
 /*系统库文件*/
-#include <iostream>         
-#include <iomanip>          
-#include <vector>           
-#include <unordered_map>    
-#include <unordered_set>    
-#include <array>           
-#include <cmath>            
-#include <filesystem>       
-#include <thread>           
-#include <windows.h>    
+#include <iostream>
+#include <iomanip>
+#include <vector>
+#include <unordered_map>
+#include <unordered_set>
+#include <array>
+#include <cmath>
+#include <filesystem>
+#include <thread>
+#include <execution>
+#include <windows.h>
 
 
 
@@ -29,6 +30,9 @@
 #include <glm/gtx/hash.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+//算法库
+#include "../../library/algorithm/kmeans/Kmeans.hpp"	//聚类算法，划分区块所属区域，让域内区块聚合，减少域外链结构
 
 //内存库
 #define VMA_IMPLEMENTATION
