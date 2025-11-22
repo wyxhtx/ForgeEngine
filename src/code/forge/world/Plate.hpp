@@ -52,7 +52,7 @@ private:
 
 
 
-	//创建板块
+	//创建板块，R(8)N(34)M(350)
 	void createPlate() {
 		std::vector<glm::dvec3> updateChunkLoop;											//更新区块循环
 		plateStruct::kMeansNode partChunkLoop;												//分区区块循环，用于并行生成地形
@@ -182,14 +182,8 @@ private:
 
 		//生成区块网格，直接遍历updateChunkLoop因为少了遍历分区所以性能更高，R(8)N(34)M(60)
 		std::for_each(std::execution::par, updateChunkLoop.begin(), updateChunkLoop.end(),
-			[this, playerChunkPos](const glm::dvec3& updatePos) {
-				InitStorage.readChunk(chunkMap[updatePos]);		// 读取区块文件
-
-				int layer = terrainEnum::terrainLayer::Layer_1;
-				if (terrainList::layerLoop.find(updatePos - playerChunkPos) != terrainList::layerLoop.end()) {
-					layer = terrainEnum::terrainLayer::Layer_0;
-				}
-				chunkMap[updatePos].layerID = layer;			//初始化layerID
+			[this](const glm::dvec3& updatePos) {
+				InitStorage.readChunk(chunkMap[updatePos]);		//读取区块文件
 
 				if (chunkMap[updatePos].isVisible > 0 && chunkMap[updatePos].isVisible < plateInfo::cubeArrayVolume) {
 					chunkMap[updatePos].createChunkMeshData();	//生成网格
@@ -199,7 +193,13 @@ private:
 
 		//拼接区块网格，R(8)N(34)M(40)
 		for (const glm::dvec3& updatePos : updateChunkLoop) {
-			joinTerrainMesh(chunkMap[updatePos], originPos, updatePos, chunkMap[updatePos].layerID);
+			int layer = terrainEnum::terrainLayer::Layer_1;
+			if (terrainList::layerLoop.find(updatePos - playerChunkPos) != terrainList::layerLoop.end()) {
+				layer = terrainEnum::terrainLayer::Layer_0;
+			}
+			chunkMap[updatePos].layerID = layer;			//初始化layerID
+
+			joinTerrainMesh(chunkMap[updatePos], originPos, updatePos, layer);
 
 			if (debugInfo::LogSwitch) {
 				if (chunkMap[updatePos].isVisible < 0 || chunkMap[updatePos].isVisible > plateInfo::cubeArrayVolume) {
@@ -489,7 +489,7 @@ public:
 
 
 
-	//更新板块
+	//更新板块，R(8)N(34)M(100~160)(原点迁移时删除网格更快)
 	void updatePlate(glm::dvec3 playerPos) {
 		std::unordered_set<glm::dvec3> existChunkLoop;										//当前视距内已加载区块列表 
 		std::vector<glm::dvec3> updateChunkLoop;											//当前视距内未加载区块列表
@@ -742,10 +742,10 @@ public:
 		}
 
 
-
-		//卸载视距外地形网格
-		if (tempOriginPos == playerInfo::logicOriginPos) {
-			//原点未迁移
+		//卸载视距外地形网格，因为原点未迁移处理耗时太高，所以全采用原点迁移处理
+		//if (tempOriginPos == playerInfo::logicOriginPos)
+		if (false) {
+			//原点未迁移，R(8)N(34)M(90)
 			for (std::unordered_map<glm::dvec3, Chunk>::iterator it = chunkMap.begin(); it != chunkMap.end(); ) {
 				const glm::dvec3& updatePos = it->first;
 				int oldLayer = chunkMap[updatePos].layerID;
@@ -782,7 +782,7 @@ public:
 			}
 		}
 		else {
-			//原点已迁移
+			//原点已迁移，R(8)N(34)M(12)
 			//清空全部地形网格
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
 				terrainVertex::vertexs.terrain[layer].clear();
@@ -828,29 +828,25 @@ public:
 
 
 
-		//生成区块网格
-		for (const glm::dvec3& updatePos : updateChunkLoop) {
-			if (updateStructLoop.find(updatePos) == updateStructLoop.end()) {	//updateStructSet由视距内已加载区块得到，故不用文件加载
-				InitStorage.readChunk(updateChunkMap[updatePos]);					//读取区块文件，在加载链结构后执行，避免压入链结构后被覆盖
-			}
+		//生成区块网格，R(8)N(34)M(10)
+		std::for_each(std::execution::par, updateChunkLoop.begin(), updateChunkLoop.end(),
+			[this, updateStructLoop](const glm::dvec3& updatePos) {
+				if (updateStructLoop.find(updatePos) == updateStructLoop.end()) {		//updateStructLoop由视距内已加载区块得到，故不用文件加载
+					InitStorage.readChunk(updateChunkMap[updatePos]);					//读取区块文件，在加载链结构后执行，避免压入链结构后被覆盖
+				}
 
-			if (updateChunkMap[updatePos].isVisible > 0 && updateChunkMap[updatePos].isVisible < plateInfo::cubeArrayVolume) {
-				updateChunkMap[updatePos].createChunkMeshData();
-			}
-			else if (debugInfo::LogSwitch) {
-				if (updateChunkMap[updatePos].isVisible < 0 || updateChunkMap[updatePos].isVisible > plateInfo::cubeArrayVolume) {
-					Log::printError(__FILE__, __LINE__, "区块isVisible超限");
-					std::cout << updateChunkMap[updatePos].isVisible << "\t" << updatePos.x << "\t" << updatePos.y << "\t" << updatePos.z << std::endl;
+				if (updateChunkMap[updatePos].isVisible > 0 && updateChunkMap[updatePos].isVisible < plateInfo::cubeArrayVolume) {
+					updateChunkMap[updatePos].createChunkMeshData();	//生成网格
 				}
 			}
-		}
+		);
 
 
 
 		while (externalUpdateLock);
 		internalUpdateLock = true;
 
-		//拼接区块网格到对应地形网格层
+		//拼接区块网格到对应地形网格层，R(8)N(34)M(45)
 		for (const glm::dvec3& updatePos : updateChunkLoop) {
 			chunkMap[updatePos] = updateChunkMap[updatePos];
 
