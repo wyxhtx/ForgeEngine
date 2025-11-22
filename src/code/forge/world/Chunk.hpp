@@ -59,8 +59,6 @@ public:
 						else if (i == 4 || i == 5) {
 							visibleFaceMap[i][tempPos.z][tempPos] = cubeId;
 						}
-
-						todoInfo::visibleFaceCount++;
 					}
 				}
 			}
@@ -486,8 +484,6 @@ private:
 	//i：朝向id、faceId：纹理id、position：坐标、length：纹理循环长度
 	void createChunkMesh(int i, int faceId, glm::vec3 position, glm::vec3 length, uint32_t& indexOffset, std::vector<terrainVertex::vertexNode>& chunkVertexs, std::vector<uint32_t>& chunkIndexs) {
 		std::vector<terrainVertex::vertexNode> tempVertexs;
-
-		todoInfo::visibleOptimization++;
 
 		//四个顶点构成一个面，顶点uv绑定应按照Z画法，uv绑定朝向与画Z时相同
 		switch (i) {

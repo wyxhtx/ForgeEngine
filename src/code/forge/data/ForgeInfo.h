@@ -68,9 +68,3 @@ namespace playerInfo {
 	//鼠标按键状态
 	bool mouseButtonLeft = false;
 }
-
-//todo 暂时存储不好分类的变量
-namespace todoInfo {
-	int visibleFaceCount;							//区块可见面数量
-	int visibleOptimization;						//区块可见面优化数量
-}
