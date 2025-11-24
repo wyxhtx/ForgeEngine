@@ -71,21 +71,22 @@ namespace bufferStruct {
     };
 
     struct baseUBO {
-        glm::mat4 base;             //模型矩阵，用于将模型变换到世界坐标系
+        glm::mat4 model;            //模型矩阵，用于将模型变换到世界坐标系
+        glm::mat4 modelTI;          //模型转置逆矩阵，用于计算光照法线
         glm::mat4 view;             //视图矩阵，用于将世界坐标系变换到观察者坐标系
         glm::mat4 proj;             //投影矩阵，用于将观察者坐标系变换到裁剪坐标系
     };
 
     //注意着色器内存对齐
     struct lightUBO {
-        glm::vec3 baseLight;        //基础光照颜色
-        float ambientStrength;      //环境光强度
-
-        glm::vec3 lightPos;         //光源位置
+        glm::vec3 lightPos;         //光照位置
         float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到
 
         glm::vec3 viewPos;          //观察者坐标
-        float specularStrength;     //镜面强度
+        float baseSpecular;         //基础镜面反射
+
+        glm::vec3 baseLight;        //基础光照颜色
+        float baseAmbient;          //基础环境光
     };
 
 

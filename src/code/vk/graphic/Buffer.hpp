@@ -317,18 +317,19 @@ private:
 		glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)Device.swapChainExtent.width / (float)Device.swapChainExtent.height, 0.1f, plateInfo::cubeSightRange);
 		proj[1][1] *= -1;
 
-		terrain.ubo.base = glm::translate(glm::mat4(1), glm::vec3(0));
-		terrain.ubo.proj = proj;
-		terrain.lightUbo.baseLight = lightInfo::baseLight;
-		terrain.lightUbo.specularStrength = lightInfo::specularStrength;
-		
-		temple.ubo.proj = proj;
-		temple.lightUbo.baseLight = lightInfo::baseLight;
-		temple.lightUbo.specularStrength = lightInfo::specularStrength;
-
-		skybox.ubo.proj = proj;
-
-		mine.ubo.proj = proj;
+		terrain.ubo.model			  = glm::translate(glm::mat4(1), glm::vec3(0));
+		terrain.ubo.modelTI			  = glm::transpose(glm::inverse(terrain.ubo.model));
+		terrain.ubo.proj			  = proj;
+		terrain.lightUbo.baseSpecular = lightInfo::globaSpecular;
+		terrain.lightUbo.baseLight	  = lightInfo::globalLight;
+						  
+		temple.ubo.proj				  = proj;
+		temple.lightUbo.baseSpecular  = lightInfo::globaSpecular;
+		temple.lightUbo.baseLight	  = lightInfo::globalLight;
+									  
+		skybox.ubo.proj				  = proj;
+									  
+		mine.ubo.proj				  = proj;
 	}
 
 private:
@@ -1011,48 +1012,47 @@ public:
 		static std::chrono::steady_clock::time_point time0 = std::chrono::steady_clock::now();	//游戏起始时刻
 		static std::chrono::steady_clock::time_point time1;										//游戏当前时刻
 		static float gameTime;																	//游戏运行时长，最多支持连续运行194天（现实时间）
+		static float currentHour;																//当前小时，取值范围[0,24)，含小数部分
 
 		glm::vec3 offsetPos = playerInfo::initSpawnPos - playerInfo::logicOriginPos;
 		time1 = std::chrono::steady_clock::now();
 		gameTime = std::chrono::duration_cast<std::chrono::milliseconds>(time1 - time0).count() / 1000.0f;
+		currentHour = std::fmod(gameTime, 24.0f);
 
 
 
-		//terrain
-		terrain.ubo.view = view;
+		/*terrain*/
+		terrain.ubo.view				= view;
+		terrain.lightUbo.lightPos		= offsetPos;	//glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+		terrain.lightUbo.currentHour	= currentHour;
+		terrain.lightUbo.viewPos		= glm::vec3{ pos - playerInfo::logicOriginPos };
+		terrain.lightUbo.baseAmbient	= 1;			//(sin(gameTime) + 1) / 2;
 
-		//todo
-		//terrain.lightUbo.ambientStrength = (sin(gameTime) + 1) / 2;
-		terrain.lightUbo.ambientStrength = 1;
-		//terrain.lightUbo.lightPos = offsetPos;
-		//terrain.lightUbo.lightPos = glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
-		terrain.lightUbo.lightPos = offsetPos;
-		terrain.lightUbo.viewPos = glm::vec3{ pos - playerInfo::logicOriginPos };
+		/*model*/
+		temple.ubo.model				= glm::translate(glm::mat4(1), offsetPos);											//位移
+		temple.ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
+		temple.ubo.modelTI				= glm::transpose(glm::inverse(temple.ubo.model));
+		//model.ubo.model				*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
+		temple.ubo.view					= view;
+		temple.lightUbo.baseAmbient		= (sin(gameTime) + 1) / 2;
+		temple.lightUbo.lightPos		= offsetPos;
+
+		/*skybox*/
+		//skybox.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(pos - playerInfo::logicOriginPos));		//着色器屏蔽了模型的位移变换，所以注释掉此处
+		skybox.ubo.view					= view;
+		skybox.lightUbo.currentHour		= currentHour;
+
+		/*mine*/
+		mine.ubo.model					= glm::translate(glm::mat4(1), box.minepos);
+		mine.ubo.model					*= glm::scale(glm::mat4(1), glm::vec3(1) * box.isVisible);
+		mine.ubo.view					= view;
+
+		/*showUIText*/
+		showUIText.pos					= glm::floor(pos);
+		showUIText.chunkPos				= glm::floor(pos / (double)plateInfo::chunkLength);
+		showUIText.minepos				= box.minepos;
 
 
-
-		//model
-		temple.ubo.base = glm::translate(glm::mat4(1), offsetPos);											//位移
-		temple.ubo.base *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
-		//model.ubo.base *= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
-		temple.ubo.view = view;
-		temple.lightUbo.ambientStrength = (sin(gameTime) + 1) / 2;
-		temple.lightUbo.lightPos = offsetPos;
-
-		//skybox
-		//skybox.ubo.base = glm::translate(glm::mat4(1), glm::vec3(pos - playerInfo::logicOriginPos));		//着色器屏蔽了模型的位移变换，所以注释掉此处
-		skybox.ubo.view = view;
-		skybox.lightUbo.currentHour = std::fmod(gameTime, 24.0f);											//取值范围[0,24)，含小数部分
-
-		//mine
-		mine.ubo.base = glm::translate(glm::mat4(1), box.minepos);
-		mine.ubo.base *= glm::scale(glm::mat4(1), glm::vec3(1) * box.isVisible);
-		mine.ubo.view = view;
-
-		//showUIText
-		showUIText.pos = glm::floor(pos);
-		showUIText.chunkPos = glm::floor(pos / (double)plateInfo::chunkLength);
-		showUIText.minepos = box.minepos;
 
 		createMapMemory(terrain.uniform.bufferMemory, &terrain.ubo, sizeof(terrain.ubo));
 		createMapMemory(terrain.lightUniform.bufferMemory, &terrain.lightUbo, sizeof(terrain.lightUbo));

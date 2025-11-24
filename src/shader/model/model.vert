@@ -2,6 +2,7 @@
 
 layout(binding = 0) uniform UniformBufferObject {
     mat4 model;
+    mat4 modelTI;
     mat4 view;
     mat4 proj;
 } ubo;

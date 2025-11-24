@@ -19,9 +19,9 @@ public:
 	glm::ivec3 actualWorldPos{};									//区块实际世界坐标（i世界坐标系）（对应cubeArray[0][0][0]处），用于构建网格				//Chunk（InitChunk、createChunkMeshData、updateChunkMeshData）
 
 	//由createChunkMeshData初始化,chunkVertexs,chunkIndexs,IndexOffset都能判断区块是否应该加载网格，34立方区块全空或全实不加载网格
-	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组																	//Plate（createPlate、joinTerrainMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMeshData、updateChunkMeshData）
-	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinTerrainMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMeshData、updateChunkMeshData）
-	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、updatePlate），Chunk（createChunkMeshData、updateChunkMeshData）
+	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组																	//Plate（createPlate、joinTerrainMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMesh、updateChunkMesh）
+	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinTerrainMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMesh、updateChunkMesh）
+	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、updatePlate），Chunk（createChunkMesh、updateChunkMesh、updateChunkMeshData）
 
 
 
@@ -126,7 +126,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1 && hSet.max == 1) {
-								createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(1, 1, 1), indexOffset, chunkVertexs, chunkIndexs);
+								createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, 1, 1));
 								node.erase(pos);
 								continue;
 							}
@@ -136,7 +136,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1) {
-								createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(1, 1, hSet.max), indexOffset, chunkVertexs, chunkIndexs);
+								createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, 1, hSet.max));
 
 								for (int h = pos.z; h < pos.z + hSet.max; h++) {
 									node.erase(glm::ivec3(pos.x, pos.y, h));
@@ -145,7 +145,7 @@ public:
 								continue;
 							}
 							else if (hSet.max == 1) {
-								createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(wSet.max, 1, 1), indexOffset, chunkVertexs, chunkIndexs);
+								createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(wSet.max, 1, 1));
 
 								for (int w = pos.x; w < pos.x + wSet.max; w++) {
 									node.erase(glm::ivec3(w, pos.y, pos.z));
@@ -208,7 +208,7 @@ public:
 								}
 							}
 
-							createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(w, 1, h), indexOffset, chunkVertexs, chunkIndexs);
+							createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(w, 1, h));
 						}
 						else if (i == 2 || i == 3) {
 							//宽度迁移到左下角
@@ -253,7 +253,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1 && hSet.max == 1) {
-								createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(1, 1, 1), indexOffset, chunkVertexs, chunkIndexs);
+								createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, 1, 1));
 								node.erase(pos);
 								continue;
 							}
@@ -263,7 +263,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1) {
-								createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(1, 1, hSet.max), indexOffset, chunkVertexs, chunkIndexs);
+								createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, 1, hSet.max));
 
 								for (int h = pos.z; h < pos.z + hSet.max; h++) {
 									node.erase(glm::ivec3(pos.x, pos.y, h));
@@ -272,7 +272,7 @@ public:
 								continue;
 							}
 							else if (hSet.max == 1) {
-								createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(1, wSet.max, 1), indexOffset, chunkVertexs, chunkIndexs);
+								createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, wSet.max, 1));
 
 								for (int w = pos.y; w < pos.y + wSet.max; w++) {
 									node.erase(glm::ivec3(pos.x, w, pos.z));
@@ -335,7 +335,7 @@ public:
 								}
 							}
 
-							createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(1, w, h), indexOffset, chunkVertexs, chunkIndexs);
+							createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, w, h));
 						}
 						else if (i == 4 || i == 5) {
 							//宽度迁移到左下角
@@ -381,7 +381,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1 && hSet.max == 1) {
-								createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(1, 1, 1), indexOffset, chunkVertexs, chunkIndexs);
+								createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, 1, 1));
 								node.erase(pos);
 								continue;
 							}
@@ -391,7 +391,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1) {
-								createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(hSet.max, 1, 1), indexOffset, chunkVertexs, chunkIndexs);
+								createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(hSet.max, 1, 1));
 
 								for (int h = pos.x; h < pos.x + hSet.max; h++) {
 									node.erase(glm::ivec3(h, pos.y, pos.z));
@@ -400,7 +400,7 @@ public:
 								continue;
 							}
 							else if (hSet.max == 1) {
-								createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(1, wSet.max, 1), indexOffset, chunkVertexs, chunkIndexs);
+								createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, wSet.max, 1));
 
 								for (int w = pos.y; w < pos.y + wSet.max; w++) {
 									node.erase(glm::ivec3(pos.x, w, pos.z));
@@ -463,7 +463,7 @@ public:
 								}
 							}
 
-							createChunkMesh(i, faceId, pos + actualWorldPos, glm::vec3(h, w, 1), indexOffset, chunkVertexs, chunkIndexs);
+							createChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(h, w, 1));
 						}
 					}
 
@@ -481,8 +481,12 @@ private:
 
 
 
-	//i：朝向id、faceId：纹理id、position：坐标、length：纹理循环长度
-	void createChunkMesh(int i, int faceId, glm::vec3 position, glm::vec3 length, uint32_t& indexOffset, std::vector<terrainVertex::vertexNode>& chunkVertexs, std::vector<uint32_t>& chunkIndexs) {
+	//i：		朝向id
+	//faceId：	纹理id
+	//cubeId:	方块id
+	//position：	坐标
+	//length：	纹理循环长度
+	void createChunkMesh(int i, int faceId, int cubeId, glm::vec3 position, glm::vec3 length) {
 		std::vector<terrainVertex::vertexNode> tempVertexs;
 
 		//四个顶点构成一个面，顶点uv绑定应按照Z画法，uv绑定朝向与画Z时相同
@@ -490,60 +494,60 @@ private:
 		case 0: {
 			//上, Y+
 			tempVertexs = {
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
 		case 1: {
 			//下, Y-
 			tempVertexs = {
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
 		case 2: {
 			//左, X+
 			tempVertexs = {
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
 		case 3: {
 			//右, X-
 			tempVertexs = {
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
 		case 4: {
 			//前, Z+
 			tempVertexs = {
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
 		case 5: {
 			//后, Z-
 			tempVertexs = {
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
@@ -557,67 +561,73 @@ private:
 		indexOffset += 4;
 	}
 
-	void updateChunkMesh(int i, int vertexsSize, int faceId, glm::vec3 position, glm::vec3 length, uint32_t& indexOffset, std::vector<terrainVertex::vertexNode>& chunkVertexs, std::vector<uint32_t>& chunkIndexs) {
+	//i：		朝向id
+	//faceId：	纹理id
+	//cubeId:	方块id
+	//position：	坐标
+	//length：	纹理循环长度
+	//vertexsSize：顶点长度
+	void updateChunkMesh(int i, int faceId, int cubeId, glm::vec3 position, glm::vec3 length, int vertexsSize) {
 		std::vector<terrainVertex::vertexNode> tempVertexs;
 
 		switch (i) {
 		case 0: {
 			//上, Y+
 			tempVertexs = {
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
 		case 1: {
 			//下, Y-
 			tempVertexs = {
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
 		case 2: {
 			//左, X+
 			tempVertexs = {
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
 		case 3: {
 			//右, X-
 			tempVertexs = {
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
 		case 4: {
 			//前, Z+
 			tempVertexs = {
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
 		case 5: {
 			//后, Z-
 			tempVertexs = {
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}, {cubeList::cubeProperty[cubeId].ambient}, {cubeList::cubeProperty[cubeId].diffuse}, {cubeList::cubeProperty[cubeId].specular}, {cubeList::cubeProperty[cubeId].shininess}}
 			};
 			break;
 		}
@@ -951,7 +961,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1 && hSet.max == 1) {
-								updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(1, 1, 1), indexOffset, chunkVertexs, chunkIndexs);
+								updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, 1, 1), vertexsSize);
 								node.erase(pos);
 								continue;
 							}
@@ -961,7 +971,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1) {
-								updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(1, 1, hSet.max), indexOffset, chunkVertexs, chunkIndexs);
+								updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, 1, hSet.max), vertexsSize);
 
 								for (int h = pos.z; h < pos.z + hSet.max; h++) {
 									node.erase(glm::ivec3(pos.x, pos.y, h));
@@ -970,7 +980,7 @@ public:
 								continue;
 							}
 							else if (hSet.max == 1) {
-								updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(wSet.max, 1, 1), indexOffset, chunkVertexs, chunkIndexs);
+								updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(wSet.max, 1, 1), vertexsSize);
 
 								for (int w = pos.x; w < pos.x + wSet.max; w++) {
 									node.erase(glm::ivec3(w, pos.y, pos.z));
@@ -1033,7 +1043,7 @@ public:
 								}
 							}
 
-							updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(w, 1, h), indexOffset, chunkVertexs, chunkIndexs);
+							updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(w, 1, h), vertexsSize);
 						}
 						else if (i == 2 || i == 3) {
 							//宽度迁移到左下角
@@ -1078,7 +1088,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1 && hSet.max == 1) {
-								updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(1, 1, 1), indexOffset, chunkVertexs, chunkIndexs);
+								updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, 1, 1), vertexsSize);
 								node.erase(pos);
 								continue;
 							}
@@ -1088,7 +1098,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1) {
-								updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(1, 1, hSet.max), indexOffset, chunkVertexs, chunkIndexs);
+								updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, 1, hSet.max), vertexsSize);
 
 								for (int h = pos.z; h < pos.z + hSet.max; h++) {
 									node.erase(glm::ivec3(pos.x, pos.y, h));
@@ -1097,7 +1107,7 @@ public:
 								continue;
 							}
 							else if (hSet.max == 1) {
-								updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(1, wSet.max, 1), indexOffset, chunkVertexs, chunkIndexs);
+								updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, wSet.max, 1), vertexsSize);
 
 								for (int w = pos.y; w < pos.y + wSet.max; w++) {
 									node.erase(glm::ivec3(pos.x, w, pos.z));
@@ -1160,7 +1170,7 @@ public:
 								}
 							}
 
-							updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(1, w, h), indexOffset, chunkVertexs, chunkIndexs);
+							updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, w, h), vertexsSize);
 						}
 						else if (i == 4 || i == 5) {
 							//宽度迁移到左下角
@@ -1206,7 +1216,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1 && hSet.max == 1) {
-								updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(1, 1, 1), indexOffset, chunkVertexs, chunkIndexs);
+								updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, 1, 1), vertexsSize);
 								node.erase(pos);
 								continue;
 							}
@@ -1216,7 +1226,7 @@ public:
 
 							//如果没有探索价值则直接退出
 							if (wSet.max == 1) {
-								updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(hSet.max, 1, 1), indexOffset, chunkVertexs, chunkIndexs);
+								updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(hSet.max, 1, 1), vertexsSize);
 
 								for (int h = pos.x; h < pos.x + hSet.max; h++) {
 									node.erase(glm::ivec3(h, pos.y, pos.z));
@@ -1225,7 +1235,7 @@ public:
 								continue;
 							}
 							else if (hSet.max == 1) {
-								updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(1, wSet.max, 1), indexOffset, chunkVertexs, chunkIndexs);
+								updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(1, wSet.max, 1), vertexsSize);
 
 								for (int w = pos.y; w < pos.y + wSet.max; w++) {
 									node.erase(glm::ivec3(pos.x, w, pos.z));
@@ -1288,7 +1298,7 @@ public:
 								}
 							}
 
-							updateChunkMesh(i, vertexsSize, faceId, pos + actualWorldPos, glm::vec3(h, w, 1), indexOffset, chunkVertexs, chunkIndexs);
+							updateChunkMesh(i, faceId, cubeId, pos + actualWorldPos, glm::vec3(h, w, 1), vertexsSize);
 						}
 					}
 

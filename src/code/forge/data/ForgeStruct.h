@@ -17,11 +17,13 @@ namespace cubeStruct {
 
     //方块属性结点
     struct propertyNode {
-        std::vector<faceNode> faceId;       //纹理id
-        short coverage;                     //方块覆盖顺序
+        std::vector<faceNode> faceId;   //纹理id
+        short coverage;                 //方块覆盖顺序
 
-        //todo 待使用
-        //glm::vec3 light;                    //光照属性
+        glm::vec3 ambient;              //材质环境光
+        glm::vec3 diffuse;              //材质漫反射
+        glm::vec3 specular;             //材质镜面反射
+        float shininess;                //材质反光度
     };
 }
 

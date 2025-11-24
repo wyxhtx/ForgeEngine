@@ -84,8 +84,8 @@ namespace coordsInfo {
 }
 
 namespace lightInfo {
-    glm::vec3 baseLight = glm::vec3(1.0f, 1.0f, 1.0f);        //基础光照
-    float specularStrength = 0.8f;                            //镜面强度
+    glm::vec3 globalLight = glm::vec3(1.0f, 1.0f, 1.0f);    //全局光照
+    float globaSpecular = 0.8f;                             //全局界面反射
 }
 
 namespace bufferInfo {
