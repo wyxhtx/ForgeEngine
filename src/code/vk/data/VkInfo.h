@@ -21,8 +21,11 @@ namespace enableConfigInfo {
 
 namespace debugInfo {
 #ifdef NDEBUG
-    const bool LayerSwitch = false;
-    const bool LogSwitch = false;
+    //const bool LayerSwitch = false;
+    //const bool LogSwitch = false;
+
+    const bool LayerSwitch = true;          //校验开关
+    const bool LogSwitch = true;            //调试开关
 #else
     const bool LayerSwitch = true;          //校验开关
     const bool LogSwitch = true;            //调试开关
@@ -89,10 +92,10 @@ namespace lightInfo {
 }
 
 namespace bufferInfo {
-    uint32_t bufferScenceNodeSize = 4;          //terrain,model,skybox,mine
-    uint32_t bufferTextUINodeSize = 1;          //uiText
+    const uint32_t bufferScenceNodeSize = 4;      //描述符池上限，terrain，model，skybox，mine
+    const uint32_t bufferTextUINodeSize = 1;      //描述符池上限，uiText
 
-    const int commandThreadSize = 2;            //命令线程数
+    const int commandThreadSize = 2;        //命令线程数
 }
 
 namespace fpsInfo {
@@ -106,8 +109,8 @@ namespace fileInfo {
         static std::string terrainVert = "src/shader/terrain/terrainVert.spv";
         static std::string terrainFrag = "src/shader/terrain/terrainFrag.spv";
 
-        static std::string modelVert = "src/shader/model/modelVert.spv";
-        static std::string modelFrag = "src/shader/model/modelFrag.spv";
+        static std::string m_TempleVert = "src/shader/model/temple/templeVert.spv";
+        static std::string m_TempleFrag = "src/shader/model/temple/templeFrag.spv";
 
         static std::string skyboxVert = "src/shader/skybox/skyboxVert.spv";
         static std::string skyboxFrag = "src/shader/skybox/skyboxFrag.spv";
@@ -129,8 +132,9 @@ namespace fileInfo {
     }
 
     namespace image {
-        const char* cube = "src/image/cube_16_64.ktx2";				//需要同步改terrain.frag里的纹理边长
-        const char* temple = "src/image/temple.ktx2";
+        const char* cube            = "src/image/terrain/cube_16_64.ktx2";
+        const char* cubeSpecular    = "src/image/terrain/cube_16_64_specular.ktx2";
+        const char* temple          = "src/image/model/temple/temple.ktx2";
     }
 
     namespace storage {

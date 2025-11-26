@@ -14,9 +14,10 @@ int main() {
     //加载dll
     SetDllDirectoryA(fileInfo::dll);
 
-    //todo
-    //编译临时着色器
-    system("cd src\\shader && temp.bat");
+    //system("cd src\\image_build && png_to_ktx2.bat");   //编译纹理
+    //Log::print("");
+    system("cd src\\shader_build && terrain_gts.bat");  //编译地形着色器
+    Log::print("");
 
 
 

@@ -67,7 +67,7 @@ private:
 	bufferList::descriptor descriptors;
 	bufferList::sampler samplers;
 
-	bufferStruct::terrainBufferNode terrain{ fileInfo::image::cube,textureInfo::arrayLayer };
+	bufferStruct::terrainBufferNode terrain{ fileInfo::image::cube,fileInfo::image::cubeSpecular,textureInfo::arrayLayer };
 	bufferStruct::modelBufferNode	temple{ fileInfo::image::temple };
 	bufferStruct::skyboxBufferNode	skybox;
 	bufferStruct::baseBufferNode	mine;
@@ -94,23 +94,23 @@ private:
 		//terrain
 		for (int thread = 0; thread < bufferInfo::commandThreadSize; thread++) {
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[thread][layer].buffer, terrain.vertex[thread][layer].bufferMemory);
-				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[thread][layer].buffer, terrain.index[thread][layer].bufferMemory);
+				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[thread][layer]);
+				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[thread][layer]);
 			}
 		}
 
-		//model
-		loadModel();
-		createVertexBuffer(modelVertex::vertexs.model, temple.vertex.buffer, temple.vertex.bufferMemory);
-		createIndexBuffer(modelVertex::indexs.model, temple.index.buffer, temple.index.bufferMemory);
+		//model-temple
+		loadModel(fileInfo::model::temple);
+		createVertexBuffer(modelVertex::vertexs.model, temple.vertex);
+		createIndexBuffer(modelVertex::indexs.model, temple.index);
 
 		//skybox
-		createVertexBuffer(skyboxVertex::vertexs, skybox.vertex.buffer, skybox.vertex.bufferMemory);
-		createIndexBuffer(skyboxVertex::indexs, skybox.index.buffer, skybox.index.bufferMemory);
+		createVertexBuffer(skyboxVertex::vertexs, skybox.vertex);
+		createIndexBuffer(skyboxVertex::indexs, skybox.index);
 
 		//mine
-		createVertexBuffer(mineVertex::vertexs, mine.vertex.buffer, mine.vertex.bufferMemory);
-		createIndexBuffer(mineVertex::indexs, mine.index.buffer, mine.index.bufferMemory);
+		createVertexBuffer(mineVertex::vertexs, mine.vertex);
+		createIndexBuffer(mineVertex::indexs, mine.index);
 
 		//uiText
 		createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex.buffer, uiText.vertex.bufferMemory);
@@ -121,7 +121,7 @@ private:
 		createBuffer(sizeof(terrain.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, terrain.uniform.buffer, terrain.uniform.bufferMemory);
 		createBuffer(sizeof(terrain.lightUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, terrain.lightUniform.buffer, terrain.lightUniform.bufferMemory);
 
-		//model
+		//model-temple
 		createBuffer(sizeof(temple.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, temple.uniform.buffer, temple.uniform.bufferMemory);
 		createBuffer(sizeof(temple.lightUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, temple.lightUniform.buffer, temple.lightUniform.bufferMemory);
 
@@ -135,170 +135,104 @@ private:
 
 	void createTexture() {
 		//terrain
-		createTextureKtxArrayNode(terrain.texture.image, terrain.texture.imageMemory, terrain.texture.view, terrain.imageFile, terrain.arrayLayer, terrain.mipLevel);
+		createTextureKtxArrayNode(terrain.textureFile, terrain.texture, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8B8A8_UNORM, 4);
+		createTextureKtxArrayNode(terrain.specularFile, terrain.specular, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8_UNORM, 2);
 
-		//model
-		createTextureKtxNode(temple.texture.image, temple.texture.imageMemory, temple.texture.view, temple.imageFile, temple.mipLevel);
+		//model-temple
+		createTextureKtxNode(temple.textureFile, temple.texture, temple.mipLevel);
 
 		//uiText
-		createTextNode(uiText.texture.image, uiText.texture.imageMemory, uiText.texture.view);
+		createTextNode(uiText.texture);
 	}
 
 	void createDescriptorSet() {
-		//添加新元素时注意bufferScenceNodeSize的限制
-		VkDescriptorSetAllocateInfo allocInfo = {};
-		VkDescriptorBufferInfo bufferInfo[2] = {};
-		VkDescriptorImageInfo imageInfo = {};
-		std::array<VkWriteDescriptorSet, 3> writeDescriptorSetScence = {};
-		{
-			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocInfo.pNext = nullptr;
-			allocInfo.descriptorSetCount = 1;
+		bufferStruct::descriptorBufferNode bufferInfo[2]{};
+		bufferStruct::descriptorImageNode imageInfo[2]{};
 
-			bufferInfo[0].offset = 0;
-			bufferInfo[1].offset = 0;
+		bufferStruct::descriptorAllocateNode allocInfo{};
+		bufferStruct::writeDescriptorNode writeDescriptorScence[4]{
+			{0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},			//顶点统一缓冲区描述符
+			{1,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},			//片段统一缓冲区描述符
+			{2,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},	//纹理贴图采样器描述符
+			{3,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER}	//高光贴图采样器描述符
+		};
 
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-			writeDescriptorSetScence[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;		//顶点统一缓冲区描述符
-			writeDescriptorSetScence[0].dstBinding = 0;
-			writeDescriptorSetScence[0].dstArrayElement = 0;
-			writeDescriptorSetScence[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			writeDescriptorSetScence[0].descriptorCount = 1;
-			writeDescriptorSetScence[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;		//片段统一缓冲区描述符
-			writeDescriptorSetScence[1].dstBinding = 1;
-			writeDescriptorSetScence[1].dstArrayElement = 0;
-			writeDescriptorSetScence[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			writeDescriptorSetScence[1].descriptorCount = 1;
-			writeDescriptorSetScence[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;		//片段纹理采样器描述符
-			writeDescriptorSetScence[2].dstBinding = 2;
-			writeDescriptorSetScence[2].dstArrayElement = 0;
-			writeDescriptorSetScence[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			writeDescriptorSetScence[2].descriptorCount = 1;
-		}
 
-		//报错时启用
-		/*VkResult  result = vkAllocateDescriptorSets(Device.device, &allocInfo, &model.descriptorSet);
-		if (result != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, std::to_string(result));
-			throw;
-		}*/
-
-		//配置scence描述符
-		allocInfo.descriptorPool = descriptors.scence.pool;
-		allocInfo.pSetLayouts = &descriptors.scence.layout;
+		/*配置scence描述符*/
+		allocInfo.setNode(descriptors.scence.pool, &descriptors.scence.layout);
 
 		//terrain
-		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &terrain.descriptorSet) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "分配描述符集失败");
+		if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &terrain.descriptorSet) == VK_SUCCESS) {
+			writeDescriptorScence[0].setBufferNode(terrain.descriptorSet, bufferInfo[0].getNode(terrain.uniform.buffer, sizeof(terrain.ubo)));
+			writeDescriptorScence[1].setBufferNode(terrain.descriptorSet, bufferInfo[1].getNode(terrain.lightUniform.buffer, sizeof(terrain.lightUbo)));
+			writeDescriptorScence[2].setImageNode(terrain.descriptorSet, imageInfo[0].getNode(samplers.terrain, terrain.texture.view));
+			writeDescriptorScence[3].setImageNode(terrain.descriptorSet, imageInfo[1].getNode(samplers.terrain, terrain.specular.view));
+
+			std::array<VkWriteDescriptorSet, 4> tempWrite{ writeDescriptorScence[0].node,writeDescriptorScence[1].node,writeDescriptorScence[2].node,writeDescriptorScence[3].node };
+			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+		}
+		else {
+			Log::printError(__FILE__, __LINE__, "terrain分配描述符集失败");
 			throw;
 		}
-		{
-			bufferInfo[0].range = sizeof(terrain.ubo);
-			bufferInfo[0].buffer = terrain.uniform.buffer;
-			bufferInfo[1].range = sizeof(terrain.lightUbo);
-			bufferInfo[1].buffer = terrain.lightUniform.buffer;
-			imageInfo.sampler = samplers.terrain;
-			imageInfo.imageView = terrain.texture.view;
 
-			writeDescriptorSetScence[0].dstSet = terrain.descriptorSet;
-			writeDescriptorSetScence[0].pBufferInfo = &bufferInfo[0];
-			writeDescriptorSetScence[1].dstSet = terrain.descriptorSet;
-			writeDescriptorSetScence[1].pBufferInfo = &bufferInfo[1];
-			writeDescriptorSetScence[2].dstSet = terrain.descriptorSet;
-			writeDescriptorSetScence[2].pImageInfo = &imageInfo;
+		//model-temple
+		if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &temple.descriptorSet) == VK_SUCCESS) {
+			writeDescriptorScence[0].setBufferNode(temple.descriptorSet, bufferInfo[0].getNode(temple.uniform.buffer, sizeof(temple.ubo)));
+			writeDescriptorScence[1].setBufferNode(temple.descriptorSet, bufferInfo[1].getNode(temple.lightUniform.buffer, sizeof(temple.lightUbo)));
+			writeDescriptorScence[2].setImageNode(temple.descriptorSet, imageInfo[0].getNode(samplers.model, temple.texture.view));
+
+			std::array<VkWriteDescriptorSet, 3> tempWrite{ writeDescriptorScence[0].node,writeDescriptorScence[1].node,writeDescriptorScence[2].node };
+			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 		}
-
-		vkUpdateDescriptorSets(Device.device, uint32_t(writeDescriptorSetScence.size()), writeDescriptorSetScence.data(), 0, nullptr);
-
-		//model
-		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &temple.descriptorSet) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "分配描述符集失败");
+		else {
+			Log::printError(__FILE__, __LINE__, "temple分配描述符集失败");
 			throw;
 		}
-		{
-
-			bufferInfo[0].range = sizeof(temple.ubo);
-			bufferInfo[0].buffer = temple.uniform.buffer;
-			bufferInfo[1].range = sizeof(temple.lightUbo);
-			bufferInfo[1].buffer = temple.lightUniform.buffer;
-			imageInfo.sampler = samplers.model;
-			imageInfo.imageView = temple.texture.view;
-			
-			writeDescriptorSetScence[0].dstSet = temple.descriptorSet;
-			writeDescriptorSetScence[0].pBufferInfo = &bufferInfo[0];
-			writeDescriptorSetScence[1].dstSet = temple.descriptorSet;
-			writeDescriptorSetScence[1].pBufferInfo = &bufferInfo[1];
-			writeDescriptorSetScence[2].dstSet = temple.descriptorSet;
-			writeDescriptorSetScence[2].pImageInfo = &imageInfo;
-		}
-
-		vkUpdateDescriptorSets(Device.device, uint32_t(writeDescriptorSetScence.size()), writeDescriptorSetScence.data(), 0, nullptr);
 
 		//skybox
-		std::array<VkWriteDescriptorSet, 2> writeDescriptorSetSkybox = {};
+		if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &skybox.descriptorSet) == VK_SUCCESS) {
+			writeDescriptorScence[0].setBufferNode(skybox.descriptorSet, bufferInfo[0].getNode(skybox.uniform.buffer, sizeof(skybox.ubo)));
+			writeDescriptorScence[1].setBufferNode(skybox.descriptorSet, bufferInfo[1].getNode(skybox.lightUniform.buffer, sizeof(skybox.lightUbo)));
 
-		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &skybox.descriptorSet) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "分配描述符集失败");
+			std::array<VkWriteDescriptorSet, 2> tempWrite{ writeDescriptorScence[0].node,writeDescriptorScence[1].node };
+			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+		}
+		else {
+			Log::printError(__FILE__, __LINE__, "skybox分配描述符集失败");
 			throw;
 		}
-		{
-			bufferInfo[0].range = sizeof(skybox.ubo);
-			bufferInfo[0].buffer = skybox.uniform.buffer;
-			bufferInfo[1].range = sizeof(skybox.lightUbo);
-			bufferInfo[1].buffer = skybox.lightUniform.buffer;
-
-			writeDescriptorSetScence[0].dstSet = skybox.descriptorSet;
-			writeDescriptorSetScence[0].pBufferInfo = &bufferInfo[0];
-			writeDescriptorSetScence[1].dstSet = skybox.descriptorSet;
-			writeDescriptorSetScence[1].pBufferInfo = &bufferInfo[1];
-
-			writeDescriptorSetSkybox[0] = writeDescriptorSetScence[0];
-			writeDescriptorSetSkybox[1] = writeDescriptorSetScence[1];
-		}
-
-		vkUpdateDescriptorSets(Device.device, uint32_t(writeDescriptorSetSkybox.size()), writeDescriptorSetSkybox.data(), 0, nullptr);
 
 		//mine
-		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &mine.descriptorSet) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "分配描述符集失败");
+		if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &mine.descriptorSet) == VK_SUCCESS) {
+			writeDescriptorScence[0].setBufferNode(mine.descriptorSet, bufferInfo[0].getNode(mine.uniform.buffer, sizeof(mine.ubo)));
+
+			std::array<VkWriteDescriptorSet, 1> tempWrite{ writeDescriptorScence[0].node };
+			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+		}
+		else {
+			Log::printError(__FILE__, __LINE__, "mine分配描述符集失败");
 			throw;
 		}
-		{
-			bufferInfo[0].range = sizeof(mine.ubo);
-			bufferInfo[0].buffer = mine.uniform.buffer;
 
-			writeDescriptorSetScence[0].dstSet = mine.descriptorSet;
-			writeDescriptorSetScence[0].pBufferInfo = &bufferInfo[0];
-		}
 
-		vkUpdateDescriptorSets(Device.device, 1, &writeDescriptorSetScence[0], 0, nullptr);
 
-		//配置uitext描述符
-		allocInfo.descriptorPool = descriptors.uiText.pool;
-		allocInfo.pSetLayouts = &descriptors.uiText.layout;
+		/*配置uitext描述符*/
+		allocInfo.setNode(descriptors.uiText.pool, &descriptors.uiText.layout);
 
 		//uiText
-		if (vkAllocateDescriptorSets(Device.device, &allocInfo, &uiText.descriptorSet) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "分配描述符集失败");
+		if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &uiText.descriptorSet) == VK_SUCCESS) {
+			bufferStruct::writeDescriptorNode writeDescriptorUIText{ 0,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
+			writeDescriptorUIText.setImageNode(uiText.descriptorSet, imageInfo[0].getNode(samplers.uiText, uiText.texture.view));
+
+			std::array<VkWriteDescriptorSet, 1> tempWrite{ writeDescriptorUIText.node };
+			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+		}
+		else {
+			Log::printError(__FILE__, __LINE__, "uiText分配描述符集失败");
 			throw;
 		}
-
-		std::array<VkWriteDescriptorSet, 1> writeDescriptorSetUIText = {};
-		{
-			writeDescriptorSetUIText[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writeDescriptorSetUIText[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			writeDescriptorSetUIText[0].dstBinding = 0;
-			writeDescriptorSetUIText[0].descriptorCount = 1;
-
-			imageInfo.sampler = samplers.uiText;
-			imageInfo.imageView = uiText.texture.view;
-
-			writeDescriptorSetUIText[0].dstSet = uiText.descriptorSet;
-			writeDescriptorSetUIText[0].pImageInfo = &imageInfo;
-		}
-
-		vkUpdateDescriptorSets(Device.device, 1, writeDescriptorSetUIText.data(), 0, nullptr);
 	}
 
 	void createDepthResources() {
@@ -334,7 +268,7 @@ private:
 
 private:
 	//将vertexNode类中的顶点映射到buffer类里对应的VkBuffer
-	void createVertexBuffer(auto& node, VkBuffer& vertexBuffer, VmaAllocation& vertexBufferMemory) {
+	void createVertexBuffer(auto& node, bufferStruct::bufferNode& vertexBuffer) {
 		//获取顶点数组大小
 		VkDeviceSize bufferSize = sizeof(node[0]) * node.size();
 
@@ -347,16 +281,16 @@ private:
 		createMapMemory(tempMemory, node.data(), (size_t)bufferSize);
 
 		//创建顶点缓冲，方便GPU访问
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer.buffer, vertexBuffer.bufferMemory);
 
 		//临时缓冲拷贝到顶点缓冲
-		copyBuffer(tempBuffer, vertexBuffer, bufferSize);
+		copyBuffer(tempBuffer, vertexBuffer.buffer, bufferSize);
 
 		vmaDestroyBuffer(Device.allocator, tempBuffer, tempMemory);
 	}
 
 	//将vertexNode类中的索引映射到buffer类里对应的VkBuffer
-	void createIndexBuffer(std::vector<uint32_t>& node, VkBuffer& indexBuffer, VmaAllocation& indexBufferMemory) {
+	void createIndexBuffer(std::vector<uint32_t>& node, bufferStruct::bufferNode& indexBuffer) {
 		//获取索引数组大小
 		VkDeviceSize bufferSize = sizeof(node[0]) * node.size();
 
@@ -369,21 +303,21 @@ private:
 		createMapMemory(tempMemory, node.data(), (size_t)bufferSize);
 
 		//创建索引缓冲，方便GPU访问
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer.buffer, indexBuffer.bufferMemory);
 
 		//临时缓冲拷贝到索引缓冲
-		copyBuffer(tempBuffer, indexBuffer, bufferSize);
+		copyBuffer(tempBuffer, indexBuffer.buffer, bufferSize);
 
 		vmaDestroyBuffer(Device.allocator, tempBuffer, tempMemory);
 	}
 
-	void loadModel() {
+	void loadModel(const std::string& filename) {
 		tinyobj::attrib_t attrib;
 		std::vector<tinyobj::shape_t> shapes;
 		std::vector<tinyobj::material_t> materials;
 		std::string warn, err;
 
-		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, fileInfo::model::temple.c_str())) {
+		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename.c_str())) {
 			throw std::runtime_error(warn + err);
 		}
 
@@ -416,11 +350,11 @@ private:
 	}
 
 	//创建纹理KTX数组结点，使用无损压缩
-	void createTextureKtxArrayNode(VkImage& textureImage, VmaAllocation& textureImageMemory, VkImageView& textureView, char const* image, uint32_t arrayLayer, uint32_t& mipLevel) {
+	void createTextureKtxArrayNode(char const* imageFile, bufferStruct::imageNode& imageBuffer, uint32_t arrayLayer, uint32_t& mipLevel, VkFormat format, uint32_t pixel) {
 		ktxResult result;
 		ktxTexture2* ktxTexture;
 
-		result = ktxTexture2_CreateFromNamedFile(image, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
+		result = ktxTexture2_CreateFromNamedFile(imageFile, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
 
 		if (result != KTX_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
@@ -432,31 +366,30 @@ private:
 		mipLevel = ktxTexture->numLevels;
 		ktx_uint8_t* textureData = ktxTexture->pData;
 		ktx_size_t textureSize = ktxTexture->dataSize;
-		VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
 
 		VkBuffer tempBuffer;
 		VmaAllocation tempMemory;
 
 		createBuffer(textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer, tempMemory);
 		createMapMemory(tempMemory, textureData, static_cast<size_t>(textureSize));
-		createImage(textureInfo::tileWidth, textureInfo::tileHeight, arrayLayer, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+		createImage(textureInfo::tileWidth, textureInfo::tileHeight, arrayLayer, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageBuffer.image, imageBuffer.imageMemory);
 
-		transitionImageLayout(textureImage, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		copyBufferToImageArray(textureInfo::tileWidth, textureInfo::tileHeight, textureInfo::atlasWidth, textureInfo::atlasHeight, texWidth, texHeight, arrayLayer, tempBuffer, textureImage);
-		transitionImageLayout(textureImage, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		transitionImageLayout(imageBuffer.image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		copyBufferToImageArray(pixel, textureInfo::tileWidth, textureInfo::tileHeight, textureInfo::atlasWidth, textureInfo::atlasHeight, texWidth, texHeight, arrayLayer, tempBuffer, imageBuffer.image);
+		transitionImageLayout(imageBuffer.image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-		createImageView(textureImage, textureView, arrayLayer, mipLevel, VK_IMAGE_VIEW_TYPE_2D_ARRAY, format, VK_IMAGE_ASPECT_COLOR_BIT);
+		createImageView(imageBuffer.image, imageBuffer.view, arrayLayer, mipLevel, VK_IMAGE_VIEW_TYPE_2D_ARRAY, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
 		vmaDestroyBuffer(Device.allocator, tempBuffer, tempMemory);
 		ktxTexture2_Destroy(ktxTexture);
 	}
 
 	//创建纹理KTX结点，使用微损压缩 + mip
-	void createTextureKtxNode(VkImage& textureImage, VmaAllocation& textureImageMemory, VkImageView& textureView, char const* image, uint32_t& mipLevel) {
+	void createTextureKtxNode(char const* imageFile, bufferStruct::imageNode& imageBuffer, uint32_t& mipLevel) {
 		ktxResult result;
 		ktxTexture2* ktxTexture;
 
-		result = ktxTexture2_CreateFromNamedFile(image, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
+		result = ktxTexture2_CreateFromNamedFile(imageFile, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
 		result = ktxTexture2_TranscodeBasis(ktxTexture, KTX_TTF_BC7_RGBA, 0);
 
 		if (result != KTX_SUCCESS) {
@@ -479,20 +412,20 @@ private:
 		//内存映射
 		createMapMemory(tempMemory, textureData, static_cast<size_t>(textureSize));
 		//创建纹理缓冲，方便GPU访问
-		createImage(texWidth, texHeight, 1, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+		createImage(texWidth, texHeight, 1, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageBuffer.image, imageBuffer.imageMemory);
 
-		transitionImageLayout(textureImage, 1, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);					//图像格式转换为传送最佳
-		copyBufferToImageKtx(texWidth, texHeight, mipLevel, ktxTexture, tempBuffers, textureImage);												//临时缓冲拷贝到图像缓冲
-		transitionImageLayout(textureImage, 1, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);	//图像格式转换为采样最佳
+		transitionImageLayout(imageBuffer.image, 1, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);					//图像格式转换为传送最佳
+		copyBufferToImageKtx(texWidth, texHeight, mipLevel, ktxTexture, tempBuffers, imageBuffer.image);												//临时缓冲拷贝到图像缓冲
+		transitionImageLayout(imageBuffer.image, 1, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);	//图像格式转换为采样最佳
 
-		createImageView(textureImage, textureView, 1, mipLevel, VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT);
+		createImageView(imageBuffer.image, imageBuffer.view, 1, mipLevel, VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
 		vmaDestroyBuffer(Device.allocator, tempBuffers, tempMemory);
 		ktxTexture2_Destroy(ktxTexture);
 	}
 
 	//创建纹理文本结点
-	void createTextNode(VkImage& textureImage, VmaAllocation& textureImageMemory, VkImageView& textureView) {
+	void createTextNode(bufferStruct::imageNode& imageBuffer) {
 		const uint32_t fontWidth = STB_FONT_consolas_24_latin1_BITMAP_WIDTH;
 		const uint32_t fontHeight = STB_FONT_consolas_24_latin1_BITMAP_HEIGHT;
 		VkDeviceSize imageSize = static_cast<VkDeviceSize>(fontWidth) * static_cast<VkDeviceSize>(fontHeight);
@@ -509,18 +442,20 @@ private:
 		createMapMemory(tempMemory, &font24pixels[0][0], static_cast<size_t>(imageSize));
 
 		//创建纹理缓冲，方便GPU访问
-		createImage(fontWidth, fontHeight, 1, 1, VK_FORMAT_R8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, uiText.texture.image, uiText.texture.imageMemory);
+		createImage(fontWidth, fontHeight, 1, 1, VK_FORMAT_R8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageBuffer.image, imageBuffer.imageMemory);
 
 		//图像格式转换为传送最佳
-		transitionImageLayout(textureImage, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		transitionImageLayout(imageBuffer.image, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		//临时缓冲拷贝到图像缓冲
-		copyBufferToImage(static_cast<uint32_t>(fontWidth), static_cast<uint32_t>(fontHeight), tempBuffers, textureImage);
+		copyBufferToImage(static_cast<uint32_t>(fontWidth), static_cast<uint32_t>(fontHeight), tempBuffers, imageBuffer.image);
 		//图像格式转换为采样最佳
-		transitionImageLayout(textureImage, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		transitionImageLayout(imageBuffer.image, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		vmaDestroyBuffer(Device.allocator, tempBuffers, tempMemory);
 
-		createImageView(textureImage, textureView, 1, 1, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+		createImageView(imageBuffer.image, imageBuffer.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
+
+
 
 	void createImageView(VkImage image, VkImageView& view, uint32_t arrayLayer, uint32_t mipLevel, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspectFlags) {
 		VkImageViewCreateInfo viewInfo = {};
@@ -539,8 +474,6 @@ private:
 			throw;
 		}
 	}
-
-
 
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VmaAllocation& allocation) {
 		VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
@@ -698,11 +631,11 @@ private:
 		endSingleTimeCommands(commandBuffer);
 	}
 
-	void copyBufferToImageArray(uint32_t tileWidth, uint32_t tileHeight, uint32_t atlasWidth, uint32_t atlasHeight, uint32_t texWidth, uint32_t texHeight, uint32_t arrayLayer, VkBuffer buffer, VkImage image) {
+	void copyBufferToImageArray(uint32_t pixel, uint32_t tileWidth, uint32_t tileHeight, uint32_t atlasWidth, uint32_t atlasHeight, uint32_t texWidth, uint32_t texHeight, uint32_t arrayLayer, VkBuffer buffer, VkImage image) {
 		VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 		std::vector<VkBufferImageCopy> regions{ arrayLayer };			//vulkan存储方式是从左往右从上往下一个个存入像素点数据，所以按下述方法遍历
-		uint32_t wOffset = tileWidth * 4;
-		uint32_t hOffset = atlasWidth * tileWidth * tileHeight * 4;
+		uint32_t wOffset = tileWidth * pixel;
+		uint32_t hOffset = atlasWidth * tileWidth * tileHeight * pixel;
 
 		for (uint32_t w = 0; w < atlasWidth; w++) {
 			for (uint32_t h = 0; h < atlasHeight; h++) {
@@ -940,11 +873,11 @@ public:
 			}
 
 			//model
-			/*vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
+			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
 			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &temple.descriptorSet, 0, nullptr);
 			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &temple.vertex.buffer, offsets);
 			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], temple.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs.model.size(), 1, 0, 0, 0);*/
+			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs.model.size(), 1, 0, 0, 0);
 
 			//skybox
 			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.skybox.pipeline);
@@ -985,8 +918,8 @@ public:
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
 				vmaDestroyBuffer(Device.allocator, terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
 
-				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
-				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
+				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[threadID][layer]);
+				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[threadID][layer]);
 			}
 
 			layer = terrainEnum::terrainLayer::Layer_1;
@@ -1002,8 +935,8 @@ public:
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
 				vmaDestroyBuffer(Device.allocator, terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
 
-				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
-				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
+				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[threadID][layer]);
+				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[threadID][layer]);
 			}
 		}
 	}

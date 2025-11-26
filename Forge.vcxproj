@@ -169,32 +169,36 @@
     <None Include=".gitignore" />
     <None Include="README.md" />
     <None Include="src\code\vk\tool\temp\shader.frag" />
-    <None Include="src\image\cube_16_64.ktx2" />
-    <None Include="src\image\temple.ktx2" />
+    <None Include="src\image\model\temple\temple.ktx2" />
+    <None Include="src\image\terrain\cube_16_64.ktx2" />
+    <None Include="src\image\terrain\cube_16_64_specular.ktx2" />
+    <None Include="src\image_build\ktx.dll" />
+    <None Include="src\image_build\toktx.exe" />
+    <None Include="src\image_build\png_to_ktx2.bat" />
     <None Include="src\library\dll\alut.dll" />
     <None Include="src\library\dll\ktx.dll" />
     <None Include="src\library\stb\stb_font_consolas_24_latin1.inl" />
-    <None Include="src\shader\compile.bat" />
-    <None Include="src\shader\glslangValidator.exe" />
-    <None Include="src\shader\mine\mine.frag" />
-    <None Include="src\shader\mine\mine.vert" />
+    <None Include="src\shader_build\glsl_to_spirv.bat" />
+    <None Include="src\shader_build\glslangValidator.exe" />
+    <None Include="src\shader_build\mine\mine.frag" />
+    <None Include="src\shader_build\mine\mine.vert" />
+    <None Include="src\shader_build\model\temple\temple.frag" />
+    <None Include="src\shader_build\model\temple\temple.vert" />
+    <None Include="src\shader_build\skybox\skybox.frag" />
+    <None Include="src\shader_build\skybox\skybox.vert" />
+    <None Include="src\shader_build\terrain\terrain.frag" />
+    <None Include="src\shader_build\terrain\terrain.vert" />
+    <None Include="src\shader_build\uiText\uiText.frag" />
+    <None Include="src\shader_build\uiText\uiText.vert" />
     <None Include="src\shader\mine\mineFrag.spv" />
     <None Include="src\shader\mine\mineVert.spv" />
-    <None Include="src\shader\model\model.frag" />
-    <None Include="src\shader\model\model.vert" />
-    <None Include="src\shader\model\modelFrag.spv" />
-    <None Include="src\shader\model\modelVert.spv" />
-    <None Include="src\shader\skybox\skybox.frag" />
-    <None Include="src\shader\skybox\skybox.vert" />
+    <None Include="src\shader\model\temple\templeFrag.spv" />
+    <None Include="src\shader\model\temple\templeVert.spv" />
     <None Include="src\shader\skybox\skyboxFrag.spv" />
     <None Include="src\shader\skybox\skyboxVert.spv" />
-    <None Include="src\shader\temp.bat" />
-    <None Include="src\shader\terrain\terrain.frag" />
-    <None Include="src\shader\terrain\terrain.vert" />
+    <None Include="src\shader_build\terrain_gts.bat" />
     <None Include="src\shader\terrain\terrainFrag.spv" />
     <None Include="src\shader\terrain\terrainVert.spv" />
-    <None Include="src\shader\uiText\uiText.frag" />
-    <None Include="src\shader\uiText\uiText.vert" />
     <None Include="src\shader\uiText\uiTextFrag.spv" />
     <None Include="src\shader\uiText\uiTextVert.spv" />
   </ItemGroup>
@@ -272,8 +276,9 @@
     <ClCompile Include="src\code\vk\Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="src\image\source\cube_16_64.png" />
-    <Image Include="src\image\source\temple.png" />
+    <Image Include="src\image_build\terrain\cube_16_64.png" />
+    <Image Include="src\image_build\model\temple\temple.png" />
+    <Image Include="src\image_build\terrain\cube_16_64_specular.png" />
   </ItemGroup>
   <ItemGroup>
     <Media Include="src\music\background\Greedy.wav" />

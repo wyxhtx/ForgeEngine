@@ -36,7 +36,8 @@ namespace terrainStructureList {
 	const std::array<terrainStructureStruct::treeStructureNode, terrainStructureEnum::treeId::count> terrainStructureProperty = []() {
 		std::array<terrainStructureStruct::treeStructureNode, terrainStructureEnum::treeId::count> array{};
 
-		array[terrainStructureEnum::treeId::oak] = terrainStructureStruct::treeStructureNode{ 5,10,cubeEnum::cubeId::oakLeaf,cubeEnum::cubeId::oakTrunk };	//ÏğÊ÷
+		//array[terrainStructureEnum::treeId::oak] = terrainStructureStruct::treeStructureNode{ 5,10,cubeEnum::cubeId::oakLeaf,cubeEnum::cubeId::oakTrunk };	//ÏğÊ÷
+		array[terrainStructureEnum::treeId::oak] = terrainStructureStruct::treeStructureNode{ 5,10,cubeEnum::cubeId::stoneSquared,cubeEnum::cubeId::oakTrunk };	//ÏğÊ÷
 
 		return array;
 		}();

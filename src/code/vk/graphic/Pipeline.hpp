@@ -193,8 +193,8 @@ private:
 
 		//model
 		{
-			shaderStages[0] = loadShader(fileInfo::shader::modelVert, VK_SHADER_STAGE_VERTEX_BIT);
-			shaderStages[1] = loadShader(fileInfo::shader::modelFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
+			shaderStages[0] = loadShader(fileInfo::shader::m_TempleVert, VK_SHADER_STAGE_VERTEX_BIT);
+			shaderStages[1] = loadShader(fileInfo::shader::m_TempleFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
 
 			vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(modelVertex::vertexNode::getBindingDescription().size());
 			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(modelVertex::vertexNode::getAttributeDescriptions().size());

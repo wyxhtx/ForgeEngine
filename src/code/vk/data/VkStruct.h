@@ -59,6 +59,7 @@ namespace bufferStruct {
 
 
 
+    /*缓冲结点*/
     struct imageNode {
         VkImage image;
         VmaAllocation imageMemory;
@@ -91,6 +92,7 @@ namespace bufferStruct {
 
 
 
+    /*管线缓冲区*/
     struct terrainBufferNode {
         //网格缓冲
         bufferNode vertex[bufferInfo::commandThreadSize][terrainEnum::terrainLayer::count];
@@ -102,9 +104,15 @@ namespace bufferStruct {
         baseUBO ubo;
         lightUBO lightUbo;
 
-        //纹理缓冲
-        bufferStruct::imageNode texture;
-        const char* imageFile;
+        //纹理贴图缓冲
+        imageNode texture;
+        const char* textureFile;
+
+        //高光贴图缓冲
+        imageNode specular;
+        const char* specularFile;
+
+        //纹理数组参数
         uint32_t arrayLayer;
         uint32_t mipLevel = 1;
 
@@ -113,8 +121,9 @@ namespace bufferStruct {
 
 
 
-        terrainBufferNode(const char* file, uint32_t layer) {
-            imageFile = file;
+        terrainBufferNode(const char* tempTextureFile, const char* tempSpecularFile, uint32_t layer) {
+            textureFile = tempTextureFile;
+            specularFile = tempSpecularFile;
             arrayLayer = layer;
         }
 
@@ -134,6 +143,9 @@ namespace bufferStruct {
 
             vmaDestroyImage(allocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
+
+            vmaDestroyImage(allocator, specular.image, specular.imageMemory);
+            vkDestroyImageView(device, specular.view, nullptr);
         }
     };
 
@@ -146,14 +158,14 @@ namespace bufferStruct {
         baseUBO ubo;
         lightUBO lightUbo;
 
-        bufferStruct::imageNode texture;
-        const char* imageFile;
+        imageNode texture;
+        const char* textureFile;
         uint32_t mipLevel;                  //在创建texture时赋值
 
         VkDescriptorSet descriptorSet;
 
-        modelBufferNode(const char* file) {
-            imageFile = file;
+        modelBufferNode(const char* tempTextureFile) {
+            textureFile = tempTextureFile;
         }
 
         modelBufferNode() = delete;
@@ -210,7 +222,7 @@ namespace bufferStruct {
     struct uiTextBufferNode {
         bufferNode vertex;
 
-        bufferStruct::imageNode texture;
+        imageNode texture;
         stb_fontchar* stbFontData = new stb_fontchar[STB_FONT_consolas_24_latin1_NUM_CHARS];    //字符数据
         glm::vec4* mapped = nullptr;
         uint32_t numLetters;
@@ -299,6 +311,112 @@ namespace bufferStruct {
 
             vmaDestroyImage(allocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
+        }
+    };
+
+
+
+    /*创建流程优化结点*/
+    //createDescriptorPool
+    struct descriptorPoolNode {
+        VkDescriptorPoolSize node{};
+
+        descriptorPoolNode(VkDescriptorType type, uint32_t descriptorCount) {
+            node.type            = type;
+            node.descriptorCount = descriptorCount;
+        }
+
+        descriptorPoolNode() = delete;
+    };
+
+    //createDescriptorSetLayout
+    struct descriptorLayoutNode {
+        VkDescriptorSetLayoutBinding node{};
+
+        descriptorLayoutNode(uint32_t binding, VkDescriptorType descriptorType, VkShaderStageFlags stageFlags) {
+            node.descriptorCount    = 1;
+            node.pImmutableSamplers = nullptr;
+
+            node.binding            = binding;
+            node.descriptorType     = descriptorType;
+            node.stageFlags         = stageFlags;
+        }
+
+        descriptorLayoutNode() = delete;
+    };
+
+    //createDescriptorSet
+    struct descriptorBufferNode {
+        VkDescriptorBufferInfo node{};
+
+        descriptorBufferNode() {
+            node.offset = 0;
+        }
+
+        VkDescriptorBufferInfo* getNode(VkBuffer buffer, VkDeviceSize range) {
+            node.buffer = buffer;
+            node.range  = range;
+
+            return &node;
+        }
+    };
+
+    struct descriptorImageNode {
+        VkDescriptorImageInfo node{};
+
+        descriptorImageNode() {
+            node.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
+
+        VkDescriptorImageInfo* getNode(VkSampler sampler, VkImageView imageView) {
+            node.sampler   = sampler;
+            node.imageView = imageView;
+
+            return &node;
+        }
+    };
+
+    struct descriptorAllocateNode {
+        VkDescriptorSetAllocateInfo node{};
+
+        descriptorAllocateNode() {
+            node.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            node.pNext              = nullptr;
+            node.descriptorSetCount = 1;
+        }
+
+        void setNode(VkDescriptorPool descriptorPool, const VkDescriptorSetLayout* pSetLayouts) {
+            node.descriptorPool = descriptorPool;
+            node.pSetLayouts    = pSetLayouts;
+        }
+    };
+
+    struct writeDescriptorNode {
+        VkWriteDescriptorSet node{};        //一定要初始化，不然报错
+
+        writeDescriptorNode(uint32_t dstBinding, VkDescriptorType descriptorType) {
+            node.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            node.dstArrayElement = 0;
+            node.descriptorCount = 1;
+
+            node.dstBinding      = dstBinding;
+            node.descriptorType  = descriptorType;
+        }
+
+        writeDescriptorNode() = delete;
+
+        void setBufferNode(VkDescriptorSet dstSet, const VkDescriptorBufferInfo* pBufferInfo) {
+            node.dstSet      = dstSet;
+            node.pBufferInfo = pBufferInfo;
+
+            node.pImageInfo  = nullptr;      //清理pImageInfo
+        }
+
+        void setImageNode(VkDescriptorSet dstSet, const VkDescriptorImageInfo* pImageInfo) {
+            node.dstSet      = dstSet;
+            node.pImageInfo  = pImageInfo;
+
+            node.pBufferInfo = nullptr;     //清理pBufferInfo
         }
     };
 }

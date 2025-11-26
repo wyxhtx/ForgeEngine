@@ -8,94 +8,83 @@ namespace bufferList {
         bufferStruct::descriptorNode uiText;  //文本描述符
 
         void createDescriptorPool(VkDevice& device) {
-            VkDescriptorPoolCreateInfo descriptorPoolInfo{};
-            descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            /*scence*/
+            std::array<bufferStruct::descriptorPoolNode, 4> poolSizeScence{
+                bufferStruct::descriptorPoolNode{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,bufferInfo::bufferScenceNodeSize},           //顶点统一缓冲区
+                bufferStruct::descriptorPoolNode{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,bufferInfo::bufferScenceNodeSize},           //片段统一缓冲区
+                bufferStruct::descriptorPoolNode{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,bufferInfo::bufferScenceNodeSize},   //片段纹理贴图
+                bufferStruct::descriptorPoolNode{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,bufferInfo::bufferScenceNodeSize}    //片段高光贴图
+            };
 
-            //scence
-            {
-                std::array<VkDescriptorPoolSize, 3> poolSizeScence = {};				
-                poolSizeScence[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;				//顶点统一缓冲区
-                poolSizeScence[0].descriptorCount = bufferInfo::bufferScenceNodeSize;	
-                poolSizeScence[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;				//片段统一缓冲区
-                poolSizeScence[1].descriptorCount = bufferInfo::bufferScenceNodeSize;	
-                poolSizeScence[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;		//片段纹理采样器
-                poolSizeScence[2].descriptorCount = bufferInfo::bufferScenceNodeSize;
+            VkDescriptorPoolCreateInfo descriptorPoolScenceInfo{
+                .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                .maxSets        = bufferInfo::bufferScenceNodeSize,                 //poolSizeScence.descriptorCount最好填大点不支持自动分配
+                .poolSizeCount  = static_cast<uint32_t>(poolSizeScence.size()),
+                .pPoolSizes     = &poolSizeScence[0].node
+            };
 
-                descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizeScence.size());
-                descriptorPoolInfo.pPoolSizes = poolSizeScence.data();
-                descriptorPoolInfo.maxSets = bufferInfo::bufferScenceNodeSize;          //poolSizeScence.descriptorCount最好填大点不支持自动分配
-            }
-
-            if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &scence.pool) != VK_SUCCESS) {
+            if (vkCreateDescriptorPool(device, &descriptorPoolScenceInfo, nullptr, &scence.pool) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "描述符池创建失败");
                 throw;
             }
 
-            //uiText
-            {
-                std::array<VkDescriptorPoolSize, 1> poolSizeUItext{};
-                poolSizeUItext[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                poolSizeUItext[0].descriptorCount = bufferInfo::bufferTextUINodeSize;
 
-                descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizeUItext.size());
-                descriptorPoolInfo.pPoolSizes = poolSizeUItext.data();
-                descriptorPoolInfo.maxSets = bufferInfo::bufferTextUINodeSize;
-            }
 
-            if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &uiText.pool) != VK_SUCCESS) {
+            /*uiText*/
+            std::array<bufferStruct::descriptorPoolNode, 1> poolSizeUItext{
+                bufferStruct::descriptorPoolNode{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,bufferInfo::bufferTextUINodeSize} 
+            };
+
+            VkDescriptorPoolCreateInfo descriptorPoolUItextInfo{
+                .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                .maxSets        = bufferInfo::bufferTextUINodeSize,
+                .poolSizeCount  = static_cast<uint32_t>(poolSizeUItext.size()),
+                .pPoolSizes     = &poolSizeUItext[0].node
+            };
+
+            if (vkCreateDescriptorPool(device, &descriptorPoolUItextInfo, nullptr, &uiText.pool) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "描述符池创建失败");
                 throw;
             }
         }
 
         void createDescriptorSetLayout(VkDevice& device) {
-            //创建描述符布局
-            VkDescriptorSetLayoutCreateInfo layoutInfo{};
-            layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            layoutInfo.pNext = nullptr;
+            /*scence*/
+            std::array<bufferStruct::descriptorLayoutNode, 4> scenceLayoutBinding{
+                bufferStruct::descriptorLayoutNode{0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT},
+                bufferStruct::descriptorLayoutNode{1,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT},
+                bufferStruct::descriptorLayoutNode{2,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT},
+                bufferStruct::descriptorLayoutNode{3,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT}
+            };
 
-            //scence
-            {
-                std::array<VkDescriptorSetLayoutBinding, 3> bindingOpacScence = {};         //描述符布局绑定描述符
-                bindingOpacScence[0].binding = 0;					                        //顶点统一缓冲区
-                bindingOpacScence[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                bindingOpacScence[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-                bindingOpacScence[0].descriptorCount = 1;
-                bindingOpacScence[0].pImmutableSamplers = nullptr;
-                bindingOpacScence[1].binding = 1;                                           //片段统一缓冲区
-                bindingOpacScence[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                bindingOpacScence[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-                bindingOpacScence[1].descriptorCount = 1;
-                bindingOpacScence[1].pImmutableSamplers = nullptr;
-                bindingOpacScence[2].binding = 2;					                        //片段纹理采样器
-                bindingOpacScence[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                bindingOpacScence[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-                bindingOpacScence[2].descriptorCount = 1;
-                bindingOpacScence[2].pImmutableSamplers = nullptr;
+            VkDescriptorSetLayoutCreateInfo scenceLayoutInfo{
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                .pNext = nullptr,
+                .bindingCount = static_cast<uint32_t>(scenceLayoutBinding.size()),
+                .pBindings = &scenceLayoutBinding[0].node
+            };
 
-                layoutInfo.bindingCount = static_cast<uint32_t>(bindingOpacScence.size());
-                layoutInfo.pBindings = bindingOpacScence.data();
-            }
-
-            if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &scence.layout) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
+            if (vkCreateDescriptorSetLayout(device, &scenceLayoutInfo, nullptr, &scence.layout) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "scence描述符布局配置失败");
                 throw;
             }
 
-            //uiText
-            {
-                std::array<VkDescriptorSetLayoutBinding, 1> bindingUItext{};
-                bindingUItext[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                bindingUItext[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-                bindingUItext[0].binding = 0;
-                bindingUItext[0].descriptorCount = 1;
 
-                layoutInfo.bindingCount = static_cast<uint32_t>(bindingUItext.size());
-                layoutInfo.pBindings = bindingUItext.data();
-            }
 
-            if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &uiText.layout) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
+            /*uiText*/
+            std::array<bufferStruct::descriptorLayoutNode, 1> uiTextLayoutBinding{
+                bufferStruct::descriptorLayoutNode{0,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT}
+            };
+
+            VkDescriptorSetLayoutCreateInfo uiTextLayoutInfo{
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                .pNext = nullptr,
+                .bindingCount = static_cast<uint32_t>(uiTextLayoutBinding.size()),
+                .pBindings = &uiTextLayoutBinding[0].node
+            };
+
+            if (vkCreateDescriptorSetLayout(device, &uiTextLayoutInfo, nullptr, &uiText.layout) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "uiText描述符布局配置失败");
                 throw;
             }
         }
@@ -154,7 +143,7 @@ namespace bufferList {
             samplerInfo.maxLod = static_cast<float>(terrainMipLevel);
 
             if (vkCreateSampler(device, &samplerInfo, nullptr, &terrain) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "地形贴图采样器创建失败");
+                Log::printError(__FILE__, __LINE__, "terrain采样器创建失败");
                 throw;
             }
 
@@ -162,7 +151,7 @@ namespace bufferList {
             samplerInfo.maxLod = static_cast<float>(modelMipLevel);
 
             if (vkCreateSampler(device, &samplerInfo, nullptr, &model) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "模型贴图采样器创建失败");
+                Log::printError(__FILE__, __LINE__, "model采样器创建失败");
                 throw;
             }
 
@@ -173,7 +162,7 @@ namespace bufferList {
             samplerInfo.maxLod = 0.0f;
 
             if (vkCreateSampler(device, &samplerInfo, nullptr, &uiText) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "文本贴图采样器创建失败");
+                Log::printError(__FILE__, __LINE__, "uiText采样器创建失败");
                 throw;
             }
         }
