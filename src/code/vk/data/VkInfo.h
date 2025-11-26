@@ -87,8 +87,11 @@ namespace coordsInfo {
 }
 
 namespace lightInfo {
-    glm::vec3 globalLight = glm::vec3(1.0f, 1.0f, 1.0f);    //全局光照
-    float globaSpecular = 0.8f;                             //全局界面反射
+    const glm::vec3 gLightColor   = glm::vec3(1.0f, 1.0f, 1.0f);    //全局光照颜色
+    const glm::vec3 gLightDir     = glm::vec3(0.0f, 1.0f, 0.0f);   //全局光照方向
+    const float ambientScale      = 0.2f;                           //环境光缩放
+    const float diffuseScale      = 0.5f;                           //漫反射缩放
+    const float specularScale     = 1.0f;                           //镜面反射缩放
 }
 
 namespace bufferInfo {

@@ -7,11 +7,11 @@ namespace cubeList {
 	const std::array<cubeStruct::propertyNode, cubeEnum::cubeId::count> cubeProperty = []() {
 		std::array<cubeStruct::propertyNode, cubeEnum::cubeId::count> array{};
 
-		array[cubeEnum::cubeId::grass]			= cubeStruct::propertyNode{ {{ 0,  0}, { 0,  2}, { 0,  1}, { 0,  1}, { 0,  1}, { 0,  1}}, cubeEnum::coverageId::grass,		  glm::vec3(0.05f, 0.08f, 0.02f), glm::vec3(0.2f, 0.5f, 0.1f), glm::vec3(0.1f, 0.2f, 0.05f),    8.0f};
-		array[cubeEnum::cubeId::dirt]			= cubeStruct::propertyNode{ {{ 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}}, cubeEnum::coverageId::dirt,		  glm::vec3(0.08f, 0.05f, 0.03f), glm::vec3(0.4f, 0.3f, 0.2f), glm::vec3(0.05f, 0.04f, 0.02f),  4.0f};
-		array[cubeEnum::cubeId::oakTrunk]		= cubeStruct::propertyNode{ {{32,  0}, {32,  0}, {32,  1}, {32,  1}, {32,  1}, {32,  1}}, cubeEnum::coverageId::oakTrunk,	  glm::vec3(0.06f, 0.04f, 0.02f), glm::vec3(0.3f, 0.2f, 0.1f), glm::vec3(0.08f, 0.06f, 0.04f), 12.0f};
-		array[cubeEnum::cubeId::oakLeaf]		= cubeStruct::propertyNode{ {{32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}}, cubeEnum::coverageId::oakLeaf,	  glm::vec3(0.02f, 0.04f, 0.01f), glm::vec3(0.1f, 0.3f, 0.05f), glm::vec3(0.05f, 0.1f, 0.03f), 16.0f};
-		array[cubeEnum::cubeId::stoneSquared]	= cubeStruct::propertyNode{ {{ 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}}, cubeEnum::coverageId::stoneSquared, glm::vec3(0.1f, 0.1f, 0.1f),	  glm::vec3(0.5f, 0.5f, 0.5f), glm::vec3(0.3f, 0.3f, 0.3f),	   32.0f};
+		array[cubeEnum::cubeId::grass]			= cubeStruct::propertyNode{ {{ 0,  0}, { 0,  2}, { 0,  1}, { 0,  1}, { 0,  1}, { 0,  1}}, cubeEnum::coverageId::grass,		   8.0f};
+		array[cubeEnum::cubeId::dirt]			= cubeStruct::propertyNode{ {{ 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}}, cubeEnum::coverageId::dirt,		   4.0f};
+		array[cubeEnum::cubeId::oakTrunk]		= cubeStruct::propertyNode{ {{32,  0}, {32,  0}, {32,  1}, {32,  1}, {32,  1}, {32,  1}}, cubeEnum::coverageId::oakTrunk,	  12.0f};
+		array[cubeEnum::cubeId::oakLeaf]		= cubeStruct::propertyNode{ {{32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}}, cubeEnum::coverageId::oakLeaf,	  16.0f};
+		array[cubeEnum::cubeId::stoneSquared]	= cubeStruct::propertyNode{ {{ 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}}, cubeEnum::coverageId::stoneSquared, 32.0f};
 
 		return array;
 		}();
@@ -36,8 +36,7 @@ namespace terrainStructureList {
 	const std::array<terrainStructureStruct::treeStructureNode, terrainStructureEnum::treeId::count> terrainStructureProperty = []() {
 		std::array<terrainStructureStruct::treeStructureNode, terrainStructureEnum::treeId::count> array{};
 
-		//array[terrainStructureEnum::treeId::oak] = terrainStructureStruct::treeStructureNode{ 5,10,cubeEnum::cubeId::oakLeaf,cubeEnum::cubeId::oakTrunk };	//ÏðÊ÷
-		array[terrainStructureEnum::treeId::oak] = terrainStructureStruct::treeStructureNode{ 5,10,cubeEnum::cubeId::stoneSquared,cubeEnum::cubeId::oakTrunk };	//ÏðÊ÷
+		array[terrainStructureEnum::treeId::oak] = terrainStructureStruct::treeStructureNode{ 5,10,cubeEnum::cubeId::oakLeaf,cubeEnum::cubeId::oakTrunk };	//ÏðÊ÷
 
 		return array;
 		}();

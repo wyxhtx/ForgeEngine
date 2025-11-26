@@ -1,14 +1,17 @@
 #version 450
 
 layout(binding = 1) uniform UniformBufferObject {
-    vec3 lightPos;                              //光照位置
-    float currentHour;                          //当前小时
-
-    vec3 viewPos;                               //观察者坐标
-    float baseSpecular;                         //基础镜面反射
+    vec3 viewPos;               //观察者坐标
+    float currentHour;          //当前小时
     
-    vec3 baseLight;                             //基础光照颜色
-    float baseAmbient;                          //基础环境光
+    vec3 gLightColor;           //全局光照颜色
+    float ambientScale;         //环境光缩放
+    
+    vec3 gLightPos;             //全局光照坐标
+    float diffuseScale;         //漫反射缩放
+    
+    vec3 gLightDir;             //全局光照方向
+    float specularScale;        //镜面反射缩放
 } light;
 
 layout(binding = 2) uniform sampler2DArray texSampler;      //纹理贴图采样器
@@ -17,49 +20,41 @@ layout(binding = 3) uniform sampler2DArray specularSampler; //高光贴图采样器
 layout(location = 0) in vec3 fragPosition;      //坐标
 layout(location = 1) in vec3 fragTexCoord;      //uv
 layout(location = 2) in vec3 fragNormal;        //法线
-layout(location = 3) in vec3 fragAmbient;       //材质环境光
-layout(location = 4) in vec3 fragDiffuse;       //材质漫反射
-layout(location = 5) in vec3 fragSpecular;      //材质镜面反射
-layout(location = 6) in float fragShininess;    //材质反光度    
+layout(location = 3) in float fragShininess;    //材质光泽度
 
 layout(location = 0) out vec4 outColor;
 
-//光照系数
-const vec3 ambientFactor  = vec3(0.2f, 0.2f, 0.2f);
-const vec3 diffuseFactor  = vec3(0.5f, 0.5f, 0.5f); 
-const vec3 specularFactor = vec3(1.0f, 1.0f, 1.0f);
+float constant  = 1.0f;     //衰减常数项
+float linear    = 0.09f;    //衰减一次项
+float quadratic = 0.032f;   //衰减二次项
+
+
 
 void main() {
-    vec4 texColor = texture(texSampler, fragTexCoord);
+    vec4 texColor      = texture(texSampler, fragTexCoord);                     //纹理贴图读取rgb
+    vec2 specularData  = texture(specularSampler, fragTexCoord).rg;             //高光贴图读取rg
     
-    // 高光贴图是R8G8格式，只包含红色和绿色通道
-    vec2 specularData = texture(specularSampler, fragTexCoord).rg;  // 只取rg通道
-    
-    //使用纹理颜色作为材质属性
-    vec3 materialAmbient = texColor.rgb * ambientFactor;
-    vec3 materialDiffuse = texColor.rgb * diffuseFactor;
-    
-    //使用镜面反射贴图控制镜面反射强度
-    // specularData.r 作为镜面反射强度，specularData.g 可以用于其他效果或忽略
-    float specularIntensity = specularData.r;
-    vec3 materialSpecular = vec3(specularIntensity) * specularFactor;
+    //透明度
+    if (texColor.a == 0.0) {
+        discard;
+    }
 
     //环境光照
-    vec3 ambient = materialAmbient * light.baseLight * light.baseAmbient;
-
+    vec3 ambient = texColor.rgb * light.ambientScale * light.gLightColor;
+    
     //漫反射光照
-    vec3 norm = normalize(fragNormal);
-    vec3 lightDir = normalize(light.lightPos - fragPosition);
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * materialDiffuse * light.baseLight;
-
+    vec3 normal   = normalize(fragNormal);                                      //法线归一化
+    vec3 lightDir = normalize(light.gLightPos - fragPosition);                  //计算从片段位置指向光源的方向向量，并归一化
+    float diff    = max(dot(normal, lightDir), 0.0);                            //计算法线与光线方向的点积
+    vec3 diffuse  = texColor.rgb * light.diffuseScale * light.gLightColor * diff;
+    
     //镜面反射光照
-    vec3 viewDir = normalize(light.viewPos - fragPosition);
-    vec3 reflectDir = reflect(-lightDir, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), fragShininess);
-    vec3 specular = spec * materialSpecular * light.baseLight * light.baseSpecular;
-
-    //组合所有光照分量
+    vec3 viewDir    = normalize(light.viewPos - fragPosition);                  //计算从片段位置指向观察者的方向向量，并归一化
+    vec3 reflectDir = reflect(-lightDir, normal);                               //计算光线在表面上的反射方向
+    float spec      = pow(max(dot(viewDir, reflectDir), 0.0), fragShininess);   //使用光泽度作为指数进行幂运算，控制高光集中程度
+    vec3 specular   = light.specularScale * light.gLightColor * specularData.r * spec;
+    
+    //输出最终颜色
     vec3 result = ambient + diffuse + specular;
     outColor = vec4(result, texColor.a);
 }

@@ -19,6 +19,7 @@ namespace faceInfo {
 namespace plateInfo {
 	const int groundPlane = 4096;														//地平面
 	//const int skyPlane = 2;															//天平面，未正式启用
+	//const int sightRange = 8;															//视距
 	const int sightRange = 8;															//视距
 
 	const int chunkLength = 32;															//区块边长

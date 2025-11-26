@@ -80,14 +80,17 @@ namespace bufferStruct {
 
     //注意着色器内存对齐
     struct lightUBO {
-        glm::vec3 lightPos;         //光照位置
-        float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到
+        glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
+        float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到，用于周期性效果
 
-        glm::vec3 viewPos;          //观察者坐标
-        float baseSpecular;         //基础镜面反射
+        glm::vec3 gLightColor;      //全局光照颜色，决定环境光和漫反射基础颜色
+        float ambientScale;         //环境光缩放，决定环境光强度
 
-        glm::vec3 baseLight;        //基础光照颜色
-        float baseAmbient;          //基础环境光
+        glm::vec3 gLightPos;        //全局光照坐标，点光源坐标，决定漫反射效果
+        float diffuseScale;         //漫反射缩放，决定漫反射强度
+
+        glm::vec3 gLightDir;        //全局光照方向，平行光坐标，决定漫反射效果
+        float specularScale;        //镜面反射缩放，决定镜面反射强度
     };
 
 

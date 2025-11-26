@@ -251,19 +251,23 @@ private:
 		glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)Device.swapChainExtent.width / (float)Device.swapChainExtent.height, 0.1f, plateInfo::cubeSightRange);
 		proj[1][1] *= -1;
 
-		terrain.ubo.model			  = glm::translate(glm::mat4(1), glm::vec3(0));
-		terrain.ubo.modelTI			  = glm::transpose(glm::inverse(terrain.ubo.model));
-		terrain.ubo.proj			  = proj;
-		terrain.lightUbo.baseSpecular = lightInfo::globaSpecular;
-		terrain.lightUbo.baseLight	  = lightInfo::globalLight;
+		terrain.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(0));
+		terrain.ubo.modelTI				= glm::transpose(glm::inverse(terrain.ubo.model));
+		terrain.ubo.proj				= proj;
+		terrain.lightUbo.gLightColor	= lightInfo::gLightColor;
+		terrain.lightUbo.diffuseScale	= lightInfo::diffuseScale;
+		terrain.lightUbo.gLightDir		= lightInfo::gLightDir;
+		terrain.lightUbo.specularScale	= lightInfo::specularScale;
 						  
-		temple.ubo.proj				  = proj;
-		temple.lightUbo.baseSpecular  = lightInfo::globaSpecular;
-		temple.lightUbo.baseLight	  = lightInfo::globalLight;
+		temple.ubo.proj					= proj;
+		temple.lightUbo.gLightColor		= lightInfo::gLightColor;
+		temple.lightUbo.diffuseScale	= lightInfo::diffuseScale;
+		temple.lightUbo.gLightDir		= lightInfo::gLightDir;
+		temple.lightUbo.specularScale	= lightInfo::specularScale;
 									  
-		skybox.ubo.proj				  = proj;
+		skybox.ubo.proj					= proj;
 									  
-		mine.ubo.proj				  = proj;
+		mine.ubo.proj					= proj;
 	}
 
 private:
@@ -873,11 +877,11 @@ public:
 			}
 
 			//model
-			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
+			/*vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
 			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &temple.descriptorSet, 0, nullptr);
 			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &temple.vertex.buffer, offsets);
 			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], temple.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs.model.size(), 1, 0, 0, 0);
+			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs.model.size(), 1, 0, 0, 0);*/
 
 			//skybox
 			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.skybox.pipeline);
@@ -956,19 +960,21 @@ public:
 
 		/*terrain*/
 		terrain.ubo.view				= view;
-		terrain.lightUbo.lightPos		= offsetPos;	//glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
-		terrain.lightUbo.currentHour	= currentHour;
 		terrain.lightUbo.viewPos		= glm::vec3{ pos - playerInfo::logicOriginPos };
-		terrain.lightUbo.baseAmbient	= 1;			//(sin(gameTime) + 1) / 2;
-
+		terrain.lightUbo.currentHour	= currentHour;
+		terrain.lightUbo.ambientScale	= lightInfo::ambientScale;
+		terrain.lightUbo.gLightPos		= offsetPos;
+		
 		/*model*/
 		temple.ubo.model				= glm::translate(glm::mat4(1), offsetPos);											//位移
 		temple.ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
 		temple.ubo.modelTI				= glm::transpose(glm::inverse(temple.ubo.model));
-		//model.ubo.model				*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
+		//temple.ubo.model				*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
 		temple.ubo.view					= view;
-		temple.lightUbo.baseAmbient		= (sin(gameTime) + 1) / 2;
-		temple.lightUbo.lightPos		= offsetPos;
+		temple.lightUbo.viewPos			= glm::vec3{ pos - playerInfo::logicOriginPos };
+		temple.lightUbo.currentHour		= currentHour;
+		temple.lightUbo.ambientScale	= (sin(gameTime) + 1) / 2;
+		temple.lightUbo.gLightPos		= glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
 
 		/*skybox*/
 		//skybox.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(pos - playerInfo::logicOriginPos));		//着色器屏蔽了模型的位移变换，所以注释掉此处
