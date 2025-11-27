@@ -47,7 +47,8 @@ namespace noiseList {
 	const std::array<noiseStruct::terrainParamNode, terrainEnum::terrainId::count> terrainProperty = []() {
 		std::array<noiseStruct::terrainParamNode, terrainEnum::terrainId::count> array{};
 
-		array[terrainEnum::terrainId::plain] = noiseStruct::terrainParamNode{ 8,16 };		//平原
+		//8,16
+		array[terrainEnum::terrainId::plain] = noiseStruct::terrainParamNode{ 0,0 };		//平原
 
 		return array;
 		}();
@@ -56,7 +57,8 @@ namespace noiseList {
 	const std::array<noiseStruct::treeParamNode, terrainStructureEnum::treeId::count> treeProperty = []() {
 		std::array<noiseStruct::treeParamNode, terrainStructureEnum::treeId::count> array{};
 
-		array[terrainStructureEnum::treeId::oak] = noiseStruct::treeParamNode{ 16,34,44 };	//橡树
+		//16,34,44
+		array[terrainStructureEnum::treeId::oak] = noiseStruct::treeParamNode{ 16,29,44 };	//橡树
 
 		return array;
 		}();

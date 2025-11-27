@@ -945,7 +945,7 @@ public:
 		}
 	}
 
-	void updateUniformBuffer(const glm::dvec3 pos, const glm::mat4 view, const playerStruct::selectBoxNode box) {
+	void updateUniformBuffer(const playerStruct::cameraNode& camera, const playerStruct::selectBoxNode& box) {
 		static std::chrono::steady_clock::time_point time0 = std::chrono::steady_clock::now();	//游戏起始时刻
 		static std::chrono::steady_clock::time_point time1;										//游戏当前时刻
 		static float gameTime;																	//游戏运行时长，最多支持连续运行194天（现实时间）
@@ -959,36 +959,40 @@ public:
 
 
 		/*terrain*/
-		terrain.ubo.view				= view;
-		terrain.lightUbo.viewPos		= glm::vec3{ pos - playerInfo::logicOriginPos };
+		terrain.ubo.view				= camera.view;
+		terrain.lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
 		terrain.lightUbo.currentHour	= currentHour;
 		terrain.lightUbo.ambientScale	= lightInfo::ambientScale;
 		terrain.lightUbo.gLightPos		= offsetPos;
+		terrain.lightUbo.flashPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+		terrain.lightUbo.flashDir		= camera.front;
+		terrain.lightUbo.flashCutOff	= glm::cos(glm::radians(12.5f));
+		terrain.lightUbo.outerCutOff	= glm::cos(glm::radians(14.5f));
 		
 		/*model*/
 		temple.ubo.model				= glm::translate(glm::mat4(1), offsetPos);											//位移
 		temple.ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
 		temple.ubo.modelTI				= glm::transpose(glm::inverse(temple.ubo.model));
 		//temple.ubo.model				*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
-		temple.ubo.view					= view;
-		temple.lightUbo.viewPos			= glm::vec3{ pos - playerInfo::logicOriginPos };
+		temple.ubo.view					= camera.view;
+		temple.lightUbo.viewPos			= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
 		temple.lightUbo.currentHour		= currentHour;
 		temple.lightUbo.ambientScale	= (sin(gameTime) + 1) / 2;
 		temple.lightUbo.gLightPos		= glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
 
 		/*skybox*/
 		//skybox.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(pos - playerInfo::logicOriginPos));		//着色器屏蔽了模型的位移变换，所以注释掉此处
-		skybox.ubo.view					= view;
+		skybox.ubo.view					= camera.view;
 		skybox.lightUbo.currentHour		= currentHour;
 
 		/*mine*/
 		mine.ubo.model					= glm::translate(glm::mat4(1), box.minepos);
 		mine.ubo.model					*= glm::scale(glm::mat4(1), glm::vec3(1) * box.isVisible);
-		mine.ubo.view					= view;
+		mine.ubo.view					= camera.view;
 
 		/*showUIText*/
-		showUIText.pos					= glm::floor(pos);
-		showUIText.chunkPos				= glm::floor(pos / (double)plateInfo::chunkLength);
+		showUIText.pos					= glm::floor(camera.pos);
+		showUIText.chunkPos				= glm::floor(camera.pos / (double)plateInfo::chunkLength);
 		showUIText.minepos				= box.minepos;
 
 
