@@ -417,7 +417,7 @@ public:
 		InitPlate.externalUpdateLock = false;
 
 		selectBox = InitPlate.getSelectBox(Camera.node);	//当前帧获取的方块更新列表在下一帧更新
-		InitBuffer.updateUniformBuffer(Camera.node.pos, Camera.node.view, selectBox);
+		InitBuffer.updateUniformBuffer(Camera.node, selectBox);
 
 		if (InitSwapchain.drawFrame(InitBuffer.command.commandBuffers[InitBuffer.command.currentThreadID])) {
 			recreateSwapChain(); 

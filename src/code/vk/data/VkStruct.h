@@ -91,6 +91,12 @@ namespace bufferStruct {
 
         glm::vec3 gLightDir;        //全局光照方向，平行光坐标，决定漫反射效果
         float specularScale;        //镜面反射缩放，决定镜面反射强度
+
+        glm::vec3 flashPos;         //聚光灯坐标
+        float flashCutOff;          //聚光灯内圆锥
+
+        glm::vec3 flashDir;         //聚光灯方向
+        float outerCutOff;          //聚光灯外圆锥
     };
 
 
