@@ -168,7 +168,7 @@
     <None Include=".gitattributes" />
     <None Include=".gitignore" />
     <None Include="README.md" />
-    <None Include="src\code\vk\tool\temp\shader.frag" />
+    <None Include="src\code\tool\temp\shader.frag" />
     <None Include="src\image\model\temple\temple.ktx2" />
     <None Include="src\image\terrain\cube_16_64.ktx2" />
     <None Include="src\image\terrain\cube_16_64_specular.ktx2" />
@@ -225,10 +225,10 @@
     <ClInclude Include="src\code\vk\graphic\RenderPass.hpp" />
     <ClInclude Include="src\code\vk\graphic\Swapchain.hpp" />
     <ClInclude Include="src\code\vk\Main.h" />
-    <ClInclude Include="src\code\vk\tool\Camera.hpp" />
-    <ClInclude Include="src\code\vk\tool\temp\copy.txt" />
-    <ClInclude Include="src\code\vk\tool\Log.hpp" />
-    <ClInclude Include="src\code\vk\tool\Music.hpp" />
+    <ClInclude Include="src\code\tool\Camera.hpp" />
+    <ClInclude Include="src\code\tool\temp\copy.txt" />
+    <ClInclude Include="src\code\tool\Log.hpp" />
+    <ClInclude Include="src\code\tool\Music.hpp" />
     <ClInclude Include="src\library\algorithm\kmeans\aarand\aarand.hpp" />
     <ClInclude Include="src\library\algorithm\kmeans\compute_centroids.hpp" />
     <ClInclude Include="src\library\algorithm\kmeans\compute_wcss.hpp" />

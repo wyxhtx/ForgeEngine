@@ -25,9 +25,9 @@ public:
 
 private:
     void createBackgroundMusic() {
-        // 初始化ALUT
+        //初始化ALUT
         alutInit(NULL, 0);
-        // 加载音频文件
+        //加载音频文件
         ALuint buffer = alutCreateBufferFromFile(fileInfo::music::throughTheMounta);
         if (buffer == AL_NONE) {
             Log::printError(__FILE__, __LINE__, "音频文件加载失败");
@@ -35,30 +35,29 @@ private:
             return;
         }
 
-        // 创建音频源
+        //创建音频源
         ALuint source;
         alGenSources(1, &source);
         alSourcei(source, AL_BUFFER, buffer);
-        // 设置音频源循环播放
+        //设置音频源循环播放
         alSourcei(source, AL_LOOPING, AL_TRUE);
-        // 播放音频
+        //播放音频
         alSourcePlay(source);
 
         //等待主线程初始化完成
         while (!threadCommInfo::musicLock);
 
-        // 等待音频播放完成并继续循环
+        //等待音频播放完成并继续循环
         ALint source_state;
         while (threadCommInfo::musicLock) {
             alGetSourcei(source, AL_SOURCE_STATE, &source_state);
             if (source_state != AL_PLAYING) {
-                // 如果音频停止，重新播放
-                alSourcePlay(source);
+                alSourcePlay(source);   //如果音频停止，重新播放
             }
-            alutSleep(0.1f);  //避免紧循环
+            alutSleep(0.1f);            //避免紧循环
         }
 
-        // 清理资源
+        //清理资源
         alDeleteSources(1, &source);
         alDeleteBuffers(1, &buffer);
         alutExit();

@@ -10,16 +10,16 @@
 
 
 /*系统库文件*/
-#include <iostream>
-#include <iomanip>
-#include <vector>
-#include <unordered_map>
-#include <unordered_set>
 #include <array>
 #include <cmath>
-#include <filesystem>
-#include <thread>
 #include <execution>
+#include <filesystem>
+#include <iomanip>
+#include <iostream>
+#include <thread>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 #include <windows.h>
 
 
@@ -90,7 +90,7 @@
 
 
 /*内部库文件*/
-#include "tool/Log.hpp"
+#include "../tool/Log.hpp"
 
 #include "../forge/data/ForgeInfo.h"
 #include "../forge/data/ForgeEnum.h"
@@ -100,14 +100,11 @@
 #include "data/VkInfo.h"
 #include "data/VkEnum.h"
 #include "data/Vertex.h"
-#pragma warning(push)
-#pragma warning(disable : 26495)
 #include "data/VkStruct.h"
-#pragma warning(pop)
 #include "data/VkList.h"
 
-#include "tool/Camera.hpp"
-#include "tool/Music.hpp"
+#include "../tool/Camera.hpp"
+#include "../tool/Music.hpp"
 
 #include "../forge/base/Noise.hpp"
 #include "../forge/base/Loop.hpp"

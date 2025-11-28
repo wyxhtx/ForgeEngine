@@ -41,7 +41,7 @@
     <None Include="src\shader_build\terrain_gts.bat">
       <Filter>源文件</Filter>
     </None>
-    <None Include="src\code\vk\tool\temp\shader.frag" />
+    <None Include="src\code\tool\temp\shader.frag" />
     <None Include="src\image_build\ktx.dll" />
     <None Include="src\image_build\toktx.exe" />
     <None Include="src\image_build\png_to_ktx2.bat">
@@ -106,13 +106,13 @@
     <ClInclude Include="src\code\vk\graphic\Swapchain.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\vk\tool\Camera.hpp">
+    <ClInclude Include="src\code\tool\Camera.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\vk\tool\Log.hpp">
+    <ClInclude Include="src\code\tool\Log.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\vk\tool\Music.hpp">
+    <ClInclude Include="src\code\tool\Music.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\code\vk\Main.h">
@@ -157,7 +157,7 @@
     <ClInclude Include="src\code\vk\data\VkEnum.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\vk\tool\temp\copy.txt">
+    <ClInclude Include="src\code\tool\temp\copy.txt">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\code\vk\graphic\Buffer.hpp">
