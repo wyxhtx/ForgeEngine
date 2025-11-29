@@ -1,0 +1,76 @@
+@echo off
+setlocal enabledelayedexpansion
+
+set "COMPILER=.\glslangValidator.exe"
+set "SOURCE_DIR=."
+set "TARGET_DIR=..\shader"
+
+:: 递归遍历源目录(%SOURCE_DIR%)及其所有子目录
+:: 查找所有扩展名为.vert和.frag的文件
+:: %%f 代表每个找到的文件的完整路径
+for /r "%SOURCE_DIR%" %%f in (*.vert *.frag) do (
+    :: 将当前文件的完整路径保存到变量source_file中
+    :: 例如：E:\project\shader_build\mine\mine.vert
+    set "source_file=%%f"
+    
+    :: %%~dpf 获取文件的目录路径（不含文件名）
+    :: d=驱动器，p=路径，f=文件引用
+    :: 例如：E:\project\shader_build\mine\
+    set "source_path=%%~dpf"
+    
+    :: 从源路径中移除当前工作目录(%CD%)路径
+    :: !var:str1=str2! 是变量替换语法，将str1替换为str2
+    :: 例如：E:\project\shader_build\mine\ 替换后变成 mine\
+    set "relative_path=!source_path:%CD%\=!"
+    
+    :: !var:~0,-1! 截取字符串，从第0个字符开始到倒数第2个字符
+    :: 移除路径末尾的反斜杠
+    :: 例如：mine\ 变成 mine
+    set "relative_path=!relative_path:~0,-1!"
+    
+    :: %%~nf 获取不含扩展名的纯文件名
+    :: 例如：mine.vert 得到 mine
+    set "filename=%%~nf"
+    
+    :: %%~xf 获取文件扩展名
+    :: 判断如果是顶点着色器文件
+    if "%%~xf"==".vert" (
+        :: 目标文件命名为：原文件名 + Vert + .spv
+        :: 例如：mineVert.spv
+        set "target_filename=!filename!Vert.spv"
+    ) else if "%%~xf"==".frag" (
+        :: 目标文件命名为：原文件名 + Frag + .spv
+        :: 例如：mineFrag.spv
+        set "target_filename=!filename!Frag.spv"
+    )
+    
+    :: 组合完整的目标文件路径
+    :: 格式：目标目录 + 相对路径 + 目标文件名
+    :: 例如：..\shader\mine\mineVert.spv
+    set "target_path=%TARGET_DIR%\!relative_path!\!target_filename!"
+    
+    :: 获取目标文件所在的目录路径
+    :: \.. 表示上一级目录，这里用于去掉文件名得到纯目录路径
+    :: 例如：..\shader\mine\mineVert.spv\.. 得到 ..\shader\mine\
+    set "target_dir=!target_path!\!.."
+    
+    :: 检查目标目录是否存在
+    if not exist "!target_dir!" (
+        echo 创建目录: !target_dir!
+        :: 创建目录
+        mkdir "!target_dir!"
+    )
+    
+    :: 显示编译信息，格式：相对路径\原文件名.扩展名 → 目标路径
+    :: 例如：编译: mine\mine.vert → ..\shader\mine\mineVert.spv
+    echo 编译: !relative_path!\!filename!%%~xf → !target_path!
+    
+    :: 调用glslangValidator编译器
+    :: -V 参数表示编译为SPIR-V格式
+    :: "%%f" 是源文件路径
+    :: -o 指定输出文件路径
+    :: 例如：glslangValidator.exe -V mine.vert -o ..\shader\mineVert.spv
+    "%COMPILER%" -V "%%f" -o "!target_path!" >nul 2>&1
+)
+
+pause

@@ -112,8 +112,8 @@ namespace fileInfo {
         static std::string terrainVert = "src/shader/terrain/terrainVert.spv";
         static std::string terrainFrag = "src/shader/terrain/terrainFrag.spv";
 
-        static std::string m_templeVert = "src/shader/model/temple/templeVert.spv";
-        static std::string m_templeFrag = "src/shader/model/temple/templeFrag.spv";
+        static std::string pbrVert = "src/shader/model/pbrVert.spv";
+        static std::string pbrFrag = "src/shader/model/pbrFrag.spv";
 
         static std::string skyboxVert = "src/shader/skybox/skyboxVert.spv";
         static std::string skyboxFrag = "src/shader/skybox/skyboxFrag.spv";

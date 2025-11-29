@@ -162,6 +162,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="src\shader_build\bat注释.txt" />
     <Text Include="提交git.txt" />
   </ItemGroup>
   <ItemGroup>
@@ -178,15 +179,16 @@
     <None Include="src\library\dll\alut.dll" />
     <None Include="src\library\dll\ktx.dll" />
     <None Include="src\library\stb\stb_font_consolas_24_latin1.inl" />
-    <None Include="src\model\temple.gltf" />
     <None Include="src\model\temple\scene.bin" />
     <None Include="src\model\temple\scene.gltf" />
+    <None Include="src\shader\model\pbrFrag.spv" />
+    <None Include="src\shader\model\pbrVert.spv" />
     <None Include="src\shader_build\glsl_to_spirv.bat" />
     <None Include="src\shader_build\glslangValidator.exe" />
     <None Include="src\shader_build\mine\mine.frag" />
     <None Include="src\shader_build\mine\mine.vert" />
-    <None Include="src\shader_build\model\temple\temple.frag" />
-    <None Include="src\shader_build\model\temple\temple.vert" />
+    <None Include="src\shader_build\model\pbr.frag" />
+    <None Include="src\shader_build\model\pbr.vert" />
     <None Include="src\shader_build\skybox\skybox.frag" />
     <None Include="src\shader_build\skybox\skybox.vert" />
     <None Include="src\shader_build\terrain\terrain.frag" />
@@ -195,8 +197,6 @@
     <None Include="src\shader_build\uiText\uiText.vert" />
     <None Include="src\shader\mine\mineFrag.spv" />
     <None Include="src\shader\mine\mineVert.spv" />
-    <None Include="src\shader\model\temple\templeFrag.spv" />
-    <None Include="src\shader\model\temple\templeVert.spv" />
     <None Include="src\shader\skybox\skyboxFrag.spv" />
     <None Include="src\shader\skybox\skyboxVert.spv" />
     <None Include="src\shader_build\terrain_gts.bat" />

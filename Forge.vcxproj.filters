@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="提交git.txt" />
+    <Text Include="src\shader_build\bat注释.txt" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitattributes" />
@@ -49,24 +50,23 @@
     </None>
     <None Include="src\shader_build\mine\mine.frag" />
     <None Include="src\shader_build\mine\mine.vert" />
-    <None Include="src\shader_build\model\temple\temple.frag" />
-    <None Include="src\shader_build\model\temple\temple.vert" />
+    <None Include="src\shader_build\model\pbr.frag" />
+    <None Include="src\shader_build\model\pbr.vert" />
     <None Include="src\shader_build\skybox\skybox.frag" />
     <None Include="src\shader_build\skybox\skybox.vert" />
     <None Include="src\shader_build\terrain\terrain.frag" />
     <None Include="src\shader_build\terrain\terrain.vert" />
     <None Include="src\shader_build\uiText\uiText.frag" />
     <None Include="src\shader_build\uiText\uiText.vert" />
-    <None Include="src\shader\model\temple\templeFrag.spv" />
-    <None Include="src\shader\model\temple\templeVert.spv" />
     <None Include="src\image\model\temple\temple.ktx2" />
     <None Include="src\image\terrain\cube_16_64.ktx2" />
     <None Include="src\image\terrain\cube_16_64_specular.ktx2" />
-    <None Include="src\model\temple.gltf" />
     <None Include="src\model\temple\scene.bin">
       <Filter>资源文件</Filter>
     </None>
     <None Include="src\model\temple\scene.gltf" />
+    <None Include="src\shader\model\pbrFrag.spv" />
+    <None Include="src\shader\model\pbrVert.spv" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">
