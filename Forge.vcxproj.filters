@@ -62,6 +62,11 @@
     <None Include="src\image\model\temple\temple.ktx2" />
     <None Include="src\image\terrain\cube_16_64.ktx2" />
     <None Include="src\image\terrain\cube_16_64_specular.ktx2" />
+    <None Include="src\model\temple.gltf" />
+    <None Include="src\model\temple\scene.bin">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="src\model\temple\scene.gltf" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">
@@ -116,12 +121,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\code\vk\Main.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\library\textures\stb_image.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\library\model\tiny_obj_loader.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\library\noise\FastNoiseLite.h">
@@ -268,6 +267,18 @@
     <ClInclude Include="src\library\algorithm\kmeans\utils.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\library\model\tinygltf\tiny_gltf.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\model\tinygltf\json.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\model\tinygltf\stb_image.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\library\model\tinygltf\stb_image_write.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\code\vk\Main.cpp">
@@ -292,8 +303,5 @@
     <Media Include="src\music\background\Greedy.wav">
       <Filter>资源文件</Filter>
     </Media>
-  </ItemGroup>
-  <ItemGroup>
-    <Object Include="src\model\temple.obj" />
   </ItemGroup>
 </Project>

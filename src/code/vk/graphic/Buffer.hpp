@@ -68,7 +68,7 @@ private:
 	bufferList::sampler samplers;
 
 	bufferStruct::terrainBufferNode terrain{ fileInfo::image::cube,fileInfo::image::cubeSpecular,textureInfo::arrayLayer };
-	bufferStruct::modelBufferNode	temple{ fileInfo::image::temple };
+	bufferStruct::modelBufferNode	temple{ fileInfo::image::m_temple };
 	bufferStruct::skyboxBufferNode	skybox;
 	bufferStruct::baseBufferNode	mine;
 	bufferStruct::uiTextBufferNode	uiText;
@@ -315,40 +315,163 @@ private:
 		vmaDestroyBuffer(Device.allocator, tempBuffer, tempMemory);
 	}
 
+	//加载模型
 	void loadModel(const std::string& filename) {
-		tinyobj::attrib_t attrib;
-		std::vector<tinyobj::shape_t> shapes;
-		std::vector<tinyobj::material_t> materials;
-		std::string warn, err;
+		tinygltf::Model model;
+		tinygltf::TinyGLTF loader;
+		std::string err, warn;
 
-		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename.c_str())) {
-			throw std::runtime_error(warn + err);
+		//检查文件是否存在  
+		std::ifstream file(filename);
+		if (!file.good()) {
+			Log::printError(__FILE__, __LINE__, "模型文件不存在: " + filename);
+		}
+		file.close();
+
+		//加载glTF文件（支持二进制和ASCII格式）  
+		bool ret;
+		if (filename.find(".glb") != std::string::npos) {
+			ret = loader.LoadBinaryFromFile(&model, &err, &warn, filename);
+		}
+		else {
+			ret = loader.LoadASCIIFromFile(&model, &err, &warn, filename);
 		}
 
+		/*if (!warn.empty()) {
+			Log::print("glTF警告: " + warn);	//因为使用KTX管理贴图，故屏蔽gltf缺失贴图的报错
+		}*/
+		if (!ret) {
+			Log::printError(__FILE__, __LINE__, "glTF加载失败: " + err);
+		}
+
+		// 验证基本结构  
+		if (model.meshes.empty()) {
+			Log::printError(__FILE__, __LINE__, "glTF文件不包含任何mesh");
+		}
+
+		if (model.buffers.empty()) {
+			Log::printError(__FILE__, __LINE__, "glTF文件不包含任何buffer数据");
+		}
+
+
+
+		//遍历所有mesh和primitive
 		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
 
-		for (const auto& shape : shapes) {
-			for (const auto& index : shape.mesh.indices) {
-				modelVertex::vertexNode vertex{};
+		for (const auto& mesh : model.meshes) {
+			for (const auto& primitive : mesh.primitives) {
+				//获取顶点数据  
+				const float* positions = nullptr;
+				const float* texCoords = nullptr;
+				size_t vertexCount = 0;
 
-				//翻转模型
-				vertex.position = {
-					attrib.vertices[3 * index.vertex_index + 0],
-					attrib.vertices[3 * index.vertex_index + 1],
-					attrib.vertices[3 * index.vertex_index + 2]
-				};
+				//获取POSITION属性  
+				if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
+					const auto& accessor = model.accessors[primitive.attributes.at("POSITION")];
+					const auto& bufferView = model.bufferViews[accessor.bufferView];
+					const auto& buffer = model.buffers[bufferView.buffer];
 
-				vertex.texCoord = {
-					attrib.texcoords[2 * index.texcoord_index + 0],
-					1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-				};
-
-				if (uniqueVertices.count(vertex) == 0) {
-					uniqueVertices[vertex] = static_cast<uint32_t>(modelVertex::vertexs.model.size());
-					modelVertex::vertexs.model.push_back(vertex);
+					positions = reinterpret_cast<const float*>(
+						&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+					vertexCount = accessor.count;
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "primitive缺少POSITION属性");
 				}
 
-				modelVertex::indexs.model.push_back(uniqueVertices[vertex]);
+				//获取TEXCOORD_0属性  
+				if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
+					const auto& accessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+					const auto& bufferView = model.bufferViews[accessor.bufferView];
+					const auto& buffer = model.buffers[bufferView.buffer];
+
+					texCoords = reinterpret_cast<const float*>(
+						&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "primitive缺少TEXCOORD_0属性");
+				}
+
+				//存储当前primitive的顶点映射  
+				std::vector<uint32_t> primitiveVertexIndices;
+
+				for (size_t i = 0; i < vertexCount; i++) {
+					modelVertex::vertexNode vertex{};
+
+					//坐标系转换：从glTF(Y向上)转换为Forge(Z向上)  
+					vertex.position = {
+						positions[i * 3 + 0],     //X保持不变  
+						positions[i * 3 + 2],     //Z -> Y (交换Y和Z)  
+						-positions[i * 3 + 1]     //-Y -> Z (翻转Y轴并赋给Z)  
+					};
+
+					//UV坐标处理 - 根据实际渲染效果选择合适的翻转方式  
+					vertex.texCoord = {
+						texCoords[i * 2 + 0],
+						texCoords[i * 2 + 1]      //glTF标准UV，不翻转  
+					};
+
+					if (uniqueVertices.count(vertex) == 0) {
+						uniqueVertices[vertex] = static_cast<uint32_t>(modelVertex::vertexs.model.size());
+						modelVertex::vertexs.model.push_back(vertex);
+					}
+
+					//记录原始顶点到去重后顶点的映射  
+					primitiveVertexIndices.push_back(uniqueVertices[vertex]);
+				}
+
+				//处理索引数据  
+				if (primitive.indices >= 0) {
+					const auto& accessor = model.accessors[primitive.indices];
+					const auto& bufferView = model.bufferViews[accessor.bufferView];
+					const auto& buffer = model.buffers[bufferView.buffer];
+
+					size_t indexCount = accessor.count;
+
+					if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+						const uint16_t* indices = reinterpret_cast<const uint16_t*>(
+							&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+
+						for (size_t i = 0; i < indexCount; i++) {
+							uint32_t originalVertexIndex = indices[i];
+							if (originalVertexIndex < primitiveVertexIndices.size()) {
+								modelVertex::indexs.model.push_back(primitiveVertexIndices[originalVertexIndex]);
+							}
+						}
+					}
+					else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+						const uint32_t* indices = reinterpret_cast<const uint32_t*>(
+							&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+
+						for (size_t i = 0; i < indexCount; i++) {
+							uint32_t originalVertexIndex = indices[i];
+							if (originalVertexIndex < primitiveVertexIndices.size()) {
+								modelVertex::indexs.model.push_back(primitiveVertexIndices[originalVertexIndex]);
+							}
+						}
+					}
+					else {
+						Log::printError(__FILE__, __LINE__, "不支持的索引类型");
+					}
+				}
+				else {
+					//如果没有索引，生成三角形索引  
+					for (size_t i = 0; i < vertexCount; i += 3) {
+						modelVertex::indexs.model.push_back(primitiveVertexIndices[i]);
+						modelVertex::indexs.model.push_back(primitiveVertexIndices[i + 1]);
+						modelVertex::indexs.model.push_back(primitiveVertexIndices[i + 2]);
+					}
+				}
+			}
+		}
+
+		if (debugInfo::LogSwitch) {
+			if (modelVertex::vertexs.model.empty()) {
+				Log::printError(__FILE__, __LINE__, "加载的模型不包含任何顶点");
+			}
+
+			if (modelVertex::indexs.model.empty()) {
+				Log::printError(__FILE__, __LINE__, "加载的模型不包含任何索引");
 			}
 		}
 	}
@@ -877,11 +1000,11 @@ public:
 			}
 
 			//model
-			/*vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
+			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
 			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &temple.descriptorSet, 0, nullptr);
 			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &temple.vertex.buffer, offsets);
 			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], temple.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs.model.size(), 1, 0, 0, 0);*/
+			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs.model.size(), 1, 0, 0, 0);
 
 			//skybox
 			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.skybox.pipeline);

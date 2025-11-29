@@ -178,6 +178,9 @@
     <None Include="src\library\dll\alut.dll" />
     <None Include="src\library\dll\ktx.dll" />
     <None Include="src\library\stb\stb_font_consolas_24_latin1.inl" />
+    <None Include="src\model\temple.gltf" />
+    <None Include="src\model\temple\scene.bin" />
+    <None Include="src\model\temple\scene.gltf" />
     <None Include="src\shader_build\glsl_to_spirv.bat" />
     <None Include="src\shader_build\glslangValidator.exe" />
     <None Include="src\shader_build\mine\mine.frag" />
@@ -264,11 +267,13 @@
     <ClInclude Include="src\library\algorithm\kmeans\subpar\simple.hpp" />
     <ClInclude Include="src\library\algorithm\kmeans\subpar\subpar.hpp" />
     <ClInclude Include="src\library\algorithm\kmeans\utils.hpp" />
+    <ClInclude Include="src\library\model\tinygltf\json.hpp" />
+    <ClInclude Include="src\library\model\tinygltf\stb_image.h" />
+    <ClInclude Include="src\library\model\tinygltf\stb_image_write.h" />
+    <ClInclude Include="src\library\model\tinygltf\tiny_gltf.h" />
     <ClInclude Include="src\library\textures\ktx\khr_df.h" />
     <ClInclude Include="src\library\textures\ktx\ktx.h" />
     <ClInclude Include="src\library\textures\ktx\ktxvulkan.h" />
-    <ClInclude Include="src\library\textures\stb_image.h" />
-    <ClInclude Include="src\library\model\tiny_obj_loader.h" />
     <ClInclude Include="src\library\noise\FastNoiseLite.h" />
     <ClInclude Include="src\library\vma\vk_mem_alloc.h" />
   </ItemGroup>
@@ -283,15 +288,6 @@
   <ItemGroup>
     <Media Include="src\music\background\Greedy.wav" />
     <Media Include="src\music\background\Through the Mounta.wav" />
-  </ItemGroup>
-  <ItemGroup>
-    <Object Include="src\model\temple.obj">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <FileType>Document</FileType>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DeploymentContent>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
-    </Object>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

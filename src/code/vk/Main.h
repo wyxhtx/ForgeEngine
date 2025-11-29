@@ -16,6 +16,8 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <set>
+#include <string>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -58,20 +60,12 @@
 #include "../../library/noise/FastNoiseLite.h"
 
 //Ä£ÐÍ¿â
-#define TINYOBJLOADER_IMPLEMENTATION
-#pragma warning(push)
-#pragma warning(disable : 26495)
-#pragma warning(disable : 26498)
-#include "../../library/model/tiny_obj_loader.h"
-#pragma warning(pop)
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION  
+#define TINYGLTF_NO_STB_IMAGE_WRITE
+#include "../../library/model/tinygltf/tiny_gltf.h"
 
 //ÎÆÀí¿â
-#define STB_IMAGE_IMPLEMENTATION
-#pragma warning(push)
-#pragma warning(disable : 6262)
-#pragma warning(disable : 26819)
-#include "../../library/textures/stb_image.h"
-#pragma warning(pop)
 #include "../../library/textures/ktx/khr_df.h"
 #include "../../library/textures/ktx/ktx.h"
 #include "../../library/textures/ktx/ktxvulkan.h"
