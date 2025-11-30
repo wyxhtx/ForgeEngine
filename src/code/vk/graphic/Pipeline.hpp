@@ -6,7 +6,7 @@ class Pipeline {
 public:
 	Pipeline(Device& Device) : Device{ Device } {
 		createPipelineCache();
-		InitBuffer.createPipelineLayout(procPipelines.pipelineLayouts);
+		InitBuffer.createPipelineLayout(procPipeline.pipelineLayout);
 		createGraphicsPipeline();
 
 		InitBuffer.drawUIText(0);	//不在createCommandBuffers前初始化就不能显示UIText
@@ -14,7 +14,7 @@ public:
 
 		InitBuffer.initCommandBuffers();
 		InitBuffer.renderPassCommandBuffers(InitRenderPass.renderPass);
-		InitBuffer.createCommandBuffers(InitBuffer.command.currentThreadID, procPipelines);
+		InitBuffer.createCommandBuffers(InitBuffer.command.currentThreadID, procPipeline);
 
 		if (debugInfo::LogSwitch) {
 			Log::printTitle("————————Pipeline已创建");
@@ -27,12 +27,12 @@ public:
 		//等待地形线程结束，防止小窗点x退出时线程冲突
 		while (threadCommInfo::plateLock);
 
-		for (auto shaderModule : shaderModules) {
+		for (auto shaderModule : shaderModule) {
 			vkDestroyShaderModule(Device.device, shaderModule, nullptr);
 		}
 
 		vkDestroyPipelineCache(Device.device, pipelineCache, nullptr);
-		procPipelines.cleanupSwapChain(Device.device);
+		procPipeline.cleanupSwapChain(Device.device);
 
 		if (debugInfo::LogSwitch) {
 			Log::print("Pipeline已清除");
@@ -48,8 +48,8 @@ private:
 	Buffer InitBuffer{ Device };
 
 	VkPipelineCache pipelineCache;
-	pipelineList::procPipeline procPipelines;
-	std::vector<VkShaderModule> shaderModules;
+	pipelineList::procPipelineNode procPipeline;
+	std::vector<VkShaderModule> shaderModule;
 
 
 
@@ -182,9 +182,9 @@ private:
 			vertexInputInfo.pVertexAttributeDescriptions = terrainVertex::vertexNode::getAttributeDescriptions().data();
 
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				pipelineInfo.layout = procPipelines.terrain[layer].pipelineLayout;
+				pipelineInfo.layout = procPipeline.terrain[layer].pipelineLayout;
 
-				if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.terrain[layer].pipeline) != VK_SUCCESS) {
+				if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.terrain[layer].pipeline) != VK_SUCCESS) {
 					Log::printError(__FILE__, __LINE__, std::format("Layer_{} 地形管线创建失败", layer));
 					throw;
 				}
@@ -201,9 +201,9 @@ private:
 			vertexInputInfo.pVertexBindingDescriptions = modelVertex::vertexNode::getBindingDescription().data();
 			vertexInputInfo.pVertexAttributeDescriptions = modelVertex::vertexNode::getAttributeDescriptions().data();
 
-			pipelineInfo.layout = procPipelines.model.pipelineLayout;
+			pipelineInfo.layout = procPipeline.model.pipelineLayout;
 
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.model.pipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.model.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "model管线创建失败");
 				throw;
 			}
@@ -223,9 +223,9 @@ private:
 			depthStencil.depthWriteEnable = VK_FALSE;
 			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-			pipelineInfo.layout = procPipelines.skybox.pipelineLayout;
+			pipelineInfo.layout = procPipeline.skybox.pipelineLayout;
 
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.skybox.pipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.skybox.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "skybox管线创建失败");
 				throw;
 			}
@@ -255,9 +255,9 @@ private:
 			depthStencil.depthWriteEnable = VK_TRUE;
 			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 
-			pipelineInfo.layout = procPipelines.mine.pipelineLayout;
+			pipelineInfo.layout = procPipeline.mine.pipelineLayout;
 
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.mine.pipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.mine.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "mine管线创建失败");
 				throw;
 			}
@@ -282,9 +282,9 @@ private:
 			depthStencil.depthTestEnable = VK_FALSE;
 			depthStencil.depthWriteEnable = VK_FALSE;
 
-			pipelineInfo.layout = procPipelines.uiText.pipelineLayout;
+			pipelineInfo.layout = procPipeline.uiText.pipelineLayout;
 
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipelines.uiText.pipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.uiText.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "uiText管线创建失败");
 				throw;
 			}
@@ -294,12 +294,12 @@ private:
 
 
 	VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage){
-		shaderModules.push_back(createShaderModule(readFile(fileName)));
+		shaderModule.push_back(createShaderModule(readFile(fileName)));
 
 		VkPipelineShaderStageCreateInfo shaderStage = {};
 		shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shaderStage.stage = stage;
-		shaderStage.module = shaderModules.back();
+		shaderStage.module = shaderModule.back();
 		shaderStage.pName = "main";
 		return shaderStage;
 	}
@@ -410,7 +410,7 @@ public:
 				InitBuffer.recreateBuffer(tempID, false);
 			}
 
-			InitBuffer.createCommandBuffers(tempID, procPipelines);
+			InitBuffer.createCommandBuffers(tempID, procPipeline);
 
 			InitBuffer.command.currentThreadID = tempID;
 		}
@@ -448,16 +448,16 @@ private:
 		InitSwapchain.cleanupSwapChain();
 		InitRenderPass.cleanupSwapChain();
 		InitBuffer.cleanupSwapChain(InitBuffer.command.currentThreadID);
-		procPipelines.cleanupSwapChain(Device.device);
+		procPipeline.cleanupSwapChain(Device.device);
 
 		InitSwapchain.recreateSwapChain();
 		InitRenderPass.recreateSwapChain();
 		InitBuffer.recreateSwapChain();
 
-		InitBuffer.createPipelineLayout(procPipelines.pipelineLayouts);
+		InitBuffer.createPipelineLayout(procPipeline.pipelineLayout);
 		createGraphicsPipeline();
 		InitBuffer.createFramebuffers(InitSwapchain.swapChainImageViews, InitRenderPass.renderPass);
 		InitBuffer.renderPassCommandBuffers(InitRenderPass.renderPass);
-		InitBuffer.createCommandBuffers(InitBuffer.command.currentThreadID, procPipelines);
+		InitBuffer.createCommandBuffers(InitBuffer.command.currentThreadID, procPipeline);
 	}
 };

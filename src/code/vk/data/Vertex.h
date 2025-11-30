@@ -46,15 +46,8 @@ namespace terrainVertex {
         }
     };
 
-    //顶点数组
-    struct {
-        std::vector<vertexNode> terrain[terrainEnum::terrainLayer::count];
-    } vertexs;
-    
-    //索引数组
-    struct {
-        std::vector<uint32_t> terrain[terrainEnum::terrainLayer::count];
-    } indexs;
+    std::vector<vertexNode> vertexs[terrainEnum::terrainLayer::count];  //顶点数组
+    std::vector<uint32_t> indexs[terrainEnum::terrainLayer::count];     //索引数组
 }
 
 //模型
@@ -95,14 +88,17 @@ namespace modelVertex {
     };
 
     //顶点数组:坐标,uv
-    struct {
-        std::vector<vertexNode> model;
-    } vertexs;
+    std::vector<vertexNode> vertexs[bufferEnum::procModelEnum::count];
+    std::vector<uint32_t> indexs[bufferEnum::procModelEnum::count];
+}
 
-    //索引数组
-    struct {
-        std::vector<uint32_t> model;
-    } indexs;
+//服务loadModel
+namespace std {
+    template<> struct hash<modelVertex::vertexNode> {
+        size_t operator()(modelVertex::vertexNode const& vertex) const {
+            return (hash<glm::vec3>()(vertex.position) ^ (hash<glm::vec2>()(vertex.texCoord) << 1));
+        }
+    };
 }
 
 //天空盒
@@ -212,15 +208,6 @@ namespace mineVertex {
         1,2,2,6,6,5,5,1,
         2,3,3,0,0,1,1,2,
         4,5,5,6,6,7,7,4
-    };
-}
-
-//服务loadModel
-namespace std {
-    template<> struct hash<modelVertex::vertexNode> {
-        size_t operator()(modelVertex::vertexNode const& vertex) const {
-            return (hash<glm::vec3>()(vertex.position) ^ (hash<glm::vec2>()(vertex.texCoord) << 1));
-        }
     };
 }
 

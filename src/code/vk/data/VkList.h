@@ -3,7 +3,7 @@
 
 
 namespace bufferList {
-    struct descriptor {
+    struct procDescriptorNode {
         bufferStruct::descriptorNode scence;  //场景描述符
         bufferStruct::descriptorNode uiText;  //文本描述符
 
@@ -100,20 +100,15 @@ namespace bufferList {
         }
     };
 
-    struct sampler {
-        VkSampler terrain;      //地形采样器
-        VkSampler model;        //模型采样器
-        VkSampler uiText;       //文本采样器
+    struct procSamplerNode {
+        VkSampler node[bufferEnum::procSamplerNode::count];
+
+
 
         void createTextureSampler(VkDevice& device, uint32_t terrainMipLevel, uint32_t modelMipLevel) {
             VkSamplerCreateInfo samplerInfo{};
             {
                 samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-
-                //过滤器即采用何种方式过滤图片
-                //指定纹素放大和缩小内插值方式
-                samplerInfo.magFilter = VK_FILTER_NEAREST;
-                samplerInfo.minFilter = VK_FILTER_NEAREST;
 
                 //每个轴向使用的寻址模式全部采用镜像循环
                 samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -140,37 +135,74 @@ namespace bufferList {
             }
 
             //terrain
+            samplerInfo.magFilter = VK_FILTER_NEAREST;  //过滤器即采用何种方式过滤图片
+            samplerInfo.minFilter = VK_FILTER_NEAREST;
             samplerInfo.maxLod = static_cast<float>(terrainMipLevel);
-
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &terrain) != VK_SUCCESS) {
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::terrain]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "terrain采样器创建失败");
                 throw;
             }
 
-            //model
+            //modelN
             samplerInfo.maxLod = static_cast<float>(modelMipLevel);
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::modelN]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "modelN采样器创建失败");
+                throw;
+            }
 
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &model) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "model采样器创建失败");
+            //modelL
+            samplerInfo.magFilter = VK_FILTER_LINEAR;
+            samplerInfo.minFilter = VK_FILTER_LINEAR;
+            samplerInfo.maxLod = static_cast<float>(modelMipLevel);
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::modelL]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "modelL采样器创建失败");
                 throw;
             }
 
             //uiText
-            samplerInfo.magFilter = VK_FILTER_LINEAR;
-            samplerInfo.minFilter = VK_FILTER_LINEAR;
-
             samplerInfo.maxLod = 0.0f;
-
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &uiText) != VK_SUCCESS) {
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::uiText]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "uiText采样器创建失败");
                 throw;
             }
         }
 
         void clear(VkDevice& device) {
-            vkDestroySampler(device, terrain, nullptr);
-            vkDestroySampler(device, model, nullptr);
-            vkDestroySampler(device, uiText, nullptr);
+            for (int i = 0; i < bufferEnum::procSamplerNode::count; i++) {
+                vkDestroySampler(device, node[i], nullptr);
+            }
+        }
+    };
+
+
+
+    struct procModelNode {
+        std::array<bufferStruct::modelBufferNode, bufferEnum::procModelEnum::count> node = []() {
+            std::array<bufferStruct::modelBufferNode, bufferEnum::procModelEnum::count> array{};
+
+            array[bufferEnum::procModelEnum::temple]  = bufferStruct::modelBufferNode{ fileInfo::model::temple,  fileInfo::image::temple,  bufferEnum::procSamplerNode::modelN };
+            array[bufferEnum::procModelEnum::droid]   = bufferStruct::modelBufferNode{ fileInfo::model::droid,   fileInfo::image::droid,   bufferEnum::procSamplerNode::modelL };
+            //array[bufferEnum::procModelEnum::nextTemp] = bufferStruct::modelBufferNode{ fileInfo::model::nextTemp, fileInfo::image::nextTemp, bufferEnum::procSamplerNode:: };
+
+            return array;
+            }();
+
+
+
+        uint32_t getMaxModelMip() {
+            std::vector<uint32_t> maxModelMip;
+
+            for (const bufferStruct::modelBufferNode& i : node) {
+                maxModelMip.push_back(i.mipLevel);
+            }
+
+            return *std::max_element(maxModelMip.begin(), maxModelMip.end());   //使用模型最大mip创建采样器
+        }
+
+        void clear(VkDevice& device, VmaAllocator allocator) {
+            for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
+                node[i].clear(device, allocator);
+            }
         }
     };
 }
@@ -189,26 +221,26 @@ namespace pipelineList {
         VkPipeline uiText;                                      //文本管线
     };
 
-    struct procPipeline {
+    struct procPipelineNode {
         //pipelineLayouts和pipelines方便传参
-        pipelineList::pipelineLayout pipelineLayouts;
-        pipelineList::pipeline pipelines;
+        pipelineList::pipelineLayout pipelineLayout;
+        pipelineList::pipeline pipeline;
 
         pipelineStruct::pipelineNode terrain[terrainEnum::terrainLayer::count]{
-            {pipelineLayouts.scence,pipelines.terrain[terrainEnum::terrainLayer::Layer_0]},
-            {pipelineLayouts.scence,pipelines.terrain[terrainEnum::terrainLayer::Layer_1]}
+            {pipelineLayout.scence,pipeline.terrain[terrainEnum::terrainLayer::Layer_0]},
+            {pipelineLayout.scence,pipeline.terrain[terrainEnum::terrainLayer::Layer_1]}
         };
 
-        pipelineStruct::pipelineNode model  { pipelineLayouts.scence,pipelines.model };
-        pipelineStruct::pipelineNode skybox { pipelineLayouts.scence,pipelines.skybox };
-        pipelineStruct::pipelineNode mine   { pipelineLayouts.scence,pipelines.mine };
-        pipelineStruct::pipelineNode uiText { pipelineLayouts.uiText,pipelines.uiText };
+        pipelineStruct::pipelineNode model  { pipelineLayout.scence,pipeline.model };
+        pipelineStruct::pipelineNode skybox { pipelineLayout.scence,pipeline.skybox };
+        pipelineStruct::pipelineNode mine   { pipelineLayout.scence,pipeline.mine };
+        pipelineStruct::pipelineNode uiText { pipelineLayout.uiText,pipeline.uiText };
 
 
 
         void cleanupSwapChain(VkDevice& device) {
-            vkDestroyPipelineLayout(device, pipelineLayouts.scence, nullptr);
-            vkDestroyPipelineLayout(device, pipelineLayouts.uiText, nullptr);
+            vkDestroyPipelineLayout(device, pipelineLayout.scence, nullptr);
+            vkDestroyPipelineLayout(device, pipelineLayout.uiText, nullptr);
 
             for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
                 vkDestroyPipeline(device, terrain[layer].pipeline, nullptr);

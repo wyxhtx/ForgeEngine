@@ -11,14 +11,14 @@ public:
 	Buffer(Device& Device) :Device{ Device } {
 		createCommandPool();
 
-		descriptors.createDescriptorPool(Device.device);
-		descriptors.createDescriptorSetLayout(Device.device);
+		procDescriptor.createDescriptorPool(Device.device);
+		procDescriptor.createDescriptorSetLayout(Device.device);
 
 		createMeshBuffer();
 		createUniformBuffer();
 
 		createTexture();
-		samplers.createTextureSampler(Device.device, terrain.mipLevel, temple.mipLevel);
+		procSampler.createTextureSampler(Device.device, terrain.mipLevel, procModel.getMaxModelMip());
 		createDescriptorSet();
 
 		createDepthResources();
@@ -39,11 +39,11 @@ public:
 		}
 
 		vkDestroyCommandPool(Device.device, command.commandPool, nullptr);
-		descriptors.clear(Device.device);
-		samplers.clear(Device.device);
+		procDescriptor.clear(Device.device);
+		procSampler.clear(Device.device);
 
 		terrain.clear(Device.device, Device.allocator);
-		temple.clear(Device.device, Device.allocator);
+		procModel.clear(Device.device, Device.allocator);
 		skybox.clear(Device.device, Device.allocator);
 		mine.clear(Device.device, Device.allocator);
 		uiText.clear(Device.device, Device.allocator);
@@ -64,14 +64,14 @@ private:
 
 	std::vector<VkFramebuffer> swapChainFramebuffers;   //在一个渲染通道中所必要的一组图像附件（attachment）的集合
 
-	bufferList::descriptor descriptors;
-	bufferList::sampler samplers;
+	bufferList::procDescriptorNode procDescriptor;
+	bufferList::procSamplerNode procSampler;
 
-	bufferStruct::terrainBufferNode terrain{ fileInfo::image::cube,fileInfo::image::cubeSpecular,textureInfo::arrayLayer };
-	bufferStruct::modelBufferNode	temple{ fileInfo::image::m_temple };
+	bufferStruct::terrainBufferNode terrain{ bufferEnum::procSamplerNode::terrain };
+	bufferList::procModelNode		procModel{};
 	bufferStruct::skyboxBufferNode	skybox;
 	bufferStruct::baseBufferNode	mine;
-	bufferStruct::uiTextBufferNode	uiText;
+	bufferStruct::uiTextBufferNode	uiText{ bufferEnum::procSamplerNode::uiText };
 
 	bufferStruct::imageNode depthImage;
 	bufferStruct::imageNode colorImage;
@@ -94,15 +94,15 @@ private:
 		//terrain
 		for (int thread = 0; thread < bufferInfo::commandThreadSize; thread++) {
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[thread][layer]);
-				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[thread][layer]);
+				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[thread][layer]);
+				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[thread][layer]);
 			}
 		}
 
-		//model-temple
-		loadModel(fileInfo::model::temple);
-		createVertexBuffer(modelVertex::vertexs.model, temple.vertex);
-		createIndexBuffer(modelVertex::indexs.model, temple.index);
+		//model
+		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
+			createModelMeshBuffer(procModel.node[i].modelFile, modelVertex::vertexs[i], modelVertex::indexs[i], procModel.node[i].vertex, procModel.node[i].index);
+		}
 
 		//skybox
 		createVertexBuffer(skyboxVertex::vertexs, skybox.vertex);
@@ -113,24 +113,26 @@ private:
 		createIndexBuffer(mineVertex::indexs, mine.index);
 
 		//uiText
-		createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex.buffer, uiText.vertex.bufferMemory);
+		createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex);
 	}
 
 	void createUniformBuffer() {
 		//terrain
-		createBuffer(sizeof(terrain.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, terrain.uniform.buffer, terrain.uniform.bufferMemory);
-		createBuffer(sizeof(terrain.lightUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, terrain.lightUniform.buffer, terrain.lightUniform.bufferMemory);
+		createBuffer(sizeof(terrain.ubo), terrain.uniform);
+		createBuffer(sizeof(terrain.lightUbo), terrain.lightUniform);
 
-		//model-temple
-		createBuffer(sizeof(temple.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, temple.uniform.buffer, temple.uniform.bufferMemory);
-		createBuffer(sizeof(temple.lightUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, temple.lightUniform.buffer, temple.lightUniform.bufferMemory);
+		//model
+		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
+			createBuffer(sizeof(procModel.node[i].ubo), procModel.node[i].uniform);
+			createBuffer(sizeof(procModel.node[i].lightUbo), procModel.node[i].lightUniform);
+		}
 
 		//skybox
-		createBuffer(sizeof(skybox.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, skybox.uniform.buffer, skybox.uniform.bufferMemory);
-		createBuffer(sizeof(skybox.lightUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, skybox.lightUniform.buffer, skybox.lightUniform.bufferMemory);
+		createBuffer(sizeof(skybox.ubo), skybox.uniform);
+		createBuffer(sizeof(skybox.lightUbo), skybox.lightUniform);
 
 		//mine
-		createBuffer(sizeof(mine.ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, mine.uniform.buffer, mine.uniform.bufferMemory);
+		createBuffer(sizeof(mine.ubo), mine.uniform);
 	}
 
 	void createTexture() {
@@ -138,8 +140,10 @@ private:
 		createTextureKtxArrayNode(terrain.textureFile, terrain.texture, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8B8A8_UNORM, 4);
 		createTextureKtxArrayNode(terrain.specularFile, terrain.specular, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8_UNORM, 2);
 
-		//model-temple
-		createTextureKtxNode(temple.textureFile, temple.texture, temple.mipLevel);
+		//model
+		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
+			createTextureKtxNode(procModel.node[i].textureFile, procModel.node[i].texture, procModel.node[i].mipLevel);
+		}
 
 		//uiText
 		createTextNode(uiText.texture);
@@ -160,14 +164,14 @@ private:
 
 
 		/*配置scence描述符*/
-		allocInfo.setNode(descriptors.scence.pool, &descriptors.scence.layout);
+		allocInfo.setNode(procDescriptor.scence.pool, &procDescriptor.scence.layout);
 
 		//terrain
 		if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &terrain.descriptorSet) == VK_SUCCESS) {
 			writeDescriptorScence[0].setBufferNode(terrain.descriptorSet, bufferInfo[0].getNode(terrain.uniform.buffer, sizeof(terrain.ubo)));
 			writeDescriptorScence[1].setBufferNode(terrain.descriptorSet, bufferInfo[1].getNode(terrain.lightUniform.buffer, sizeof(terrain.lightUbo)));
-			writeDescriptorScence[2].setImageNode(terrain.descriptorSet, imageInfo[0].getNode(samplers.terrain, terrain.texture.view));
-			writeDescriptorScence[3].setImageNode(terrain.descriptorSet, imageInfo[1].getNode(samplers.terrain, terrain.specular.view));
+			writeDescriptorScence[2].setImageNode(terrain.descriptorSet, imageInfo[0].getNode(procSampler.node[terrain.samplerId], terrain.texture.view));
+			writeDescriptorScence[3].setImageNode(terrain.descriptorSet, imageInfo[1].getNode(procSampler.node[terrain.samplerId], terrain.specular.view));
 
 			std::array<VkWriteDescriptorSet, 4> tempWrite{ writeDescriptorScence[0].node,writeDescriptorScence[1].node,writeDescriptorScence[2].node,writeDescriptorScence[3].node };
 			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -177,18 +181,20 @@ private:
 			throw;
 		}
 
-		//model-temple
-		if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &temple.descriptorSet) == VK_SUCCESS) {
-			writeDescriptorScence[0].setBufferNode(temple.descriptorSet, bufferInfo[0].getNode(temple.uniform.buffer, sizeof(temple.ubo)));
-			writeDescriptorScence[1].setBufferNode(temple.descriptorSet, bufferInfo[1].getNode(temple.lightUniform.buffer, sizeof(temple.lightUbo)));
-			writeDescriptorScence[2].setImageNode(temple.descriptorSet, imageInfo[0].getNode(samplers.model, temple.texture.view));
+		//model
+		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
+			if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &procModel.node[i].descriptorSet) == VK_SUCCESS) {
+				writeDescriptorScence[0].setBufferNode(procModel.node[i].descriptorSet, bufferInfo[0].getNode(procModel.node[i].uniform.buffer, sizeof(procModel.node[i].ubo)));
+				writeDescriptorScence[1].setBufferNode(procModel.node[i].descriptorSet, bufferInfo[1].getNode(procModel.node[i].lightUniform.buffer, sizeof(procModel.node[i].lightUbo)));
+				writeDescriptorScence[2].setImageNode(procModel.node[i].descriptorSet, imageInfo[0].getNode(procSampler.node[procModel.node[i].samplerId], procModel.node[i].texture.view));
 
-			std::array<VkWriteDescriptorSet, 3> tempWrite{ writeDescriptorScence[0].node,writeDescriptorScence[1].node,writeDescriptorScence[2].node };
-			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-		}
-		else {
-			Log::printError(__FILE__, __LINE__, "temple分配描述符集失败");
-			throw;
+				std::array<VkWriteDescriptorSet, 3> tempWrite{ writeDescriptorScence[0].node,writeDescriptorScence[1].node,writeDescriptorScence[2].node };
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "model_" + std::to_string(i) + ":\t分配描述符集失败");
+				throw;
+			}
 		}
 
 		//skybox
@@ -219,12 +225,12 @@ private:
 
 
 		/*配置uitext描述符*/
-		allocInfo.setNode(descriptors.uiText.pool, &descriptors.uiText.layout);
+		allocInfo.setNode(procDescriptor.uiText.pool, &procDescriptor.uiText.layout);
 
 		//uiText
 		if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &uiText.descriptorSet) == VK_SUCCESS) {
 			bufferStruct::writeDescriptorNode writeDescriptorUIText{ 0,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
-			writeDescriptorUIText.setImageNode(uiText.descriptorSet, imageInfo[0].getNode(samplers.uiText, uiText.texture.view));
+			writeDescriptorUIText.setImageNode(uiText.descriptorSet, imageInfo[0].getNode(procSampler.node[uiText.samplerId], uiText.texture.view));
 
 			std::array<VkWriteDescriptorSet, 1> tempWrite{ writeDescriptorUIText.node };
 			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -251,6 +257,7 @@ private:
 		glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)Device.swapChainExtent.width / (float)Device.swapChainExtent.height, 0.1f, plateInfo::cubeSightRange);
 		proj[1][1] *= -1;
 
+		//terrain
 		terrain.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(0));
 		terrain.ubo.modelTI				= glm::transpose(glm::inverse(terrain.ubo.model));
 		terrain.ubo.proj				= proj;
@@ -258,39 +265,49 @@ private:
 		terrain.lightUbo.diffuseScale	= lightInfo::diffuseScale;
 		terrain.lightUbo.gLightDir		= lightInfo::gLightDir;
 		terrain.lightUbo.specularScale	= lightInfo::specularScale;
-						  
-		temple.ubo.proj					= proj;
-		temple.lightUbo.gLightColor		= lightInfo::gLightColor;
-		temple.lightUbo.diffuseScale	= lightInfo::diffuseScale;
-		temple.lightUbo.gLightDir		= lightInfo::gLightDir;
-		temple.lightUbo.specularScale	= lightInfo::specularScale;
-									  
-		skybox.ubo.proj					= proj;
-									  
-		mine.ubo.proj					= proj;
+
+		//model
+		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
+			procModel.node[i].ubo.proj				 = proj;
+			procModel.node[i].lightUbo.gLightColor	 = lightInfo::gLightColor;
+			procModel.node[i].lightUbo.diffuseScale  = lightInfo::diffuseScale;
+			procModel.node[i].lightUbo.gLightDir	 = lightInfo::gLightDir;
+			procModel.node[i].lightUbo.specularScale = lightInfo::specularScale;
+		}
+
+		//skybox
+		skybox.ubo.proj = proj;
+			
+		//mine
+		mine.ubo.proj = proj;
 	}
 
 private:
+	void createModelMeshBuffer(const std::string& filename, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, bufferStruct::bufferNode& vertexBuffer, bufferStruct::bufferNode& indexBuffer) {
+		loadModel(filename, vertexs, indexs);
+		createVertexBuffer(vertexs, vertexBuffer);
+		createIndexBuffer(indexs, indexBuffer);
+	}
+
 	//将vertexNode类中的顶点映射到buffer类里对应的VkBuffer
 	void createVertexBuffer(auto& node, bufferStruct::bufferNode& vertexBuffer) {
 		//获取顶点数组大小
 		VkDeviceSize bufferSize = sizeof(node[0]) * node.size();
 
 		//创建临时缓冲，方便CPU访问
-		VkBuffer tempBuffer;
-		VmaAllocation tempMemory;
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer, tempMemory);
+		bufferStruct::bufferNode tempBuffer;
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer);
 
 		//内存映射
-		createMapMemory(tempMemory, node.data(), (size_t)bufferSize);
+		createMapMemory(tempBuffer.bufferMemory, node.data(), (size_t)bufferSize);
 
 		//创建顶点缓冲，方便GPU访问
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer.buffer, vertexBuffer.bufferMemory);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer);
 
 		//临时缓冲拷贝到顶点缓冲
-		copyBuffer(tempBuffer, vertexBuffer.buffer, bufferSize);
+		copyBuffer(tempBuffer.buffer, vertexBuffer.buffer, bufferSize);
 
-		vmaDestroyBuffer(Device.allocator, tempBuffer, tempMemory);
+		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 	}
 
 	//将vertexNode类中的索引映射到buffer类里对应的VkBuffer
@@ -299,24 +316,23 @@ private:
 		VkDeviceSize bufferSize = sizeof(node[0]) * node.size();
 
 		//创建临时缓冲，方便CPU访问
-		VkBuffer tempBuffer;
-		VmaAllocation tempMemory;
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer, tempMemory);
+		bufferStruct::bufferNode tempBuffer;
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer);
 
 		//内存映射
-		createMapMemory(tempMemory, node.data(), (size_t)bufferSize);
+		createMapMemory(tempBuffer.bufferMemory, node.data(), (size_t)bufferSize);
 
 		//创建索引缓冲，方便GPU访问
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer.buffer, indexBuffer.bufferMemory);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer);
 
 		//临时缓冲拷贝到索引缓冲
-		copyBuffer(tempBuffer, indexBuffer.buffer, bufferSize);
+		copyBuffer(tempBuffer.buffer, indexBuffer.buffer, bufferSize);
 
-		vmaDestroyBuffer(Device.allocator, tempBuffer, tempMemory);
+		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 	}
 
 	//加载模型
-	void loadModel(const std::string& filename) {
+	void loadModel(const std::string& filename, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs) {
 		tinygltf::Model model;
 		tinygltf::TinyGLTF loader;
 		std::string err, warn;
@@ -412,8 +428,8 @@ private:
 					};
 
 					if (uniqueVertices.count(vertex) == 0) {
-						uniqueVertices[vertex] = static_cast<uint32_t>(modelVertex::vertexs.model.size());
-						modelVertex::vertexs.model.push_back(vertex);
+						uniqueVertices[vertex] = static_cast<uint32_t>(vertexs.size());
+						vertexs.push_back(vertex);
 					}
 
 					//记录原始顶点到去重后顶点的映射  
@@ -435,7 +451,7 @@ private:
 						for (size_t i = 0; i < indexCount; i++) {
 							uint32_t originalVertexIndex = indices[i];
 							if (originalVertexIndex < primitiveVertexIndices.size()) {
-								modelVertex::indexs.model.push_back(primitiveVertexIndices[originalVertexIndex]);
+								indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
 							}
 						}
 					}
@@ -446,7 +462,7 @@ private:
 						for (size_t i = 0; i < indexCount; i++) {
 							uint32_t originalVertexIndex = indices[i];
 							if (originalVertexIndex < primitiveVertexIndices.size()) {
-								modelVertex::indexs.model.push_back(primitiveVertexIndices[originalVertexIndex]);
+								indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
 							}
 						}
 					}
@@ -457,27 +473,27 @@ private:
 				else {
 					//如果没有索引，生成三角形索引  
 					for (size_t i = 0; i < vertexCount; i += 3) {
-						modelVertex::indexs.model.push_back(primitiveVertexIndices[i]);
-						modelVertex::indexs.model.push_back(primitiveVertexIndices[i + 1]);
-						modelVertex::indexs.model.push_back(primitiveVertexIndices[i + 2]);
+						indexs.push_back(primitiveVertexIndices[i]);
+						indexs.push_back(primitiveVertexIndices[i + 1]);
+						indexs.push_back(primitiveVertexIndices[i + 2]);
 					}
 				}
 			}
 		}
 
 		if (debugInfo::LogSwitch) {
-			if (modelVertex::vertexs.model.empty()) {
+			if (vertexs.empty()) {
 				Log::printError(__FILE__, __LINE__, "加载的模型不包含任何顶点");
 			}
 
-			if (modelVertex::indexs.model.empty()) {
+			if (indexs.empty()) {
 				Log::printError(__FILE__, __LINE__, "加载的模型不包含任何索引");
 			}
 		}
 	}
 
 	//创建纹理KTX数组结点，使用无损压缩
-	void createTextureKtxArrayNode(char const* imageFile, bufferStruct::imageNode& imageBuffer, uint32_t arrayLayer, uint32_t& mipLevel, VkFormat format, uint32_t pixel) {
+	void createTextureKtxArrayNode(const char* imageFile, bufferStruct::imageNode& imageBuffer, uint32_t arrayLayer, uint32_t& mipLevel, VkFormat format, uint32_t pixel) {
 		ktxResult result;
 		ktxTexture2* ktxTexture;
 
@@ -493,28 +509,32 @@ private:
 		mipLevel = ktxTexture->numLevels;
 		ktx_uint8_t* textureData = ktxTexture->pData;
 		ktx_size_t textureSize = ktxTexture->dataSize;
+		bufferStruct::bufferNode tempBuffer;
 
-		VkBuffer tempBuffer;
-		VmaAllocation tempMemory;
 
-		createBuffer(textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer, tempMemory);
-		createMapMemory(tempMemory, textureData, static_cast<size_t>(textureSize));
+
+		createBuffer(textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer);
+		createMapMemory(tempBuffer.bufferMemory, textureData, static_cast<size_t>(textureSize));
 		createImage(textureInfo::tileWidth, textureInfo::tileHeight, arrayLayer, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageBuffer.image, imageBuffer.imageMemory);
 
 		transitionImageLayout(imageBuffer.image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		copyBufferToImageArray(pixel, textureInfo::tileWidth, textureInfo::tileHeight, textureInfo::atlasWidth, textureInfo::atlasHeight, texWidth, texHeight, arrayLayer, tempBuffer, imageBuffer.image);
+		copyBufferToImageArray(pixel, textureInfo::tileWidth, textureInfo::tileHeight, textureInfo::atlasWidth, textureInfo::atlasHeight, texWidth, texHeight, arrayLayer, tempBuffer.buffer, imageBuffer.image);
 		transitionImageLayout(imageBuffer.image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 		createImageView(imageBuffer.image, imageBuffer.view, arrayLayer, mipLevel, VK_IMAGE_VIEW_TYPE_2D_ARRAY, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
-		vmaDestroyBuffer(Device.allocator, tempBuffer, tempMemory);
+		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 		ktxTexture2_Destroy(ktxTexture);
 	}
 
 	//创建纹理KTX结点，使用微损压缩 + mip
-	void createTextureKtxNode(char const* imageFile, bufferStruct::imageNode& imageBuffer, uint32_t& mipLevel) {
+	void createTextureKtxNode(const char* imageFile, bufferStruct::imageNode& imageBuffer, uint32_t& mipLevel) {
 		ktxResult result;
 		ktxTexture2* ktxTexture;
+
+		if (!std::filesystem::exists(imageFile)) {
+			Log::printError(__FILE__, __LINE__, "贴图文件不存在: " + std::string(imageFile));
+		}
 
 		result = ktxTexture2_CreateFromNamedFile(imageFile, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
 		result = ktxTexture2_TranscodeBasis(ktxTexture, KTX_TTF_BC7_RGBA, 0);
@@ -530,24 +550,24 @@ private:
 		ktx_uint8_t* textureData = ktxTexture->pData;
 		ktx_size_t textureSize = ktxTexture->dataSize;
 		VkFormat format = VK_FORMAT_BC7_UNORM_BLOCK;
+		bufferStruct::bufferNode tempBuffer;
 
-		VkBuffer tempBuffers;
-		VmaAllocation tempMemory;
+
 
 		//创建临时缓冲，方便CPU访问
-		createBuffer(textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffers, tempMemory);
+		createBuffer(textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer);
 		//内存映射
-		createMapMemory(tempMemory, textureData, static_cast<size_t>(textureSize));
+		createMapMemory(tempBuffer.bufferMemory, textureData, static_cast<size_t>(textureSize));
 		//创建纹理缓冲，方便GPU访问
 		createImage(texWidth, texHeight, 1, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageBuffer.image, imageBuffer.imageMemory);
 
 		transitionImageLayout(imageBuffer.image, 1, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);					//图像格式转换为传送最佳
-		copyBufferToImageKtx(texWidth, texHeight, mipLevel, ktxTexture, tempBuffers, imageBuffer.image);												//临时缓冲拷贝到图像缓冲
+		copyBufferToImageKtx(texWidth, texHeight, mipLevel, ktxTexture, tempBuffer.buffer, imageBuffer.image);												//临时缓冲拷贝到图像缓冲
 		transitionImageLayout(imageBuffer.image, 1, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);	//图像格式转换为采样最佳
 
 		createImageView(imageBuffer.image, imageBuffer.view, 1, mipLevel, VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
-		vmaDestroyBuffer(Device.allocator, tempBuffers, tempMemory);
+		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 		ktxTexture2_Destroy(ktxTexture);
 	}
 
@@ -561,12 +581,11 @@ private:
 		stb_font_consolas_24_latin1(uiText.stbFontData, font24pixels, fontHeight);
 
 		//创建临时缓冲，方便CPU访问
-		VkBuffer tempBuffers;
-		VmaAllocation tempMemory;
-		createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffers, tempMemory);
+		bufferStruct::bufferNode tempBuffer;
+		createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer);
 
 		//内存映射
-		createMapMemory(tempMemory, &font24pixels[0][0], static_cast<size_t>(imageSize));
+		createMapMemory(tempBuffer.bufferMemory, &font24pixels[0][0], static_cast<size_t>(imageSize));
 
 		//创建纹理缓冲，方便GPU访问
 		createImage(fontWidth, fontHeight, 1, 1, VK_FORMAT_R8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageBuffer.image, imageBuffer.imageMemory);
@@ -574,10 +593,10 @@ private:
 		//图像格式转换为传送最佳
 		transitionImageLayout(imageBuffer.image, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		//临时缓冲拷贝到图像缓冲
-		copyBufferToImage(static_cast<uint32_t>(fontWidth), static_cast<uint32_t>(fontHeight), tempBuffers, imageBuffer.image);
+		copyBufferToImage(static_cast<uint32_t>(fontWidth), static_cast<uint32_t>(fontHeight), tempBuffer.buffer, imageBuffer.image);
 		//图像格式转换为采样最佳
 		transitionImageLayout(imageBuffer.image, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		vmaDestroyBuffer(Device.allocator, tempBuffers, tempMemory);
+		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 
 		createImageView(imageBuffer.image, imageBuffer.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
@@ -602,16 +621,29 @@ private:
 		}
 	}
 
-	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VmaAllocation& allocation) {
+	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bufferStruct::bufferNode& bufferNode) {
 		VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferInfo.size = size;
 		bufferInfo.usage = usage;
 
 		VmaAllocationCreateInfo allocInfo = {};
-		allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN; // 使用 VMA_MEMORY_USAGE_UNKNOWN 将内存属性交由属性参数控制
-		allocInfo.requiredFlags = properties;		// 设置所需的内存属性
+		allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN; //使用 VMA_MEMORY_USAGE_UNKNOWN 将内存属性交由属性参数控制
+		allocInfo.requiredFlags = properties;		//设置所需的内存属性
 
-		vmaCreateBuffer(Device.allocator, &bufferInfo, &allocInfo, &buffer, &allocation, nullptr);
+		vmaCreateBuffer(Device.allocator, &bufferInfo, &allocInfo, &bufferNode.buffer, &bufferNode.bufferMemory, nullptr);
+	}
+
+	//为createUniformBuffer服务的简略版
+	void createBuffer(VkDeviceSize size, bufferStruct::bufferNode& bufferNode) {
+		VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		bufferInfo.size = size;
+		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+		VmaAllocationCreateInfo allocInfo = {};
+		allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN;																//使用 VMA_MEMORY_USAGE_UNKNOWN 将内存属性交由属性参数控制
+		allocInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;	//设置所需的内存属性
+
+		vmaCreateBuffer(Device.allocator, &bufferInfo, &allocInfo, &bufferNode.buffer, &bufferNode.bufferMemory, nullptr);
 	}
 
 	void createMapMemory(VmaAllocation tempMemory, const void* sourceData, size_t dataSize) {
@@ -874,14 +906,14 @@ public:
 		pipelineLayoutInfo.pPushConstantRanges = 0; // Optional
 
 		//scence
-		pipelineLayoutInfo.pSetLayouts = &descriptors.scence.layout;
+		pipelineLayoutInfo.pSetLayouts = &procDescriptor.scence.layout;
 
 		if (vkCreatePipelineLayout(Device.device, &pipelineLayoutInfo, nullptr, &pipelineLayout.scence) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "管线布局创建失败");
 		}
 
 		//uiText
-		pipelineLayoutInfo.pSetLayouts = &descriptors.uiText.layout;
+		pipelineLayoutInfo.pSetLayouts = &procDescriptor.uiText.layout;
 
 		if (vkCreatePipelineLayout(Device.device, &pipelineLayoutInfo, nullptr, &pipelineLayout.uiText) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "管线布局创建失败");
@@ -971,7 +1003,7 @@ public:
 		command.renderPassInfo.renderArea.extent = Device.swapChainExtent;
 	}
 
-	void createCommandBuffers(int threadID, pipelineList::procPipeline& procPipeline) {
+	void createCommandBuffers(int threadID, pipelineList::procPipelineNode& procPipeline) {
 		command.allocInfo.commandBufferCount = (uint32_t)command.commandBuffers[threadID].size();
 
 		if (vkAllocateCommandBuffers(Device.device, &command.allocInfo, command.commandBuffers[threadID].data()) != VK_SUCCESS) {
@@ -990,21 +1022,23 @@ public:
 
 			//terrain
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				if (terrainVertex::vertexs.terrain[layer].size() && terrainVertex::indexs.terrain[layer].size()) {
+				if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
 					vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain[layer].pipeline);
 					vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain[layer].pipelineLayout, 0, 1, &terrain.descriptorSet, 0, nullptr);
 					vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &terrain.vertex[threadID][layer].buffer, offsets);
 					vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], terrain.index[threadID][layer].buffer, 0, VK_INDEX_TYPE_UINT32);
-					vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)terrainVertex::indexs.terrain[layer].size(), 1, 0, 0, 0);
+					vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)terrainVertex::indexs[layer].size(), 1, 0, 0, 0);
 				}
 			}
 
 			//model
-			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
-			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &temple.descriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &temple.vertex.buffer, offsets);
-			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], temple.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs.model.size(), 1, 0, 0, 0);
+			for (int modelId = 0; modelId < bufferEnum::procModelEnum::count; modelId++) {
+				vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
+				vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &procModel.node[modelId].descriptorSet, 0, nullptr);
+				vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &procModel.node[modelId].vertex.buffer, offsets);
+				vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], procModel.node[modelId].index.buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs[modelId].size(), 1, 0, 0, 0);
+			}
 
 			//skybox
 			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.skybox.pipeline);
@@ -1041,16 +1075,16 @@ public:
 
 		if (isLayer) {
 			int layer = terrainEnum::terrainLayer::Layer_0;		//先重建当前线程网格缓冲区
-			if (terrainVertex::vertexs.terrain[layer].size() && terrainVertex::indexs.terrain[layer].size()) {
+			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
 				vmaDestroyBuffer(Device.allocator, terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
 
-				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[threadID][layer]);
-				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[threadID][layer]);
+				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadID][layer]);
+				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadID][layer]);
 			}
 
 			layer = terrainEnum::terrainLayer::Layer_1;
-			if (terrainVertex::vertexs.terrain[layer].size() && terrainVertex::indexs.terrain[layer].size()) {
+			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
 				createTerrainVertexBuffer(threadID, layer);
 				createTerrainIndexBuffer(threadID, layer);
 			}
@@ -1058,12 +1092,12 @@ public:
 		else {
 			int layer = terrainEnum::terrainLayer::Layer_0;
 
-			if (terrainVertex::vertexs.terrain[layer].size() && terrainVertex::indexs.terrain[layer].size()) {
+			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
 				vmaDestroyBuffer(Device.allocator, terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
 
-				createVertexBuffer(terrainVertex::vertexs.terrain[layer], terrain.vertex[threadID][layer]);
-				createIndexBuffer(terrainVertex::indexs.terrain[layer], terrain.index[threadID][layer]);
+				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadID][layer]);
+				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadID][layer]);
 			}
 		}
 	}
@@ -1081,7 +1115,7 @@ public:
 
 
 
-		/*terrain*/
+		//terrain
 		terrain.ubo.view				= camera.view;
 		terrain.lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
 		terrain.lightUbo.currentHour	= currentHour;
@@ -1091,41 +1125,48 @@ public:
 		terrain.lightUbo.flashDir		= camera.front;
 		terrain.lightUbo.flashCutOff	= glm::cos(glm::radians(12.5f));
 		terrain.lightUbo.outerCutOff	= glm::cos(glm::radians(14.5f));
-		
-		/*model*/
-		temple.ubo.model				= glm::translate(glm::mat4(1), offsetPos);											//位移
-		temple.ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
-		temple.ubo.modelTI				= glm::transpose(glm::inverse(temple.ubo.model));
-		//temple.ubo.model				*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
-		temple.ubo.view					= camera.view;
-		temple.lightUbo.viewPos			= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-		temple.lightUbo.currentHour		= currentHour;
-		temple.lightUbo.ambientScale	= (sin(gameTime) + 1) / 2;
-		temple.lightUbo.gLightPos		= glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
 
-		/*skybox*/
-		//skybox.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(pos - playerInfo::logicOriginPos));		//着色器屏蔽了模型的位移变换，所以注释掉此处
-		skybox.ubo.view					= camera.view;
-		skybox.lightUbo.currentHour		= currentHour;
+		//model
+		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
+			procModel.node[i].ubo.model				= glm::translate(glm::mat4(1), offsetPos);											//位移
+			procModel.node[i].ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
+			procModel.node[i].ubo.modelTI			= glm::transpose(glm::inverse(procModel.node[i].ubo.model));
+			//procModel.node[i].ubo.model			*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
+			procModel.node[i].ubo.view				= camera.view;
+			procModel.node[i].lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			procModel.node[i].lightUbo.currentHour	= currentHour;
+			procModel.node[i].lightUbo.ambientScale = 1;//(sin(gameTime) + 1) / 2;
+			procModel.node[i].lightUbo.gLightPos	= glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+		}
 
-		/*mine*/
-		mine.ubo.model					= glm::translate(glm::mat4(1), box.minepos);
-		mine.ubo.model					*= glm::scale(glm::mat4(1), glm::vec3(1) * box.isVisible);
-		mine.ubo.view					= camera.view;
+		//skybox
+		//skybox.ubo.model			= glm::translate(glm::mat4(1), glm::vec3(pos - playerInfo::logicOriginPos));		//着色器屏蔽了模型的位移变换，所以注释掉此处
+		skybox.ubo.view				= camera.view;
+		skybox.lightUbo.currentHour	= currentHour;
 
-		/*showUIText*/
-		showUIText.pos					= glm::floor(camera.pos);
-		showUIText.chunkPos				= glm::floor(camera.pos / (double)plateInfo::chunkLength);
-		showUIText.minepos				= box.minepos;
+		//mine
+		mine.ubo.model	= glm::translate(glm::mat4(1), box.minepos);
+		mine.ubo.model	*= glm::scale(glm::mat4(1), glm::vec3(1) * box.isVisible);
+		mine.ubo.view	= camera.view;
+
+		//showUIText
+		showUIText.pos		= glm::floor(camera.pos);
+		showUIText.chunkPos	= glm::floor(camera.pos / (double)plateInfo::chunkLength);
+		showUIText.minepos	= box.minepos;
 
 
 
 		createMapMemory(terrain.uniform.bufferMemory, &terrain.ubo, sizeof(terrain.ubo));
 		createMapMemory(terrain.lightUniform.bufferMemory, &terrain.lightUbo, sizeof(terrain.lightUbo));
-		createMapMemory(temple.uniform.bufferMemory, &temple.ubo, sizeof(temple.ubo));
-		createMapMemory(temple.lightUniform.bufferMemory, &temple.lightUbo, sizeof(temple.lightUbo));
+
+		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
+			createMapMemory(procModel.node[i].uniform.bufferMemory, &procModel.node[i].ubo, sizeof(procModel.node[i].ubo));
+			createMapMemory(procModel.node[i].lightUniform.bufferMemory, &procModel.node[i].lightUbo, sizeof(procModel.node[i].lightUbo));
+		}
+
 		createMapMemory(skybox.uniform.bufferMemory, &skybox.ubo, sizeof(skybox.ubo));
 		createMapMemory(skybox.lightUniform.bufferMemory, &skybox.lightUbo, sizeof(skybox.lightUbo));
+
 		createMapMemory(mine.uniform.bufferMemory, &mine.ubo, sizeof(mine.ubo));
 	}
 
@@ -1155,41 +1196,39 @@ private:
 
 	//创建地形顶点缓冲
 	void createTerrainVertexBuffer(int threadID, int layer) {
-		VkDeviceSize bufferSize = sizeof(terrainVertex::vertexs.terrain[layer][0]) * terrainVertex::vertexs.terrain[layer].size();
-		VkBuffer tempBuffer;
-		VmaAllocation tempMemory;
+		VkDeviceSize bufferSize = sizeof(terrainVertex::vertexs[layer][0]) * terrainVertex::vertexs[layer].size();
+		bufferStruct::bufferNode tempBuffer;
 
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer, tempMemory);
-		createMapMemory(tempMemory, terrainVertex::vertexs.terrain[layer].data(), (size_t)bufferSize);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer);
+		createMapMemory(tempBuffer.bufferMemory, terrainVertex::vertexs[layer].data(), (size_t)bufferSize);
 
 		for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
 			int thread = (threadID + i) % 2;
 
 			vmaDestroyBuffer(Device.allocator, terrain.vertex[thread][layer].buffer, terrain.vertex[thread][layer].bufferMemory);
-			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[thread][layer].buffer, terrain.vertex[thread][layer].bufferMemory);
-			copyBuffer(tempBuffer, terrain.vertex[thread][layer].buffer, bufferSize);
+			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[thread][layer]);
+			copyBuffer(tempBuffer.buffer, terrain.vertex[thread][layer].buffer, bufferSize);
 		}
 
-		vmaDestroyBuffer(Device.allocator, tempBuffer, tempMemory);
+		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 	}
 
 	//创建地形索引缓冲
 	void createTerrainIndexBuffer(int threadID, int layer) {
-		VkDeviceSize bufferSize = sizeof(terrainVertex::indexs.terrain[layer][0]) * terrainVertex::indexs.terrain[layer].size();
-		VkBuffer tempBuffer;
-		VmaAllocation tempMemory;
+		VkDeviceSize bufferSize = sizeof(terrainVertex::indexs[layer][0]) * terrainVertex::indexs[layer].size();
+		bufferStruct::bufferNode tempBuffer;
 
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer, tempMemory);
-		createMapMemory(tempMemory, terrainVertex::indexs.terrain[layer].data(), (size_t)bufferSize);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer);
+		createMapMemory(tempBuffer.bufferMemory, terrainVertex::indexs[layer].data(), (size_t)bufferSize);
 
 		for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
 			int thread = (threadID + i) % 2;
 
 			vmaDestroyBuffer(Device.allocator, terrain.index[thread][layer].buffer, terrain.index[thread][layer].bufferMemory);
-			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.index[thread][layer].buffer, terrain.index[thread][layer].bufferMemory);
-			copyBuffer(tempBuffer, terrain.index[thread][layer].buffer, bufferSize);
+			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.index[thread][layer]);
+			copyBuffer(tempBuffer.buffer, terrain.index[thread][layer].buffer, bufferSize);
 		}
 
-		vmaDestroyBuffer(Device.allocator, tempBuffer, tempMemory);
+		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 	}
 };

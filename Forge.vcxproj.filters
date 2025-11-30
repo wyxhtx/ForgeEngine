@@ -17,6 +17,7 @@
   <ItemGroup>
     <Text Include="提交git.txt" />
     <Text Include="src\shader_build\bat注释.txt" />
+    <Text Include="src\image_build\bat注释.txt" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitattributes" />
@@ -58,15 +59,20 @@
     <None Include="src\shader_build\terrain\terrain.vert" />
     <None Include="src\shader_build\uiText\uiText.frag" />
     <None Include="src\shader_build\uiText\uiText.vert" />
-    <None Include="src\image\model\temple\temple.ktx2" />
-    <None Include="src\image\terrain\cube_16_64.ktx2" />
-    <None Include="src\image\terrain\cube_16_64_specular.ktx2" />
     <None Include="src\model\temple\scene.bin">
       <Filter>资源文件</Filter>
     </None>
     <None Include="src\model\temple\scene.gltf" />
     <None Include="src\shader\model\pbrFrag.spv" />
     <None Include="src\shader\model\pbrVert.spv" />
+    <None Include="src\model\droid\scene.bin">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="src\model\droid\scene.gltf" />
+    <None Include="src\image\terrain\cube_16_64.ktx2" />
+    <None Include="src\image\terrain\cube_16_64_specular.ktx2" />
+    <None Include="src\image\model\temple\baseColor.ktx2" />
+    <None Include="src\image\model\droid\body_baseColor.ktx2" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">
@@ -289,10 +295,13 @@
     <Image Include="src\image_build\terrain\cube_16_64.png">
       <Filter>资源文件</Filter>
     </Image>
-    <Image Include="src\image_build\model\temple\temple.png">
+    <Image Include="src\image_build\model\temple\baseColor.png">
       <Filter>资源文件</Filter>
     </Image>
     <Image Include="src\image_build\terrain\cube_16_64_specular.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="src\image_build\model\droid\body_baseColor.jpeg">
       <Filter>资源文件</Filter>
     </Image>
   </ItemGroup>

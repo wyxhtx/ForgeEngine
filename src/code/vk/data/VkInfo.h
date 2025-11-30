@@ -95,10 +95,10 @@ namespace lightInfo {
 }
 
 namespace bufferInfo {
-    const uint32_t bufferScenceNodeSize = 4;      //描述符池上限，terrain，model，skybox，mine
-    const uint32_t bufferTextUINodeSize = 1;      //描述符池上限，uiText
+    const uint32_t bufferScenceNodeSize = 5;    //描述符池上限，terrain，m_temple，m_droid，skybox，mine
+    const uint32_t bufferTextUINodeSize = 1;    //描述符池上限，uiText
 
-    const int commandThreadSize = 2;        //命令线程数
+    const int commandThreadSize = 2;            //命令线程数
 }
 
 namespace fpsInfo {
@@ -109,20 +109,20 @@ namespace fpsInfo {
 
 namespace fileInfo {
     namespace shader {
-        static std::string terrainVert = "src/shader/terrain/terrainVert.spv";
-        static std::string terrainFrag = "src/shader/terrain/terrainFrag.spv";
+        const std::string terrainVert = "src/shader/terrain/terrainVert.spv";
+        const std::string terrainFrag = "src/shader/terrain/terrainFrag.spv";
 
-        static std::string pbrVert = "src/shader/model/pbrVert.spv";
-        static std::string pbrFrag = "src/shader/model/pbrFrag.spv";
+        const std::string pbrVert = "src/shader/model/pbrVert.spv";
+        const std::string pbrFrag = "src/shader/model/pbrFrag.spv";
 
-        static std::string skyboxVert = "src/shader/skybox/skyboxVert.spv";
-        static std::string skyboxFrag = "src/shader/skybox/skyboxFrag.spv";
+        const std::string skyboxVert = "src/shader/skybox/skyboxVert.spv";
+        const std::string skyboxFrag = "src/shader/skybox/skyboxFrag.spv";
 
-        static std::string mineVert = "src/shader/mine/mineVert.spv";
-        static std::string mineFrag = "src/shader/mine/mineFrag.spv";
+        const std::string mineVert = "src/shader/mine/mineVert.spv";
+        const std::string mineFrag = "src/shader/mine/mineFrag.spv";
 
-        static std::string uitextVert = "src/shader/uiText/uitextVert.spv";
-        static std::string uitextFrag = "src/shader/uiText/uitextFrag.spv";
+        const std::string uitextVert = "src/shader/uiText/uitextVert.spv";
+        const std::string uitextFrag = "src/shader/uiText/uitextFrag.spv";
     }
 
     namespace music {
@@ -131,13 +131,18 @@ namespace fileInfo {
     }
 
     namespace model {
-        static std::string temple = "src/model/temple/scene.gltf";
+        const std::string temple  = "src/model/temple/scene.gltf";
+        const std::string droid   = "src/model/droid/scene.gltf";
+        //const std::string nextTemp = "src/model/nextTemp/scene.gltf";
     }
 
     namespace image {
-        const char* cube            = "src/image/terrain/cube_16_64.ktx2";
-        const char* cubeSpecular    = "src/image/terrain/cube_16_64_specular.ktx2";
-        const char* m_temple        = "src/image/model/temple/temple.ktx2";
+        const char* cube         = "src/image/terrain/cube_16_64.ktx2";
+        const char* cubeSpecular = "src/image/terrain/cube_16_64_specular.ktx2";
+
+        const char* temple  = "src/image/model/temple/baseColor.ktx2";
+        const char* droid   = "src/image/model/droid/body_baseColor.ktx2";
+        //const char* nextTemp = "src/image/model/nextTemp/.ktx2";
     }
 
     namespace storage {

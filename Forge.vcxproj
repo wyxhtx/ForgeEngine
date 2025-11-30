@@ -162,6 +162,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="src\image_build\bat注释.txt" />
     <Text Include="src\shader_build\bat注释.txt" />
     <Text Include="提交git.txt" />
   </ItemGroup>
@@ -170,7 +171,8 @@
     <None Include=".gitignore" />
     <None Include="README.md" />
     <None Include="src\code\tool\temp\shader.frag" />
-    <None Include="src\image\model\temple\temple.ktx2" />
+    <None Include="src\image\model\droid\body_baseColor.ktx2" />
+    <None Include="src\image\model\temple\baseColor.ktx2" />
     <None Include="src\image\terrain\cube_16_64.ktx2" />
     <None Include="src\image\terrain\cube_16_64_specular.ktx2" />
     <None Include="src\image_build\ktx.dll" />
@@ -179,6 +181,8 @@
     <None Include="src\library\dll\alut.dll" />
     <None Include="src\library\dll\ktx.dll" />
     <None Include="src\library\stb\stb_font_consolas_24_latin1.inl" />
+    <None Include="src\model\droid\scene.bin" />
+    <None Include="src\model\droid\scene.gltf" />
     <None Include="src\model\temple\scene.bin" />
     <None Include="src\model\temple\scene.gltf" />
     <None Include="src\shader\model\pbrFrag.spv" />
@@ -281,8 +285,9 @@
     <ClCompile Include="src\code\vk\Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="src\image_build\model\droid\body_baseColor.jpeg" />
     <Image Include="src\image_build\terrain\cube_16_64.png" />
-    <Image Include="src\image_build\model\temple\temple.png" />
+    <Image Include="src\image_build\model\temple\baseColor.png" />
     <Image Include="src\image_build\terrain\cube_16_64_specular.png" />
   </ItemGroup>
   <ItemGroup>

@@ -34,6 +34,7 @@ for /r "%SOURCE_DIR%" %%f in (*.vert *.frag) do (
     )
     
     echo ±àÒë: !relative_path!\!filename!%%~xf ¡ú !target_path!
+    echo ---
     "%COMPILER%" -V "%%f" -o "!target_path!" >nul 2>&1
 )
 

@@ -15,7 +15,7 @@ public:
 
 		Log::printTitle("板块创建信息");
 		Log::print("创建用时:\t" + time.end());
-		Log::print("优化面数:\t" + std::to_string((terrainVertex::vertexs.terrain[terrainEnum::terrainLayer::Layer_0].size() + terrainVertex::vertexs.terrain[terrainEnum::terrainLayer::Layer_1].size()) / 4));
+		Log::print("优化面数:\t" + std::to_string((terrainVertex::vertexs[terrainEnum::terrainLayer::Layer_0].size() + terrainVertex::vertexs[terrainEnum::terrainLayer::Layer_1].size()) / 4));
 
 		if (debugInfo::LogSwitch) {
 			Log::delimiter();
@@ -215,11 +215,11 @@ private:
 		//地形网格非空检测
 		if (debugInfo::LogSwitch) {
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				if (terrainVertex::vertexs.terrain[layer].size() == 0) {
+				if (terrainVertex::vertexs[layer].size() == 0) {
 					Log::printError(__FILE__, __LINE__, std::format("Layer_{}对应顶点数组为空", layer));
 				}
 
-				if (terrainVertex::indexs.terrain[layer].size() == 0) {
+				if (terrainVertex::indexs[layer].size() == 0) {
 					Log::printError(__FILE__, __LINE__, std::format("Layer_{}对应索引数组为空", layer));
 				}
 			}
@@ -422,10 +422,10 @@ private:
 	void joinTerrainMesh(Chunk& chunk, const glm::dvec3 originOffset, const glm::dvec3 chunkPos, const int layer) {
 		if (chunk.indexOffset) {
 			//等同(uint32_t)(terrainVertex::indexs.terrain[layer].size() / 1.5);
-			uint32_t offset = (uint32_t)terrainVertex::vertexs.terrain[layer].size();
+			uint32_t offset = (uint32_t)terrainVertex::vertexs[layer].size();
 
 			if (debugInfo::LogSwitch) {
-				if (offset != (uint32_t)(terrainVertex::indexs.terrain[layer].size() / 1.5)) {
+				if (offset != (uint32_t)(terrainVertex::indexs[layer].size() / 1.5)) {
 					Log::printError(__FILE__, __LINE__, "索引偏移错误");
 				}
 			}
@@ -447,7 +447,7 @@ private:
 			}
 
 			//拼入地形顶点数组
-			terrainVertex::vertexs.terrain[layer].insert(terrainVertex::vertexs.terrain[layer].end(), chunk.chunkVertexs.begin(), chunk.chunkVertexs.end());
+			terrainVertex::vertexs[layer].insert(terrainVertex::vertexs[layer].end(), chunk.chunkVertexs.begin(), chunk.chunkVertexs.end());
 
 			//处理索引偏移
 			std::vector<uint32_t> tempIndexs = chunk.chunkIndexs;
@@ -456,7 +456,7 @@ private:
 			}
 
 			//拼入地形索引数组
-			terrainVertex::indexs.terrain[layer].insert(terrainVertex::indexs.terrain[layer].end(), tempIndexs.begin(), tempIndexs.end());
+			terrainVertex::indexs[layer].insert(terrainVertex::indexs[layer].end(), tempIndexs.begin(), tempIndexs.end());
 		}
 	}
 
@@ -472,8 +472,8 @@ private:
 					++p;
 				}
 
-				terrainVertex::vertexs.terrain[layer].erase(terrainVertex::vertexs.terrain[layer].begin() + vertexsSize, terrainVertex::vertexs.terrain[layer].begin() + vertexsSize + node->vertexsSize);
-				terrainVertex::indexs.terrain[layer].erase(terrainVertex::indexs.terrain[layer].end() - node->indexsSize, terrainVertex::indexs.terrain[layer].end());
+				terrainVertex::vertexs[layer].erase(terrainVertex::vertexs[layer].begin() + vertexsSize, terrainVertex::vertexs[layer].begin() + vertexsSize + node->vertexsSize);
+				terrainVertex::indexs[layer].erase(terrainVertex::indexs[layer].end() - node->indexsSize, terrainVertex::indexs[layer].end());
 
 				terrainMeshSignList[layer].erase_after(prev);
 				break;
@@ -785,8 +785,8 @@ public:
 			//原点已迁移，R(8)N(34)M(12)
 			//清空全部地形网格
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				terrainVertex::vertexs.terrain[layer].clear();
-				terrainVertex::indexs.terrain[layer].clear();
+				terrainVertex::vertexs[layer].clear();
+				terrainVertex::indexs[layer].clear();
 				terrainMeshSignList[layer].clear();
 			}
 
@@ -881,11 +881,11 @@ public:
 		//地形网格非空检测
 		if (debugInfo::LogSwitch) {
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				if (terrainVertex::vertexs.terrain[layer].size() == 0) {
+				if (terrainVertex::vertexs[layer].size() == 0) {
 					Log::printWarning(__FILE__, __LINE__, std::format("Layer_{}对应顶点数组为空", layer));
 				}
 
-				if (terrainVertex::indexs.terrain[layer].size() == 0) {
+				if (terrainVertex::indexs[layer].size() == 0) {
 					Log::printWarning(__FILE__, __LINE__, std::format("Layer_{}对应索引数组为空", layer));
 				}
 			}

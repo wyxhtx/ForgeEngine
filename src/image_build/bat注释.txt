@@ -1,0 +1,12 @@
+原版代码
+.\toktx --t2 --zcmp 22 --assign_primaries bt709 --assign_oetf srgb ../image/terrain/cube_16_64.ktx2 terrain/cube_16_64.png
+.\toktx --t2 --zcmp 22 --assign_primaries bt709 --assign_oetf linear ../image/terrain/cube_16_64_specular.ktx2 terrain/cube_16_64_specular.png
+
+.\toktx --t2 --encode uastc --zcmp 22 --genmipmap --assign_primaries bt709 --assign_oetf srgb ../image/model/temple/baseColor.ktx2 model/temple/baseColor.png
+.\toktx --t2 --encode uastc --zcmp 22 --genmipmap --assign_primaries bt709 --assign_oetf srgb ../image/model/droid/body_baseColor.ktx2 model/droid/body_baseColor.jpeg
+
+处理逻辑
+terrain和model分开
+terrain下文件正常使用.\toktx --t2 --zcmp 22 --assign_primaries bt709 --assign_oetf srgb
+terrain下文件如果带specular则采用.\toktx --t2 --zcmp 22 --assign_primaries bt709 --assign_oetf linear
+model下文件皆采用.\toktx --t2 --encode uastc --zcmp 22 --genmipmap --assign_primaries bt709 --assign_oetf srgb

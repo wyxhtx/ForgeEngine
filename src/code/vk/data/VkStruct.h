@@ -121,6 +121,9 @@ namespace bufferStruct {
         imageNode specular;
         const char* specularFile;
 
+        //采样器索引
+        int samplerId;
+
         //纹理数组参数
         uint32_t arrayLayer;
         uint32_t mipLevel = 1;
@@ -130,10 +133,11 @@ namespace bufferStruct {
 
 
 
-        terrainBufferNode(const char* tempTextureFile, const char* tempSpecularFile, uint32_t layer) {
-            textureFile = tempTextureFile;
-            specularFile = tempSpecularFile;
-            arrayLayer = layer;
+        terrainBufferNode(int tempSamplerId) {
+            textureFile = fileInfo::image::cube;
+            specularFile = fileInfo::image::cubeSpecular;
+            arrayLayer = textureInfo::arrayLayer;
+            samplerId = tempSamplerId;
         }
 
         terrainBufferNode() = delete;
@@ -161,6 +165,7 @@ namespace bufferStruct {
     struct modelBufferNode {
         bufferNode vertex;
         bufferNode index;
+        std::string modelFile;
 
         bufferNode uniform;
         bufferNode lightUniform;
@@ -169,15 +174,21 @@ namespace bufferStruct {
 
         imageNode texture;
         const char* textureFile;
+
+        int samplerId;
         uint32_t mipLevel;                  //在创建texture时赋值
 
         VkDescriptorSet descriptorSet;
 
-        modelBufferNode(const char* tempTextureFile) {
+
+
+        modelBufferNode(const std::string tempModelFile, const char* tempTextureFile, int tempSamplerId) {
+            modelFile = tempModelFile;
             textureFile = tempTextureFile;
+            samplerId = tempSamplerId;
         }
 
-        modelBufferNode() = delete;
+        modelBufferNode() {}
 
         void clear(VkDevice& device, VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
@@ -236,7 +247,16 @@ namespace bufferStruct {
         glm::vec4* mapped = nullptr;
         uint32_t numLetters;
 
+        int samplerId;
         VkDescriptorSet descriptorSet;
+
+
+
+        uiTextBufferNode(int tempSamplerId) {
+            samplerId = tempSamplerId;
+        }
+
+        uiTextBufferNode() = delete;
 
         void beginTextUpdate(VmaAllocator allocator) {
             vmaMapMemory(allocator, vertex.bufferMemory, (void**)&mapped);
