@@ -100,8 +100,10 @@ private:
 		}
 
 		//model
-		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
-			createModelMeshBuffer(procModel.node[i].modelFile, modelVertex::vertexs[i], modelVertex::indexs[i], procModel.node[i].vertex, procModel.node[i].index);
+		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+			loadModel(procModel.sNode[i].modelFile, modelVertex::sVertexs[i], modelVertex::sIndexs[i]);
+			createVertexBuffer(modelVertex::sVertexs[i], procModel.sNode[i].vertex);
+			createIndexBuffer(modelVertex::sIndexs[i], procModel.sNode[i].index);
 		}
 
 		//skybox
@@ -122,9 +124,9 @@ private:
 		createBuffer(sizeof(terrain.lightUbo), terrain.lightUniform);
 
 		//model
-		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
-			createBuffer(sizeof(procModel.node[i].ubo), procModel.node[i].uniform);
-			createBuffer(sizeof(procModel.node[i].lightUbo), procModel.node[i].lightUniform);
+		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+			createBuffer(sizeof(procModel.sNode[i].ubo), procModel.sNode[i].uniform);
+			createBuffer(sizeof(procModel.sNode[i].lightUbo), procModel.sNode[i].lightUniform);
 		}
 
 		//skybox
@@ -141,8 +143,8 @@ private:
 		createTextureKtxArrayNode(terrain.specularFile, terrain.specular, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8_UNORM, 2);
 
 		//model
-		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
-			createTextureKtxNode(procModel.node[i].textureFile, procModel.node[i].texture, procModel.node[i].mipLevel);
+		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+			createTextureKtxNode(procModel.sNode[i].textureFile, procModel.sNode[i].texture, procModel.sNode[i].mipLevel);
 		}
 
 		//uiText
@@ -182,11 +184,11 @@ private:
 		}
 
 		//model
-		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
-			if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &procModel.node[i].descriptorSet) == VK_SUCCESS) {
-				writeDescriptorScence[0].setBufferNode(procModel.node[i].descriptorSet, bufferInfo[0].getNode(procModel.node[i].uniform.buffer, sizeof(procModel.node[i].ubo)));
-				writeDescriptorScence[1].setBufferNode(procModel.node[i].descriptorSet, bufferInfo[1].getNode(procModel.node[i].lightUniform.buffer, sizeof(procModel.node[i].lightUbo)));
-				writeDescriptorScence[2].setImageNode(procModel.node[i].descriptorSet, imageInfo[0].getNode(procSampler.node[procModel.node[i].samplerId], procModel.node[i].texture.view));
+		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+			if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
+				writeDescriptorScence[0].setBufferNode(procModel.sNode[i].descriptorSet, bufferInfo[0].getNode(procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)));
+				writeDescriptorScence[1].setBufferNode(procModel.sNode[i].descriptorSet, bufferInfo[1].getNode(procModel.sNode[i].lightUniform.buffer, sizeof(procModel.sNode[i].lightUbo)));
+				writeDescriptorScence[2].setImageNode(procModel.sNode[i].descriptorSet, imageInfo[0].getNode(procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view));
 
 				std::array<VkWriteDescriptorSet, 3> tempWrite{ writeDescriptorScence[0].node,writeDescriptorScence[1].node,writeDescriptorScence[2].node };
 				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -267,12 +269,12 @@ private:
 		terrain.lightUbo.specularScale	= lightInfo::specularScale;
 
 		//model
-		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
-			procModel.node[i].ubo.proj				 = proj;
-			procModel.node[i].lightUbo.gLightColor	 = lightInfo::gLightColor;
-			procModel.node[i].lightUbo.diffuseScale  = lightInfo::diffuseScale;
-			procModel.node[i].lightUbo.gLightDir	 = lightInfo::gLightDir;
-			procModel.node[i].lightUbo.specularScale = lightInfo::specularScale;
+		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+			procModel.sNode[i].ubo.proj				 = proj;
+			procModel.sNode[i].lightUbo.gLightColor	 = lightInfo::gLightColor;
+			procModel.sNode[i].lightUbo.diffuseScale  = lightInfo::diffuseScale;
+			procModel.sNode[i].lightUbo.gLightDir	 = lightInfo::gLightDir;
+			procModel.sNode[i].lightUbo.specularScale = lightInfo::specularScale;
 		}
 
 		//skybox
@@ -283,12 +285,6 @@ private:
 	}
 
 private:
-	void createModelMeshBuffer(const std::string& filename, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, bufferStruct::bufferNode& vertexBuffer, bufferStruct::bufferNode& indexBuffer) {
-		loadModel(filename, vertexs, indexs);
-		createVertexBuffer(vertexs, vertexBuffer);
-		createIndexBuffer(indexs, indexBuffer);
-	}
-
 	//将vertexNode类中的顶点映射到buffer类里对应的VkBuffer
 	void createVertexBuffer(auto& node, bufferStruct::bufferNode& vertexBuffer) {
 		//获取顶点数组大小
@@ -1032,12 +1028,12 @@ public:
 			}
 
 			//model
-			for (int modelId = 0; modelId < bufferEnum::procModelEnum::count; modelId++) {
+			for (int modelId = 0; modelId < bufferEnum::procStaticModelEnum::count; modelId++) {
 				vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
-				vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &procModel.node[modelId].descriptorSet, 0, nullptr);
-				vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &procModel.node[modelId].vertex.buffer, offsets);
-				vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], procModel.node[modelId].index.buffer, 0, VK_INDEX_TYPE_UINT32);
-				vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::indexs[modelId].size(), 1, 0, 0, 0);
+				vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &procModel.sNode[modelId].descriptorSet, 0, nullptr);
+				vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &procModel.sNode[modelId].vertex.buffer, offsets);
+				vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], procModel.sNode[modelId].index.buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::sIndexs[modelId].size(), 1, 0, 0, 0);
 			}
 
 			//skybox
@@ -1127,16 +1123,16 @@ public:
 		terrain.lightUbo.outerCutOff	= glm::cos(glm::radians(14.5f));
 
 		//model
-		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
-			procModel.node[i].ubo.model				= glm::translate(glm::mat4(1), offsetPos);											//位移
-			procModel.node[i].ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
-			procModel.node[i].ubo.modelTI			= glm::transpose(glm::inverse(procModel.node[i].ubo.model));
-			//procModel.node[i].ubo.model			*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
-			procModel.node[i].ubo.view				= camera.view;
-			procModel.node[i].lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			procModel.node[i].lightUbo.currentHour	= currentHour;
-			procModel.node[i].lightUbo.ambientScale = 1;//(sin(gameTime) + 1) / 2;
-			procModel.node[i].lightUbo.gLightPos	= glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+			procModel.sNode[i].ubo.model				= glm::translate(glm::mat4(1), offsetPos);											//位移
+			procModel.sNode[i].ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
+			procModel.sNode[i].ubo.modelTI			= glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
+			//procModel.sNode[i].ubo.model			*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
+			procModel.sNode[i].ubo.view				= camera.view;
+			procModel.sNode[i].lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			procModel.sNode[i].lightUbo.currentHour	= currentHour;
+			procModel.sNode[i].lightUbo.ambientScale = 1;//(sin(gameTime) + 1) / 2;
+			procModel.sNode[i].lightUbo.gLightPos	= glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
 		}
 
 		//skybox
@@ -1159,9 +1155,9 @@ public:
 		createMapMemory(terrain.uniform.bufferMemory, &terrain.ubo, sizeof(terrain.ubo));
 		createMapMemory(terrain.lightUniform.bufferMemory, &terrain.lightUbo, sizeof(terrain.lightUbo));
 
-		for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
-			createMapMemory(procModel.node[i].uniform.bufferMemory, &procModel.node[i].ubo, sizeof(procModel.node[i].ubo));
-			createMapMemory(procModel.node[i].lightUniform.bufferMemory, &procModel.node[i].lightUbo, sizeof(procModel.node[i].lightUbo));
+		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+			createMapMemory(procModel.sNode[i].uniform.bufferMemory, &procModel.sNode[i].ubo, sizeof(procModel.sNode[i].ubo));
+			createMapMemory(procModel.sNode[i].lightUniform.bufferMemory, &procModel.sNode[i].lightUbo, sizeof(procModel.sNode[i].lightUbo));
 		}
 
 		createMapMemory(skybox.uniform.bufferMemory, &skybox.ubo, sizeof(skybox.ubo));

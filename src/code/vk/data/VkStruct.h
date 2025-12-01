@@ -107,26 +107,24 @@ namespace bufferStruct {
         bufferNode vertex[bufferInfo::commandThreadSize][terrainEnum::terrainLayer::count];
         bufferNode index[bufferInfo::commandThreadSize][terrainEnum::terrainLayer::count];
 
-        //统一缓冲
-        bufferNode uniform;
-        bufferNode lightUniform;
-        baseUBO ubo;
-        lightUBO lightUbo;
-
         //纹理贴图缓冲
-        imageNode texture;
         const char* textureFile;
+        imageNode texture;
 
         //高光贴图缓冲
-        imageNode specular;
         const char* specularFile;
+        imageNode specular;
 
-        //采样器索引
+        //纹理参数
         int samplerId;
-
-        //纹理数组参数
         uint32_t arrayLayer;
         uint32_t mipLevel = 1;
+
+        //统一缓冲
+        bufferNode uniform;
+        baseUBO ubo;
+        bufferNode lightUniform;
+        lightUBO lightUbo;
 
         //描述符缓冲
         VkDescriptorSet descriptorSet;
@@ -137,6 +135,7 @@ namespace bufferStruct {
             textureFile = fileInfo::image::cube;
             specularFile = fileInfo::image::cubeSpecular;
             arrayLayer = textureInfo::arrayLayer;
+
             samplerId = tempSamplerId;
         }
 
@@ -151,54 +150,96 @@ namespace bufferStruct {
                 }
             }
 
-            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
-            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
-
             vmaDestroyImage(allocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
 
             vmaDestroyImage(allocator, specular.image, specular.imageMemory);
             vkDestroyImageView(device, specular.view, nullptr);
+
+            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };
 
-    struct modelBufferNode {
+    struct staticModelNode {
+        std::string modelFile;
         bufferNode vertex;
         bufferNode index;
-        std::string modelFile;
 
-        bufferNode uniform;
-        bufferNode lightUniform;
-        baseUBO ubo;
-        lightUBO lightUbo;
-
-        imageNode texture;
         const char* textureFile;
+        imageNode texture;
 
         int samplerId;
         uint32_t mipLevel;                  //在创建texture时赋值
+
+        bufferNode uniform;
+        baseUBO ubo;
+        bufferNode lightUniform;
+        lightUBO lightUbo;
 
         VkDescriptorSet descriptorSet;
 
 
 
-        modelBufferNode(const std::string tempModelFile, const char* tempTextureFile, int tempSamplerId) {
+        staticModelNode(const std::string tempModelFile, const char* tempTextureFile, int tempSamplerId) {
             modelFile = tempModelFile;
             textureFile = tempTextureFile;
             samplerId = tempSamplerId;
         }
 
-        modelBufferNode() {}
+        staticModelNode() {}
 
         void clear(VkDevice& device, VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
             vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
 
+            vmaDestroyImage(allocator, texture.image, texture.imageMemory);
+            vkDestroyImageView(device, texture.view, nullptr);
+
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
             vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
+        }
+    };
+
+    struct dynamicModelNode {
+        std::string modelFile;          //共
+
+        bufferNode vertex;              //独
+        bufferNode index;               //独
+
+        const char* textureFile;        //独
+        imageNode texture;              //独
+
+        bufferNode uniform;             //独
+        baseUBO ubo;                    //独
+
+        bufferNode lightUniform;        //共
+        lightUBO lightUbo;              //共
+
+        int samplerId;                  //共
+        uint32_t mipLevel;              //共
+
+        VkDescriptorSet descriptorSet;  //共
+
+
+
+        dynamicModelNode(const std::string tempModelFile, const char* tempTextureFile, int tempSamplerId) {
+            modelFile = tempModelFile;
+            textureFile = tempTextureFile;
+            samplerId = tempSamplerId;
+        }
+
+        dynamicModelNode() {}
+
+        void clear(VkDevice& device, VmaAllocator& allocator) {
+            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
+            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
 
             vmaDestroyImage(allocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
+
+            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };
 
@@ -207,11 +248,13 @@ namespace bufferStruct {
         bufferNode index;
 
         bufferNode uniform;
-        bufferNode lightUniform;
         baseUBO ubo;
+        bufferNode lightUniform;
         lightUBO lightUbo;
 
         VkDescriptorSet descriptorSet;
+
+
 
         void clear(VkDevice& device, VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
@@ -231,6 +274,8 @@ namespace bufferStruct {
 
         VkDescriptorSet descriptorSet;
 
+
+
         void clear(VkDevice& device, VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
             vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
@@ -246,8 +291,8 @@ namespace bufferStruct {
         stb_fontchar* stbFontData = new stb_fontchar[STB_FONT_consolas_24_latin1_NUM_CHARS];    //字符数据
         glm::vec4* mapped = nullptr;
         uint32_t numLetters;
-
         int samplerId;
+
         VkDescriptorSet descriptorSet;
 
 

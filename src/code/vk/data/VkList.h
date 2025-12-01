@@ -177,22 +177,22 @@ namespace bufferList {
 
 
     struct procModelNode {
-        std::array<bufferStruct::modelBufferNode, bufferEnum::procModelEnum::count> node = []() {
-            std::array<bufferStruct::modelBufferNode, bufferEnum::procModelEnum::count> array{};
+        std::array<bufferStruct::staticModelNode, bufferEnum::procStaticModelEnum::count> sNode = []() {
+            std::array<bufferStruct::staticModelNode, bufferEnum::procStaticModelEnum::count> array{};
 
-            array[bufferEnum::procModelEnum::temple]  = bufferStruct::modelBufferNode{ fileInfo::model::temple,  fileInfo::image::temple,  bufferEnum::procSamplerNode::modelN };
-            array[bufferEnum::procModelEnum::droid]   = bufferStruct::modelBufferNode{ fileInfo::model::droid,   fileInfo::image::droid,   bufferEnum::procSamplerNode::modelL };
-            //array[bufferEnum::procModelEnum::nextTemp] = bufferStruct::modelBufferNode{ fileInfo::model::nextTemp, fileInfo::image::nextTemp, bufferEnum::procSamplerNode:: };
+            array[bufferEnum::procStaticModelEnum::temple]  = bufferStruct::staticModelNode{ fileInfo::model::temple,  fileInfo::image::temple,  bufferEnum::procSamplerNode::modelN };
 
             return array;
             }();
 
+        //todo ´ýÍêÉÆ
+        std::array<bufferStruct::dynamicModelNode, bufferEnum::procStaticModelEnum::count> dNode;
 
 
         uint32_t getMaxModelMip() {
             std::vector<uint32_t> maxModelMip;
 
-            for (const bufferStruct::modelBufferNode& i : node) {
+            for (const bufferStruct::staticModelNode& i : sNode) {
                 maxModelMip.push_back(i.mipLevel);
             }
 
@@ -200,8 +200,8 @@ namespace bufferList {
         }
 
         void clear(VkDevice& device, VmaAllocator allocator) {
-            for (int i = 0; i < bufferEnum::procModelEnum::count; i++) {
-                node[i].clear(device, allocator);
+            for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+                sNode[i].clear(device, allocator);
             }
         }
     };

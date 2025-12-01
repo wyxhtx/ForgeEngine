@@ -87,9 +87,14 @@ namespace modelVertex {
         }
     };
 
-    //顶点数组:坐标,uv
-    std::vector<vertexNode> vertexs[bufferEnum::procModelEnum::count];
-    std::vector<uint32_t> indexs[bufferEnum::procModelEnum::count];
+    //静态模型网格
+    std::vector<vertexNode> sVertexs[bufferEnum::procStaticModelEnum::count];
+    std::vector<uint32_t> sIndexs[bufferEnum::procStaticModelEnum::count];
+
+    //todo 待完善
+    //动态模型网格
+    std::vector<std::vector<vertexNode>> dVertexs[bufferEnum::procStaticModelEnum::count];
+    std::vector<std::vector<uint32_t>> dIndexs[bufferEnum::procStaticModelEnum::count];
 }
 
 //服务loadModel

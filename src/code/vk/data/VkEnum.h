@@ -22,11 +22,17 @@ namespace bufferEnum {
         };
     }
 
-    namespace procModelEnum {
+    namespace procStaticModelEnum {
         enum {
             temple,		//ÉñÃí
+
+            count
+        };
+    }
+
+    namespace procDynamicModelEnum {
+        enum {
             droid,		//»úÆ÷ÈË
-            //nextTemp, //
 
             count
         };
