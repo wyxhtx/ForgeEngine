@@ -141,7 +141,9 @@ namespace fileInfo {
         const char* cubeSpecular = "src/image/terrain/cube_16_64_specular.ktx2";
 
         const char* temple  = "src/image/model/temple/baseColor.ktx2";
-        const char* droid   = "src/image/model/droid/body_baseColor.ktx2";
+        const char* droid   = "src/image/model/droid/Body_baseColor.ktx2";
+        //const char* droidH   = "src/image/model/droid/Head_baseColor.ktx2";
+        //const char* droidM   = "src/image/model/droid/Misc_baseColor.ktx2";
         //const char* nextTemp = "src/image/model/nextTemp/.ktx2";
     }
 

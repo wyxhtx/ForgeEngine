@@ -171,7 +171,9 @@
     <None Include=".gitignore" />
     <None Include="README.md" />
     <None Include="src\code\tool\temp\shader.frag" />
-    <None Include="src\image\model\droid\body_baseColor.ktx2" />
+    <None Include="src\image\model\droid\Body_baseColor.ktx2" />
+    <None Include="src\image\model\droid\Head_baseColor.ktx2" />
+    <None Include="src\image\model\droid\Misc_baseColor.ktx2" />
     <None Include="src\image\model\temple\baseColor.ktx2" />
     <None Include="src\image\terrain\cube_16_64.ktx2" />
     <None Include="src\image\terrain\cube_16_64_specular.ktx2" />
@@ -285,7 +287,9 @@
     <ClCompile Include="src\code\vk\Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="src\image_build\model\droid\body_baseColor.jpeg" />
+    <Image Include="src\image_build\model\droid\Body_baseColor.jpeg" />
+    <Image Include="src\image_build\model\droid\Head_baseColor.jpeg" />
+    <Image Include="src\image_build\model\droid\Misc_baseColor.jpeg" />
     <Image Include="src\image_build\terrain\cube_16_64.png" />
     <Image Include="src\image_build\model\temple\baseColor.png" />
     <Image Include="src\image_build\terrain\cube_16_64_specular.png" />

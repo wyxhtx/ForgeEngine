@@ -72,7 +72,9 @@
     <None Include="src\image\terrain\cube_16_64.ktx2" />
     <None Include="src\image\terrain\cube_16_64_specular.ktx2" />
     <None Include="src\image\model\temple\baseColor.ktx2" />
-    <None Include="src\image\model\droid\body_baseColor.ktx2" />
+    <None Include="src\image\model\droid\Body_baseColor.ktx2" />
+    <None Include="src\image\model\droid\Head_baseColor.ktx2" />
+    <None Include="src\image\model\droid\Misc_baseColor.ktx2" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">
@@ -301,7 +303,13 @@
     <Image Include="src\image_build\terrain\cube_16_64_specular.png">
       <Filter>资源文件</Filter>
     </Image>
-    <Image Include="src\image_build\model\droid\body_baseColor.jpeg">
+    <Image Include="src\image_build\model\droid\Body_baseColor.jpeg">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="src\image_build\model\droid\Head_baseColor.jpeg">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="src\image_build\model\droid\Misc_baseColor.jpeg">
       <Filter>资源文件</Filter>
     </Image>
   </ItemGroup>
