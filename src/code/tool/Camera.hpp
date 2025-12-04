@@ -18,9 +18,9 @@ public:
     }
 
 private:
-    //float keySpeed = 8.0f;
+    float keySpeed = 8.0f;
     //float keySpeed = 32.0f;
-    float keySpeed = 64.0f;     //位移速率
+    //float keySpeed = 64.0f;     //位移速率
     float xMouseSpeed = 0.1f;   //鼠标移动X速率
     float yMouseSpeed = 0.1f;   //鼠标移动Y速率
 

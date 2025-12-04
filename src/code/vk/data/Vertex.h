@@ -55,6 +55,7 @@ namespace modelVertex {
     struct vertexNode {
         glm::vec3 position;     //坐标
         glm::vec2 texCoord;     //uv
+        glm::vec3 normal;       //法线
 
         static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
             std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
@@ -65,8 +66,8 @@ namespace modelVertex {
             return bindingDescription;
         }
 
-        static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-            std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
+        static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+            std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
 
             attributeDescriptions[0].binding = 0;
             attributeDescriptions[0].location = 0;
@@ -78,12 +79,17 @@ namespace modelVertex {
             attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
             attributeDescriptions[1].offset = offsetof(vertexNode, texCoord);
 
+            attributeDescriptions[2].binding = 0;
+            attributeDescriptions[2].location = 2;
+            attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[2].offset = offsetof(vertexNode, normal);
+
             return attributeDescriptions;
         }
 
         //服务loadModel
         bool operator==(const vertexNode& other) const {
-            return position == other.position && texCoord == other.texCoord;
+            return position == other.position && texCoord == other.texCoord && normal == other.normal;
         }
     };
 
@@ -100,7 +106,7 @@ namespace modelVertex {
 namespace std {
     template<> struct hash<modelVertex::vertexNode> {
         size_t operator()(modelVertex::vertexNode const& vertex) const {
-            return (hash<glm::vec3>()(vertex.position) ^ (hash<glm::vec2>()(vertex.texCoord) << 1));
+            return (hash<glm::vec3>()(vertex.position) ^ (hash<glm::vec3>()(vertex.normal) << 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 2));
         }
     };
 }

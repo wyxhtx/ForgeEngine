@@ -429,107 +429,8 @@ private:
 		//遍历所有mesh和primitive
 		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
 
-		for (const auto& mesh : model.meshes) {
-			for (const auto& primitive : mesh.primitives) {
-				//获取顶点数据  
-				const float* positions = nullptr;
-				const float* texCoords = nullptr;
-				size_t vertexCount = 0;
-
-				//获取POSITION属性  
-				if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
-					const auto& accessor = model.accessors[primitive.attributes.at("POSITION")];
-					const auto& bufferView = model.bufferViews[accessor.bufferView];
-					const auto& buffer = model.buffers[bufferView.buffer];
-
-					positions = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-					vertexCount = accessor.count;
-				}
-				else {
-					Log::printError(__FILE__, __LINE__, "primitive缺少POSITION属性");
-				}
-
-				//获取TEXCOORD_0属性  
-				if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
-					const auto& accessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
-					const auto& bufferView = model.bufferViews[accessor.bufferView];
-					const auto& buffer = model.buffers[bufferView.buffer];
-
-					texCoords = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-				}
-				else {
-					Log::printError(__FILE__, __LINE__, "primitive缺少TEXCOORD_0属性");
-				}
-
-				//存储当前primitive的顶点映射  
-				std::vector<uint32_t> primitiveVertexIndices;
-
-				for (size_t i = 0; i < vertexCount; i++) {
-					modelVertex::vertexNode vertex{};
-
-					//坐标系转换：从glTF(Y向上)转换为Forge(Z向上)  
-					vertex.position = {
-						positions[i * 3 + 0],     //X保持不变  
-						positions[i * 3 + 2],     //Z -> Y (交换Y和Z)  
-						-positions[i * 3 + 1]     //-Y -> Z (翻转Y轴并赋给Z)  
-					};
-
-					//UV坐标处理 - 根据实际渲染效果选择合适的翻转方式  
-					vertex.texCoord = {
-						texCoords[i * 2 + 0],
-						texCoords[i * 2 + 1]      //glTF标准UV，不翻转  
-					};
-
-					if (uniqueVertices.count(vertex) == 0) {
-						uniqueVertices[vertex] = static_cast<uint32_t>(vertexs.size());
-						vertexs.push_back(vertex);
-					}
-
-					//记录原始顶点到去重后顶点的映射  
-					primitiveVertexIndices.push_back(uniqueVertices[vertex]);
-				}
-
-				//处理索引数据  
-				if (primitive.indices >= 0) {
-					const auto& accessor = model.accessors[primitive.indices];
-					const auto& bufferView = model.bufferViews[accessor.bufferView];
-					const auto& buffer = model.buffers[bufferView.buffer];
-
-					size_t indexCount = accessor.count;
-
-					if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-						const uint16_t* indices = reinterpret_cast<const uint16_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-
-						for (size_t i = 0; i < indexCount; i++) {
-							uint32_t originalVertexIndex = indices[i];
-							if (originalVertexIndex < primitiveVertexIndices.size()) {
-								indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
-							}
-						}
-					}
-					else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-						const uint32_t* indices = reinterpret_cast<const uint32_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-
-						for (size_t i = 0; i < indexCount; i++) {
-							uint32_t originalVertexIndex = indices[i];
-							if (originalVertexIndex < primitiveVertexIndices.size()) {
-								indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
-							}
-						}
-					}
-					else {
-						Log::printError(__FILE__, __LINE__, "不支持的索引类型");
-					}
-				}
-				else {
-					//如果没有索引，生成三角形索引  
-					for (size_t i = 0; i < vertexCount; i += 3) {
-						indexs.push_back(primitiveVertexIndices[i]);
-						indexs.push_back(primitiveVertexIndices[i + 1]);
-						indexs.push_back(primitiveVertexIndices[i + 2]);
-					}
-				}
-			}
+		for (const tinygltf::Mesh& mesh : model.meshes) {
+			loadModel(model, mesh, vertexs, indexs, uniqueVertices);
 		}
 
 		if (debugInfo::LogSwitch) {
@@ -587,121 +488,168 @@ private:
 		//遍历所有mesh和primitive
 		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
 
-		for (int nodeId = 0; nodeId < model.meshes.size(); nodeId++) {
-			std::vector<modelVertex::vertexNode>& vertexs = vertexsList[nodeId];
-			std::vector<uint32_t>& indexs = indexsList[nodeId];
-			const auto& mesh = model.meshes[nodeId];
+		for (int i = 0; i < model.meshes.size(); i++) {
+			loadModel(model, model.meshes[i], vertexsList[i], indexsList[i], uniqueVertices);
 
-
-
-			for (const auto& primitive : mesh.primitives) {
-				//获取顶点数据  
-				const float* positions = nullptr;
-				const float* texCoords = nullptr;
-				size_t vertexCount = 0;
-
-				//获取POSITION属性  
-				if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
-					const auto& accessor = model.accessors[primitive.attributes.at("POSITION")];
-					const auto& bufferView = model.bufferViews[accessor.bufferView];
-					const auto& buffer = model.buffers[bufferView.buffer];
-
-					positions = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-					vertexCount = accessor.count;
-				}
-				else {
-					Log::printError(__FILE__, __LINE__, "primitive缺少POSITION属性");
+			if (debugInfo::LogSwitch) {
+				if (vertexsList[i].empty()) {
+					Log::printError(__FILE__, __LINE__, "加载的模型不包含任何顶点");
 				}
 
-				//获取TEXCOORD_0属性  
-				if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
-					const auto& accessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
-					const auto& bufferView = model.bufferViews[accessor.bufferView];
-					const auto& buffer = model.buffers[bufferView.buffer];
-
-					texCoords = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+				if (indexsList[i].empty()) {
+					Log::printError(__FILE__, __LINE__, "加载的模型不包含任何索引");
 				}
-				else {
-					Log::printError(__FILE__, __LINE__, "primitive缺少TEXCOORD_0属性");
-				}
+			}
+		}
+	}
+	
+	void loadModel(const tinygltf::Model& model, const tinygltf::Mesh& mesh, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::unordered_map<modelVertex::vertexNode, uint32_t>& uniqueVertices) {
+		for (const auto& primitive : mesh.primitives) {
+			//获取顶点数据  
+			const float* positions = nullptr;
+			const float* texCoords = nullptr;
+			const float* normals   = nullptr;
+			size_t vertexCount = 0;
 
-				//存储当前primitive的顶点映射  
-				std::vector<uint32_t> primitiveVertexIndices;
+			//获取POSITION属性  
+			if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
+				const auto& accessor = model.accessors[primitive.attributes.at("POSITION")];
+				const auto& bufferView = model.bufferViews[accessor.bufferView];
+				const auto& buffer = model.buffers[bufferView.buffer];
 
-				for (size_t i = 0; i < vertexCount; i++) {
-					modelVertex::vertexNode vertex{};
+				positions = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+				vertexCount = accessor.count;
+			}
+			else {
+				Log::printWarning(__FILE__, __LINE__, "primitive缺少POSITION属性");
+				continue;
+			}
 
-					//坐标系转换：从glTF(Y向上)转换为Forge(Z向上)  
-					vertex.position = {
-						positions[i * 3 + 0],     //X保持不变  
-						positions[i * 3 + 2],     //Z -> Y (交换Y和Z)  
-						-positions[i * 3 + 1]     //-Y -> Z (翻转Y轴并赋给Z)  
-					};
+			//获取TEXCOORD_0属性  
+			if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
+				const auto& accessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+				const auto& bufferView = model.bufferViews[accessor.bufferView];
+				const auto& buffer = model.buffers[bufferView.buffer];
 
-					//UV坐标处理 - 根据实际渲染效果选择合适的翻转方式  
+				texCoords = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+			}
+			else {
+				Log::printWarning(__FILE__, __LINE__, "primitive缺少TEXCOORD_0属性");
+				texCoords = nullptr;
+			}
+
+			//获取NORMAL属性 - 添加法线加载
+			if (primitive.attributes.find("NORMAL") != primitive.attributes.end()) {
+				const auto& accessor = model.accessors[primitive.attributes.at("NORMAL")];
+				const auto& bufferView = model.bufferViews[accessor.bufferView];
+				const auto& buffer = model.buffers[bufferView.buffer];
+
+				normals = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+			}
+			else {
+				Log::printWarning(__FILE__, __LINE__, "primitive缺少NORMAL属性，将使用默认法线");
+				normals = nullptr;
+			}
+
+			//存储当前primitive的顶点映射  
+			std::vector<uint32_t> primitiveVertexIndices;
+
+			for (size_t i = 0; i < vertexCount; i++) {
+				modelVertex::vertexNode vertex{};
+
+				//坐标系转换：从glTF(Y向上)转换为Forge(Z向上)  
+				vertex.position = {
+					positions[i * 3 + 0],     //X保持不变  
+					positions[i * 3 + 2],     //Z -> Y (交换Y和Z)  
+					-positions[i * 3 + 1]     //-Y -> Z (翻转Y轴并赋给Z)  
+				};
+
+				//UV坐标处理
+				if (texCoords) {
 					vertex.texCoord = {
 						texCoords[i * 2 + 0],
 						texCoords[i * 2 + 1]      //glTF标准UV，不翻转  
 					};
-
-					if (uniqueVertices.count(vertex) == 0) {
-						uniqueVertices[vertex] = static_cast<uint32_t>(vertexs.size());
-						vertexs.push_back(vertex);
-					}
-
-					//记录原始顶点到去重后顶点的映射  
-					primitiveVertexIndices.push_back(uniqueVertices[vertex]);
+				}
+				else {
+					vertex.texCoord = { 0.0f, 0.0f }; //默认UV坐标
 				}
 
-				//处理索引数据  
-				if (primitive.indices >= 0) {
-					const auto& accessor = model.accessors[primitive.indices];
-					const auto& bufferView = model.bufferViews[accessor.bufferView];
-					const auto& buffer = model.buffers[bufferView.buffer];
+				//法线处理 - 添加法线加载
+				if (normals) {
+					//法线也需要进行坐标系转换
+					vertex.normal = {
+						normals[i * 3 + 0],      //X保持不变
+						normals[i * 3 + 2],      //Z -> Y (交换Y和Z)
+						-normals[i * 3 + 1]      //-Y -> Z (翻转Y轴并赋给Z)
+					};
 
-					size_t indexCount = accessor.count;
+					//标准化法线
+					float length = std::sqrt(
+						vertex.normal.x * vertex.normal.x +
+						vertex.normal.y * vertex.normal.y +
+						vertex.normal.z * vertex.normal.z
+					);
 
-					if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-						const uint16_t* indices = reinterpret_cast<const uint16_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-
-						for (size_t i = 0; i < indexCount; i++) {
-							uint32_t originalVertexIndex = indices[i];
-							if (originalVertexIndex < primitiveVertexIndices.size()) {
-								indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
-							}
-						}
-					}
-					else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-						const uint32_t* indices = reinterpret_cast<const uint32_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-
-						for (size_t i = 0; i < indexCount; i++) {
-							uint32_t originalVertexIndex = indices[i];
-							if (originalVertexIndex < primitiveVertexIndices.size()) {
-								indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
-							}
-						}
-					}
-					else {
-						Log::printError(__FILE__, __LINE__, "不支持的索引类型");
+					if (length > 0.0f) {
+						vertex.normal.x /= length;
+						vertex.normal.y /= length;
+						vertex.normal.z /= length;
 					}
 				}
 				else {
-					//如果没有索引，生成三角形索引  
-					for (size_t i = 0; i < vertexCount; i += 3) {
-						indexs.push_back(primitiveVertexIndices[i]);
-						indexs.push_back(primitiveVertexIndices[i + 1]);
-						indexs.push_back(primitiveVertexIndices[i + 2]);
-					}
+					//如果没有法线数据，设置为默认上方向（根据坐标系转换）
+					vertex.normal = { 0.0f, 1.0f, 0.0f }; //Y轴向上
 				}
+
+				//使用顶点去重
+				if (uniqueVertices.count(vertex) == 0) {
+					uniqueVertices[vertex] = static_cast<uint32_t>(vertexs.size());
+					vertexs.push_back(vertex);
+				}
+
+				//记录原始顶点到去重后顶点的映射
+				primitiveVertexIndices.push_back(uniqueVertices[vertex]);
 			}
 
-			if (debugInfo::LogSwitch) {
-				if (vertexs.empty()) {
-					Log::printError(__FILE__, __LINE__, "加载的模型不包含任何顶点");
-				}
+			//处理索引数据  
+			if (primitive.indices >= 0) {
+				const auto& accessor = model.accessors[primitive.indices];
+				const auto& bufferView = model.bufferViews[accessor.bufferView];
+				const auto& buffer = model.buffers[bufferView.buffer];
 
-				if (indexs.empty()) {
-					Log::printError(__FILE__, __LINE__, "加载的模型不包含任何索引");
+				size_t indexCount = accessor.count;
+
+				if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+					const uint16_t* indices = reinterpret_cast<const uint16_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+
+					for (size_t i = 0; i < indexCount; i++) {
+						uint32_t originalVertexIndex = indices[i];
+						if (originalVertexIndex < primitiveVertexIndices.size()) {
+							indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
+						}
+					}
+				}
+				else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+					const uint32_t* indices = reinterpret_cast<const uint32_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+
+					for (size_t i = 0; i < indexCount; i++) {
+						uint32_t originalVertexIndex = indices[i];
+						if (originalVertexIndex < primitiveVertexIndices.size()) {
+							indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
+						}
+					}
+				}
+				else {
+					Log::printWarning(__FILE__, __LINE__, "不支持的索引类型");
+				}
+			}
+			else {
+				//如果没有索引，生成三角形索引
+				for (size_t i = 0; i < vertexCount; i += 3) {
+					indexs.push_back(primitiveVertexIndices[i]);
+					indexs.push_back(primitiveVertexIndices[i + 1]);
+					indexs.push_back(primitiveVertexIndices[i + 2]);
 				}
 			}
 		}
@@ -1361,8 +1309,12 @@ public:
 			procModel.sNode[i].ubo.view				 = camera.view;
 			procModel.sNode[i].lightUbo.viewPos		 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
 			procModel.sNode[i].lightUbo.currentHour	 = currentHour;
-			procModel.sNode[i].lightUbo.ambientScale = 1;//(sin(gameTime) + 1) / 2;
-			procModel.sNode[i].lightUbo.gLightPos	 = glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+			procModel.sNode[i].lightUbo.ambientScale = lightInfo::ambientScale;//(sin(gameTime) + 1) / 2;
+			procModel.sNode[i].lightUbo.gLightPos	 = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+			procModel.sNode[i].lightUbo.flashPos	 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			procModel.sNode[i].lightUbo.flashDir	 = camera.front;
+			procModel.sNode[i].lightUbo.flashCutOff  = glm::cos(glm::radians(12.5f));
+			procModel.sNode[i].lightUbo.outerCutOff  = glm::cos(glm::radians(14.5f));
 		}
 
 		//model-dNode
@@ -1376,8 +1328,12 @@ public:
 
 			procModel.dNode[i].lightUbo.viewPos		 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
 			procModel.dNode[i].lightUbo.currentHour  = currentHour;
-			procModel.dNode[i].lightUbo.ambientScale = 1;//(sin(gameTime) + 1) / 2;
-			procModel.dNode[i].lightUbo.gLightPos	 = glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+			procModel.dNode[i].lightUbo.ambientScale = lightInfo::ambientScale;//(sin(gameTime) + 1) / 2;
+			procModel.dNode[i].lightUbo.gLightPos	 = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+			procModel.dNode[i].lightUbo.flashPos	 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			procModel.dNode[i].lightUbo.flashDir	 = camera.front;
+			procModel.dNode[i].lightUbo.flashCutOff  = glm::cos(glm::radians(12.5f));
+			procModel.dNode[i].lightUbo.outerCutOff  = glm::cos(glm::radians(14.5f));
 		}
 
 		//skybox

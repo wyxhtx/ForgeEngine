@@ -171,6 +171,7 @@
     <None Include=".gitignore" />
     <None Include="README.md" />
     <None Include="src\code\tool\temp\shader.frag" />
+    <None Include="src\shader_build\model_gts.bat" />
     <None Include="src\image\model\droid\Body_baseColor.ktx2" />
     <None Include="src\image\model\droid\Head_baseColor.ktx2" />
     <None Include="src\image\model\droid\Misc_baseColor.ktx2" />

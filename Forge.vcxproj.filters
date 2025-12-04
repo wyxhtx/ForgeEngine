@@ -75,6 +75,9 @@
     <None Include="src\image\model\droid\Body_baseColor.ktx2" />
     <None Include="src\image\model\droid\Head_baseColor.ktx2" />
     <None Include="src\image\model\droid\Misc_baseColor.ktx2" />
+    <None Include="src\shader_build\model_gts.bat">
+      <Filter>源文件</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">

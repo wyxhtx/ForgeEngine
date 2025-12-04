@@ -211,7 +211,7 @@ namespace bufferStruct {
         bufferNode uniform;
         baseUBO ubo;
 
-        VkDescriptorSet descriptorSet;  //¹² todo »»³ÉUniform Buffer Dynamic
+        VkDescriptorSet descriptorSet;
 
 
 
