@@ -18,7 +18,8 @@ public:
 		createUniformBuffer();
 
 		createTexture();
-		procSampler.createTextureSampler(Device.device, terrain.mipLevel, procModel.getMaxModelMip());
+		procModel.getMaxModelMip();
+		procSampler.createTextureSampler(Device.device, terrain.mipLevel, procModel.sModelMip, procModel.dModelMip);
 		createDescriptorSet();
 
 		createDepthResources();
@@ -99,11 +100,21 @@ private:
 			}
 		}
 
-		//model
+		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
-			loadModel(procModel.sNode[i].modelFile, modelVertex::sVertexs[i], modelVertex::sIndexs[i]);
+			loadStaticModel(procModel.sNode[i].modelFile, modelVertex::sVertexs[i], modelVertex::sIndexs[i]);
 			createVertexBuffer(modelVertex::sVertexs[i], procModel.sNode[i].vertex);
 			createIndexBuffer(modelVertex::sIndexs[i], procModel.sNode[i].index);
+		}
+
+		//model-dNode
+		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+			loadDynamicModel(procModel.dNode[i].modelFile, modelVertex::dVertexs[i], modelVertex::dIndexs[i]);
+
+			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+				createVertexBuffer(modelVertex::dVertexs[i][j], procModel.dNode[i].node[j].vertex);
+				createIndexBuffer(modelVertex::dIndexs[i][j], procModel.dNode[i].node[j].index);
+			}
 		}
 
 		//skybox
@@ -123,10 +134,19 @@ private:
 		createBuffer(sizeof(terrain.ubo), terrain.uniform);
 		createBuffer(sizeof(terrain.lightUbo), terrain.lightUniform);
 
-		//model
+		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
 			createBuffer(sizeof(procModel.sNode[i].ubo), procModel.sNode[i].uniform);
 			createBuffer(sizeof(procModel.sNode[i].lightUbo), procModel.sNode[i].lightUniform);
+		}
+
+		//model-dNode
+		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+				createBuffer(sizeof(procModel.dNode[i].node[j].ubo), procModel.dNode[i].node[j].uniform);
+			}
+
+			createBuffer(sizeof(procModel.dNode[i].lightUbo), procModel.dNode[i].lightUniform);
 		}
 
 		//skybox
@@ -142,9 +162,16 @@ private:
 		createTextureKtxArrayNode(terrain.textureFile, terrain.texture, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8B8A8_UNORM, 4);
 		createTextureKtxArrayNode(terrain.specularFile, terrain.specular, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8_UNORM, 2);
 
-		//model
+		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
 			createTextureKtxNode(procModel.sNode[i].textureFile, procModel.sNode[i].texture, procModel.sNode[i].mipLevel);
+		}
+
+		//model-dNode
+		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+				createTextureKtxNode(procModel.dNode[i].node[j].textureFile, procModel.dNode[i].node[j].texture, procModel.dNode[i].mipLevel);
+			}
 		}
 
 		//uiText
@@ -183,7 +210,7 @@ private:
 			throw;
 		}
 
-		//model
+		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
 			if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
 				writeDescriptorScence[0].setBufferNode(procModel.sNode[i].descriptorSet, bufferInfo[0].getNode(procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)));
@@ -194,8 +221,26 @@ private:
 				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 			}
 			else {
-				Log::printError(__FILE__, __LINE__, "model_" + std::to_string(i) + ":\t分配描述符集失败");
+				Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\t分配描述符集失败");
 				throw;
+			}
+		}
+
+		//model-dNode
+		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+				if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
+					writeDescriptorScence[0].setBufferNode(procModel.dNode[i].node[j].descriptorSet, bufferInfo[0].getNode(procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)));
+					writeDescriptorScence[1].setBufferNode(procModel.dNode[i].node[j].descriptorSet, bufferInfo[1].getNode(procModel.dNode[i].lightUniform.buffer, sizeof(procModel.dNode[i].lightUbo)));
+					writeDescriptorScence[2].setImageNode(procModel.dNode[i].node[j].descriptorSet, imageInfo[0].getNode(procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view));
+
+					std::array<VkWriteDescriptorSet, 3> tempWrite{ writeDescriptorScence[0].node,writeDescriptorScence[1].node,writeDescriptorScence[2].node };
+					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\t分配描述符集失败");
+					throw;
+				}
 			}
 		}
 
@@ -268,13 +313,25 @@ private:
 		terrain.lightUbo.gLightDir		= lightInfo::gLightDir;
 		terrain.lightUbo.specularScale	= lightInfo::specularScale;
 
-		//model
+		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
-			procModel.sNode[i].ubo.proj				 = proj;
-			procModel.sNode[i].lightUbo.gLightColor	 = lightInfo::gLightColor;
+			procModel.sNode[i].ubo.proj				  = proj;
+			procModel.sNode[i].lightUbo.gLightColor	  = lightInfo::gLightColor;
 			procModel.sNode[i].lightUbo.diffuseScale  = lightInfo::diffuseScale;
-			procModel.sNode[i].lightUbo.gLightDir	 = lightInfo::gLightDir;
+			procModel.sNode[i].lightUbo.gLightDir	  = lightInfo::gLightDir;
 			procModel.sNode[i].lightUbo.specularScale = lightInfo::specularScale;
+		}
+
+		//model-dNode
+		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+				procModel.dNode[i].node[j].ubo.proj = proj;
+			}
+
+			procModel.dNode[i].lightUbo.gLightColor   = lightInfo::gLightColor;
+			procModel.dNode[i].lightUbo.diffuseScale  = lightInfo::diffuseScale;
+			procModel.dNode[i].lightUbo.gLightDir	  = lightInfo::gLightDir;
+			procModel.dNode[i].lightUbo.specularScale = lightInfo::specularScale;
 		}
 
 		//skybox
@@ -327,21 +384,23 @@ private:
 		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 	}
 
-	//加载模型
-	void loadModel(const std::string& filename, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs) {
+	//加载静态模型
+	void loadStaticModel(const std::string& filename, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs) {
 		tinygltf::Model model;
 		tinygltf::TinyGLTF loader;
 		std::string err, warn;
+		std::ifstream file(filename);
+		bool ret;
+
+
 
 		//检查文件是否存在  
-		std::ifstream file(filename);
 		if (!file.good()) {
 			Log::printError(__FILE__, __LINE__, "模型文件不存在: " + filename);
 		}
 		file.close();
 
 		//加载glTF文件（支持二进制和ASCII格式）  
-		bool ret;
 		if (filename.find(".glb") != std::string::npos) {
 			ret = loader.LoadBinaryFromFile(&model, &err, &warn, filename);
 		}
@@ -383,8 +442,7 @@ private:
 					const auto& bufferView = model.bufferViews[accessor.bufferView];
 					const auto& buffer = model.buffers[bufferView.buffer];
 
-					positions = reinterpret_cast<const float*>(
-						&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+					positions = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
 					vertexCount = accessor.count;
 				}
 				else {
@@ -397,8 +455,7 @@ private:
 					const auto& bufferView = model.bufferViews[accessor.bufferView];
 					const auto& buffer = model.buffers[bufferView.buffer];
 
-					texCoords = reinterpret_cast<const float*>(
-						&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+					texCoords = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
 				}
 				else {
 					Log::printError(__FILE__, __LINE__, "primitive缺少TEXCOORD_0属性");
@@ -441,8 +498,7 @@ private:
 					size_t indexCount = accessor.count;
 
 					if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-						const uint16_t* indices = reinterpret_cast<const uint16_t*>(
-							&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+						const uint16_t* indices = reinterpret_cast<const uint16_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
 
 						for (size_t i = 0; i < indexCount; i++) {
 							uint32_t originalVertexIndex = indices[i];
@@ -452,8 +508,7 @@ private:
 						}
 					}
 					else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-						const uint32_t* indices = reinterpret_cast<const uint32_t*>(
-							&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+						const uint32_t* indices = reinterpret_cast<const uint32_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
 
 						for (size_t i = 0; i < indexCount; i++) {
 							uint32_t originalVertexIndex = indices[i];
@@ -484,6 +539,170 @@ private:
 
 			if (indexs.empty()) {
 				Log::printError(__FILE__, __LINE__, "加载的模型不包含任何索引");
+			}
+		}
+	}
+
+	//加载动态模型
+	void loadDynamicModel(const std::string& filename, std::vector<std::vector<modelVertex::vertexNode>>& vertexsList, std::vector<std::vector<uint32_t>>& indexsList) {
+		tinygltf::Model model;
+		tinygltf::TinyGLTF loader;
+		std::string err, warn;
+		std::ifstream file(filename);
+		bool ret;
+
+
+
+		//检查文件是否存在  
+		if (!file.good()) {
+			Log::printError(__FILE__, __LINE__, "模型文件不存在: " + filename);
+		}
+		file.close();
+
+		//加载glTF文件（支持二进制和ASCII格式）  
+		if (filename.find(".glb") != std::string::npos) {
+			ret = loader.LoadBinaryFromFile(&model, &err, &warn, filename);
+		}
+		else {
+			ret = loader.LoadASCIIFromFile(&model, &err, &warn, filename);
+		}
+
+		/*if (!warn.empty()) {
+			Log::print("glTF警告: " + warn);	//因为使用KTX管理贴图，故屏蔽gltf缺失贴图的报错
+		}*/
+		if (!ret) {
+			Log::printError(__FILE__, __LINE__, "glTF加载失败: " + err);
+		}
+
+		if (model.meshes.empty()) {
+			Log::printError(__FILE__, __LINE__, "glTF文件不包含任何mesh");
+		}
+
+		if (model.buffers.empty()) {
+			Log::printError(__FILE__, __LINE__, "glTF文件不包含任何buffer数据");
+		}
+
+
+
+		//遍历所有mesh和primitive
+		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
+
+		for (int nodeId = 0; nodeId < model.meshes.size(); nodeId++) {
+			std::vector<modelVertex::vertexNode>& vertexs = vertexsList[nodeId];
+			std::vector<uint32_t>& indexs = indexsList[nodeId];
+			const auto& mesh = model.meshes[nodeId];
+
+
+
+			for (const auto& primitive : mesh.primitives) {
+				//获取顶点数据  
+				const float* positions = nullptr;
+				const float* texCoords = nullptr;
+				size_t vertexCount = 0;
+
+				//获取POSITION属性  
+				if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
+					const auto& accessor = model.accessors[primitive.attributes.at("POSITION")];
+					const auto& bufferView = model.bufferViews[accessor.bufferView];
+					const auto& buffer = model.buffers[bufferView.buffer];
+
+					positions = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+					vertexCount = accessor.count;
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "primitive缺少POSITION属性");
+				}
+
+				//获取TEXCOORD_0属性  
+				if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
+					const auto& accessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+					const auto& bufferView = model.bufferViews[accessor.bufferView];
+					const auto& buffer = model.buffers[bufferView.buffer];
+
+					texCoords = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "primitive缺少TEXCOORD_0属性");
+				}
+
+				//存储当前primitive的顶点映射  
+				std::vector<uint32_t> primitiveVertexIndices;
+
+				for (size_t i = 0; i < vertexCount; i++) {
+					modelVertex::vertexNode vertex{};
+
+					//坐标系转换：从glTF(Y向上)转换为Forge(Z向上)  
+					vertex.position = {
+						positions[i * 3 + 0],     //X保持不变  
+						positions[i * 3 + 2],     //Z -> Y (交换Y和Z)  
+						-positions[i * 3 + 1]     //-Y -> Z (翻转Y轴并赋给Z)  
+					};
+
+					//UV坐标处理 - 根据实际渲染效果选择合适的翻转方式  
+					vertex.texCoord = {
+						texCoords[i * 2 + 0],
+						texCoords[i * 2 + 1]      //glTF标准UV，不翻转  
+					};
+
+					if (uniqueVertices.count(vertex) == 0) {
+						uniqueVertices[vertex] = static_cast<uint32_t>(vertexs.size());
+						vertexs.push_back(vertex);
+					}
+
+					//记录原始顶点到去重后顶点的映射  
+					primitiveVertexIndices.push_back(uniqueVertices[vertex]);
+				}
+
+				//处理索引数据  
+				if (primitive.indices >= 0) {
+					const auto& accessor = model.accessors[primitive.indices];
+					const auto& bufferView = model.bufferViews[accessor.bufferView];
+					const auto& buffer = model.buffers[bufferView.buffer];
+
+					size_t indexCount = accessor.count;
+
+					if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+						const uint16_t* indices = reinterpret_cast<const uint16_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+
+						for (size_t i = 0; i < indexCount; i++) {
+							uint32_t originalVertexIndex = indices[i];
+							if (originalVertexIndex < primitiveVertexIndices.size()) {
+								indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
+							}
+						}
+					}
+					else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+						const uint32_t* indices = reinterpret_cast<const uint32_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+
+						for (size_t i = 0; i < indexCount; i++) {
+							uint32_t originalVertexIndex = indices[i];
+							if (originalVertexIndex < primitiveVertexIndices.size()) {
+								indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
+							}
+						}
+					}
+					else {
+						Log::printError(__FILE__, __LINE__, "不支持的索引类型");
+					}
+				}
+				else {
+					//如果没有索引，生成三角形索引  
+					for (size_t i = 0; i < vertexCount; i += 3) {
+						indexs.push_back(primitiveVertexIndices[i]);
+						indexs.push_back(primitiveVertexIndices[i + 1]);
+						indexs.push_back(primitiveVertexIndices[i + 2]);
+					}
+				}
+			}
+
+			if (debugInfo::LogSwitch) {
+				if (vertexs.empty()) {
+					Log::printError(__FILE__, __LINE__, "加载的模型不包含任何顶点");
+				}
+
+				if (indexs.empty()) {
+					Log::printError(__FILE__, __LINE__, "加载的模型不包含任何索引");
+				}
 			}
 		}
 	}
@@ -1027,13 +1246,24 @@ public:
 				}
 			}
 
-			//model
-			for (int modelId = 0; modelId < bufferEnum::procStaticModelEnum::count; modelId++) {
+			//model-sNode
+			for (int nodeId = 0; nodeId < bufferEnum::procStaticModelEnum::count; nodeId++) {
 				vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
-				vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &procModel.sNode[modelId].descriptorSet, 0, nullptr);
-				vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &procModel.sNode[modelId].vertex.buffer, offsets);
-				vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], procModel.sNode[modelId].index.buffer, 0, VK_INDEX_TYPE_UINT32);
-				vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::sIndexs[modelId].size(), 1, 0, 0, 0);
+				vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &procModel.sNode[nodeId].descriptorSet, 0, nullptr);
+				vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &procModel.sNode[nodeId].vertex.buffer, offsets);
+				vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], procModel.sNode[nodeId].index.buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::sIndexs[nodeId].size(), 1, 0, 0, 0);
+			}
+
+			//model-dNode
+			for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelEnum::count; nodeId++) {
+				for (int j = 0; j < procModel.dNode[nodeId].node.size(); j++) {
+					vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
+					vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &procModel.dNode[nodeId].node[j].descriptorSet, 0, nullptr);
+					vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &procModel.dNode[nodeId].node[j].vertex.buffer, offsets);
+					vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], procModel.dNode[nodeId].node[j].index.buffer, 0, VK_INDEX_TYPE_UINT32);
+					vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::dIndexs[nodeId][j].size(), 1, 0, 0, 0);
+				}
 			}
 
 			//skybox
@@ -1122,17 +1352,32 @@ public:
 		terrain.lightUbo.flashCutOff	= glm::cos(glm::radians(12.5f));
 		terrain.lightUbo.outerCutOff	= glm::cos(glm::radians(14.5f));
 
-		//model
+		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
-			procModel.sNode[i].ubo.model				= glm::translate(glm::mat4(1), offsetPos);											//位移
-			procModel.sNode[i].ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
-			procModel.sNode[i].ubo.modelTI			= glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
-			//procModel.sNode[i].ubo.model			*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
-			procModel.sNode[i].ubo.view				= camera.view;
-			procModel.sNode[i].lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			procModel.sNode[i].lightUbo.currentHour	= currentHour;
+			procModel.sNode[i].ubo.model			 = glm::translate(glm::mat4(1), offsetPos);											//位移
+			procModel.sNode[i].ubo.model			 *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
+			procModel.sNode[i].ubo.modelTI			 = glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
+			//procModel.sNode[i].ubo.model			 *= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
+			procModel.sNode[i].ubo.view				 = camera.view;
+			procModel.sNode[i].lightUbo.viewPos		 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			procModel.sNode[i].lightUbo.currentHour	 = currentHour;
 			procModel.sNode[i].lightUbo.ambientScale = 1;//(sin(gameTime) + 1) / 2;
-			procModel.sNode[i].lightUbo.gLightPos	= glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+			procModel.sNode[i].lightUbo.gLightPos	 = glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+		}
+
+		//model-dNode
+		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+				procModel.dNode[i].node[j].ubo.model   = glm::translate(glm::mat4(1), offsetPos);											//位移
+				procModel.dNode[i].node[j].ubo.model   *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
+				procModel.dNode[i].node[j].ubo.modelTI = glm::transpose(glm::inverse(procModel.dNode[i].node[j].ubo.model));
+				procModel.dNode[i].node[j].ubo.view	   = camera.view;
+			}
+
+			procModel.dNode[i].lightUbo.viewPos		 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			procModel.dNode[i].lightUbo.currentHour  = currentHour;
+			procModel.dNode[i].lightUbo.ambientScale = 1;//(sin(gameTime) + 1) / 2;
+			procModel.dNode[i].lightUbo.gLightPos	 = glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
 		}
 
 		//skybox
@@ -1158,6 +1403,14 @@ public:
 		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
 			createMapMemory(procModel.sNode[i].uniform.bufferMemory, &procModel.sNode[i].ubo, sizeof(procModel.sNode[i].ubo));
 			createMapMemory(procModel.sNode[i].lightUniform.bufferMemory, &procModel.sNode[i].lightUbo, sizeof(procModel.sNode[i].lightUbo));
+		}
+
+		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+				createMapMemory(procModel.dNode[i].node[j].uniform.bufferMemory, &procModel.dNode[i].node[j].ubo, sizeof(procModel.dNode[i].node[j].ubo));
+			}
+
+			createMapMemory(procModel.dNode[i].lightUniform.bufferMemory, &procModel.dNode[i].lightUbo, sizeof(procModel.dNode[i].lightUbo));
 		}
 
 		createMapMemory(skybox.uniform.bufferMemory, &skybox.ubo, sizeof(skybox.ubo));

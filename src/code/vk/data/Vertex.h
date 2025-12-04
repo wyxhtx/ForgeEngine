@@ -6,7 +6,7 @@
 namespace terrainVertex {
     struct vertexNode {
         glm::vec3 position;     //坐标
-        glm::vec3 texCoord;     //uv
+        glm::vec3 texCoord;     //uv，xy用于循环平铺，z用于纹理数组索引
         glm::vec3 normal;       //法线
         float mShininess;       //材质光泽度
 
@@ -91,10 +91,9 @@ namespace modelVertex {
     std::vector<vertexNode> sVertexs[bufferEnum::procStaticModelEnum::count];
     std::vector<uint32_t> sIndexs[bufferEnum::procStaticModelEnum::count];
 
-    //todo 待完善
     //动态模型网格
-    std::vector<std::vector<vertexNode>> dVertexs[bufferEnum::procStaticModelEnum::count];
-    std::vector<std::vector<uint32_t>> dIndexs[bufferEnum::procStaticModelEnum::count];
+    std::vector<std::vector<vertexNode>> dVertexs[bufferEnum::procDynamicModelEnum::count];
+    std::vector<std::vector<uint32_t>> dIndexs[bufferEnum::procDynamicModelEnum::count];
 }
 
 //服务loadModel

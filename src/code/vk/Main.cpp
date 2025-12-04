@@ -16,8 +16,8 @@ int main() {
 
     //system("cd src\\image_build && png_to_ktx2.bat");   //编译纹理
     //Log::print("");
-    system("cd src\\shader_build && terrain_gts.bat");  //编译地形着色器
-    Log::print("");
+    //system("cd src\\shader_build && terrain_gts.bat");  //编译地形着色器
+    //Log::print("");
 
 
 

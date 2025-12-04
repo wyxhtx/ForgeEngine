@@ -95,7 +95,7 @@ namespace lightInfo {
 }
 
 namespace bufferInfo {
-    const uint32_t bufferScenceNodeSize = 5;    //描述符池上限，terrain，m_temple，m_droid，skybox，mine
+    const uint32_t bufferScenceNodeSize = 7;    //描述符池上限，terrain，m_temple，m_droid*3，skybox，mine
     const uint32_t bufferTextUINodeSize = 1;    //描述符池上限，uiText
 
     const int commandThreadSize = 2;            //命令线程数
@@ -140,11 +140,10 @@ namespace fileInfo {
         const char* cube         = "src/image/terrain/cube_16_64.ktx2";
         const char* cubeSpecular = "src/image/terrain/cube_16_64_specular.ktx2";
 
-        const char* temple  = "src/image/model/temple/baseColor.ktx2";
-        const char* droid   = "src/image/model/droid/Body_baseColor.ktx2";
-        //const char* droidH   = "src/image/model/droid/Head_baseColor.ktx2";
-        //const char* droidM   = "src/image/model/droid/Misc_baseColor.ktx2";
-        //const char* nextTemp = "src/image/model/nextTemp/.ktx2";
+        const char* temple    = "src/image/model/temple/baseColor.ktx2";
+        const char* droidBody = "src/image/model/droid/Body_baseColor.ktx2";
+        const char* droidHead = "src/image/model/droid/Head_baseColor.ktx2";
+        const char* droidMisc = "src/image/model/droid/Misc_baseColor.ktx2";
     }
 
     namespace storage {

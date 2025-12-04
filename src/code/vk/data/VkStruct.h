@@ -201,35 +201,19 @@ namespace bufferStruct {
         }
     };
 
-    struct dynamicModelNode {
-        std::string modelFile;          //共
+    struct dynamicModelListNode {
+        bufferNode vertex;
+        bufferNode index;
 
-        bufferNode vertex;              //独
-        bufferNode index;               //独
+        const char* textureFile;
+        imageNode texture;
 
-        const char* textureFile;        //独
-        imageNode texture;              //独
+        bufferNode uniform;
+        baseUBO ubo;
 
-        bufferNode uniform;             //独
-        baseUBO ubo;                    //独
-
-        bufferNode lightUniform;        //共
-        lightUBO lightUbo;              //共
-
-        int samplerId;                  //共
-        uint32_t mipLevel;              //共
-
-        VkDescriptorSet descriptorSet;  //共
+        VkDescriptorSet descriptorSet;  //共 todo 换成Uniform Buffer Dynamic
 
 
-
-        dynamicModelNode(const std::string tempModelFile, const char* tempTextureFile, int tempSamplerId) {
-            modelFile = tempModelFile;
-            textureFile = tempTextureFile;
-            samplerId = tempSamplerId;
-        }
-
-        dynamicModelNode() {}
 
         void clear(VkDevice& device, VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
@@ -239,6 +223,39 @@ namespace bufferStruct {
             vkDestroyImageView(device, texture.view, nullptr);
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+        }
+    };
+
+    struct dynamicModelNode {
+        std::string modelFile;
+        std::vector<dynamicModelListNode> node;
+
+        bufferNode lightUniform;
+        lightUBO lightUbo;
+
+        int samplerId;
+        uint32_t mipLevel;
+
+
+
+        dynamicModelNode(const std::string tempModelFile, std::vector<const char*> tempTextureFile, int tempSamplerId) {
+            modelFile = tempModelFile;
+
+            node.resize(tempTextureFile.size());
+            for (int i = 0; i < tempTextureFile.size(); i++) {
+                node[i].textureFile = tempTextureFile[i];
+            }
+
+            samplerId = tempSamplerId;
+        }
+
+        dynamicModelNode() {}
+
+        void clear(VkDevice& device, VmaAllocator& allocator) {
+            for (int i = 0; i < node.size(); i++) {
+                node[i].clear(device, allocator);
+            }
+
             vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };

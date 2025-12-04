@@ -105,10 +105,13 @@ namespace bufferList {
 
 
 
-        void createTextureSampler(VkDevice& device, uint32_t terrainMipLevel, uint32_t modelMipLevel) {
+        void createTextureSampler(VkDevice& device, uint32_t terrainMip, uint32_t sModelMip, uint32_t dModelMip) {
             VkSamplerCreateInfo samplerInfo{};
             {
                 samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+
+                //过滤器即采用何种方式过滤图片
+                samplerInfo.minFilter = VK_FILTER_LINEAR;
 
                 //每个轴向使用的寻址模式全部采用镜像循环
                 samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -135,27 +138,39 @@ namespace bufferList {
             }
 
             //terrain
-            samplerInfo.magFilter = VK_FILTER_NEAREST;  //过滤器即采用何种方式过滤图片
-            samplerInfo.minFilter = VK_FILTER_NEAREST;
-            samplerInfo.maxLod = static_cast<float>(terrainMipLevel);
+            samplerInfo.magFilter = VK_FILTER_NEAREST;
+            samplerInfo.maxLod = static_cast<float>(terrainMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::terrain]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "terrain采样器创建失败");
                 throw;
             }
 
-            //modelN
-            samplerInfo.maxLod = static_cast<float>(modelMipLevel);
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::modelN]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "modelN采样器创建失败");
+            //sModelN
+            samplerInfo.maxLod = static_cast<float>(sModelMip);
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::sModelN]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "采样器创建失败");
                 throw;
             }
 
-            //modelL
+            //sModelL
             samplerInfo.magFilter = VK_FILTER_LINEAR;
-            samplerInfo.minFilter = VK_FILTER_LINEAR;
-            samplerInfo.maxLod = static_cast<float>(modelMipLevel);
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::modelL]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "modelL采样器创建失败");
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::sModelL]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "采样器创建失败");
+                throw;
+            }
+
+            //dModelN
+            samplerInfo.magFilter = VK_FILTER_NEAREST;
+            samplerInfo.maxLod = static_cast<float>(dModelMip);
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::dModelN]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "采样器创建失败");
+                throw;
+            }
+
+            //dModelL
+            samplerInfo.magFilter = VK_FILTER_LINEAR;
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::dModelL]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "采样器创建失败");
                 throw;
             }
 
@@ -180,28 +195,52 @@ namespace bufferList {
         std::array<bufferStruct::staticModelNode, bufferEnum::procStaticModelEnum::count> sNode = []() {
             std::array<bufferStruct::staticModelNode, bufferEnum::procStaticModelEnum::count> array{};
 
-            array[bufferEnum::procStaticModelEnum::temple]  = bufferStruct::staticModelNode{ fileInfo::model::temple,  fileInfo::image::temple,  bufferEnum::procSamplerNode::modelN };
+            array[bufferEnum::procStaticModelEnum::temple]  = bufferStruct::staticModelNode{ fileInfo::model::temple,  fileInfo::image::temple,  bufferEnum::procSamplerNode::sModelN };
 
             return array;
             }();
 
-        //todo 待完善
-        std::array<bufferStruct::dynamicModelNode, bufferEnum::procStaticModelEnum::count> dNode;
+        std::array<bufferStruct::dynamicModelNode, bufferEnum::procDynamicModelEnum::count> dNode = []() {
+            std::array<bufferStruct::dynamicModelNode, bufferEnum::procDynamicModelEnum::count> array{};
+
+            array[bufferEnum::procDynamicModelEnum::droid] = bufferStruct::dynamicModelNode{ fileInfo::model::droid,{fileInfo::image::droidBody,fileInfo::image::droidHead,fileInfo::image::droidMisc},bufferEnum::procSamplerNode::dModelL };
+
+            return array;
+            }();
+
+        uint32_t sModelMip = 0;                  //在创建texture时赋值
+        uint32_t dModelMip = 0;                  //在创建texture时赋值
 
 
-        uint32_t getMaxModelMip() {
-            std::vector<uint32_t> maxModelMip;
 
-            for (const bufferStruct::staticModelNode& i : sNode) {
-                maxModelMip.push_back(i.mipLevel);
+        procModelNode() {
+            for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+                modelVertex::dVertexs[i].resize(dNode[i].node.size());
+                modelVertex::dIndexs[i].resize(dNode[i].node.size());
             }
+        }
 
-            return *std::max_element(maxModelMip.begin(), maxModelMip.end());   //使用模型最大mip创建采样器
+        void getMaxModelMip() {
+            std::vector<uint32_t> sMaxMip;
+            for (const bufferStruct::staticModelNode& i : sNode) {
+                sMaxMip.push_back(i.mipLevel);
+            }
+            sModelMip = *std::max_element(sMaxMip.begin(), sMaxMip.end());   //使用模型最大mip创建采样器
+
+            std::vector<uint32_t> dMaxMip;
+            for (const bufferStruct::dynamicModelNode& i : dNode) {
+                dMaxMip.push_back(i.mipLevel);
+            }
+            dModelMip = *std::max_element(dMaxMip.begin(), dMaxMip.end());
         }
 
         void clear(VkDevice& device, VmaAllocator allocator) {
             for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
                 sNode[i].clear(device, allocator);
+            }
+
+            for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+                dNode[i].clear(device, allocator);
             }
         }
     };
