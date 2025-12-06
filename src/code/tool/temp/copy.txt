@@ -1,22 +1,178 @@
-#pragma once
+    void prepareOffscreen()
+    {
+        offscreenPass.width = FB_DIM;   // 设置离屏渲染宽度
+        offscreenPass.height = FB_DIM;  // 设置离屏渲染高度
 
+        // 查找合适的深度格式
+        VkFormat fbDepthFormat;
+        VkBool32 validDepthFormat = vks::tools::getSupportedDepthFormat(physicalDevice, &fbDepthFormat);
+        assert(validDepthFormat);  // 确保找到有效的深度格式
 
+        // 颜色附件创建
+        VkImageCreateInfo image = vks::initializers::imageCreateInfo();
+        image.imageType = VK_IMAGE_TYPE_2D;        // 2D图像
+        image.format = FB_COLOR_FORMAT;            // 颜色格式
+        image.extent.width = offscreenPass.width;  // 宽度
+        image.extent.height = offscreenPass.height;// 高度
+        image.extent.depth = 1;                    // 深度
+        image.mipLevels = 1;                       // MIP级别
+        image.arrayLayers = 1;                     // 数组层数
+        image.samples = VK_SAMPLE_COUNT_1_BIT;     // 采样数
+        image.tiling = VK_IMAGE_TILING_OPTIMAL;    // 内存布局
+        // 我们将直接从颜色附件采样
+        image.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-class Temp {
-public:
-	Temp() {
-		if (debugInfo::LogSwitch) {
-			Log::printTitle("————————Temp已创建");
+        VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
+        VkMemoryRequirements memReqs;
 
-			Log::delimiter();
-		}
-	}
+        // 创建颜色图像
+        VK_CHECK_RESULT(vkCreateImage(device, &image, nullptr, &offscreenPass.color.image));
+        vkGetImageMemoryRequirements(device, offscreenPass.color.image, &memReqs);
+        memAlloc.allocationSize = memReqs.size;
+        memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &offscreenPass.color.mem));
+        VK_CHECK_RESULT(vkBindImageMemory(device, offscreenPass.color.image, offscreenPass.color.mem, 0));
 
-	~Temp() {
-		if (debugInfo::LogSwitch) {
-			Log::print("Temp已清除");
-		}
-	}
-private:
+        // 创建颜色图像视图
+        VkImageViewCreateInfo colorImageView = vks::initializers::imageViewCreateInfo();
+        colorImageView.viewType = VK_IMAGE_VIEW_TYPE_2D;  // 2D视图
+        colorImageView.format = FB_COLOR_FORMAT;          // 格式
+        colorImageView.subresourceRange = {};
+        colorImageView.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;  // 颜色方面
+        colorImageView.subresourceRange.baseMipLevel = 0;  // 基础MIP级别
+        colorImageView.subresourceRange.levelCount = 1;    // MIP级别数
+        colorImageView.subresourceRange.baseArrayLayer = 0;  // 基础数组层
+        colorImageView.subresourceRange.layerCount = 1;      // 层数
+        colorImageView.image = offscreenPass.color.image;  // 图像
+        VK_CHECK_RESULT(vkCreateImageView(device, &colorImageView, nullptr, &offscreenPass.color.view));
 
-};
+        // 创建采样器，用于在片段着色器中从附件采样
+        VkSamplerCreateInfo samplerInfo = vks::initializers::samplerCreateInfo();
+        samplerInfo.magFilter = VK_FILTER_LINEAR;      // 放大过滤器
+        samplerInfo.minFilter = VK_FILTER_LINEAR;      // 缩小过滤器
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;  // MIP映射模式
+        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;  // U方向寻址模式
+        samplerInfo.addressModeV = samplerInfo.addressModeU;  // V方向寻址模式
+        samplerInfo.addressModeW = samplerInfo.addressModeU;  // W方向寻址模式
+        samplerInfo.mipLodBias = 0.0f;                 // MIP LOD偏置
+        samplerInfo.maxAnisotropy = 1.0f;              // 最大各向异性
+        samplerInfo.minLod = 0.0f;                     // 最小LOD
+        samplerInfo.maxLod = 1.0f;                     // 最大LOD
+        samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;  // 边界颜色
+        VK_CHECK_RESULT(vkCreateSampler(device, &samplerInfo, nullptr, &offscreenPass.sampler));
+
+        // 深度模板附件
+        image.format = fbDepthFormat;  // 深度格式
+        image.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;  // 使用方式
+
+        // 创建深度图像
+        VK_CHECK_RESULT(vkCreateImage(device, &image, nullptr, &offscreenPass.depth.image));
+        vkGetImageMemoryRequirements(device, offscreenPass.depth.image, &memReqs);
+        memAlloc.allocationSize = memReqs.size;
+        memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &offscreenPass.depth.mem));
+        VK_CHECK_RESULT(vkBindImageMemory(device, offscreenPass.depth.image, offscreenPass.depth.mem, 0));
+
+        // 创建深度图像视图
+        VkImageViewCreateInfo depthStencilView = vks::initializers::imageViewCreateInfo();
+        depthStencilView.viewType = VK_IMAGE_VIEW_TYPE_2D;  // 2D视图
+        depthStencilView.format = fbDepthFormat;            // 格式
+        depthStencilView.flags = 0;
+        depthStencilView.subresourceRange = {};
+        depthStencilView.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;  // 深度方面
+        if (fbDepthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
+            depthStencilView.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;  // 包含模板方面
+        }
+        depthStencilView.subresourceRange.baseMipLevel = 0;  // 基础MIP级别
+        depthStencilView.subresourceRange.levelCount = 1;    // MIP级别数
+        depthStencilView.subresourceRange.baseArrayLayer = 0;  // 基础数组层
+        depthStencilView.subresourceRange.layerCount = 1;      // 层数
+        depthStencilView.image = offscreenPass.depth.image;  // 图像
+        VK_CHECK_RESULT(vkCreateImageView(device, &depthStencilView, nullptr, &offscreenPass.depth.view));
+
+        // 为离屏渲染创建一个单独的渲染通道，因为它可能与场景渲染使用的不同
+        std::array<VkAttachmentDescription, 2> attchmentDescriptions = {};
+        // 颜色附件描述
+        attchmentDescriptions[0].format = FB_COLOR_FORMAT;         // 格式
+        attchmentDescriptions[0].samples = VK_SAMPLE_COUNT_1_BIT;  // 采样数
+        attchmentDescriptions[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;   // 加载操作为清除
+        attchmentDescriptions[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE; // 存储操作为存储
+        attchmentDescriptions[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;   // 模板加载操作
+        attchmentDescriptions[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // 模板存储操作
+        attchmentDescriptions[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;         // 初始布局
+        attchmentDescriptions[0].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;  // 最终布局（着色器只读）
+
+        // 深度附件描述
+        attchmentDescriptions[1].format = fbDepthFormat;           // 格式
+        attchmentDescriptions[1].samples = VK_SAMPLE_COUNT_1_BIT;  // 采样数
+        attchmentDescriptions[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;   // 加载操作为清除
+        attchmentDescriptions[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;  // 存储操作
+        attchmentDescriptions[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;   // 模板加载操作
+        attchmentDescriptions[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // 模板存储操作
+        attchmentDescriptions[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;         // 初始布局
+        attchmentDescriptions[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;  // 最终布局
+
+        // 附件引用
+        VkAttachmentReference colorReference = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };  // 颜色附件引用
+        VkAttachmentReference depthReference = { 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };  // 深度附件引用
+
+        // 子通道描述
+        VkSubpassDescription subpassDescription = {};
+        subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;  // 图形管道绑定点
+        subpassDescription.colorAttachmentCount = 1;      // 颜色附件数量
+        subpassDescription.pColorAttachments = &colorReference;  // 颜色附件
+        subpassDescription.pDepthStencilAttachment = &depthReference;  // 深度模板附件
+
+        // 使用子通道依赖进行布局转换
+        std::array<VkSubpassDependency, 2> dependencies;
+
+        // 第一个依赖：从外部到子通道0
+        dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;  // 源子通道
+        dependencies[0].dstSubpass = 0;                    // 目标子通道
+        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;  // 源阶段掩码
+        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;  // 目标阶段掩码
+        dependencies[0].srcAccessMask = VK_ACCESS_NONE_KHR;  // 源访问掩码
+        dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;  // 目标访问掩码
+        dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;  // 依赖标志
+
+        // 第二个依赖：从子通道0到外部
+        dependencies[1].srcSubpass = 0;  // 源子通道
+        dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;  // 目标子通道
+        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;  // 源阶段掩码
+        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;  // 目标阶段掩码
+        dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;  // 源访问掩码
+        dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;  // 目标访问掩码
+        dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;  // 依赖标志
+
+        // 创建实际的渲染通道
+        VkRenderPassCreateInfo renderPassInfo = {};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassInfo.attachmentCount = static_cast<uint32_t>(attchmentDescriptions.size());  // 附件数量
+        renderPassInfo.pAttachments = attchmentDescriptions.data();  // 附件描述
+        renderPassInfo.subpassCount = 1;                            // 子通道数量
+        renderPassInfo.pSubpasses = &subpassDescription;            // 子通道描述
+        renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());  // 依赖数量
+        renderPassInfo.pDependencies = dependencies.data();         // 依赖
+
+        VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &offscreenPass.renderPass));
+
+        // 创建帧缓冲
+        VkImageView attachments[2];
+        attachments[0] = offscreenPass.color.view;  // 颜色附件视图
+        attachments[1] = offscreenPass.depth.view;  // 深度附件视图
+
+        VkFramebufferCreateInfo fbufCreateInfo = vks::initializers::framebufferCreateInfo();
+        fbufCreateInfo.renderPass = offscreenPass.renderPass;  // 渲染通道
+        fbufCreateInfo.attachmentCount = 2;                    // 附件数量
+        fbufCreateInfo.pAttachments = attachments;             // 附件
+        fbufCreateInfo.width = offscreenPass.width;            // 宽度
+        fbufCreateInfo.height = offscreenPass.height;          // 高度
+        fbufCreateInfo.layers = 1;                             // 层数
+
+        VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &offscreenPass.frameBuffer));
+
+        // 填充描述符，供稍后在描述符集中使用
+        offscreenPass.descriptor.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;  // 图像布局
+        offscreenPass.descriptor.imageView = offscreenPass.color.view;  // 图像视图
+        offscreenPass.descriptor.sampler = offscreenPass.sampler;       // 采样器
+    }

@@ -78,6 +78,10 @@
     <None Include="src\shader_build\model_gts.bat">
       <Filter>源文件</Filter>
     </None>
+    <None Include="src\shader_build\offScreen\offScreen.vert" />
+    <None Include="src\shader_build\offScreen\offScreen.frag" />
+    <None Include="src\shader\offScreen\offScreenFrag.spv" />
+    <None Include="src\shader\offScreen\offScreenVert.spv" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">

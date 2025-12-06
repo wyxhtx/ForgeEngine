@@ -95,10 +95,12 @@ namespace lightInfo {
 }
 
 namespace bufferInfo {
-    const uint32_t bufferScenceNodeSize = 7;    //描述符池上限，terrain，m_temple，m_droid*3，skybox，mine
+    const uint32_t bufferScenceNodeSize = 8;    //描述符池上限，terrain，m_temple，m_droid*3，skybox，mine，offScreen
     const uint32_t bufferTextUINodeSize = 1;    //描述符池上限，uiText
 
     const int commandThreadSize = 2;            //命令线程数
+
+    uint32_t osSize = 512;                      //离屏尺寸
 }
 
 namespace fpsInfo {
@@ -123,6 +125,9 @@ namespace fileInfo {
 
         const std::string uitextVert = "src/shader/uiText/uitextVert.spv";
         const std::string uitextFrag = "src/shader/uiText/uitextFrag.spv";
+
+        const std::string offScreenVert = "src/shader/offScreen/offScreenVert.spv";
+        const std::string offScreenFrag = "src/shader/offScreen/offScreenFrag.spv";
     }
 
     namespace music {

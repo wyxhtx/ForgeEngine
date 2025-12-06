@@ -10,7 +10,8 @@ public:
 		createGraphicsPipeline();
 
 		InitBuffer.drawUIText(0);	//不在createCommandBuffers前初始化就不能显示UIText
-		InitBuffer.createFramebuffers(InitSwapchain.swapChainImageViews, InitRenderPass.renderPass);
+		InitBuffer.createFramebuffers(InitSwapchain.scImageViews, InitRenderPass.renderPass);
+		InitBuffer.createOffScreenFramebuffers(InitRenderPass.osRenderPass);
 
 		InitBuffer.initCommandBuffers();
 		InitBuffer.renderPassCommandBuffers(InitRenderPass.renderPass);
@@ -82,93 +83,91 @@ private:
 		{
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-			//条带装配虽然减少内存，但是帧率2400，列表装配增加内存，但是帧率3700
-			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;							//图元装配方式
+			inputAssembly.sType					 = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+			inputAssembly.topology				 = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;		//图元装配方式，条带装配虽然减少内存，但是帧率2400，列表装配增加内存，但是帧率3700
 			inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)Device.swapChainExtent.width;
-			viewport.height = (float)Device.swapChainExtent.height;
+			viewport.x		  = 0.0f;
+			viewport.y		  = 0.0f;
+			viewport.width    = (float)Device.swapChainExtent.width;
+			viewport.height   = (float)Device.swapChainExtent.height;
 			viewport.minDepth = 0.0f;
 			viewport.maxDepth = 1.0f;
 
 			scissor.offset = { 0, 0 };
 			scissor.extent = Device.swapChainExtent;
 
-			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+			viewportState.sType			= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 			viewportState.viewportCount = 1;
-			viewportState.pViewports = &viewport;
-			viewportState.scissorCount = 1;
-			viewportState.pScissors = &scissor;
+			viewportState.pViewports	= &viewport;
+			viewportState.scissorCount	= 1;
+			viewportState.pScissors		= &scissor;
 
-			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-			rasterizer.depthClampEnable = VK_FALSE;
+			rasterizer.sType				   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+			rasterizer.depthClampEnable		   = VK_FALSE;
 			rasterizer.rasterizerDiscardEnable = VK_FALSE;
-			rasterizer.polygonMode = VK_POLYGON_MODE_FILL;											//决定几何产生图片的内容
-			rasterizer.lineWidth = 1.0f;
-			rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;											//面剔除
-			rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;									//面的加载顺序
-			//让mine能覆盖方块
-			rasterizer.depthBiasEnable = VK_TRUE;													// 启用深度偏移
-			rasterizer.depthBiasConstantFactor = 1.0f;												// 常量偏移量
-			rasterizer.depthBiasClamp = 0.0f;														// 不限制最小偏移
-			rasterizer.depthBiasSlopeFactor = 1.0f;													// 基于斜率的深度偏移
+			rasterizer.polygonMode			   = VK_POLYGON_MODE_FILL;				//决定几何产生图片的内容
+			rasterizer.lineWidth			   = 1.0f;
+			rasterizer.cullMode				   = VK_CULL_MODE_BACK_BIT;				//面剔除
+			rasterizer.frontFace			   = VK_FRONT_FACE_COUNTER_CLOCKWISE;	//面的加载顺序
+			rasterizer.depthBiasEnable		   = VK_TRUE;							//启用深度偏移，让mine能覆盖方块
+			rasterizer.depthBiasConstantFactor = 1.0f;								//常量偏移量
+			rasterizer.depthBiasClamp		   = 0.0f;								//不限制最小偏移
+			rasterizer.depthBiasSlopeFactor    = 1.0f;								//基于斜率的深度偏移
 
-			multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-			multisampling.sampleShadingEnable = VK_FALSE;
-			multisampling.rasterizationSamples = Device.msaaSamples;
-			multisampling.minSampleShading = 1.0f;													// Optional
-			multisampling.pSampleMask = nullptr;													// Optional
-			multisampling.alphaToCoverageEnable = VK_FALSE;											// Optional
-			multisampling.alphaToOneEnable = VK_FALSE;												// Optional
+			multisampling.sType					= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+			multisampling.sampleShadingEnable	= VK_FALSE;
+			multisampling.rasterizationSamples	= Device.msaaSamples;
+			multisampling.minSampleShading		= 1.0f;													
+			multisampling.pSampleMask			= nullptr;													
+			multisampling.alphaToCoverageEnable = VK_FALSE;											
+			multisampling.alphaToOneEnable		= VK_FALSE;												
 
-			depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-			depthStencil.depthTestEnable = VK_TRUE;													//指定是否应该将新的深度缓冲区与深度缓冲区进行比较，以确认是否应该被丢弃
-			depthStencil.depthWriteEnable = VK_TRUE;												//指定通过深度测试的新的片段深度是否应该被实际写入深度缓冲区
-			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;										//指定执行保留或者丢弃片段的比较细节
-			depthStencil.depthBoundsTestEnable = VK_FALSE;											//depthBoundsTestEnable, minDepthBounds 和 maxDepthBounds 字段用于可选择的优化深度绑定测试
-			depthStencil.minDepthBounds = 0.0f; 													// Optional
-			depthStencil.maxDepthBounds = 1.0f; 													// Optional
-			depthStencil.stencilTestEnable = VK_FALSE;												//用于配置模版缓冲区的操作
-			depthStencil.front = {}; 																// Optional
-			depthStencil.back = {}; 																// Optional
+			depthStencil.sType				   = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+			depthStencil.depthTestEnable	   = VK_TRUE;							//指定是否应该将新的深度缓冲区与深度缓冲区进行比较，以确认是否应该被丢弃
+			depthStencil.depthWriteEnable	   = VK_TRUE;							//指定通过深度测试的新的片段深度是否应该被实际写入深度缓冲区
+			depthStencil.depthCompareOp		   = VK_COMPARE_OP_LESS;				//指定执行保留或者丢弃片段的比较细节
+			depthStencil.depthBoundsTestEnable = VK_FALSE;							//depthBoundsTestEnable, minDepthBounds 和 maxDepthBounds 字段用于可选择的优化深度绑定测试
+			depthStencil.minDepthBounds		   = 0.0f;
+			depthStencil.maxDepthBounds		   = 1.0f;
+			depthStencil.stencilTestEnable	   = VK_FALSE;							//用于配置模版缓冲区的操作
+			depthStencil.front				   = {};
+			depthStencil.back				   = {};
 
-			colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-			colorBlendAttachment.blendEnable = VK_FALSE;
-			colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;							// Optional
-			colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;						// Optional
-			colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;									// Optional
-			colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;							// Optional
-			colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;						// Optional
-			colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+			colorBlendAttachment.colorWriteMask		 = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+			colorBlendAttachment.blendEnable		 = VK_FALSE;
+			colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;	
+			colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+			colorBlendAttachment.colorBlendOp		 = VK_BLEND_OP_ADD;			
+			colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;	
+			colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			colorBlendAttachment.alphaBlendOp		 = VK_BLEND_OP_ADD;
 
-			colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-			colorBlending.logicOpEnable = VK_FALSE;
-			colorBlending.logicOp = VK_LOGIC_OP_COPY;												// Optional
-			colorBlending.attachmentCount = 1;
-			colorBlending.pAttachments = &colorBlendAttachment;
-			colorBlending.blendConstants[0] = 0.0f;													// Optional
-			colorBlending.blendConstants[1] = 0.0f;													// Optional
-			colorBlending.blendConstants[2] = 0.0f;													// Optional
-			colorBlending.blendConstants[3] = 0.0f;													// Optional
+			colorBlending.sType				= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+			colorBlending.logicOpEnable		= VK_FALSE;
+			colorBlending.logicOp			= VK_LOGIC_OP_COPY;			
+			colorBlending.attachmentCount	= 1;
+			colorBlending.pAttachments		= &colorBlendAttachment;
+			colorBlending.blendConstants[0] = 0.0f;				
+			colorBlending.blendConstants[1] = 0.0f;				
+			colorBlending.blendConstants[2] = 0.0f;				
+			colorBlending.blendConstants[3] = 0.0f;				
 
-			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-			pipelineInfo.stageCount = (uint32_t)shaderStages.size();
-			pipelineInfo.pStages = shaderStages.data();
-			pipelineInfo.pVertexInputState = &vertexInputInfo;
+			pipelineInfo.sType				 = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+			pipelineInfo.stageCount			 = (uint32_t)shaderStages.size();
+			pipelineInfo.pStages			 = shaderStages.data();
+			pipelineInfo.pVertexInputState   = &vertexInputInfo;
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
-			pipelineInfo.pViewportState = &viewportState;
+			pipelineInfo.pViewportState		 = &viewportState;
 			pipelineInfo.pRasterizationState = &rasterizer;
-			pipelineInfo.pMultisampleState = &multisampling;
-			pipelineInfo.pDepthStencilState = &depthStencil;
-			pipelineInfo.pColorBlendState = &colorBlending;
-			pipelineInfo.pDynamicState = nullptr;													// Optional
-			pipelineInfo.renderPass = InitRenderPass.renderPass;
-			pipelineInfo.subpass = 0;
-			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;										// Optional
-			pipelineInfo.basePipelineIndex = -1;													// Optional
+			pipelineInfo.pMultisampleState	 = &multisampling;
+			pipelineInfo.pDepthStencilState  = &depthStencil;
+			pipelineInfo.pColorBlendState	 = &colorBlending;
+			pipelineInfo.pDynamicState		 = nullptr;					
+			pipelineInfo.renderPass			 = InitRenderPass.renderPass;
+			pipelineInfo.subpass			 = 0;
+			pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;		
+			pipelineInfo.basePipelineIndex	 = -1;
 		}
 
 		//terrain
@@ -176,18 +175,16 @@ private:
 			shaderStages[0] = loadShader(fileInfo::shader::terrainVert, VK_SHADER_STAGE_VERTEX_BIT);
 			shaderStages[1] = loadShader(fileInfo::shader::terrainFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
 
-			vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(terrainVertex::vertexNode::getBindingDescription().size());
+			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(terrainVertex::vertexNode::getBindingDescription().size());
 			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(terrainVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions = terrainVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions = terrainVertex::vertexNode::getAttributeDescriptions().data();
+			vertexInputInfo.pVertexBindingDescriptions		= terrainVertex::vertexNode::getBindingDescription().data();
+			vertexInputInfo.pVertexAttributeDescriptions	= terrainVertex::vertexNode::getAttributeDescriptions().data();
 
-			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				pipelineInfo.layout = procPipeline.terrain[layer].pipelineLayout;
+			pipelineInfo.layout = procPipeline.terrain.pipelineLayout;
 
-				if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.terrain[layer].pipeline) != VK_SUCCESS) {
-					Log::printError(__FILE__, __LINE__, std::format("Layer_{} 地形管线创建失败", layer));
-					throw;
-				}
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.terrain.pipeline) != VK_SUCCESS) {
+				Log::printError(__FILE__, __LINE__, "terrain管线创建失败");
+				throw;
 			}
 		}
 
@@ -196,10 +193,10 @@ private:
 			shaderStages[0] = loadShader(fileInfo::shader::pbrVert, VK_SHADER_STAGE_VERTEX_BIT);
 			shaderStages[1] = loadShader(fileInfo::shader::pbrFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
 
-			vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(modelVertex::vertexNode::getBindingDescription().size());
+			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(modelVertex::vertexNode::getBindingDescription().size());
 			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(modelVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions = modelVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions = modelVertex::vertexNode::getAttributeDescriptions().data();
+			vertexInputInfo.pVertexBindingDescriptions		= modelVertex::vertexNode::getBindingDescription().data();
+			vertexInputInfo.pVertexAttributeDescriptions	= modelVertex::vertexNode::getAttributeDescriptions().data();
 
 			pipelineInfo.layout = procPipeline.model.pipelineLayout;
 
@@ -214,21 +211,25 @@ private:
 			shaderStages[0] = loadShader(fileInfo::shader::skyboxVert, VK_SHADER_STAGE_VERTEX_BIT);
 			shaderStages[1] = loadShader(fileInfo::shader::skyboxFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
 
-			vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(skyboxVertex::vertexNode::getBindingDescription().size());
+			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(skyboxVertex::vertexNode::getBindingDescription().size());
 			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(skyboxVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions = skyboxVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions = skyboxVertex::vertexNode::getAttributeDescriptions().data();
+			vertexInputInfo.pVertexBindingDescriptions		= skyboxVertex::vertexNode::getBindingDescription().data();
+			vertexInputInfo.pVertexAttributeDescriptions	= skyboxVertex::vertexNode::getAttributeDescriptions().data();
 
 			//实现只在空白处显示
-			depthStencil.depthWriteEnable = VK_FALSE;
-			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+			VkPipelineDepthStencilStateCreateInfo tempDepthStencil = depthStencil;
+			tempDepthStencil.depthWriteEnable = VK_FALSE;
+			tempDepthStencil.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-			pipelineInfo.layout = procPipeline.skybox.pipelineLayout;
+			pipelineInfo.pDepthStencilState = &tempDepthStencil;
+			pipelineInfo.layout				= procPipeline.skybox.pipelineLayout;
 
 			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.skybox.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "skybox管线创建失败");
 				throw;
 			}
+			
+			pipelineInfo.pDepthStencilState = &depthStencil;
 		}
 
 		//mine
@@ -236,29 +237,56 @@ private:
 			shaderStages[0] = loadShader(fileInfo::shader::mineVert, VK_SHADER_STAGE_VERTEX_BIT);
 			shaderStages[1] = loadShader(fileInfo::shader::mineFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
 
-			vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(mineVertex::vertexNode::getBindingDescription().size());
+			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(mineVertex::vertexNode::getBindingDescription().size());
 			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(mineVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions = mineVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions = mineVertex::vertexNode::getAttributeDescriptions().data();
+			vertexInputInfo.pVertexBindingDescriptions		= mineVertex::vertexNode::getBindingDescription().data();
+			vertexInputInfo.pVertexAttributeDescriptions	= mineVertex::vertexNode::getAttributeDescriptions().data();
 
-			colorBlendAttachment.blendEnable = VK_TRUE;
-			colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-			colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			//选择框覆盖方块的颜色混合
+			VkPipelineColorBlendAttachmentState tempColorBlendAttachment = colorBlendAttachment;
+			tempColorBlendAttachment.blendEnable		 = VK_TRUE;
+			tempColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			tempColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			tempColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 
-			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+			//线段装配
+			VkPipelineInputAssemblyStateCreateInfo tempInputAssembly = inputAssembly;
+			tempInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
-			rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
-			rasterizer.lineWidth = 1.0f;
+			//线填充
+			VkPipelineRasterizationStateCreateInfo tempRasterizer = rasterizer;
+			tempRasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+			tempRasterizer.lineWidth   = 1.0f;
 
-			//恢复默认
-			depthStencil.depthWriteEnable = VK_TRUE;
-			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-
-			pipelineInfo.layout = procPipeline.mine.pipelineLayout;
+			colorBlending.pAttachments		 = &tempColorBlendAttachment;
+			pipelineInfo.pInputAssemblyState = &tempInputAssembly;
+			pipelineInfo.pRasterizationState = &tempRasterizer;
+			pipelineInfo.layout				 = procPipeline.mine.pipelineLayout;
 
 			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.mine.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "mine管线创建失败");
+				throw;
+			}
+			
+			colorBlending.pAttachments		 = &colorBlendAttachment;
+			pipelineInfo.pInputAssemblyState = &inputAssembly;
+			pipelineInfo.pRasterizationState = &rasterizer;
+		}
+
+		//offScreen
+		{
+			shaderStages[0] = loadShader(fileInfo::shader::offScreenVert, VK_SHADER_STAGE_VERTEX_BIT);
+			shaderStages[1] = loadShader(fileInfo::shader::offScreenFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(offScreenVertex::vertexNode::getBindingDescription().size());
+			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(offScreenVertex::vertexNode::getAttributeDescriptions().size());
+			vertexInputInfo.pVertexBindingDescriptions		= offScreenVertex::vertexNode::getBindingDescription().data();
+			vertexInputInfo.pVertexAttributeDescriptions	= offScreenVertex::vertexNode::getAttributeDescriptions().data();
+
+			pipelineInfo.layout = procPipeline.offScreen.pipelineLayout;
+			
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.offScreen.pipeline) != VK_SUCCESS) {
+				Log::printError(__FILE__, __LINE__, "offScreen管线创建失败");
 				throw;
 			}
 		}
@@ -268,26 +296,46 @@ private:
 			shaderStages[0] = loadShader(fileInfo::shader::uitextVert, VK_SHADER_STAGE_VERTEX_BIT);
 			shaderStages[1] = loadShader(fileInfo::shader::uitextFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
 
-			vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(uiTextVertex::vertexNode::getBindingDescription().size());
+			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(uiTextVertex::vertexNode::getBindingDescription().size());
 			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(uiTextVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions = uiTextVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions = uiTextVertex::vertexNode::getAttributeDescriptions().data();
+			vertexInputInfo.pVertexBindingDescriptions		= uiTextVertex::vertexNode::getBindingDescription().data();
+			vertexInputInfo.pVertexAttributeDescriptions	= uiTextVertex::vertexNode::getAttributeDescriptions().data();
 
-			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+			//uiText和屏幕的颜色混合
+			VkPipelineColorBlendAttachmentState tempColorBlendAttachment = colorBlendAttachment;
+			tempColorBlendAttachment.blendEnable		 = VK_TRUE;
+			tempColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			tempColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			tempColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 
-			rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-			rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+			//条带装配
+			VkPipelineInputAssemblyStateCreateInfo tempInputAssembly = inputAssembly;
+			tempInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+
+			//顺时针正面
+			VkPipelineRasterizationStateCreateInfo tempRasterizer = rasterizer;
+			tempRasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 
 			//实现始终渲染在最上层
-			depthStencil.depthTestEnable = VK_FALSE;
-			depthStencil.depthWriteEnable = VK_FALSE;
+			VkPipelineDepthStencilStateCreateInfo tempDepthStencil = depthStencil;
+			tempDepthStencil.depthTestEnable  = VK_FALSE;
+			tempDepthStencil.depthWriteEnable = VK_FALSE;
 
-			pipelineInfo.layout = procPipeline.uiText.pipelineLayout;
+			colorBlending.pAttachments		 = &tempColorBlendAttachment;
+			pipelineInfo.pInputAssemblyState = &tempInputAssembly;
+			pipelineInfo.pRasterizationState = &tempRasterizer;
+			pipelineInfo.pDepthStencilState  = &tempDepthStencil;
+			pipelineInfo.layout				 = procPipeline.uiText.pipelineLayout;
 
 			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.uiText.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "uiText管线创建失败");
 				throw;
 			}
+
+			colorBlending.pAttachments		 = &colorBlendAttachment;
+			pipelineInfo.pInputAssemblyState = &inputAssembly;
+			pipelineInfo.pRasterizationState = &rasterizer;
+			pipelineInfo.pDepthStencilState  = &depthStencil;
 		}
 	}
 
@@ -453,10 +501,11 @@ private:
 		InitSwapchain.recreateSwapChain();
 		InitRenderPass.recreateSwapChain();
 		InitBuffer.recreateSwapChain();
-
 		InitBuffer.createPipelineLayout(procPipeline.pipelineLayout);
 		createGraphicsPipeline();
-		InitBuffer.createFramebuffers(InitSwapchain.swapChainImageViews, InitRenderPass.renderPass);
+
+		InitBuffer.createFramebuffers(InitSwapchain.scImageViews, InitRenderPass.renderPass);
+		InitBuffer.createOffScreenFramebuffers(InitRenderPass.osRenderPass);
 		InitBuffer.renderPassCommandBuffers(InitRenderPass.renderPass);
 		InitBuffer.createCommandBuffers(InitBuffer.command.currentThreadID, procPipeline);
 	}

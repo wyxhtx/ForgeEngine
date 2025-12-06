@@ -10,20 +10,19 @@ public:
 
 	Buffer(Device& Device) :Device{ Device } {
 		createCommandPool();
-
 		procDescriptor.createDescriptorPool(Device.device);
 		procDescriptor.createDescriptorSetLayout(Device.device);
 
 		createMeshBuffer();
 		createUniformBuffer();
-
 		createTexture();
 		procModel.getMaxModelMip();
 		procSampler.createTextureSampler(Device.device, terrain.mipLevel, procModel.sModelMip, procModel.dModelMip);
+		createOffScreenResources();
 		createDescriptorSet();
 
-		createDepthResources();
 		createColorResources();
+		createDepthResources();
 
 		initUniformBuffer();
 
@@ -35,8 +34,8 @@ public:
 	}
 
 	~Buffer() {
-		for (int i = 0; i < swapChainFramebuffers.size(); i++) {
-			vkDestroyFramebuffer(Device.device, swapChainFramebuffers[i], nullptr);
+		for (int i = 0; i < scFramebuffers.size(); i++) {
+			vkDestroyFramebuffer(Device.device, scFramebuffers[i], nullptr);
 		}
 
 		vkDestroyCommandPool(Device.device, command.commandPool, nullptr);
@@ -47,11 +46,11 @@ public:
 		procModel.clear(Device.device, Device.allocator);
 		skybox.clear(Device.device, Device.allocator);
 		mine.clear(Device.device, Device.allocator);
+		offScreen.clear(Device.device, Device.allocator);
 		uiText.clear(Device.device, Device.allocator);
 
 		vkDestroyImageView(Device.device, colorImage.view, nullptr);
 		vmaDestroyImage(Device.allocator, colorImage.image, colorImage.imageMemory);
-
 		vkDestroyImageView(Device.device, depthImage.view, nullptr);
 		vmaDestroyImage(Device.allocator, depthImage.image, depthImage.imageMemory);
 
@@ -63,16 +62,17 @@ public:
 private:
 	Device& Device;
 
-	std::vector<VkFramebuffer> swapChainFramebuffers;   //在一个渲染通道中所必要的一组图像附件（attachment）的集合
-
+	std::vector<VkFramebuffer> scFramebuffers;		//交换链帧缓冲，在一个渲染通道中所必要的一组图像附件（attachment）的集合
+    
 	bufferList::procDescriptorNode procDescriptor;
-	bufferList::procSamplerNode procSampler;
+	bufferList::procSamplerNode	   procSampler;
 
-	bufferStruct::terrainBufferNode terrain{ bufferEnum::procSamplerNode::terrain };
-	bufferList::procModelNode		procModel{};
-	bufferStruct::skyboxBufferNode	skybox;
-	bufferStruct::baseBufferNode	mine;
-	bufferStruct::uiTextBufferNode	uiText{ bufferEnum::procSamplerNode::uiText };
+	bufferStruct::terrainBufferNode   terrain{ bufferEnum::procSamplerNode::terrain };
+	bufferList::procModelNode		  procModel{};
+	bufferStruct::skyboxBufferNode	  skybox;
+	bufferStruct::baseBufferNode	  mine;
+	bufferStruct::offScreenBufferNode offScreen{ bufferEnum::procSamplerNode::offScreen };
+	bufferStruct::uiTextBufferNode	  uiText{ bufferEnum::procSamplerNode::uiText };
 
 	bufferStruct::imageNode depthImage;
 	bufferStruct::imageNode colorImage;
@@ -125,6 +125,10 @@ private:
 		createVertexBuffer(mineVertex::vertexs, mine.vertex);
 		createIndexBuffer(mineVertex::indexs, mine.index);
 
+		//offScreen
+		createVertexBuffer(offScreenVertex::vertexs, offScreen.vertex);
+		createIndexBuffer(offScreenVertex::indexs, offScreen.index);
+
 		//uiText
 		createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex);
 	}
@@ -155,6 +159,10 @@ private:
 
 		//mine
 		createBuffer(sizeof(mine.ubo), mine.uniform);
+
+		//offScreen
+		createBuffer(sizeof(offScreen.ubo), offScreen.uniform);
+		createBuffer(sizeof(offScreen.lightUbo), offScreen.lightUniform);
 	}
 
 	void createTexture() {
@@ -176,6 +184,24 @@ private:
 
 		//uiText
 		createTextNode(uiText.texture);
+	}
+
+	//创建离屏附件
+	void createOffScreenResources() {
+		//创建离屏颜色附件
+		createImage(offScreen.width, offScreen.height, 1, 1, Device.offScreenColorFormat, Device.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.color.image, offScreen.color.imageMemory);
+		createImageView(offScreen.color.image, offScreen.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, Device.offScreenColorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		//创建离屏深度附件
+		createImage(offScreen.width, offScreen.height, 1, 1, Device.depthFormat, Device.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.depth.image, offScreen.depth.imageMemory);
+		createImageView(offScreen.depth.image, offScreen.depth.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, Device.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+		//创建离屏视图附件
+		createImage(offScreen.width, offScreen.height, 1, 1, Device.offScreenColorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.osView.image, offScreen.osView.imageMemory);
+		createImageView(offScreen.osView.image, offScreen.osView.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, Device.offScreenColorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		//todo 怎么办？
+		//transitionImageLayout(offScreen.osView.image, 1, 1, Device.offScreenColorFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 
 	void createDescriptorSet() {
@@ -269,6 +295,20 @@ private:
 			throw;
 		}
 
+		//offScreen
+		if (vkAllocateDescriptorSets(Device.device, &allocInfo.node, &offScreen.descriptorSet) == VK_SUCCESS) {
+			writeDescriptorScence[0].setBufferNode(offScreen.descriptorSet, bufferInfo[0].getNode(offScreen.uniform.buffer, sizeof(offScreen.ubo)));
+			writeDescriptorScence[1].setBufferNode(offScreen.descriptorSet, bufferInfo[1].getNode(offScreen.lightUniform.buffer, sizeof(offScreen.lightUbo)));
+			writeDescriptorScence[2].setImageNode(offScreen.descriptorSet, imageInfo[0].getNode(procSampler.node[offScreen.samplerId], offScreen.osView.view));
+
+			std::array<VkWriteDescriptorSet, 3> tempWrite{ writeDescriptorScence[0].node,writeDescriptorScence[1].node,writeDescriptorScence[2].node };
+			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+		}
+		else {
+			Log::printError(__FILE__, __LINE__, "offScreen分配描述符集失败");
+			throw;
+		}
+
 
 
 		/*配置uitext描述符*/
@@ -288,15 +328,15 @@ private:
 		}
 	}
 
+	void createColorResources() {
+		createImage(Device.swapChainExtent.width, Device.swapChainExtent.height, 1, 1, Device.colorFormat, Device.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage.image, colorImage.imageMemory);
+		createImageView(colorImage.image, colorImage.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, Device.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		transitionImageLayout(colorImage.image, 1, 1, Device.colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	}
+
 	void createDepthResources() {
 		createImage(Device.swapChainExtent.width, Device.swapChainExtent.height, 1, 1, Device.depthFormat, Device.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage.image, depthImage.imageMemory);
 		createImageView(depthImage.image, depthImage.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, Device.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-	}
-
-	void createColorResources() {
-		createImage(Device.swapChainExtent.width, Device.swapChainExtent.height, 1, 1, Device.imageFormat, Device.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage.image, colorImage.imageMemory);
-		createImageView(colorImage.image, colorImage.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, Device.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-		transitionImageLayout(colorImage.image, 1, 1, Device.imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	}
 
 	void initUniformBuffer() {
@@ -339,6 +379,13 @@ private:
 			
 		//mine
 		mine.ubo.proj = proj;
+
+		//offScreen
+		offScreen.ubo.proj = proj;
+		offScreen.lightUbo.gLightColor	 = lightInfo::gLightColor;
+		offScreen.lightUbo.diffuseScale  = lightInfo::diffuseScale;
+		offScreen.lightUbo.gLightDir	 = lightInfo::gLightDir;
+		offScreen.lightUbo.specularScale = lightInfo::specularScale;
 	}
 
 private:
@@ -430,7 +477,7 @@ private:
 		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
 
 		for (const tinygltf::Mesh& mesh : model.meshes) {
-			loadModel(model, mesh, vertexs, indexs, uniqueVertices);
+			loadGltfModel(model, mesh, vertexs, indexs, uniqueVertices);
 		}
 
 		if (debugInfo::LogSwitch) {
@@ -489,7 +536,7 @@ private:
 		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
 
 		for (int i = 0; i < model.meshes.size(); i++) {
-			loadModel(model, model.meshes[i], vertexsList[i], indexsList[i], uniqueVertices);
+			loadGltfModel(model, model.meshes[i], vertexsList[i], indexsList[i], uniqueVertices);
 
 			if (debugInfo::LogSwitch) {
 				if (vertexsList[i].empty()) {
@@ -503,7 +550,7 @@ private:
 		}
 	}
 	
-	void loadModel(const tinygltf::Model& model, const tinygltf::Mesh& mesh, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::unordered_map<modelVertex::vertexNode, uint32_t>& uniqueVertices) {
+	void loadGltfModel(const tinygltf::Model& model, const tinygltf::Mesh& mesh, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::unordered_map<modelVertex::vertexNode, uint32_t>& uniqueVertices) {
 		for (const auto& primitive : mesh.primitives) {
 			//获取顶点数据  
 			const float* positions = nullptr;
@@ -856,17 +903,17 @@ private:
 		VkImageCreateInfo imageInfo = {};
 		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageInfo.imageType = VK_IMAGE_TYPE_2D;
+		imageInfo.format = format;
 		imageInfo.extent.width = width;
 		imageInfo.extent.height = height;
 		imageInfo.extent.depth = 1;
 		imageInfo.mipLevels = mipLevel;
 		imageInfo.arrayLayers = arrayLayer;
-		imageInfo.format = format;
+		imageInfo.samples = numSamples;
 		imageInfo.tiling = tiling;
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageInfo.usage = usage;
 		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		imageInfo.samples = numSamples;
 
 		VmaAllocationCreateInfo allocInfo = {};
 		allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -1083,27 +1130,47 @@ public:
 		}
 	}
 
-	void createFramebuffers(std::vector<VkImageView>& swapChainImageViews, VkRenderPass& renderPass) {
-		swapChainFramebuffers.resize(swapChainImageViews.size());
+	//创建帧缓冲
+	void createFramebuffers(std::vector<VkImageView>& scImageViews, VkRenderPass& renderPass) {
+		scFramebuffers.resize(scImageViews.size());
 
-		VkFramebufferCreateInfo framebufferInfo = {};
-		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		VkFramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.sType	   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = renderPass;
-		framebufferInfo.width = Device.swapChainExtent.width;
-		framebufferInfo.height = Device.swapChainExtent.height;
-		framebufferInfo.layers = 1;
+		framebufferInfo.width	   = Device.swapChainExtent.width;
+		framebufferInfo.height     = Device.swapChainExtent.height;
+		framebufferInfo.layers	   = 1;
 
-		for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+		for (size_t i = 0; i < scImageViews.size(); i++) {
 			//将subpass描述的内容呈现到屏幕上,必须对应
-			std::array<VkImageView, 3> attachments = { colorImage.view,depthImage.view,swapChainImageViews[i] };
+			std::array<VkImageView, 3> attachments{ colorImage.view,depthImage.view,scImageViews[i] };
 
 			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-			framebufferInfo.pAttachments = attachments.data();
+			framebufferInfo.pAttachments	= attachments.data();
 
-			if (vkCreateFramebuffer(Device.device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
+			if (vkCreateFramebuffer(Device.device, &framebufferInfo, nullptr, &scFramebuffers[i]) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "帧缓冲创建失败");
 				throw;
 			}
+		}
+	}
+
+	//创建离屏帧缓冲
+	void createOffScreenFramebuffers(VkRenderPass& osRenderPass) {
+		std::array<VkImageView, 3> attachments{ offScreen.color.view,offScreen.depth.view,offScreen.osView.view };
+
+		VkFramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass		= osRenderPass;									//渲染通道
+		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());	//附件数量
+		framebufferInfo.pAttachments	= attachments.data();							//附件
+		framebufferInfo.width			= offScreen.width;								//宽度
+		framebufferInfo.height			= offScreen.height;								//高度
+		framebufferInfo.layers			= 1;											//层数
+
+		if (vkCreateFramebuffer(Device.device, &framebufferInfo, nullptr, &offScreen.osFramebuffer) != VK_SUCCESS) {
+			Log::printError(__FILE__, __LINE__, "帧缓冲创建失败");
+			throw;
 		}
 	}
 
@@ -1140,7 +1207,7 @@ public:
 
 	void initCommandBuffers() {
 		for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
-			command.commandBuffers[i].resize(swapChainFramebuffers.size());
+			command.commandBuffers[i].resize(scFramebuffers.size());
 		}
 
 		command.allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1177,7 +1244,7 @@ public:
 		VkDeviceSize offsets[] = { 0 };	//绑定管线过程中指定各顶点缓冲区的偏移量
 
 		for (int i = 0; i < command.commandBuffers[threadID].size(); i++) {
-			command.renderPassInfo.framebuffer = swapChainFramebuffers[i];
+			command.renderPassInfo.framebuffer = scFramebuffers[i];
 
 			vkResetCommandBuffer(command.commandBuffers[threadID][i], 0);
 			vkBeginCommandBuffer(command.commandBuffers[threadID][i], &command.beginInfo);
@@ -1186,8 +1253,8 @@ public:
 			//terrain
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
 				if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-					vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain[layer].pipeline);
-					vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain[layer].pipelineLayout, 0, 1, &terrain.descriptorSet, 0, nullptr);
+					vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain.pipeline);
+					vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain.pipelineLayout, 0, 1, &terrain.descriptorSet, 0, nullptr);
 					vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &terrain.vertex[threadID][layer].buffer, offsets);
 					vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], terrain.index[threadID][layer].buffer, 0, VK_INDEX_TYPE_UINT32);
 					vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)terrainVertex::indexs[layer].size(), 1, 0, 0, 0);
@@ -1227,6 +1294,13 @@ public:
 			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &mine.vertex.buffer, offsets);
 			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], mine.index.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)mineVertex::indexs.size(), 1, 0, 0, 0);
+
+			//offScreen
+			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.offScreen.pipeline);
+			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.offScreen.pipelineLayout, 0, 1, &offScreen.descriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &offScreen.vertex.buffer, offsets);
+			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], offScreen.index.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)offScreenVertex::indexs.size(), 1, 0, 0, 0);
 
 			//uiText
 			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.uiText.pipeline);
@@ -1290,103 +1364,132 @@ public:
 
 
 		//terrain
-		terrain.ubo.view				= camera.view;
-		terrain.lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-		terrain.lightUbo.currentHour	= currentHour;
-		terrain.lightUbo.ambientScale	= lightInfo::ambientScale;
-		terrain.lightUbo.gLightPos		= offsetPos;
-		terrain.lightUbo.flashPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-		terrain.lightUbo.flashDir		= camera.front;
-		terrain.lightUbo.flashCutOff	= glm::cos(glm::radians(12.5f));
-		terrain.lightUbo.outerCutOff	= glm::cos(glm::radians(14.5f));
+		{
+			terrain.ubo.view			  = camera.view;
+			terrain.lightUbo.viewPos	  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			terrain.lightUbo.currentHour  = currentHour;
+			terrain.lightUbo.ambientScale = lightInfo::ambientScale;
+			terrain.lightUbo.gLightPos	  = offsetPos;
+			terrain.lightUbo.flashPos	  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			terrain.lightUbo.flashDir	  = camera.front;
+			terrain.lightUbo.flashCutOff  = glm::cos(glm::radians(12.5f));
+			terrain.lightUbo.outerCutOff  = glm::cos(glm::radians(14.5f));
+
+			createMapMemory(terrain.uniform.bufferMemory, &terrain.ubo, sizeof(terrain.ubo));
+			createMapMemory(terrain.lightUniform.bufferMemory, &terrain.lightUbo, sizeof(terrain.lightUbo));
+		}
 
 		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
-			procModel.sNode[i].ubo.model			 = glm::translate(glm::mat4(1), offsetPos);											//位移
-			procModel.sNode[i].ubo.model			 *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
-			procModel.sNode[i].ubo.modelTI			 = glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
-			//procModel.sNode[i].ubo.model			 *= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
-			procModel.sNode[i].ubo.view				 = camera.view;
-			procModel.sNode[i].lightUbo.viewPos		 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			procModel.sNode[i].lightUbo.currentHour	 = currentHour;
-			procModel.sNode[i].lightUbo.ambientScale = lightInfo::ambientScale;//(sin(gameTime) + 1) / 2;
-			procModel.sNode[i].lightUbo.gLightPos	 = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
-			procModel.sNode[i].lightUbo.flashPos	 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			procModel.sNode[i].lightUbo.flashDir	 = camera.front;
-			procModel.sNode[i].lightUbo.flashCutOff  = glm::cos(glm::radians(12.5f));
-			procModel.sNode[i].lightUbo.outerCutOff  = glm::cos(glm::radians(14.5f));
+		{
+			for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+				procModel.sNode[i].ubo.model = glm::translate(glm::mat4(1), offsetPos);											//位移
+				procModel.sNode[i].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
+				procModel.sNode[i].ubo.modelTI = glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
+				//procModel.sNode[i].ubo.model			 *= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
+				procModel.sNode[i].ubo.view = camera.view;
+				procModel.sNode[i].lightUbo.viewPos = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+				procModel.sNode[i].lightUbo.currentHour = currentHour;
+				procModel.sNode[i].lightUbo.ambientScale = lightInfo::ambientScale;//(sin(gameTime) + 1) / 2;
+				procModel.sNode[i].lightUbo.gLightPos = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+				procModel.sNode[i].lightUbo.flashPos = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+				procModel.sNode[i].lightUbo.flashDir = camera.front;
+				procModel.sNode[i].lightUbo.flashCutOff = glm::cos(glm::radians(12.5f));
+				procModel.sNode[i].lightUbo.outerCutOff = glm::cos(glm::radians(14.5f));
+			}
+
+			for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+				createMapMemory(procModel.sNode[i].uniform.bufferMemory, &procModel.sNode[i].ubo, sizeof(procModel.sNode[i].ubo));
+				createMapMemory(procModel.sNode[i].lightUniform.bufferMemory, &procModel.sNode[i].lightUbo, sizeof(procModel.sNode[i].lightUbo));
+			}
 		}
 
 		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
-			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-				procModel.dNode[i].node[j].ubo.model   = glm::translate(glm::mat4(1), offsetPos);											//位移
-				procModel.dNode[i].node[j].ubo.model   *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
-				procModel.dNode[i].node[j].ubo.modelTI = glm::transpose(glm::inverse(procModel.dNode[i].node[j].ubo.model));
-				procModel.dNode[i].node[j].ubo.view	   = camera.view;
+		{
+			for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+					procModel.dNode[i].node[j].ubo.model = glm::translate(glm::mat4(1), offsetPos);											//位移
+					procModel.dNode[i].node[j].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
+					procModel.dNode[i].node[j].ubo.modelTI = glm::transpose(glm::inverse(procModel.dNode[i].node[j].ubo.model));
+					procModel.dNode[i].node[j].ubo.view = camera.view;
+				}
+
+				procModel.dNode[i].lightUbo.viewPos = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+				procModel.dNode[i].lightUbo.currentHour = currentHour;
+				procModel.dNode[i].lightUbo.ambientScale = lightInfo::ambientScale;//(sin(gameTime) + 1) / 2;
+				procModel.dNode[i].lightUbo.gLightPos = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+				procModel.dNode[i].lightUbo.flashPos = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+				procModel.dNode[i].lightUbo.flashDir = camera.front;
+				procModel.dNode[i].lightUbo.flashCutOff = glm::cos(glm::radians(12.5f));
+				procModel.dNode[i].lightUbo.outerCutOff = glm::cos(glm::radians(14.5f));
 			}
 
-			procModel.dNode[i].lightUbo.viewPos		 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			procModel.dNode[i].lightUbo.currentHour  = currentHour;
-			procModel.dNode[i].lightUbo.ambientScale = lightInfo::ambientScale;//(sin(gameTime) + 1) / 2;
-			procModel.dNode[i].lightUbo.gLightPos	 = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
-			procModel.dNode[i].lightUbo.flashPos	 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			procModel.dNode[i].lightUbo.flashDir	 = camera.front;
-			procModel.dNode[i].lightUbo.flashCutOff  = glm::cos(glm::radians(12.5f));
-			procModel.dNode[i].lightUbo.outerCutOff  = glm::cos(glm::radians(14.5f));
+			for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+					createMapMemory(procModel.dNode[i].node[j].uniform.bufferMemory, &procModel.dNode[i].node[j].ubo, sizeof(procModel.dNode[i].node[j].ubo));
+				}
+
+				createMapMemory(procModel.dNode[i].lightUniform.bufferMemory, &procModel.dNode[i].lightUbo, sizeof(procModel.dNode[i].lightUbo));
+			}
 		}
 
 		//skybox
-		//skybox.ubo.model			= glm::translate(glm::mat4(1), glm::vec3(pos - playerInfo::logicOriginPos));		//着色器屏蔽了模型的位移变换，所以注释掉此处
-		skybox.ubo.view				= camera.view;
-		skybox.lightUbo.currentHour	= currentHour;
+		{
+			skybox.ubo.view = camera.view;
+			skybox.lightUbo.currentHour = currentHour;
+
+			createMapMemory(skybox.uniform.bufferMemory, &skybox.ubo, sizeof(skybox.ubo));
+			createMapMemory(skybox.lightUniform.bufferMemory, &skybox.lightUbo, sizeof(skybox.lightUbo));
+		}
 
 		//mine
-		mine.ubo.model	= glm::translate(glm::mat4(1), box.minepos);
-		mine.ubo.model	*= glm::scale(glm::mat4(1), glm::vec3(1) * box.isVisible);
-		mine.ubo.view	= camera.view;
+		{
+			mine.ubo.model = glm::translate(glm::mat4(1), box.minepos);
+			mine.ubo.model *= glm::scale(glm::mat4(1), glm::vec3(1) * box.isVisible);
+			mine.ubo.view = camera.view;
+
+			createMapMemory(mine.uniform.bufferMemory, &mine.ubo, sizeof(mine.ubo));
+		}
+
+		//offScreen
+		{
+			offScreen.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(-16.f));
+			offScreen.ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(32.f));
+			offScreen.ubo.modelTI			= glm::transpose(glm::inverse(offScreen.ubo.model));
+			offScreen.ubo.view				= camera.view;
+			offScreen.lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			offScreen.lightUbo.currentHour	= currentHour;
+			offScreen.lightUbo.ambientScale = lightInfo::ambientScale;
+			offScreen.lightUbo.gLightPos	= offsetPos;
+			offScreen.lightUbo.flashPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			offScreen.lightUbo.flashDir		= camera.front;
+			offScreen.lightUbo.flashCutOff	= glm::cos(glm::radians(12.5f));
+			offScreen.lightUbo.outerCutOff	= glm::cos(glm::radians(14.5f));
+
+			createMapMemory(offScreen.uniform.bufferMemory, &offScreen.ubo, sizeof(offScreen.ubo));
+			createMapMemory(offScreen.lightUniform.bufferMemory, &offScreen.lightUbo, sizeof(offScreen.lightUbo));
+		}
 
 		//showUIText
-		showUIText.pos		= glm::floor(camera.pos);
-		showUIText.chunkPos	= glm::floor(camera.pos / (double)plateInfo::chunkLength);
-		showUIText.minepos	= box.minepos;
-
-
-
-		createMapMemory(terrain.uniform.bufferMemory, &terrain.ubo, sizeof(terrain.ubo));
-		createMapMemory(terrain.lightUniform.bufferMemory, &terrain.lightUbo, sizeof(terrain.lightUbo));
-
-		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
-			createMapMemory(procModel.sNode[i].uniform.bufferMemory, &procModel.sNode[i].ubo, sizeof(procModel.sNode[i].ubo));
-			createMapMemory(procModel.sNode[i].lightUniform.bufferMemory, &procModel.sNode[i].lightUbo, sizeof(procModel.sNode[i].lightUbo));
+		{
+			showUIText.pos = glm::floor(camera.pos);
+			showUIText.chunkPos = glm::floor(camera.pos / (double)plateInfo::chunkLength);
+			showUIText.minepos = box.minepos;
 		}
-
-		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
-			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-				createMapMemory(procModel.dNode[i].node[j].uniform.bufferMemory, &procModel.dNode[i].node[j].ubo, sizeof(procModel.dNode[i].node[j].ubo));
-			}
-
-			createMapMemory(procModel.dNode[i].lightUniform.bufferMemory, &procModel.dNode[i].lightUbo, sizeof(procModel.dNode[i].lightUbo));
-		}
-
-		createMapMemory(skybox.uniform.bufferMemory, &skybox.ubo, sizeof(skybox.ubo));
-		createMapMemory(skybox.lightUniform.bufferMemory, &skybox.lightUbo, sizeof(skybox.lightUbo));
-
-		createMapMemory(mine.uniform.bufferMemory, &mine.ubo, sizeof(mine.ubo));
 	}
 
 	void cleanupSwapChain(int threadID) {
 		vkFreeCommandBuffers(Device.device, command.commandPool, static_cast<uint32_t>(command.commandBuffers[threadID].size()), command.commandBuffers[threadID].data());
 
-		for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
-			vkDestroyFramebuffer(Device.device, swapChainFramebuffers[i], nullptr);
+		for (size_t i = 0; i < scFramebuffers.size(); i++) {
+			vkDestroyFramebuffer(Device.device, scFramebuffers[i], nullptr);
 		}
-
-		vkDestroyImageView(Device.device, depthImage.view, nullptr);
-		vmaDestroyImage(Device.allocator, depthImage.image, depthImage.imageMemory);
+		vkDestroyFramebuffer(Device.device, offScreen.osFramebuffer, nullptr);
 
 		vkDestroyImageView(Device.device, colorImage.view, nullptr);
 		vmaDestroyImage(Device.allocator, colorImage.image, colorImage.imageMemory);
+
+		vkDestroyImageView(Device.device, depthImage.view, nullptr);
+		vmaDestroyImage(Device.allocator, depthImage.image, depthImage.imageMemory);
 	}
 
 	void recreateSwapChain() {

@@ -148,14 +148,14 @@ namespace bufferList {
             //sModelN
             samplerInfo.maxLod = static_cast<float>(sModelMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::sModelN]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "采样器创建失败");
+                Log::printError(__FILE__, __LINE__, "sModelN采样器创建失败");
                 throw;
             }
 
             //sModelL
             samplerInfo.magFilter = VK_FILTER_LINEAR;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::sModelL]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "采样器创建失败");
+                Log::printError(__FILE__, __LINE__, "sModelL采样器创建失败");
                 throw;
             }
 
@@ -163,14 +163,14 @@ namespace bufferList {
             samplerInfo.magFilter = VK_FILTER_NEAREST;
             samplerInfo.maxLod = static_cast<float>(dModelMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::dModelN]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "采样器创建失败");
+                Log::printError(__FILE__, __LINE__, "dModelN采样器创建失败");
                 throw;
             }
 
             //dModelL
             samplerInfo.magFilter = VK_FILTER_LINEAR;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::dModelL]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "采样器创建失败");
+                Log::printError(__FILE__, __LINE__, "dModelL采样器创建失败");
                 throw;
             }
 
@@ -178,6 +178,23 @@ namespace bufferList {
             samplerInfo.maxLod = 0.0f;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::uiText]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "uiText采样器创建失败");
+                throw;
+            }
+
+            //offScreen
+            samplerInfo.magFilter     = VK_FILTER_LINEAR;                       //放大过滤器
+            samplerInfo.minFilter     = VK_FILTER_LINEAR;                       //缩小过滤器
+            samplerInfo.mipmapMode    = VK_SAMPLER_MIPMAP_MODE_LINEAR;          //MIP映射模式
+            samplerInfo.addressModeU  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;  //U方向寻址模式
+            samplerInfo.addressModeV  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;  //V方向寻址模式
+            samplerInfo.addressModeW  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;  //W方向寻址模式
+            samplerInfo.mipLodBias    = 0.0f;                                   //MIP LOD偏置
+            samplerInfo.maxAnisotropy = 1.0f;                                   //最大各向异性
+            samplerInfo.minLod        = 0.0f;                                   //最小LOD
+            samplerInfo.maxLod        = 1.0f;                                   //最大LOD
+            samplerInfo.borderColor   = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;     //边界颜色
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::offScreen]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "offScreenPass采样器创建失败");
                 throw;
             }
         }
@@ -253,11 +270,12 @@ namespace pipelineList {
     };
 
     struct pipeline {
-        VkPipeline terrain[terrainEnum::terrainLayer::count];   //地形管线
-        VkPipeline model;                                       //模型管线
-        VkPipeline skybox;                                      //天空盒管线
-        VkPipeline mine;                                        //挖掘选择框管线
-        VkPipeline uiText;                                      //文本管线
+        VkPipeline terrain;     //地形管线
+        VkPipeline model;       //模型管线
+        VkPipeline skybox;      //天空盒管线
+        VkPipeline mine;        //挖掘选择框管线
+        VkPipeline offScreen;   //离屏渲染管线
+        VkPipeline uiText;      //文本管线
     };
 
     struct procPipelineNode {
@@ -265,15 +283,12 @@ namespace pipelineList {
         pipelineList::pipelineLayout pipelineLayout;
         pipelineList::pipeline pipeline;
 
-        pipelineStruct::pipelineNode terrain[terrainEnum::terrainLayer::count]{
-            {pipelineLayout.scence,pipeline.terrain[terrainEnum::terrainLayer::Layer_0]},
-            {pipelineLayout.scence,pipeline.terrain[terrainEnum::terrainLayer::Layer_1]}
-        };
-
-        pipelineStruct::pipelineNode model  { pipelineLayout.scence,pipeline.model };
-        pipelineStruct::pipelineNode skybox { pipelineLayout.scence,pipeline.skybox };
-        pipelineStruct::pipelineNode mine   { pipelineLayout.scence,pipeline.mine };
-        pipelineStruct::pipelineNode uiText { pipelineLayout.uiText,pipeline.uiText };
+        pipelineStruct::pipelineNode terrain    { pipelineLayout.scence,pipeline.terrain };
+        pipelineStruct::pipelineNode model      { pipelineLayout.scence,pipeline.model };
+        pipelineStruct::pipelineNode skybox     { pipelineLayout.scence,pipeline.skybox };
+        pipelineStruct::pipelineNode mine       { pipelineLayout.scence,pipeline.mine };
+        pipelineStruct::pipelineNode offScreen  { pipelineLayout.scence,pipeline.offScreen };
+        pipelineStruct::pipelineNode uiText     { pipelineLayout.uiText,pipeline.uiText };
 
 
 
@@ -281,13 +296,11 @@ namespace pipelineList {
             vkDestroyPipelineLayout(device, pipelineLayout.scence, nullptr);
             vkDestroyPipelineLayout(device, pipelineLayout.uiText, nullptr);
 
-            for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-                vkDestroyPipeline(device, terrain[layer].pipeline, nullptr);
-            }
-
+            vkDestroyPipeline(device, terrain.pipeline, nullptr);
             vkDestroyPipeline(device, model.pipeline, nullptr);
             vkDestroyPipeline(device, skybox.pipeline, nullptr);
             vkDestroyPipeline(device, mine.pipeline, nullptr);
+            vkDestroyPipeline(device, offScreen.pipeline, nullptr);
             vkDestroyPipeline(device, uiText.pipeline, nullptr);
         }
     };

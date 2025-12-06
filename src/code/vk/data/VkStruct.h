@@ -301,6 +301,55 @@ namespace bufferStruct {
         }
     };
 
+    struct offScreenBufferNode {
+        bufferNode vertex;
+        bufferNode index;
+
+        uint32_t width = bufferInfo::osSize;    //宽
+        uint32_t height = bufferInfo::osSize;   //高
+
+        bufferStruct::imageNode color;          //颜色附件
+        bufferStruct::imageNode depth;          //深度附件
+        bufferStruct::imageNode osView;         //离屏视图
+        VkFramebuffer osFramebuffer;		    //离屏帧缓冲
+
+        int samplerId;                          //采样器
+
+        bufferNode uniform;                     //统一缓冲
+        baseUBO ubo;
+        bufferNode lightUniform;
+        lightUBO lightUbo;
+
+        VkDescriptorSet descriptorSet;          //描述符
+
+
+
+        offScreenBufferNode(int tempSamplerId) {
+            samplerId = tempSamplerId;
+        }
+
+        offScreenBufferNode() = delete;
+
+        void clear(VkDevice& device, VmaAllocator& allocator) {
+            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
+            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+
+            vkDestroyImageView(device, color.view, nullptr);
+            vmaDestroyImage(allocator, color.image, color.imageMemory);
+
+            vkDestroyImageView(device, depth.view, nullptr);
+            vmaDestroyImage(allocator, depth.image, depth.imageMemory);
+
+            vkDestroyImageView(device, osView.view, nullptr);
+            vmaDestroyImage(allocator, osView.image, osView.imageMemory);
+
+            vkDestroyFramebuffer(device, osFramebuffer, nullptr);
+
+            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
+        }
+    };
+
     struct uiTextBufferNode {
         bufferNode vertex;
 

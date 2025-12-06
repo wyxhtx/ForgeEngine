@@ -4,7 +4,7 @@
 
 class Swapchain {
 public:
-    std::vector<VkImageView> swapChainImageViews;       //为帧缓冲服务
+    std::vector<VkImageView> scImageViews;      //交换链视图，为帧缓冲服务
 
 
 
@@ -106,21 +106,21 @@ private:
         
 
 
-        Device.imageFormat = format.format;
+        Device.colorFormat = format.format;
         Device.swapChainExtent = extent;
 
         vkGetSwapchainImagesKHR(Device.device, swapchain, &imageCount, nullptr);
         swapChainImages.resize(imageCount);
 
         vkGetSwapchainImagesKHR(Device.device, swapchain, &imageCount, swapChainImages.data());
-        swapChainImageViews.resize(swapChainImages.size());
+        scImageViews.resize(swapChainImages.size());
     }
 
     //创建图像窗口
     void createImageViews() {
         imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        imageViewCreateInfo.format = Device.imageFormat;
+        imageViewCreateInfo.format = Device.colorFormat;
 
         imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
         imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -138,7 +138,7 @@ private:
         for (size_t i = 0; i < swapChainImages.size(); i++) {
             imageViewCreateInfo.image = swapChainImages[i];
 
-            if (vkCreateImageView(Device.device, &imageViewCreateInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
+            if (vkCreateImageView(Device.device, &imageViewCreateInfo, nullptr, &scImageViews[i]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "图像窗口创建失败");
             }
         }
@@ -325,8 +325,8 @@ public:
 
 
     void cleanupSwapChain() {
-        for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-            vkDestroyImageView(Device.device, swapChainImageViews[i], nullptr);
+        for (size_t i = 0; i < scImageViews.size(); i++) {
+            vkDestroyImageView(Device.device, scImageViews[i], nullptr);
         }
     }
 
@@ -356,24 +356,24 @@ public:
         VkSurfaceFormatKHR format = chooseFormat(swapchainSupport.formats);
         VkExtent2D extent = chooseExtent(swapchainSupport.capabilities);
 
-        Device.imageFormat = format.format;
+        Device.colorFormat = format.format;
         Device.swapChainExtent = extent;
 
         vkGetSwapchainImagesKHR(Device.device, swapchain, &swapchainCreateInfo.minImageCount, nullptr);
         swapChainImages.resize(swapchainCreateInfo.minImageCount);
 
         vkGetSwapchainImagesKHR(Device.device, swapchain, &swapchainCreateInfo.minImageCount, swapChainImages.data());
-        swapChainImageViews.resize(swapChainImages.size());
+        scImageViews.resize(swapChainImages.size());
 
         //重建图像视图
-        imageViewCreateInfo.format = Device.imageFormat;
+        imageViewCreateInfo.format = Device.colorFormat;
         //重建深度视图
         findDepthFormat();
 
         for (size_t i = 0; i < swapChainImages.size(); i++) {
             imageViewCreateInfo.image = swapChainImages[i];
 
-            if (vkCreateImageView(Device.device, &imageViewCreateInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
+            if (vkCreateImageView(Device.device, &imageViewCreateInfo, nullptr, &scImageViews[i]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "图像窗口创建失败");
             }
         }

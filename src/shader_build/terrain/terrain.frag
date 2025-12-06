@@ -132,8 +132,6 @@ float getAttenuation(vec3 lightPos) {
     return 1.0 / (constant + linear * distance + quadratic * (distance * distance));
 }
 
-
-
 void main() {
     vec4 texColor = texture(texSampler, fragTexCoord);              //纹理贴图读取rgb
     vec2 specularData = texture(specularSampler, fragTexCoord).rg;  //高光贴图读取rg

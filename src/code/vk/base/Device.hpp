@@ -351,8 +351,10 @@ private:
 public:
     //在交换链中初始化
     VkExtent2D swapChainExtent;
-    VkFormat imageFormat;
+    VkFormat colorFormat;
     VkFormat depthFormat;
+
+    VkFormat offScreenColorFormat = VK_FORMAT_R8G8B8A8_UNORM;   //离屏渲染颜色格式
 
 
 
