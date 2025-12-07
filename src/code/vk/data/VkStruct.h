@@ -47,8 +47,6 @@ namespace bufferStruct {
 
         VkCommandBufferAllocateInfo allocInfo{};
         VkCommandBufferBeginInfo beginInfo{};
-        std::array<VkClearValue, 2> clearValues{};
-        VkRenderPassBeginInfo renderPassInfo{};
     };
 
     struct showUITextNode {

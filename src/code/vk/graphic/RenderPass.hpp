@@ -4,14 +4,15 @@
 
 class RenderPass {
 public:
-	VkRenderPass renderPass;			//渲染通道，指定渲染过程中，所绑定帧缓冲的参数（格式、内存布局）及各个渲染步骤之间的关系
-	VkRenderPass osRenderPass;			//离屏渲染通道
-    
+	renderPassList::procRenderPassNode procRenderPass{};	//指定渲染过程中，所绑定帧缓冲的参数（格式、内存布局）及各个渲染步骤之间的关系
+
 
 
     RenderPass(Device& Device) :Device{ Device } {
 		createRenderPass();
 		createOffScreenRenderPass();
+
+		procRenderPass.createRenderPassInfo(Device.swapChainExtent);
 
         if (debugInfo::LogSwitch) {
             Log::printTitle("————————RenderPass已创建");
@@ -95,7 +96,7 @@ private:
         renderPassInfo.pDependencies   = dependency.data();                             //依赖关系数组
 
         //创建渲染路径
-        if (vkCreateRenderPass(Device.device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+        if (vkCreateRenderPass(Device.device, &renderPassInfo, nullptr, &procRenderPass.renderPass) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "渲染通道创建失败");
             throw;
         }
@@ -174,7 +175,7 @@ private:
 		renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());	//依赖数量
 		renderPassInfo.pDependencies   = dependencies.data();							//依赖
 
-		if (vkCreateRenderPass(Device.device, &renderPassInfo, nullptr, &osRenderPass) != VK_SUCCESS) {
+		if (vkCreateRenderPass(Device.device, &renderPassInfo, nullptr, &procRenderPass.osRenderPass) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "渲染通道创建失败");
 			throw;
 		}
@@ -182,12 +183,13 @@ private:
 
 public:
 	void cleanupSwapChain() {
-		vkDestroyRenderPass(Device.device, renderPass, nullptr);
-		vkDestroyRenderPass(Device.device, osRenderPass, nullptr);
+		procRenderPass.clear(Device.device);
 	}
 
 	void recreateSwapChain() {
 		createRenderPass();
 		createOffScreenRenderPass();
+
+		procRenderPass.createRenderPassInfo(Device.swapChainExtent);
 	}
 };

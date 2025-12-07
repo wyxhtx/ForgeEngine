@@ -1213,42 +1213,29 @@ public:
 		command.allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		command.allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		command.allocInfo.commandPool = command.commandPool;
+		command.allocInfo.commandBufferCount = scFramebuffers.size();	//两个命令缓冲区大小固定为3，即scFramebuffers.size()
 
 		command.beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		command.beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		command.beginInfo.pInheritanceInfo = nullptr; // Optional
-
-		command.clearValues[0].color = { 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f };
-		command.clearValues[1].depthStencil = { 1.0f, 0 };
-
-		command.renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		command.renderPassInfo.renderArea.offset = { 0, 0 };
-		command.renderPassInfo.clearValueCount = static_cast<uint32_t>(command.clearValues.size());
-		command.renderPassInfo.pClearValues = command.clearValues.data();
+		command.beginInfo.pInheritanceInfo = nullptr;
 	}
 
-	//初始化时和重建交换链时调用
-	void renderPassCommandBuffers(VkRenderPass& renderPass) {
-		command.renderPassInfo.renderPass = renderPass;
-		command.renderPassInfo.renderArea.extent = Device.swapChainExtent;
-	}
-
-	void createCommandBuffers(int threadID, pipelineList::procPipelineNode& procPipeline) {
-		command.allocInfo.commandBufferCount = (uint32_t)command.commandBuffers[threadID].size();
+	void createCommandBuffers(int threadID, renderPassList::procRenderPassNode& procRenderPass,pipelineList::procPipelineNode& procPipeline) {
+		VkDeviceSize offsets[] = { 0 };	//绑定管线过程中指定各顶点缓冲区的偏移量
 
 		if (vkAllocateCommandBuffers(Device.device, &command.allocInfo, command.commandBuffers[threadID].data()) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "基础命令缓冲创建失败");
 			throw;
 		}
 
-		VkDeviceSize offsets[] = { 0 };	//绑定管线过程中指定各顶点缓冲区的偏移量
+
 
 		for (int i = 0; i < command.commandBuffers[threadID].size(); i++) {
-			command.renderPassInfo.framebuffer = scFramebuffers[i];
+			procRenderPass.renderPassInfo.framebuffer = scFramebuffers[i];
 
 			vkResetCommandBuffer(command.commandBuffers[threadID][i], 0);
 			vkBeginCommandBuffer(command.commandBuffers[threadID][i], &command.beginInfo);
-			vkCmdBeginRenderPass(command.commandBuffers[threadID][i], &command.renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdBeginRenderPass(command.commandBuffers[threadID][i], &procRenderPass.renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			//terrain
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
@@ -1296,11 +1283,11 @@ public:
 			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)mineVertex::indexs.size(), 1, 0, 0, 0);
 
 			//offScreen
-			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.offScreen.pipeline);
-			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.offScreen.pipelineLayout, 0, 1, &offScreen.descriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &offScreen.vertex.buffer, offsets);
-			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], offScreen.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)offScreenVertex::indexs.size(), 1, 0, 0, 0);
+			//vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.offScreen.pipeline);
+			//vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.offScreen.pipelineLayout, 0, 1, &offScreen.descriptorSet, 0, nullptr);
+			//vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &offScreen.vertex.buffer, offsets);
+			//vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], offScreen.index.buffer, 0, VK_INDEX_TYPE_UINT32);
+			//vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)offScreenVertex::indexs.size(), 1, 0, 0, 0);
 
 			//uiText
 			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.uiText.pipeline);

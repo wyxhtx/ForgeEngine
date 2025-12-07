@@ -10,12 +10,11 @@ public:
 		createGraphicsPipeline();
 
 		InitBuffer.drawUIText(0);	//不在createCommandBuffers前初始化就不能显示UIText
-		InitBuffer.createFramebuffers(InitSwapchain.scImageViews, InitRenderPass.renderPass);
-		InitBuffer.createOffScreenFramebuffers(InitRenderPass.osRenderPass);
+		InitBuffer.createFramebuffers(InitSwapchain.scImageViews, InitRenderPass.procRenderPass.renderPass);
+		InitBuffer.createOffScreenFramebuffers(InitRenderPass.procRenderPass.osRenderPass);
 
 		InitBuffer.initCommandBuffers();
-		InitBuffer.renderPassCommandBuffers(InitRenderPass.renderPass);
-		InitBuffer.createCommandBuffers(InitBuffer.command.currentThreadID, procPipeline);
+		InitBuffer.createCommandBuffers(InitBuffer.command.currentThreadID, InitRenderPass.procRenderPass, procPipeline);
 
 		if (debugInfo::LogSwitch) {
 			Log::printTitle("————————Pipeline已创建");
@@ -164,7 +163,7 @@ private:
 			pipelineInfo.pDepthStencilState  = &depthStencil;
 			pipelineInfo.pColorBlendState	 = &colorBlending;
 			pipelineInfo.pDynamicState		 = nullptr;					
-			pipelineInfo.renderPass			 = InitRenderPass.renderPass;
+			pipelineInfo.renderPass			 = InitRenderPass.procRenderPass.renderPass;
 			pipelineInfo.subpass			 = 0;
 			pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;		
 			pipelineInfo.basePipelineIndex	 = -1;
@@ -283,12 +282,15 @@ private:
 			vertexInputInfo.pVertexBindingDescriptions		= offScreenVertex::vertexNode::getBindingDescription().data();
 			vertexInputInfo.pVertexAttributeDescriptions	= offScreenVertex::vertexNode::getAttributeDescriptions().data();
 
+			pipelineInfo.renderPass = InitRenderPass.procRenderPass.osRenderPass;
 			pipelineInfo.layout = procPipeline.offScreen.pipelineLayout;
 			
 			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.offScreen.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "offScreen管线创建失败");
 				throw;
 			}
+
+			pipelineInfo.renderPass = InitRenderPass.procRenderPass.renderPass;
 		}
 
 		//uiText
@@ -458,7 +460,7 @@ public:
 				InitBuffer.recreateBuffer(tempID, false);
 			}
 
-			InitBuffer.createCommandBuffers(tempID, procPipeline);
+			InitBuffer.createCommandBuffers(tempID, InitRenderPass.procRenderPass, procPipeline);
 
 			InitBuffer.command.currentThreadID = tempID;
 		}
@@ -504,9 +506,8 @@ private:
 		InitBuffer.createPipelineLayout(procPipeline.pipelineLayout);
 		createGraphicsPipeline();
 
-		InitBuffer.createFramebuffers(InitSwapchain.scImageViews, InitRenderPass.renderPass);
-		InitBuffer.createOffScreenFramebuffers(InitRenderPass.osRenderPass);
-		InitBuffer.renderPassCommandBuffers(InitRenderPass.renderPass);
-		InitBuffer.createCommandBuffers(InitBuffer.command.currentThreadID, procPipeline);
+		InitBuffer.createFramebuffers(InitSwapchain.scImageViews, InitRenderPass.procRenderPass.renderPass);
+		InitBuffer.createOffScreenFramebuffers(InitRenderPass.procRenderPass.osRenderPass);
+		InitBuffer.createCommandBuffers(InitBuffer.command.currentThreadID, InitRenderPass.procRenderPass, procPipeline);
 	}
 };

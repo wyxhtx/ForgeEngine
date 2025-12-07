@@ -1,6 +1,51 @@
 #pragma once
 
 
+namespace renderPassList {
+    struct procRenderPassNode {
+        VkRenderPass renderPass;			    //常规渲染通道
+        VkRenderPass osRenderPass;			    //离屏渲染通道
+
+        std::array<VkClearValue, 2> clearValues;
+        std::array<VkClearValue, 2> osClearValues;
+
+        VkRenderPassBeginInfo renderPassInfo;   //常规渲染通道信息
+        VkRenderPassBeginInfo osRenderPassInfo; //离屏渲染通道信息
+
+
+
+        procRenderPassNode() {
+            clearValues[0].color = { 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f };    //灰色
+            clearValues[1].depthStencil = { 1.0f, 0 };
+
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassInfo.renderArea.offset = { 0, 0 };
+            renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+            renderPassInfo.pClearValues = clearValues.data();
+
+            osClearValues[0].color = { 1.0f, 0.0f, 0.0f, 1.0f };  //红色
+            osClearValues[1].depthStencil = { 1.0f, 0 };
+
+            osRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            osRenderPassInfo.renderArea.offset = { 0, 0 };
+            osRenderPassInfo.clearValueCount = static_cast<uint32_t>(osClearValues.size());
+            osRenderPassInfo.pClearValues = osClearValues.data();
+        }
+
+        void createRenderPassInfo(VkExtent2D& scExtent) {
+            renderPassInfo.renderPass = renderPass;
+            osRenderPassInfo.renderPass = osRenderPass;
+
+            renderPassInfo.renderArea.extent = scExtent;
+            osRenderPassInfo.renderArea.extent = { bufferInfo::osSize,bufferInfo::osSize };
+        }
+
+        void clear(VkDevice& device) {
+            vkDestroyRenderPass(device, renderPass, nullptr);
+            vkDestroyRenderPass(device, osRenderPass, nullptr);
+        }
+    };
+}
 
 namespace bufferList {
     struct procDescriptorNode {
