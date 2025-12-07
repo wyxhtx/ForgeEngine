@@ -303,9 +303,6 @@ namespace bufferStruct {
         bufferNode vertex;
         bufferNode index;
 
-        uint32_t width = bufferInfo::osSize;    //宽
-        uint32_t height = bufferInfo::osSize;   //高
-
         bufferStruct::imageNode color;          //颜色附件
         bufferStruct::imageNode depth;          //深度附件
         bufferStruct::imageNode osView;         //离屏视图
@@ -332,6 +329,14 @@ namespace bufferStruct {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
             vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
 
+            clearResources(device, allocator);
+            vkDestroyFramebuffer(device, osFramebuffer, nullptr);
+
+            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
+        }
+
+        void clearResources(VkDevice& device, VmaAllocator& allocator) {
             vkDestroyImageView(device, color.view, nullptr);
             vmaDestroyImage(allocator, color.image, color.imageMemory);
 
@@ -340,11 +345,6 @@ namespace bufferStruct {
 
             vkDestroyImageView(device, osView.view, nullptr);
             vmaDestroyImage(allocator, osView.image, osView.imageMemory);
-
-            vkDestroyFramebuffer(device, osFramebuffer, nullptr);
-
-            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
-            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };
 

@@ -354,8 +354,6 @@ public:
     VkFormat colorFormat;
     VkFormat depthFormat;
 
-    VkFormat offScreenColorFormat = VK_FORMAT_R8G8B8A8_UNORM;   //离屏渲染颜色格式
-
 
 
     //获取交换链支持

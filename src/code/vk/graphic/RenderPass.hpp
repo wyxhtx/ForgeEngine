@@ -106,7 +106,7 @@ private:
 	void createOffScreenRenderPass() {
 		std::array<VkAttachmentDescription, 3> attachments{};
 		//颜色附件描述
-		attachments[0].format		  = Device.offScreenColorFormat;						//颜色附件格式
+		attachments[0].format		  = Device.colorFormat;									//颜色附件格式
 		attachments[0].samples		  = Device.msaaSamples;									//采样数-多重采样
 		attachments[0].loadOp		  = VK_ATTACHMENT_LOAD_OP_CLEAR;						//加载操作-清除
 		attachments[0].storeOp		  = VK_ATTACHMENT_STORE_OP_DONT_CARE;					//存储操作-不关心
@@ -124,7 +124,7 @@ private:
 		attachments[1].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;							//初始布局-未定义
 		attachments[1].finalLayout	  = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;	//最终布局-深度附件
 		//多重采样后的像素颜色值的解析或合并过程描述
-		attachments[2].format		  = Device.offScreenColorFormat;						//解析附件格式
+		attachments[2].format		  = Device.colorFormat;									//解析附件格式
 		attachments[2].samples		  = VK_SAMPLE_COUNT_1_BIT;                              //采样数-单采样（将4个采样点合并为1个最终颜色值）
 		attachments[2].loadOp		  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;                    //加载操作-不关心
 		attachments[2].storeOp		  = VK_ATTACHMENT_STORE_OP_STORE;                       //存储操作-存储

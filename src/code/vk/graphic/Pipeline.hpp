@@ -197,12 +197,15 @@ private:
 			vertexInputInfo.pVertexBindingDescriptions		= modelVertex::vertexNode::getBindingDescription().data();
 			vertexInputInfo.pVertexAttributeDescriptions	= modelVertex::vertexNode::getAttributeDescriptions().data();
 
+			pipelineInfo.renderPass = InitRenderPass.procRenderPass.osRenderPass;
 			pipelineInfo.layout = procPipeline.model.pipelineLayout;
 
 			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.model.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "model管线创建失败");
 				throw;
 			}
+
+			pipelineInfo.renderPass = InitRenderPass.procRenderPass.renderPass;
 		}
 
 		//skybox
@@ -282,15 +285,12 @@ private:
 			vertexInputInfo.pVertexBindingDescriptions		= offScreenVertex::vertexNode::getBindingDescription().data();
 			vertexInputInfo.pVertexAttributeDescriptions	= offScreenVertex::vertexNode::getAttributeDescriptions().data();
 
-			pipelineInfo.renderPass = InitRenderPass.procRenderPass.osRenderPass;
 			pipelineInfo.layout = procPipeline.offScreen.pipelineLayout;
 			
 			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.offScreen.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "offScreen管线创建失败");
 				throw;
 			}
-
-			pipelineInfo.renderPass = InitRenderPass.procRenderPass.renderPass;
 		}
 
 		//uiText

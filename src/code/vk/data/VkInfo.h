@@ -99,8 +99,6 @@ namespace bufferInfo {
     const uint32_t bufferTextUINodeSize = 1;    //描述符池上限，uiText
 
     const int commandThreadSize = 2;            //命令线程数
-
-    uint32_t osSize = 512;                      //离屏尺寸
 }
 
 namespace fpsInfo {

@@ -22,12 +22,13 @@ layout(binding = 1) uniform UniformBufferObject {
 
 layout(binding = 2) uniform sampler2D texSampler;
 
+layout (location = 0) in vec4 inPos;
+
 layout(location = 0) out vec4 outColor;
 
 
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / vec2(512.0, 512.0);
-    
+    vec2 uv = inPos.xy / inPos.w * 0.5 + 0.5;   //²Ã¼ô¿Õ¼ä -> NDC -> UV
     outColor = texture(texSampler, uv);
 }

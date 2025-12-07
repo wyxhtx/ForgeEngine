@@ -1,10 +1,11 @@
 #pragma once
 
 
+
 namespace renderPassList {
     struct procRenderPassNode {
-        VkRenderPass renderPass;			    //常规渲染通道
-        VkRenderPass osRenderPass;			    //离屏渲染通道
+        VkRenderPass renderPass{};			    //常规渲染通道
+        VkRenderPass osRenderPass{};		    //离屏渲染通道
 
         std::array<VkClearValue, 2> clearValues;
         std::array<VkClearValue, 2> osClearValues;
@@ -37,7 +38,7 @@ namespace renderPassList {
             osRenderPassInfo.renderPass = osRenderPass;
 
             renderPassInfo.renderArea.extent = scExtent;
-            osRenderPassInfo.renderArea.extent = { bufferInfo::osSize,bufferInfo::osSize };
+            osRenderPassInfo.renderArea.extent = scExtent;
         }
 
         void clear(VkDevice& device) {
@@ -51,6 +52,23 @@ namespace bufferList {
     struct procDescriptorNode {
         bufferStruct::descriptorNode scence;  //场景描述符
         bufferStruct::descriptorNode uiText;  //文本描述符
+
+        bufferStruct::descriptorBufferNode bufferInfo[2]{};
+        bufferStruct::descriptorImageNode imageInfo[2]{};
+
+        bufferStruct::descriptorAllocateNode allocInfo{};
+        bufferStruct::writeDescriptorNode writeScence[4]{
+            {0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},			//顶点统一缓冲区描述符
+            {1,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},			//片段统一缓冲区描述符
+            {2,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},	//纹理贴图采样器描述符
+            {3,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER}	//高光贴图采样器描述符
+        };
+
+        bufferStruct::writeDescriptorNode writeUIText{ 
+            0,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+        };
+
+
 
         void createDescriptorPool(VkDevice& device) {
             /*scence*/
