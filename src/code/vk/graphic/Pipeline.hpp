@@ -10,11 +10,11 @@ public:
 		createGraphicsPipeline();
 
 		InitBuffer.drawUIText(0);	//不在createCommandBuffers前初始化就不能显示UIText
-		InitBuffer.createFramebuffers(InitSwapchain.scImageViews, InitRenderPass.procRenderPass.renderPass);
-		InitBuffer.createOffScreenFramebuffers(InitRenderPass.procRenderPass.osRenderPass);
+		InitBuffer.createScFramebuffers();
+		InitBuffer.createOsFramebuffers();
 
-		InitBuffer.initCommandBuffers();
-		InitBuffer.createCommandBuffers(InitBuffer.command.currentThreadID, InitRenderPass.procRenderPass, procPipeline);
+		InitBuffer.command.initCommandBuffer(uint32_t(InitBuffer.scFramebuffers.size()));
+		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadID, procPipeline);
 
 		if (debugInfo::LogSwitch) {
 			Log::printTitle("————————Pipeline已创建");
@@ -43,8 +43,6 @@ private:
 	Device& Device;
 
 	Plate InitPlate{};
-	Swapchain InitSwapchain{ Device };
-	RenderPass InitRenderPass{ Device };
 	Buffer InitBuffer{ Device };
 
 	VkPipelineCache pipelineCache;
@@ -88,13 +86,13 @@ private:
 
 			viewport.x		  = 0.0f;
 			viewport.y		  = 0.0f;
-			viewport.width    = (float)Device.swapChainExtent.width;
-			viewport.height   = (float)Device.swapChainExtent.height;
+			viewport.width    = (float)InitBuffer.getScExtent().width;
+			viewport.height   = (float)InitBuffer.getScExtent().height;
 			viewport.minDepth = 0.0f;
 			viewport.maxDepth = 1.0f;
 
 			scissor.offset = { 0, 0 };
-			scissor.extent = Device.swapChainExtent;
+			scissor.extent = InitBuffer.getScExtent();
 
 			viewportState.sType			= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 			viewportState.viewportCount = 1;
@@ -116,7 +114,7 @@ private:
 
 			multisampling.sType					= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 			multisampling.sampleShadingEnable	= VK_FALSE;
-			multisampling.rasterizationSamples	= Device.msaaSamples;
+			multisampling.rasterizationSamples	= InitBuffer.getMsaaSamples();
 			multisampling.minSampleShading		= 1.0f;													
 			multisampling.pSampleMask			= nullptr;													
 			multisampling.alphaToCoverageEnable = VK_FALSE;											
@@ -163,7 +161,7 @@ private:
 			pipelineInfo.pDepthStencilState  = &depthStencil;
 			pipelineInfo.pColorBlendState	 = &colorBlending;
 			pipelineInfo.pDynamicState		 = nullptr;					
-			pipelineInfo.renderPass			 = InitRenderPass.procRenderPass.renderPass;
+			pipelineInfo.renderPass			 = InitBuffer.getRender(bufferEnum::procRenderId::scScence);
 			pipelineInfo.subpass			 = 0;
 			pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;		
 			pipelineInfo.basePipelineIndex	 = -1;
@@ -197,7 +195,7 @@ private:
 			vertexInputInfo.pVertexBindingDescriptions		= modelVertex::vertexNode::getBindingDescription().data();
 			vertexInputInfo.pVertexAttributeDescriptions	= modelVertex::vertexNode::getAttributeDescriptions().data();
 
-			pipelineInfo.renderPass = InitRenderPass.procRenderPass.osRenderPass;
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
 			pipelineInfo.layout = procPipeline.model.pipelineLayout;
 
 			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.model.pipeline) != VK_SUCCESS) {
@@ -205,7 +203,7 @@ private:
 				throw;
 			}
 
-			pipelineInfo.renderPass = InitRenderPass.procRenderPass.renderPass;
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::scScence);
 		}
 
 		//skybox
@@ -389,8 +387,8 @@ private:
 
 public:
 	void drawFrame(Camera& Camera) {
-		static fpsStruct::tick uiTextTick;
-		static fpsStruct::tick cubeTick;
+		static fpsStruct::tickNode uiTextTick;
+		static fpsStruct::tickNode cubeTick;
 		static playerStruct::selectBoxNode selectBox = InitPlate.getSelectBox(Camera.node);
 
 		static int uiDeltaFrame = 0;                 //UI帧增量
@@ -460,7 +458,7 @@ public:
 				InitBuffer.recreateBuffer(tempID, false);
 			}
 
-			InitBuffer.createCommandBuffers(tempID, InitRenderPass.procRenderPass, procPipeline);
+			InitBuffer.createCommandBuffer(tempID, procPipeline);
 
 			InitBuffer.command.currentThreadID = tempID;
 		}
@@ -469,7 +467,7 @@ public:
 		selectBox = InitPlate.getSelectBox(Camera.node);	//当前帧获取的方块更新列表在下一帧更新
 		InitBuffer.updateUniformBuffer(Camera.node, selectBox);
 
-		if (InitSwapchain.drawFrame(InitBuffer.command.commandBuffers[InitBuffer.command.currentThreadID])) {
+		if (InitBuffer.drawFrame()) {
 			recreateSwapChain(); 
 			Log::print("重建交换链");
 		}
@@ -495,19 +493,15 @@ private:
 	void recreateSwapChain() {
 		vkDeviceWaitIdle(Device.device);
 
-		InitSwapchain.cleanupSwapChain();
-		InitRenderPass.cleanupSwapChain();
 		InitBuffer.cleanupSwapChain(InitBuffer.command.currentThreadID);
 		procPipeline.cleanupSwapChain(Device.device);
 
-		InitSwapchain.recreateSwapChain();
-		InitRenderPass.recreateSwapChain();
 		InitBuffer.recreateSwapChain();
 		InitBuffer.createPipelineLayout(procPipeline.pipelineLayout);
 		createGraphicsPipeline();
 
-		InitBuffer.createFramebuffers(InitSwapchain.scImageViews, InitRenderPass.procRenderPass.renderPass);
-		InitBuffer.createOffScreenFramebuffers(InitRenderPass.procRenderPass.osRenderPass);
-		InitBuffer.createCommandBuffers(InitBuffer.command.currentThreadID, InitRenderPass.procRenderPass, procPipeline);
+		InitBuffer.createScFramebuffers();
+		InitBuffer.createOsFramebuffers();
+		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadID, procPipeline);
 	}
 };

@@ -2,53 +2,33 @@
 
 
 
-namespace renderPassList {
-    struct procRenderPassNode {
-        VkRenderPass renderPass{};			    //常规渲染通道
-        VkRenderPass osRenderPass{};		    //离屏渲染通道
-
-        std::array<VkClearValue, 2> clearValues;
-        std::array<VkClearValue, 2> osClearValues;
-
-        VkRenderPassBeginInfo renderPassInfo;   //常规渲染通道信息
-        VkRenderPassBeginInfo osRenderPassInfo; //离屏渲染通道信息
+namespace bufferList {
+    struct procRenderNode {
+        std::array<bufferStruct::renderNode, bufferEnum::procRenderId::count> node{};
 
 
 
-        procRenderPassNode() {
-            clearValues[0].color = { 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f };    //灰色
-            clearValues[1].depthStencil = { 1.0f, 0 };
+        procRenderNode() {
+            node[bufferEnum::procRenderId::scScence].createRenderNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeType::sc);
+            node[bufferEnum::procRenderId::osScence].createRenderNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeType::os);
+        };
 
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-            renderPassInfo.pClearValues = clearValues.data();
+        void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
+            node[bufferEnum::procRenderId::scScence].createScRenderPass(colorFormat, depthFormat, msaaSamples, device);
+            node[bufferEnum::procRenderId::osScence].createOsRenderPass(colorFormat, depthFormat, msaaSamples, device);
 
-            osClearValues[0].color = { 1.0f, 0.0f, 0.0f, 1.0f };  //红色
-            osClearValues[1].depthStencil = { 1.0f, 0 };
-
-            osRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            osRenderPassInfo.renderArea.offset = { 0, 0 };
-            osRenderPassInfo.clearValueCount = static_cast<uint32_t>(osClearValues.size());
-            osRenderPassInfo.pClearValues = osClearValues.data();
+            for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
+                node[i].createRenderPassInfo(scExtent);
+            }
         }
 
-        void createRenderPassInfo(VkExtent2D& scExtent) {
-            renderPassInfo.renderPass = renderPass;
-            osRenderPassInfo.renderPass = osRenderPass;
-
-            renderPassInfo.renderArea.extent = scExtent;
-            osRenderPassInfo.renderArea.extent = scExtent;
-        }
-
-        void clear(VkDevice& device) {
-            vkDestroyRenderPass(device, renderPass, nullptr);
-            vkDestroyRenderPass(device, osRenderPass, nullptr);
+        void clear(const VkDevice& device) {
+            for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
+                node[i].clear(device);
+            }
         }
     };
-}
 
-namespace bufferList {
     struct procDescriptorNode {
         bufferStruct::descriptorNode scence;  //场景描述符
         bufferStruct::descriptorNode uiText;  //文本描述符
@@ -70,7 +50,7 @@ namespace bufferList {
 
 
 
-        void createDescriptorPool(VkDevice& device) {
+        void createDescriptorPool(const VkDevice& device) {
             /*scence*/
             std::array<bufferStruct::descriptorPoolNode, 4> poolSizeScence{
                 bufferStruct::descriptorPoolNode{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,bufferInfo::bufferScenceNodeSize},           //顶点统一缓冲区
@@ -111,7 +91,7 @@ namespace bufferList {
             }
         }
 
-        void createDescriptorSetLayout(VkDevice& device) {
+        void createDescriptorSetLayout(const VkDevice& device) {
             /*scence*/
             std::array<bufferStruct::descriptorLayoutNode, 4> scenceLayoutBinding{
                 bufferStruct::descriptorLayoutNode{0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT},
@@ -152,7 +132,7 @@ namespace bufferList {
             }
         }
 
-        void clear(VkDevice& device) {
+        void clear(const VkDevice& device) {
             //scence
             vkDestroyDescriptorPool(device, scence.pool, nullptr);
             vkDestroyDescriptorSetLayout(device, scence.layout, nullptr);
@@ -164,11 +144,11 @@ namespace bufferList {
     };
 
     struct procSamplerNode {
-        VkSampler node[bufferEnum::procSamplerNode::count];
+        VkSampler node[bufferEnum::procSamplerId::count];
 
 
 
-        void createTextureSampler(VkDevice& device, uint32_t terrainMip, uint32_t sModelMip, uint32_t dModelMip) {
+        void createTextureSampler(const VkDevice& device, uint32_t terrainMip, uint32_t sModelMip, uint32_t dModelMip) {
             VkSamplerCreateInfo samplerInfo{};
             {
                 samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -203,21 +183,21 @@ namespace bufferList {
             //terrain
             samplerInfo.magFilter = VK_FILTER_NEAREST;
             samplerInfo.maxLod = static_cast<float>(terrainMip);
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::terrain]) != VK_SUCCESS) {
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::terrain]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "terrain采样器创建失败");
                 throw;
             }
 
             //sModelN
             samplerInfo.maxLod = static_cast<float>(sModelMip);
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::sModelN]) != VK_SUCCESS) {
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::sModelN]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "sModelN采样器创建失败");
                 throw;
             }
 
             //sModelL
             samplerInfo.magFilter = VK_FILTER_LINEAR;
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::sModelL]) != VK_SUCCESS) {
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::sModelL]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "sModelL采样器创建失败");
                 throw;
             }
@@ -225,21 +205,21 @@ namespace bufferList {
             //dModelN
             samplerInfo.magFilter = VK_FILTER_NEAREST;
             samplerInfo.maxLod = static_cast<float>(dModelMip);
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::dModelN]) != VK_SUCCESS) {
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::dModelN]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "dModelN采样器创建失败");
                 throw;
             }
 
             //dModelL
             samplerInfo.magFilter = VK_FILTER_LINEAR;
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::dModelL]) != VK_SUCCESS) {
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::dModelL]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "dModelL采样器创建失败");
                 throw;
             }
 
             //uiText
             samplerInfo.maxLod = 0.0f;
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::uiText]) != VK_SUCCESS) {
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::uiText]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "uiText采样器创建失败");
                 throw;
             }
@@ -256,14 +236,14 @@ namespace bufferList {
             samplerInfo.minLod        = 0.0f;                                   //最小LOD
             samplerInfo.maxLod        = 1.0f;                                   //最大LOD
             samplerInfo.borderColor   = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;     //边界颜色
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerNode::offScreen]) != VK_SUCCESS) {
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::offScreen]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "offScreenPass采样器创建失败");
                 throw;
             }
         }
 
-        void clear(VkDevice& device) {
-            for (int i = 0; i < bufferEnum::procSamplerNode::count; i++) {
+        void clear(const VkDevice& device) {
+            for (int i = 0; i < bufferEnum::procSamplerId::count; i++) {
                 vkDestroySampler(device, node[i], nullptr);
             }
         }
@@ -272,21 +252,8 @@ namespace bufferList {
 
 
     struct procModelNode {
-        std::array<bufferStruct::staticModelNode, bufferEnum::procStaticModelEnum::count> sNode = []() {
-            std::array<bufferStruct::staticModelNode, bufferEnum::procStaticModelEnum::count> array{};
-
-            array[bufferEnum::procStaticModelEnum::temple]  = bufferStruct::staticModelNode{ fileInfo::model::temple,  fileInfo::image::temple,  bufferEnum::procSamplerNode::sModelN };
-
-            return array;
-            }();
-
-        std::array<bufferStruct::dynamicModelNode, bufferEnum::procDynamicModelEnum::count> dNode = []() {
-            std::array<bufferStruct::dynamicModelNode, bufferEnum::procDynamicModelEnum::count> array{};
-
-            array[bufferEnum::procDynamicModelEnum::droid] = bufferStruct::dynamicModelNode{ fileInfo::model::droid,{fileInfo::image::droidBody,fileInfo::image::droidHead,fileInfo::image::droidMisc},bufferEnum::procSamplerNode::dModelL };
-
-            return array;
-            }();
+        std::array<bufferStruct::staticModelNode, bufferEnum::procStaticModelId::count> sNode{};
+        std::array<bufferStruct::dynamicModelNode, bufferEnum::procDynamicModelId::count> dNode{};
 
         uint32_t sModelMip = 0;                  //在创建texture时赋值
         uint32_t dModelMip = 0;                  //在创建texture时赋值
@@ -294,7 +261,13 @@ namespace bufferList {
 
 
         procModelNode() {
-            for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+            sNode[bufferEnum::procStaticModelId::temple].create(fileInfo::model::temple, fileInfo::image::temple, bufferEnum::procSamplerId::sModelN);
+
+            dNode[bufferEnum::procDynamicModelId::droid].create(fileInfo::model::droid, { fileInfo::image::droidBody,fileInfo::image::droidHead,fileInfo::image::droidMisc }, bufferEnum::procSamplerId::dModelL);
+
+
+
+            for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
                 modelVertex::dVertexs[i].resize(dNode[i].node.size());
                 modelVertex::dIndexs[i].resize(dNode[i].node.size());
             }
@@ -314,12 +287,12 @@ namespace bufferList {
             dModelMip = *std::max_element(dMaxMip.begin(), dMaxMip.end());
         }
 
-        void clear(VkDevice& device, VmaAllocator allocator) {
-            for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
                 sNode[i].clear(device, allocator);
             }
 
-            for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+            for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
                 dNode[i].clear(device, allocator);
             }
         }
@@ -355,7 +328,7 @@ namespace pipelineList {
 
 
 
-        void cleanupSwapChain(VkDevice& device) {
+        void cleanupSwapChain(const VkDevice& device) {
             vkDestroyPipelineLayout(device, pipelineLayout.scence, nullptr);
             vkDestroyPipelineLayout(device, pipelineLayout.uiText, nullptr);
 

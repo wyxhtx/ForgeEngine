@@ -94,12 +94,12 @@ namespace modelVertex {
     };
 
     //静态模型网格
-    std::vector<vertexNode> sVertexs[bufferEnum::procStaticModelEnum::count];
-    std::vector<uint32_t> sIndexs[bufferEnum::procStaticModelEnum::count];
+    std::vector<vertexNode> sVertexs[bufferEnum::procStaticModelId::count];
+    std::vector<uint32_t> sIndexs[bufferEnum::procStaticModelId::count];
 
     //动态模型网格
-    std::vector<std::vector<vertexNode>> dVertexs[bufferEnum::procDynamicModelEnum::count];
-    std::vector<std::vector<uint32_t>> dIndexs[bufferEnum::procDynamicModelEnum::count];
+    std::vector<std::vector<vertexNode>> dVertexs[bufferEnum::procDynamicModelId::count];
+    std::vector<std::vector<uint32_t>> dIndexs[bufferEnum::procDynamicModelId::count];
 }
 
 //服务loadModel

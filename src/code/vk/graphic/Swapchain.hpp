@@ -4,16 +4,26 @@
 
 class Swapchain {
 public:
-    std::vector<VkImageView> scImageViews;      //交换链视图，为帧缓冲服务
+    VkExtent2D scExtent;                    //绘制区域
+    VkFormat colorFormat;                   //颜色格式
+    VkFormat depthFormat;                   //深度格式
+    VkSampleCountFlagBits msaaSamples;      //多重采样
+
+
+    //todo
+    std::vector<VkImage> swapChainImages;
+    std::vector<VkImageView> scImageViews;              //交换链视图，为帧缓冲服务
 
 
 
     Swapchain(Device& Device) :Device{ Device } {
-        createSwapChain();
-        createImageViews();
-        createSyncObjects();
+        createScSupport();
 
-        findDepthFormat();
+
+
+        createSwapChain();
+
+        createSyncObjects();
 
         if (debugInfo::LogSwitch) {
             Log::printTitle("————————Swapchain已创建");
@@ -37,16 +47,15 @@ public:
             Log::print("Swapchain已清除");
         }
 	}
-    
+
 private:
     Device& Device;
 
-    VkSwapchainCreateInfoKHR swapchainCreateInfo{};
-    swapStruct::swapchainSupportNode swapchainSupport;
-    VkSwapchainKHR swapchain;
+    swapStruct::scSupportNode scSupport;
 
-    std::vector<VkImage> swapChainImages;
-    VkImageViewCreateInfo imageViewCreateInfo{};        //swapChainImageViews创建信息
+
+
+    VkSwapchainKHR swapchain;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;  //开始渲染
     std::vector<VkSemaphore> renderFinishedSemaphores;  //开始呈现
@@ -55,93 +64,37 @@ private:
 
 
 
+    void createScSupport() {
+        scSupport.createScSupport(Device.physicalDevice, Device.surface);
+        scSupport.createScCreateInfo(Device.surface, Device.availableDevices.queueIndices[0]);
+
+        scExtent = scSupport.scCreateInfo.imageExtent;
+        colorFormat = scSupport.scCreateInfo.imageFormat;
+        depthFormat = scSupport.getDepthFormat(Device.physicalDevice, { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        msaaSamples = scSupport.getMsaaSamples(Device.physicalDevice);
+
+        if (debugInfo::LogSwitch) {
+            Log::print("最大采样次数" + std::to_string(msaaSamples));
+            Log::delimiter();
+        }
+    }
+
     //创建交换链
     void createSwapChain() {
-        swapchainSupport = Device.getSwapChainSupport();
+        uint32_t imageCount = scSupport.scCreateInfo.minImageCount;
 
-        VkSurfaceFormatKHR format = chooseFormat(swapchainSupport.formats);
-        VkPresentModeKHR mode = chooseMode(swapchainSupport.presentModes);
-        VkExtent2D extent = chooseExtent(swapchainSupport.capabilities);
-        
-        swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        swapchainCreateInfo.surface = Device.surface;
-
-        //如果最大数量与最小数量不等，那么使用最小数量 + 1,相等则直接使用最小数量
-        uint32_t imageCount = swapchainSupport.capabilities.minImageCount + (swapchainSupport.capabilities.maxImageCount > swapchainSupport.capabilities.minImageCount);
-
-        //Log::print(imageCount);
-
-        swapchainCreateInfo.minImageCount = imageCount;
-        swapchainCreateInfo.imageFormat = format.format;
-        swapchainCreateInfo.imageColorSpace = format.colorSpace;
-        swapchainCreateInfo.imageExtent = extent;
-        swapchainCreateInfo.imageArrayLayers = 1;
-        swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-        if (Device.availableDevices.queueIndices[0].support != Device.availableDevices.queueIndices[0].present) {
-            uint32_t index[] = { (uint32_t)Device.availableDevices.queueIndices[0].support, (uint32_t)Device.availableDevices.queueIndices[0].present };
-
-            swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            swapchainCreateInfo.queueFamilyIndexCount = 2;
-            swapchainCreateInfo.pQueueFamilyIndices = index;
-        }
-        else {
-            swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            swapchainCreateInfo.queueFamilyIndexCount = 0;
-            swapchainCreateInfo.pQueueFamilyIndices = nullptr;
-        }
-
-        swapchainCreateInfo.preTransform = swapchainSupport.capabilities.currentTransform;
-
-        swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-
-        swapchainCreateInfo.presentMode = mode;
-        swapchainCreateInfo.clipped = VK_TRUE;
-
-        swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
-
-        if (vkCreateSwapchainKHR(Device.device, &swapchainCreateInfo, nullptr, &swapchain) != VK_SUCCESS) {
+        if (vkCreateSwapchainKHR(Device.device, &scSupport.scCreateInfo, nullptr, &swapchain) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "交换链创建失败");
         }
         
 
 
-        Device.colorFormat = format.format;
-        Device.swapChainExtent = extent;
-
         vkGetSwapchainImagesKHR(Device.device, swapchain, &imageCount, nullptr);
         swapChainImages.resize(imageCount);
 
+        //todo 待移出去
         vkGetSwapchainImagesKHR(Device.device, swapchain, &imageCount, swapChainImages.data());
         scImageViews.resize(swapChainImages.size());
-    }
-
-    //创建图像窗口
-    void createImageViews() {
-        imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        imageViewCreateInfo.format = Device.colorFormat;
-
-        imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-        imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-        imageViewCreateInfo.subresourceRange.levelCount = 1;
-        imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-        imageViewCreateInfo.subresourceRange.layerCount = 1;
-
-
-
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            imageViewCreateInfo.image = swapChainImages[i];
-
-            if (vkCreateImageView(Device.device, &imageViewCreateInfo, nullptr, &scImageViews[i]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "图像窗口创建失败");
-            }
-        }
     }
 
     //创建信号量
@@ -165,101 +118,8 @@ private:
         }
     }
 
-    //获取深度格式
-    void findDepthFormat() {
-        Device.depthFormat = findSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-    }
-
-
-
-    //选择合适的表面格式
-    VkSurfaceFormatKHR chooseFormat(std::vector<VkSurfaceFormatKHR> availableFormats) {
-        //只有一个未定义格式时,返回指定格式
-        if (availableFormats.size() == 1 && availableFormats[0].format == VK_FORMAT_UNDEFINED) {
-            return { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        }
-
-        //含有多个格式支持时,从中挑选返回
-        for (VkSurfaceFormatKHR availableFormat : availableFormats) {
-            if (availableFormat.format == VK_FORMAT_R8G8B8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                return availableFormat;
-            }
-        }
-
-        return availableFormats[0];
-    }
-
-    //选择合适的呈现模式
-    VkPresentModeKHR chooseMode(std::vector<VkPresentModeKHR> availablePresentModes) {
-        for (auto availablePresentMode : availablePresentModes) {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-
-                if (debugInfo::LogSwitch) {
-                    Log::print("交换链选择三缓存呈现模式");
-
-                    Log::delimiter();
-                }
-
-                return availablePresentMode;
-            }
-            else if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
-                if (debugInfo::LogSwitch) {
-                    Log::print("交换链选择立即呈现模式");
-
-                    Log::delimiter();
-                }
-
-                return availablePresentMode;
-            }
-        }
-
-        if (debugInfo::LogSwitch) {
-            Log::print("交换链选择垂直中断呈现模式");
-
-            Log::delimiter();
-        }
-
-        return VK_PRESENT_MODE_FIFO_KHR;
-    }
-
-    //选择交换范围
-    VkExtent2D chooseExtent(const VkSurfaceCapabilitiesKHR capabilities) {
-        if (capabilities.currentExtent.width == std::numeric_limits<uint32_t>::max()) {
-            VkExtent2D actualExtent = { windowInfo::width, windowInfo::height };
-
-            actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
-            actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
-
-            return actualExtent;
-        }
-        else {
-            return capabilities.currentExtent;
-        }
-    }
-
-    VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
-        for (VkFormat format : candidates) {
-            // 获取当前格式的属性信息
-            VkFormatProperties props;
-            vkGetPhysicalDeviceFormatProperties(Device.physicalDevice, format, &props);
-
-            // 检查当前格式是否支持所需的特性和平铺方式
-            if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
-                // 如果当前格式支持线性平铺并且满足特性要求，则返回该格式
-                return format;
-            }
-            else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
-                // 如果当前格式支持最佳平铺并且满足特性要求，则返回该格式
-                return format;
-            }
-        }
-
-        Log::printError(__FILE__, __LINE__, "深度格式获取失败");
-        throw;
-    }
-
 public:
-    bool drawFrame(std::vector<VkCommandBuffer>& commandBuffers) {
+    bool drawFrame(std::vector<VkCommandBuffer>& commandBuffer) {
         //std::lock_guard<std::mutex> lock(threadCommInfo::queueMutex);
         vkWaitForFences(Device.device, 1, &inFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
         vkResetFences(Device.device, 1, &inFlightFences[currentFrame]);
@@ -290,7 +150,7 @@ public:
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+        submitInfo.pCommandBuffers = &commandBuffer[imageIndex];
 
         if (vkQueueSubmit(Device.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "提交绘制命令缓冲区失败");
@@ -331,20 +191,16 @@ public:
     }
 
     void recreateSwapChain() {
-        //重建交换链
-        if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(Device.physicalDevice, Device.surface, &swapchainSupport.capabilities)) {
-            Log::printError(__FILE__, __LINE__, "重建交换链时表面功能获取失败");
-            throw;
-        }
+        scSupport.recreateScCreateInfo(Device.physicalDevice, Device.surface, swapchain);
+        scExtent = scSupport.scCreateInfo.imageExtent;
 
-        swapchainCreateInfo.imageExtent = swapchainSupport.capabilities.currentExtent;
-        swapchainCreateInfo.oldSwapchain = swapchain;
+
 
         vkQueueWaitIdle(Device.graphicsQueue);
 
         VkSwapchainKHR tempSwapchain;
 
-        if (vkCreateSwapchainKHR(Device.device, &swapchainCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
+        if (vkCreateSwapchainKHR(Device.device, &scSupport.scCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "重建交换链创建失败");
             throw;
         }
@@ -352,30 +208,12 @@ public:
         vkDestroySwapchainKHR(Device.device, swapchain, nullptr);
         swapchain = tempSwapchain;
 
-        //重获交换链支持
-        VkSurfaceFormatKHR format = chooseFormat(swapchainSupport.formats);
-        VkExtent2D extent = chooseExtent(swapchainSupport.capabilities);
 
-        Device.colorFormat = format.format;
-        Device.swapChainExtent = extent;
 
-        vkGetSwapchainImagesKHR(Device.device, swapchain, &swapchainCreateInfo.minImageCount, nullptr);
-        swapChainImages.resize(swapchainCreateInfo.minImageCount);
+        vkGetSwapchainImagesKHR(Device.device, swapchain, &scSupport.scCreateInfo.minImageCount, nullptr);
+        swapChainImages.resize(scSupport.scCreateInfo.minImageCount);
 
-        vkGetSwapchainImagesKHR(Device.device, swapchain, &swapchainCreateInfo.minImageCount, swapChainImages.data());
+        vkGetSwapchainImagesKHR(Device.device, swapchain, &scSupport.scCreateInfo.minImageCount, swapChainImages.data());
         scImageViews.resize(swapChainImages.size());
-
-        //重建图像视图
-        imageViewCreateInfo.format = Device.colorFormat;
-        //重建深度视图
-        findDepthFormat();
-
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            imageViewCreateInfo.image = swapChainImages[i];
-
-            if (vkCreateImageView(Device.device, &imageViewCreateInfo, nullptr, &scImageViews[i]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "图像窗口创建失败");
-            }
-        }
     }
 };

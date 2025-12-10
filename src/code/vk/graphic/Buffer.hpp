@@ -9,7 +9,16 @@ public:
 
 
 	Buffer(Device& Device) :Device{ Device } {
-		createCommandPool();
+		command.createCommandPool(Device.device, Device.queueFamilyIndex);
+
+
+
+		procRenderPass.createRenderPassInfo(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device);
+		createScResource();
+		createOsResource();
+
+
+
 		procDescriptor.createDescriptorPool(Device.device);
 		procDescriptor.createDescriptorSetLayout(Device.device);
 
@@ -18,12 +27,7 @@ public:
 		createTexture();
 		procModel.getMaxModelMip();
 		procSampler.createTextureSampler(Device.device, terrain.mipLevel, procModel.sModelMip, procModel.dModelMip);
-		createOffScreenResources();
 		createDescriptorSet();
-
-		createColorResources();
-		createDepthResources();
-
 		initUniformBuffer();
 
 		if (debugInfo::LogSwitch) {
@@ -34,13 +38,24 @@ public:
 	}
 
 	~Buffer() {
+		command.clear(Device.device);
+
+
+
+		procRenderPass.clear(Device.device);
+		vkDestroyImageView(Device.device, colorImage.view, nullptr);
+		vmaDestroyImage(Device.allocator, colorImage.image, colorImage.imageMemory);
+		vkDestroyImageView(Device.device, depthImage.view, nullptr);
+		vmaDestroyImage(Device.allocator, depthImage.image, depthImage.imageMemory);
+
+
+
+		procDescriptor.clear(Device.device);
+		procSampler.clear(Device.device);
+
 		for (int i = 0; i < scFramebuffers.size(); i++) {
 			vkDestroyFramebuffer(Device.device, scFramebuffers[i], nullptr);
 		}
-
-		vkDestroyCommandPool(Device.device, command.commandPool, nullptr);
-		procDescriptor.clear(Device.device);
-		procSampler.clear(Device.device);
 
 		terrain.clear(Device.device, Device.allocator);
 		procModel.clear(Device.device, Device.allocator);
@@ -48,11 +63,6 @@ public:
 		mine.clear(Device.device, Device.allocator);
 		offScreen.clear(Device.device, Device.allocator);
 		uiText.clear(Device.device, Device.allocator);
-
-		vkDestroyImageView(Device.device, colorImage.view, nullptr);
-		vmaDestroyImage(Device.allocator, colorImage.image, colorImage.imageMemory);
-		vkDestroyImageView(Device.device, depthImage.view, nullptr);
-		vmaDestroyImage(Device.allocator, depthImage.image, depthImage.imageMemory);
 
 		if (debugInfo::LogSwitch) {
 			Log::print("Buffer已清除");
@@ -62,34 +72,59 @@ public:
 private:
 	Device& Device;
 
-	std::vector<VkFramebuffer> scFramebuffers;		//交换链帧缓冲，在一个渲染通道中所必要的一组图像附件（attachment）的集合
-    
-	bufferList::procDescriptorNode procDescriptor;
-	bufferList::procSamplerNode	   procSampler;
+	Swapchain InitSwapchain{ Device };
 
-	bufferStruct::terrainBufferNode   terrain{ bufferEnum::procSamplerNode::terrain };
+	bufferList::procRenderNode		procRenderPass{};
+	bufferList::procDescriptorNode	procDescriptor;
+	bufferList::procSamplerNode		procSampler;
+
+	bufferStruct::terrainBufferNode   terrain{ bufferEnum::procSamplerId::terrain };
 	bufferList::procModelNode		  procModel{};
 	bufferStruct::skyboxBufferNode	  skybox;
 	bufferStruct::baseBufferNode	  mine;
-	bufferStruct::offScreenBufferNode offScreen{ bufferEnum::procSamplerNode::offScreen };
-	bufferStruct::uiTextBufferNode	  uiText{ bufferEnum::procSamplerNode::uiText };
+	bufferStruct::offScreenBufferNode offScreen{ bufferEnum::procSamplerId::offScreen };
+	bufferStruct::uiTextBufferNode	  uiText{ bufferEnum::procSamplerId::uiText };
 
 	bufferStruct::imageNode depthImage;
 	bufferStruct::imageNode colorImage;
 
+public:
+	//todo 到时候两个scFramebuffers都写进procRenderPass里
+	std::vector<VkFramebuffer> scFramebuffers;		//交换链帧缓冲，在一个渲染通道中所必要的一组图像附件（attachment）的集合
 
+private:
+	//创建交换链附件
+	void createScResource() {
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage.image, colorImage.imageMemory);
+		createImageView(colorImage.image, colorImage.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 
-	void createCommandPool() {
-		VkCommandPoolCreateInfo poolInfo = {};
-		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		poolInfo.queueFamilyIndex = Device.queueFamilyIndex;
-		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage.image, depthImage.imageMemory);
+		createImageView(depthImage.image, depthImage.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 
-		if (vkCreateCommandPool(Device.device, &poolInfo, nullptr, &command.commandPool) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "命令池创建失败");
-			throw;
+		//(VkFormat format, VkImageAspectFlags aspectFlags) {
+		//createImage();
+		//scImageViews.resize(swapChainImages.size());
+
+		for (int i = 0; i < InitSwapchain.swapChainImages.size(); i++) {
+			createImageView(InitSwapchain.swapChainImages[i], InitSwapchain.scImageViews[i], 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 		}
 	}
+
+	//创建离屏附件
+	void createOsResource() {
+		//创建离屏颜色附件
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.color.image, offScreen.color.imageMemory);
+		createImageView(offScreen.color.image, offScreen.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		//创建离屏深度附件
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.depth.image, offScreen.depth.imageMemory);
+		createImageView(offScreen.depth.image, offScreen.depth.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+		//创建离屏视图附件
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.osView.image, offScreen.osView.imageMemory);
+		createImageView(offScreen.osView.image, offScreen.osView.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+	}
+
 
 	void createMeshBuffer() {
 		//terrain
@@ -101,14 +136,14 @@ private:
 		}
 
 		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 			loadStaticModel(procModel.sNode[i].modelFile, modelVertex::sVertexs[i], modelVertex::sIndexs[i]);
 			createVertexBuffer(modelVertex::sVertexs[i], procModel.sNode[i].vertex);
 			createIndexBuffer(modelVertex::sIndexs[i], procModel.sNode[i].index);
 		}
 
 		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 			loadDynamicModel(procModel.dNode[i].modelFile, modelVertex::dVertexs[i], modelVertex::dIndexs[i]);
 
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
@@ -139,13 +174,13 @@ private:
 		createBuffer(sizeof(terrain.lightUbo), terrain.lightUniform);
 
 		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 			createBuffer(sizeof(procModel.sNode[i].ubo), procModel.sNode[i].uniform);
 			createBuffer(sizeof(procModel.sNode[i].lightUbo), procModel.sNode[i].lightUniform);
 		}
 
 		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 				createBuffer(sizeof(procModel.dNode[i].node[j].ubo), procModel.dNode[i].node[j].uniform);
 			}
@@ -171,12 +206,12 @@ private:
 		createTextureKtxArrayNode(terrain.specularFile, terrain.specular, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8_UNORM, 2);
 
 		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 			createTextureKtxNode(procModel.sNode[i].textureFile, procModel.sNode[i].texture, procModel.sNode[i].mipLevel);
 		}
 
 		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 				createTextureKtxNode(procModel.dNode[i].node[j].textureFile, procModel.dNode[i].node[j].texture, procModel.dNode[i].mipLevel);
 			}
@@ -184,21 +219,6 @@ private:
 
 		//uiText
 		createTextNode(uiText.texture);
-	}
-
-	//创建离屏附件
-	void createOffScreenResources() {
-		//创建离屏颜色附件
-		createImage(Device.swapChainExtent.width, Device.swapChainExtent.height, 1, 1, Device.colorFormat, Device.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.color.image, offScreen.color.imageMemory);
-		createImageView(offScreen.color.image, offScreen.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, Device.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-
-		//创建离屏深度附件
-		createImage(Device.swapChainExtent.width, Device.swapChainExtent.height, 1, 1, Device.depthFormat, Device.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.depth.image, offScreen.depth.imageMemory);
-		createImageView(offScreen.depth.image, offScreen.depth.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, Device.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-
-		//创建离屏视图附件
-		createImage(Device.swapChainExtent.width, Device.swapChainExtent.height, 1, 1, Device.colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.osView.image, offScreen.osView.imageMemory);
-		createImageView(offScreen.osView.image, offScreen.osView.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, Device.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 
 	void createDescriptorSet() {
@@ -227,7 +247,7 @@ private:
 		}
 
 		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo.node, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
 				procDescriptor.writeScence[0].setBufferNode(procModel.sNode[i].descriptorSet, procDescriptor.bufferInfo[0].getNode(procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)));
 				procDescriptor.writeScence[1].setBufferNode(procModel.sNode[i].descriptorSet, procDescriptor.bufferInfo[1].getNode(procModel.sNode[i].lightUniform.buffer, sizeof(procModel.sNode[i].lightUbo)));
@@ -248,7 +268,7 @@ private:
 		}
 
 		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo.node, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
 					procDescriptor.writeScence[0].setBufferNode(procModel.dNode[i].node[j].descriptorSet, procDescriptor.bufferInfo[0].getNode(procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)));
@@ -342,20 +362,9 @@ private:
 		}
 	}
 
-	void createColorResources() {
-		createImage(Device.swapChainExtent.width, Device.swapChainExtent.height, 1, 1, Device.colorFormat, Device.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage.image, colorImage.imageMemory);
-		createImageView(colorImage.image, colorImage.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, Device.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-		transitionImageLayout(colorImage.image, 1, 1, Device.colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	}
-
-	void createDepthResources() {
-		createImage(Device.swapChainExtent.width, Device.swapChainExtent.height, 1, 1, Device.depthFormat, Device.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage.image, depthImage.imageMemory);
-		createImageView(depthImage.image, depthImage.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, Device.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-	}
-
 	void initUniformBuffer() {
 		//设置透视投影，参数依次是视野角度、宽高比、近裁剪面和远裁剪面，以及proj[1][1] *= -1轴向修正
-		glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)Device.swapChainExtent.width / (float)Device.swapChainExtent.height, 0.1f, plateInfo::cubeSightRange);
+		glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)InitSwapchain.scExtent.width / (float)InitSwapchain.scExtent.height, 0.1f, plateInfo::cubeSightRange);
 		proj[1][1] *= -1;
 
 		//terrain
@@ -368,7 +377,7 @@ private:
 		terrain.lightUbo.specularScale	= lightInfo::specularScale;
 
 		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 			procModel.sNode[i].ubo.proj				  = proj;
 			procModel.sNode[i].lightUbo.gLightColor	  = lightInfo::gLightColor;
 			procModel.sNode[i].lightUbo.diffuseScale  = lightInfo::diffuseScale;
@@ -377,7 +386,7 @@ private:
 		}
 
 		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 				procModel.dNode[i].node[j].ubo.proj = proj;
 			}
@@ -402,7 +411,8 @@ private:
 		offScreen.lightUbo.specularScale = lightInfo::specularScale;
 	}
 
-private:
+
+
 	//将vertexNode类中的顶点映射到buffer类里对应的VkBuffer
 	void createVertexBuffer(auto& node, bufferStruct::bufferNode& vertexBuffer) {
 		//获取顶点数组大小
@@ -457,7 +467,7 @@ private:
 
 		//检查文件是否存在  
 		if (!file.good()) {
-			Log::printError(__FILE__, __LINE__, "模型文件不存在: " + filename);
+			Log::printError(__FILE__, __LINE__, "模型文件不存在: \t" + filename);
 		}
 		file.close();
 
@@ -473,7 +483,7 @@ private:
 			Log::print("glTF警告: " + warn);	//因为使用KTX管理贴图，故屏蔽gltf缺失贴图的报错
 		}*/
 		if (!ret) {
-			Log::printError(__FILE__, __LINE__, "glTF加载失败: " + err);
+			Log::printError(__FILE__, __LINE__, "glTF加载失败:  \t" + err);
 		}
 
 		// 验证基本结构  
@@ -517,7 +527,7 @@ private:
 
 		//检查文件是否存在  
 		if (!file.good()) {
-			Log::printError(__FILE__, __LINE__, "模型文件不存在: " + filename);
+			Log::printError(__FILE__, __LINE__, "模型文件不存在:  \t" + filename);
 		}
 		file.close();
 
@@ -533,7 +543,7 @@ private:
 			Log::print("glTF警告: " + warn);	//因为使用KTX管理贴图，故屏蔽gltf缺失贴图的报错
 		}*/
 		if (!ret) {
-			Log::printError(__FILE__, __LINE__, "glTF加载失败: " + err);
+			Log::printError(__FILE__, __LINE__, "glTF加载失败: \t" + err);
 		}
 
 		if (model.meshes.empty()) {
@@ -827,20 +837,20 @@ private:
 
 
 
-	void createImageView(VkImage image, VkImageView& view, uint32_t arrayLayer, uint32_t mipLevel, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspectFlags) {
-		VkImageViewCreateInfo viewInfo = {};
-		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		viewInfo.image = image;
-		viewInfo.viewType = viewType;
-		viewInfo.format = format;
-		viewInfo.subresourceRange.aspectMask = aspectFlags;
-		viewInfo.subresourceRange.baseMipLevel = 0;
-		viewInfo.subresourceRange.levelCount = mipLevel;
-		viewInfo.subresourceRange.baseArrayLayer = 0;
-		viewInfo.subresourceRange.layerCount = arrayLayer;
+	void createImageView(const VkImage& image, VkImageView& view, uint32_t arrayLayer, uint32_t mipLevel, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspectFlags) {
+		VkImageViewCreateInfo viewInfo{};
+		viewInfo.sType								= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewInfo.image								= image;
+		viewInfo.viewType							= viewType;
+		viewInfo.format								= format;
+		viewInfo.subresourceRange.aspectMask		= aspectFlags;
+		viewInfo.subresourceRange.baseMipLevel		= 0;
+		viewInfo.subresourceRange.levelCount		= mipLevel;
+		viewInfo.subresourceRange.baseArrayLayer	= 0;
+		viewInfo.subresourceRange.layerCount		= arrayLayer;
 
 		if (vkCreateImageView(Device.device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "纹理图像视图创建失败");
+			Log::printError(__FILE__, __LINE__, "图像视图创建失败");
 			throw;
 		}
 	}
@@ -1145,19 +1155,19 @@ public:
 	}
 
 	//创建帧缓冲
-	void createFramebuffers(std::vector<VkImageView>& scImageViews, VkRenderPass& renderPass) {
-		scFramebuffers.resize(scImageViews.size());
+	void createScFramebuffers() {
+		scFramebuffers.resize(InitSwapchain.scImageViews.size());
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType	   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = renderPass;
-		framebufferInfo.width	   = Device.swapChainExtent.width;
-		framebufferInfo.height     = Device.swapChainExtent.height;
+		framebufferInfo.renderPass = procRenderPass.node[bufferEnum::procRenderId::scScence].render;
+		framebufferInfo.width	   = InitSwapchain.scExtent.width;
+		framebufferInfo.height     = InitSwapchain.scExtent.height;
 		framebufferInfo.layers	   = 1;
 
-		for (size_t i = 0; i < scImageViews.size(); i++) {
+		for (size_t i = 0; i < InitSwapchain.scImageViews.size(); i++) {
 			//将subpass描述的内容呈现到屏幕上,必须对应
-			std::array<VkImageView, 3> attachments{ colorImage.view,depthImage.view,scImageViews[i] };
+			std::array<VkImageView, 3> attachments{ colorImage.view,depthImage.view,InitSwapchain.scImageViews[i] };
 
 			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 			framebufferInfo.pAttachments	= attachments.data();
@@ -1170,16 +1180,16 @@ public:
 	}
 
 	//创建离屏帧缓冲
-	void createOffScreenFramebuffers(VkRenderPass& osRenderPass) {
+	void createOsFramebuffers() {
 		std::array<VkImageView, 3> attachments{ offScreen.color.view,offScreen.depth.view,offScreen.osView.view };
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass		= osRenderPass;									//渲染通道
+		framebufferInfo.renderPass		= procRenderPass.node[bufferEnum::procRenderId::osScence].render;	//渲染通道
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());	//附件数量
 		framebufferInfo.pAttachments	= attachments.data();							//附件
-		framebufferInfo.width			= Device.swapChainExtent.width;					//宽度
-		framebufferInfo.height			= Device.swapChainExtent.height;				//高度
+		framebufferInfo.width			= InitSwapchain.scExtent.width;				//宽度
+		framebufferInfo.height			= InitSwapchain.scExtent.height;				//高度
 		framebufferInfo.layers			= 1;											//层数
 
 		if (vkCreateFramebuffer(Device.device, &framebufferInfo, nullptr, &offScreen.osFramebuffer) != VK_SUCCESS) {
@@ -1198,145 +1208,136 @@ public:
 		//世界坐标
 		oss << std::fixed << std::setprecision(0);	//设置输出流的格式,不保留小数
 		oss << "worldpos:  " << "x:" << std::setw(8) << std::left << showUIText.pos.x << "y:" << std::setw(8) << std::left << showUIText.pos.y << " z:" << std::setw(8) << std::left << showUIText.pos.z;
-		uiText.addText(oss.str(), width, height, bufferEnum::textAlign::alignLeft);
+		uiText.addText(oss.str(), width, height, bufferEnum::textAlignId::alignLeft);
 		oss.str("");
 
 		//区块坐标
 		oss << "chunkpos:  " << "x:" << std::setw(8) << std::left << showUIText.chunkPos.x << "y:" << std::setw(8) << std::left << showUIText.chunkPos.y << " z:" << std::setw(8) << std::left << showUIText.chunkPos.z;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlign::alignLeft);
+		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::alignLeft);
 		oss.str("");
 
 		//选择框坐标
 		oss << "mineboxpos:" << "x:" << std::setw(8) << std::left << showUIText.minepos.x << "y:" << std::setw(8) << std::left << showUIText.minepos.y << " z:" << std::setw(8) << std::left << showUIText.minepos.z;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlign::alignLeft);
+		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::alignLeft);
 		oss.str("");
 
 		//帧率
 		oss << "fps:       " << std::setw(8) << std::left << fps;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlign::alignLeft);
+		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::alignLeft);
 		oss.str("");
 
 		uiText.endTextUpdate(Device.allocator);
 	}
 
-	void initCommandBuffers() {
-		for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
-			command.commandBuffers[i].resize(scFramebuffers.size());
-		}
-
-		command.allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		command.allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		command.allocInfo.commandPool = command.commandPool;
-		command.allocInfo.commandBufferCount = uint32_t(scFramebuffers.size());	//两个命令缓冲区大小固定为3，即scFramebuffers.size()
-
-		command.beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		command.beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		command.beginInfo.pInheritanceInfo = nullptr;
-	}
-
-	void createCommandBuffers(int threadID, renderPassList::procRenderPassNode& procRenderPass,pipelineList::procPipelineNode& procPipeline) {
+	void createCommandBuffer(int threadID, pipelineList::procPipelineNode& procPipeline) {
 		VkDeviceSize offsets[] = { 0 };	//绑定管线过程中指定各顶点缓冲区的偏移量
 
-		if (vkAllocateCommandBuffers(Device.device, &command.allocInfo, command.commandBuffers[threadID].data()) != VK_SUCCESS) {
+		if (vkAllocateCommandBuffers(Device.device, &command.allocInfo, command.commandBuffer[threadID].data()) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "基础命令缓冲创建失败");
 			throw;
 		}
 
 
 
-		for (int i = 0; i < command.commandBuffers[threadID].size(); i++) {
-			vkResetCommandBuffer(command.commandBuffers[threadID][i], 0);
-			vkBeginCommandBuffer(command.commandBuffers[threadID][i], &command.beginInfo);
+		for (int i = 0; i < command.commandBuffer[threadID].size(); i++) {
+			vkResetCommandBuffer(command.commandBuffer[threadID][i], 0);
+			vkBeginCommandBuffer(command.commandBuffer[threadID][i], &command.beginInfo);
 
 
 
 			//---
-			procRenderPass.osRenderPassInfo.framebuffer = offScreen.osFramebuffer;
+			procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo.framebuffer = offScreen.osFramebuffer;
 
 			// 开始离屏渲染通道
-			vkCmdBeginRenderPass(command.commandBuffers[threadID][i], &procRenderPass.osRenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdBeginRenderPass(command.commandBuffer[threadID][i], &procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 			
 			//model-sNode
-			for (int nodeId = 0; nodeId < bufferEnum::procStaticModelEnum::count; nodeId++) {
-				vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
-				vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &procModel.sNode[nodeId].descriptorSet, 0, nullptr);
-				vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &procModel.sNode[nodeId].vertex.buffer, offsets);
-				vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], procModel.sNode[nodeId].index.buffer, 0, VK_INDEX_TYPE_UINT32);
-				vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::sIndexs[nodeId].size(), 1, 0, 0, 0);
+			for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+				vkCmdBindPipeline(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
+				vkCmdBindDescriptorSets(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &procModel.sNode[nodeId].descriptorSet, 0, nullptr);
+				vkCmdBindVertexBuffers(command.commandBuffer[threadID][i], 0, 1, &procModel.sNode[nodeId].vertex.buffer, offsets);
+				vkCmdBindIndexBuffer(command.commandBuffer[threadID][i], procModel.sNode[nodeId].index.buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(command.commandBuffer[threadID][i], (uint32_t)modelVertex::sIndexs[nodeId].size(), 1, 0, 0, 0);
 			}
 
 			//model-dNode
-			for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelEnum::count; nodeId++) {
+			for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
 				for (int j = 0; j < procModel.dNode[nodeId].node.size(); j++) {
-					vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
-					vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &procModel.dNode[nodeId].node[j].descriptorSet, 0, nullptr);
-					vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &procModel.dNode[nodeId].node[j].vertex.buffer, offsets);
-					vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], procModel.dNode[nodeId].node[j].index.buffer, 0, VK_INDEX_TYPE_UINT32);
-					vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)modelVertex::dIndexs[nodeId][j].size(), 1, 0, 0, 0);
+					vkCmdBindPipeline(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipeline);
+					vkCmdBindDescriptorSets(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.model.pipelineLayout, 0, 1, &procModel.dNode[nodeId].node[j].descriptorSet, 0, nullptr);
+					vkCmdBindVertexBuffers(command.commandBuffer[threadID][i], 0, 1, &procModel.dNode[nodeId].node[j].vertex.buffer, offsets);
+					vkCmdBindIndexBuffer(command.commandBuffer[threadID][i], procModel.dNode[nodeId].node[j].index.buffer, 0, VK_INDEX_TYPE_UINT32);
+					vkCmdDrawIndexed(command.commandBuffer[threadID][i], (uint32_t)modelVertex::dIndexs[nodeId][j].size(), 1, 0, 0, 0);
 				}
 			}
 
 			// 结束离屏渲染通道
-			vkCmdEndRenderPass(command.commandBuffers[threadID][i]);
+			vkCmdEndRenderPass(command.commandBuffer[threadID][i]);
 
 			//---
 
 
 
-			procRenderPass.renderPassInfo.framebuffer = scFramebuffers[i];
+			procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo.framebuffer = scFramebuffers[i];
 
-			vkCmdBeginRenderPass(command.commandBuffers[threadID][i], &procRenderPass.renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdBeginRenderPass(command.commandBuffer[threadID][i], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			//terrain
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
 				if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-					vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain.pipeline);
-					vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain.pipelineLayout, 0, 1, &terrain.descriptorSet, 0, nullptr);
-					vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &terrain.vertex[threadID][layer].buffer, offsets);
-					vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], terrain.index[threadID][layer].buffer, 0, VK_INDEX_TYPE_UINT32);
-					vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)terrainVertex::indexs[layer].size(), 1, 0, 0, 0);
+					vkCmdBindPipeline(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain.pipeline);
+					vkCmdBindDescriptorSets(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.terrain.pipelineLayout, 0, 1, &terrain.descriptorSet, 0, nullptr);
+					vkCmdBindVertexBuffers(command.commandBuffer[threadID][i], 0, 1, &terrain.vertex[threadID][layer].buffer, offsets);
+					vkCmdBindIndexBuffer(command.commandBuffer[threadID][i], terrain.index[threadID][layer].buffer, 0, VK_INDEX_TYPE_UINT32);
+					vkCmdDrawIndexed(command.commandBuffer[threadID][i], (uint32_t)terrainVertex::indexs[layer].size(), 1, 0, 0, 0);
 				}
 			}
 
 			//skybox
-			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.skybox.pipeline);
-			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.skybox.pipelineLayout, 0, 1, &skybox.descriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &skybox.vertex.buffer, offsets);
-			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], skybox.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)skyboxVertex::indexs.size(), 1, 0, 0, 0);
+			vkCmdBindPipeline(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.skybox.pipeline);
+			vkCmdBindDescriptorSets(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.skybox.pipelineLayout, 0, 1, &skybox.descriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(command.commandBuffer[threadID][i], 0, 1, &skybox.vertex.buffer, offsets);
+			vkCmdBindIndexBuffer(command.commandBuffer[threadID][i], skybox.index.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(command.commandBuffer[threadID][i], (uint32_t)skyboxVertex::indexs.size(), 1, 0, 0, 0);
 
 			//mine
-			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.mine.pipeline);
-			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.mine.pipelineLayout, 0, 1, &mine.descriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &mine.vertex.buffer, offsets);
-			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], mine.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)mineVertex::indexs.size(), 1, 0, 0, 0);
+			vkCmdBindPipeline(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.mine.pipeline);
+			vkCmdBindDescriptorSets(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.mine.pipelineLayout, 0, 1, &mine.descriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(command.commandBuffer[threadID][i], 0, 1, &mine.vertex.buffer, offsets);
+			vkCmdBindIndexBuffer(command.commandBuffer[threadID][i], mine.index.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(command.commandBuffer[threadID][i], (uint32_t)mineVertex::indexs.size(), 1, 0, 0, 0);
 
 			//offScreen
-			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.offScreen.pipeline);
-			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.offScreen.pipelineLayout, 0, 1, &offScreen.descriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &offScreen.vertex.buffer, offsets);
-			vkCmdBindIndexBuffer(command.commandBuffers[threadID][i], offScreen.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(command.commandBuffers[threadID][i], (uint32_t)offScreenVertex::indexs.size(), 1, 0, 0, 0);
+			vkCmdBindPipeline(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.offScreen.pipeline);
+			vkCmdBindDescriptorSets(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.offScreen.pipelineLayout, 0, 1, &offScreen.descriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(command.commandBuffer[threadID][i], 0, 1, &offScreen.vertex.buffer, offsets);
+			vkCmdBindIndexBuffer(command.commandBuffer[threadID][i], offScreen.index.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(command.commandBuffer[threadID][i], (uint32_t)offScreenVertex::indexs.size(), 1, 0, 0, 0);
 
 			//uiText
-			vkCmdBindPipeline(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.uiText.pipeline);
-			vkCmdBindDescriptorSets(command.commandBuffers[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.uiText.pipelineLayout, 0, 1, &uiText.descriptorSet, 0, NULL);
-			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 0, 1, &uiText.vertex.buffer, offsets);
-			vkCmdBindVertexBuffers(command.commandBuffers[threadID][i], 1, 1, &uiText.vertex.buffer, offsets);
+			vkCmdBindPipeline(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.uiText.pipeline);
+			vkCmdBindDescriptorSets(command.commandBuffer[threadID][i], VK_PIPELINE_BIND_POINT_GRAPHICS, procPipeline.uiText.pipelineLayout, 0, 1, &uiText.descriptorSet, 0, NULL);
+			vkCmdBindVertexBuffers(command.commandBuffer[threadID][i], 0, 1, &uiText.vertex.buffer, offsets);
+			vkCmdBindVertexBuffers(command.commandBuffer[threadID][i], 1, 1, &uiText.vertex.buffer, offsets);
 			for (uint32_t j = 0; j < uiText.numLetters; j++) {	
-				vkCmdDraw(command.commandBuffers[threadID][i], 4, 1, j * 4, 0);		//不用循环文本底部有连线
+				vkCmdDraw(command.commandBuffer[threadID][i], 4, 1, j * 4, 0);		//不用循环文本底部有连线
 			}
 
-			vkCmdEndRenderPass(command.commandBuffers[threadID][i]);
-			if (vkEndCommandBuffer(command.commandBuffers[threadID][i]) != VK_SUCCESS) {
+			vkCmdEndRenderPass(command.commandBuffer[threadID][i]);
+			if (vkEndCommandBuffer(command.commandBuffer[threadID][i]) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "记录命令缓冲区失败");
 			}
 		}
 	}
 
+	bool drawFrame() {
+		return InitSwapchain.drawFrame(command.commandBuffer[command.currentThreadID]);
+	}
+
+
+
 	void recreateBuffer(int threadID, bool isLayer) {
-		vkFreeCommandBuffers(Device.device, command.commandPool, static_cast<uint32_t>(command.commandBuffers[threadID].size()), command.commandBuffers[threadID].data());
+		command.free(Device.device, threadID);
 
 		if (isLayer) {
 			int layer = terrainEnum::terrainLayer::Layer_0;		//先重建当前线程网格缓冲区
@@ -1398,7 +1399,7 @@ public:
 
 		//model-sNode
 		{
-			for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 				procModel.sNode[i].ubo.model = glm::translate(glm::mat4(1), offsetPos);											//位移
 				procModel.sNode[i].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
 				procModel.sNode[i].ubo.modelTI = glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
@@ -1414,7 +1415,7 @@ public:
 				procModel.sNode[i].lightUbo.outerCutOff = glm::cos(glm::radians(14.5f));
 			}
 
-			for (int i = 0; i < bufferEnum::procStaticModelEnum::count; i++) {
+			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 				createMapMemory(procModel.sNode[i].uniform.bufferMemory, &procModel.sNode[i].ubo, sizeof(procModel.sNode[i].ubo));
 				createMapMemory(procModel.sNode[i].lightUniform.bufferMemory, &procModel.sNode[i].lightUbo, sizeof(procModel.sNode[i].lightUbo));
 			}
@@ -1422,7 +1423,7 @@ public:
 
 		//model-dNode
 		{
-			for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 					procModel.dNode[i].node[j].ubo.model = glm::translate(glm::mat4(1), offsetPos);											//位移
 					procModel.dNode[i].node[j].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
@@ -1440,7 +1441,7 @@ public:
 				procModel.dNode[i].lightUbo.outerCutOff = glm::cos(glm::radians(14.5f));
 			}
 
-			for (int i = 0; i < bufferEnum::procDynamicModelEnum::count; i++) {
+			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 					createMapMemory(procModel.dNode[i].node[j].uniform.bufferMemory, &procModel.dNode[i].node[j].ubo, sizeof(procModel.dNode[i].node[j].ubo));
 				}
@@ -1495,25 +1496,40 @@ public:
 	}
 
 	void cleanupSwapChain(int threadID) {
-		vkFreeCommandBuffers(Device.device, command.commandPool, static_cast<uint32_t>(command.commandBuffers[threadID].size()), command.commandBuffers[threadID].data());
+		InitSwapchain.cleanupSwapChain();
 
-		for (size_t i = 0; i < scFramebuffers.size(); i++) {
-			vkDestroyFramebuffer(Device.device, scFramebuffers[i], nullptr);
-		}
-		vkDestroyFramebuffer(Device.device, offScreen.osFramebuffer, nullptr);
+		command.free(Device.device, threadID);
 
-		offScreen.clearResources(Device.device, Device.allocator);
+
+
+		procRenderPass.clear(Device.device);
+		offScreen.clearResource(Device.device, Device.allocator);
 
 		vkDestroyImageView(Device.device, colorImage.view, nullptr);
 		vmaDestroyImage(Device.allocator, colorImage.image, colorImage.imageMemory);
 
 		vkDestroyImageView(Device.device, depthImage.view, nullptr);
 		vmaDestroyImage(Device.allocator, depthImage.image, depthImage.imageMemory);
+
+
+
+		for (size_t i = 0; i < scFramebuffers.size(); i++) {
+			vkDestroyFramebuffer(Device.device, scFramebuffers[i], nullptr);
+		}
+		vkDestroyFramebuffer(Device.device, offScreen.osFramebuffer, nullptr);
 	}
 
 	void recreateSwapChain() {
-		//重建离屏附件
-		createOffScreenResources();
+		InitSwapchain.recreateSwapChain();
+
+
+
+		procRenderPass.createRenderPassInfo(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device);
+		//重建附件
+		createScResource();
+		createOsResource();
+
+
 
 		//重建离屏描述符，因为交换链重建后osView也得重建
 		procDescriptor.allocInfo.setNode(procDescriptor.scence.pool, &procDescriptor.scence.layout);
@@ -1526,10 +1542,6 @@ public:
 			procDescriptor.writeScence[2].node 
 		};
 		vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-
-		//重建附件
-		createDepthResources();
-		createColorResources();
 	}
 
 private:
@@ -1573,5 +1585,18 @@ private:
 		}
 
 		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
+	}
+
+public:
+	const VkRenderPass& getRender(int renderId) {
+		return procRenderPass.node[renderId].render;
+	}
+
+	const VkExtent2D& getScExtent() {
+		return InitSwapchain.scExtent;
+	}
+
+	const VkSampleCountFlagBits& getMsaaSamples() {
+		return InitSwapchain.msaaSamples;
 	}
 };

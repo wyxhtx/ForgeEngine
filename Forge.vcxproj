@@ -236,7 +236,6 @@
     <ClInclude Include="src\code\vk\data\VkStruct.h" />
     <ClInclude Include="src\code\vk\graphic\Buffer.hpp" />
     <ClInclude Include="src\code\vk\graphic\Pipeline.hpp" />
-    <ClInclude Include="src\code\vk\graphic\RenderPass.hpp" />
     <ClInclude Include="src\code\vk\graphic\Swapchain.hpp" />
     <ClInclude Include="src\code\vk\Main.h" />
     <ClInclude Include="src\code\tool\Camera.hpp" />

@@ -16,8 +16,6 @@ public:
     uint32_t queueFamilyIndex;                      //队列族索引，在pickPhysicalDevice()设置
     VmaAllocator allocator;
 
-    VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
-
 
 
     Device(GLFWwindow* window) {
@@ -131,14 +129,6 @@ private:
             queueFamilyIndex = availableDevices.queueIndices[0].present;
             physicalDevice = availableDevices.physicalDevices[0];
 
-            msaaSamples = getMaxUsableSampleCount();
-
-            if (debugInfo::LogSwitch) {
-                Log::printTitle("最大采样次数");
-                Log::print(msaaSamples);
-                Log::delimiter();
-            }
-
             return;
         }
         else {
@@ -198,26 +188,10 @@ private:
         vmaCreateAllocator(&allocatorInfo, &allocator);
     }
 
-    //获取设备支持
-    /*void getDeviceSupport() {
-        VkPhysicalDeviceProperties deviceProperties;
-        vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
-
-        //最大图像数组层支持
-        deviceSupporInfo.maxImageArrayLayers = deviceProperties.limits.maxImageArrayLayers;
-
-        if (debugInfo::LogSwitch) {
-            Log::printTitle("最大图像数组层");
-            Log::print(deviceSupporInfo.maxImageArrayLayers);
-
-            Log::delimiter();
-        }
-    }*/
-    
 
 
     //挑选显卡队列索引
-    void selectQueueFamilyIndices(VkPhysicalDevice device, deviceStruct::queueIndice& queueIndices) {
+    void selectQueueFamilyIndices(VkPhysicalDevice device, deviceStruct::queueIndiceNode& queueIndices) {
         uint32_t queueFamilyCount = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
@@ -330,90 +304,5 @@ private:
         }
 
         return requiredExtensions.empty();
-    }
-
-    //获取可用的最大采样次数
-    VkSampleCountFlagBits getMaxUsableSampleCount() {
-        VkPhysicalDeviceProperties physicalDeviceProperties;
-        vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
-
-        VkSampleCountFlags counts = std::min(physicalDeviceProperties.limits.framebufferColorSampleCounts, physicalDeviceProperties.limits.framebufferDepthSampleCounts);
-        /*if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
-        if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
-        if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
-        if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }*/
-        if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
-        if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
-
-        return VK_SAMPLE_COUNT_1_BIT;
-    }
-
-public:
-    //在交换链中初始化
-    VkExtent2D swapChainExtent;
-    VkFormat colorFormat;
-    VkFormat depthFormat;
-
-
-
-    //获取交换链支持
-    swapStruct::swapchainSupportNode getSwapChainSupport() {
-        swapStruct::swapchainSupportNode node;
-
-        //表面功能查询
-        if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &node.capabilities)) {
-            Log::printError(__FILE__, __LINE__, "表面功能获取失败");
-            throw;
-        }
-
-        //表面格式查询
-        uint32_t formatCount;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
-
-        if (formatCount == 0) {
-            Log::printError(__FILE__, __LINE__, "表面格式获取失败");
-            throw;
-        }
-
-        node.formats.resize(formatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, node.formats.data());
-
-        //呈现模式查询
-        uint32_t presentModeCount;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
-
-        if (presentModeCount == 0) {
-            Log::printError(__FILE__, __LINE__, "呈现模式获取失败");
-            throw;
-        }
-
-        node.presentModes.resize(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, node.presentModes.data());
-
-        if (debugInfo::LogSwitch) {
-            Log::printTitle("交换链配置");
-
-            Log::print("功能支持:");
-            Log::print("最小图像数量:");
-            Log::print(node.capabilities.minImageCount);
-            Log::print("最大图像数量:");
-            Log::print(node.capabilities.maxImageCount);
-
-            Log::print("");
-            Log::print("支持格式:");
-            for (auto format : node.formats) {
-                std::cout << "\t" << "format: " << format.format << ", colorSpace: " << format.colorSpace << std::endl;
-            }
-
-            Log::print("");
-            Log::print("呈现模式:");
-            for (auto mode : node.presentModes) {
-                std::cout << "\t" << "mode: " << mode << std::endl;
-            }
-
-            Log::delimiter();
-        }
-
-        return node;
     }
 };

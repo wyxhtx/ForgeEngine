@@ -120,9 +120,6 @@
     <ClInclude Include="src\code\vk\graphic\Pipeline.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\vk\graphic\RenderPass.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="src\code\vk\graphic\Swapchain.hpp">
       <Filter>头文件</Filter>
     </ClInclude>

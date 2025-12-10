@@ -29,7 +29,7 @@ int main() {
     Device InitDevice{ InitWindow.window };
     Pipeline InitPipeline{ InitDevice };
 
-    fpsStruct::tick deltaTime{};
+    fpsStruct::tickNode deltaTime{};
     threadCommInfo::musicLock = true;
 
 
