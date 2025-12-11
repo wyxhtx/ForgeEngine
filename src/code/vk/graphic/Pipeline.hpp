@@ -157,7 +157,7 @@ private:
 			pipelineInfo.pDepthStencilState  = &depthStencil;
 			pipelineInfo.pColorBlendState	 = &colorBlending;
 			pipelineInfo.pDynamicState		 = nullptr;					
-			pipelineInfo.renderPass			 = InitBuffer.getRender(bufferEnum::procRenderId::scScence);
+			pipelineInfo.renderPass			 = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
 			pipelineInfo.subpass			 = 0;
 			pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;		
 			pipelineInfo.basePipelineIndex	 = -1;
@@ -191,15 +191,12 @@ private:
 			vertexInputInfo.pVertexBindingDescriptions		= modelVertex::vertexNode::getBindingDescription().data();
 			vertexInputInfo.pVertexAttributeDescriptions	= modelVertex::vertexNode::getAttributeDescriptions().data();
 
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
 			pipelineInfo.layout = procPipeline.model.pipelineLayout;
 
 			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.model.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "model管线创建失败");
 				throw;
 			}
-
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::scScence);
 		}
 
 		//skybox
@@ -269,22 +266,25 @@ private:
 			pipelineInfo.pRasterizationState = &rasterizer;
 		}
 
-		//offScreen
+		//osScence
 		{
-			shaderStages[0] = loadShader(fileInfo::shader::offScreenVert, VK_SHADER_STAGE_VERTEX_BIT);
-			shaderStages[1] = loadShader(fileInfo::shader::offScreenFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
+			shaderStages[0] = loadShader(fileInfo::shader::osScenceVert, VK_SHADER_STAGE_VERTEX_BIT);
+			shaderStages[1] = loadShader(fileInfo::shader::osScenceFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
 
-			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(offScreenVertex::vertexNode::getBindingDescription().size());
-			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(offScreenVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions		= offScreenVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions	= offScreenVertex::vertexNode::getAttributeDescriptions().data();
+			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(osScenceVertex::vertexNode::getBindingDescription().size());
+			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(osScenceVertex::vertexNode::getAttributeDescriptions().size());
+			vertexInputInfo.pVertexBindingDescriptions		= osScenceVertex::vertexNode::getBindingDescription().data();
+			vertexInputInfo.pVertexAttributeDescriptions	= osScenceVertex::vertexNode::getAttributeDescriptions().data();
 
-			pipelineInfo.layout = procPipeline.offScreen.pipelineLayout;
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::scScence);
+			pipelineInfo.layout = procPipeline.osScence.pipelineLayout;
 			
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.offScreen.pipeline) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "offScreen管线创建失败");
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.osScence.pipeline) != VK_SUCCESS) {
+				Log::printError(__FILE__, __LINE__, "osScence管线创建失败");
 				throw;
 			}
+
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
 		}
 
 		//uiText

@@ -262,6 +262,8 @@ namespace bufferStruct {
         VkCommandBufferAllocateInfo allocInfo{};
         VkCommandBufferBeginInfo beginInfo{};
 
+        std::vector<VkDeviceSize> vertexOffset{ 0 };	//绑定管线过程中指定各顶点缓冲区的偏移量
+
 
 
         void createCommandPool(const VkDevice& device, uint32_t queueFamilyIndex) {
@@ -289,6 +291,38 @@ namespace bufferStruct {
             beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
             beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
             beginInfo.pInheritanceInfo = nullptr;
+        }
+
+        void beginCommandBuffer(int threadID, int frameID) {
+            vkResetCommandBuffer(commandBuffer[threadID][frameID], 0);
+            vkBeginCommandBuffer(commandBuffer[threadID][frameID], &beginInfo);
+        }
+
+        void endCommandBuffer(int threadID, int frameID) {
+            vertexOffset = std::vector<VkDeviceSize>{ 0 };
+
+            if (vkEndCommandBuffer(commandBuffer[threadID][frameID]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "记录命令缓冲区失败");
+            }
+        }
+
+        void createScenceCommandBuffer(int threadID, int frameID, const VkPipeline& pipeline, const VkPipelineLayout& pipelineLayout, const VkDescriptorSet& descriptorSet, const VkBuffer& vertexBuffer, const VkBuffer& indexBuffer, uint32_t indexSize) {
+            vkCmdBindPipeline(commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+            vkCmdBindDescriptorSets(commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+            vkCmdBindVertexBuffers(commandBuffer[threadID][frameID], 0, 1, &vertexBuffer, vertexOffset.data());
+            vkCmdBindIndexBuffer(commandBuffer[threadID][frameID], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(commandBuffer[threadID][frameID], indexSize, 1, 0, 0, 0);
+        }
+
+        void createUITextCommandBuffer(int threadID, int frameID, const VkPipeline& pipeline, const VkPipelineLayout& pipelineLayout, const VkDescriptorSet& descriptorSet, const VkBuffer& vertexBuffer, uint32_t numLetters) {
+            vkCmdBindPipeline(commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+            vkCmdBindDescriptorSets(commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
+            vkCmdBindVertexBuffers(commandBuffer[threadID][frameID], 0, 1, &vertexBuffer, vertexOffset.data());
+            vkCmdBindVertexBuffers(commandBuffer[threadID][frameID], 1, 1, &vertexBuffer, vertexOffset.data());
+
+            for (uint32_t j = 0; j < numLetters; j++) {
+                vkCmdDraw(commandBuffer[threadID][frameID], 4, 1, j * 4, 0);		//不用循环文本底部有连线
+            }
         }
 
         void free(const VkDevice& device, int threadID) {
@@ -546,7 +580,7 @@ namespace bufferStruct {
         }
     };
 
-    struct offScreenBufferNode {
+    struct osScenceBufferNode {
         bufferNode vertex;
         bufferNode index;
 
@@ -561,11 +595,11 @@ namespace bufferStruct {
 
 
 
-        offScreenBufferNode(int tempSamplerId) {
+        osScenceBufferNode(int tempSamplerId) {
             samplerId = tempSamplerId;
         }
 
-        offScreenBufferNode() = delete;
+        osScenceBufferNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
@@ -983,18 +1017,6 @@ namespace bufferStruct {
         void setScFramebuffer(int i) {
             renderInfo.framebuffer = scPtr->framebuffer[i];
         }
-    };
-
-    //createDescriptorPool
-    struct descriptorPoolNode {
-        VkDescriptorPoolSize node{};
-
-        descriptorPoolNode(VkDescriptorType type, uint32_t descriptorCount) {
-            node.type            = type;
-            node.descriptorCount = descriptorCount;
-        }
-
-        descriptorPoolNode() = delete;
     };
 
     //createDescriptorSetLayout

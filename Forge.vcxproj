@@ -170,9 +170,8 @@
     <None Include=".gitattributes" />
     <None Include=".gitignore" />
     <None Include="README.md" />
-    <None Include="src\code\tool\temp\shader.frag" />
-    <None Include="src\shader\offScreen\offScreenFrag.spv" />
-    <None Include="src\shader\offScreen\offScreenVert.spv" />
+    <None Include="src\shader\osScence\osScenceFrag.spv" />
+    <None Include="src\shader\osScence\osScenceVert.spv" />
     <None Include="src\shader_build\model_gts.bat" />
     <None Include="src\image\model\droid\Body_baseColor.ktx2" />
     <None Include="src\image\model\droid\Head_baseColor.ktx2" />
@@ -198,8 +197,8 @@
     <None Include="src\shader_build\mine\mine.vert" />
     <None Include="src\shader_build\model\pbr.frag" />
     <None Include="src\shader_build\model\pbr.vert" />
-    <None Include="src\shader_build\offScreen\offScreen.frag" />
-    <None Include="src\shader_build\offScreen\offScreen.vert" />
+    <None Include="src\shader_build\osScence\osScence.frag" />
+    <None Include="src\shader_build\osScence\osScence.vert" />
     <None Include="src\shader_build\skybox\skybox.frag" />
     <None Include="src\shader_build\skybox\skybox.vert" />
     <None Include="src\shader_build\terrain\terrain.frag" />
@@ -239,7 +238,6 @@
     <ClInclude Include="src\code\vk\graphic\Swapchain.hpp" />
     <ClInclude Include="src\code\vk\Main.h" />
     <ClInclude Include="src\code\tool\Camera.hpp" />
-    <ClInclude Include="src\code\tool\temp\copy.txt" />
     <ClInclude Include="src\code\tool\Log.hpp" />
     <ClInclude Include="src\code\tool\Music.hpp" />
     <ClInclude Include="src\library\algorithm\kmeans\aarand\aarand.hpp" />

@@ -18,8 +18,8 @@ int main() {
     //Log::print("");
     //system("cd src\\shader_build && terrain_gts.bat");  //编译地形着色器
     //Log::print("");
-    system("cd src\\shader_build && model_gts.bat");    //编译模型着色器
-    Log::print("");
+    //system("cd src\\shader_build && model_gts.bat");    //编译模型着色器
+    //Log::print("");
 
 
 

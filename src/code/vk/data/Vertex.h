@@ -139,15 +139,15 @@ namespace skyboxVertex {
 
     //顶点数组
     std::vector<vertexNode> vertexs = {
-        {glm::vec3{ 1.0f, 1.0f,-1.0f}},
-        {glm::vec3{-1.0f, 1.0f,-1.0f}},
-        {glm::vec3{-1.0f,-1.0f,-1.0f}},
-        {glm::vec3{ 1.0f,-1.0f,-1.0f}},
-
-        {glm::vec3{ 1.0f, 1.0f, 1.0f}},
-        {glm::vec3{-1.0f, 1.0f, 1.0f}},
-        {glm::vec3{-1.0f,-1.0f, 1.0f}},
-        {glm::vec3{ 1.0f,-1.0f, 1.0f}}
+        {glm::vec3{ 16.0f, 16.0f,-16.0f}},
+        {glm::vec3{-16.0f, 16.0f,-16.0f}},
+        {glm::vec3{-16.0f,-16.0f,-16.0f}},
+        {glm::vec3{ 16.0f,-16.0f,-16.0f}},
+                    
+        {glm::vec3{ 16.0f, 16.0f, 16.0f}},
+        {glm::vec3{-16.0f, 16.0f, 16.0f}},
+        {glm::vec3{-16.0f,-16.0f, 16.0f}},
+        {glm::vec3{ 16.0f,-16.0f, 16.0f}}
     };
 
     //索引数组
@@ -222,9 +222,10 @@ namespace mineVertex {
 }
 
 //离屏渲染
-namespace offScreenVertex {
+namespace osScenceVertex {
     struct vertexNode {
-        glm::vec3 position;     //坐标
+        glm::vec2 position;     //坐标
+        glm::vec2 texCoord;     //uv
 
         static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
             std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
@@ -235,37 +236,33 @@ namespace offScreenVertex {
             return bindingDescription;
         }
 
-        static std::array<VkVertexInputAttributeDescription, 1> getAttributeDescriptions() {
-            std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions = {};
+        static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+            std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
 
-            attributeDescriptions[0].binding = 0;
+            attributeDescriptions[0].binding  = 0;
             attributeDescriptions[0].location = 0;
-            attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[0].offset = offsetof(vertexNode, position);
+            attributeDescriptions[0].format   = VK_FORMAT_R32G32_SFLOAT;
+            attributeDescriptions[0].offset   = offsetof(vertexNode, position);
+
+            attributeDescriptions[1].binding  = 0;
+            attributeDescriptions[1].location = 1;
+            attributeDescriptions[1].format   = VK_FORMAT_R32G32_SFLOAT;
+            attributeDescriptions[1].offset   = offsetof(vertexNode, texCoord);
 
             return attributeDescriptions;
         }
     };
 
     std::vector<vertexNode> vertexs = {
-        {vertexInfo::vertexID[0]},
-        {vertexInfo::vertexID[1]},
-        {vertexInfo::vertexID[2]},
-        {vertexInfo::vertexID[3]},
-
-        {vertexInfo::vertexID[4]},
-        {vertexInfo::vertexID[5]},
-        {vertexInfo::vertexID[6]},
-        {vertexInfo::vertexID[7]}
+        {{-1.0f, -1.0f}, {0.0f, 0.0f}},  // 左下
+        {{ 1.0f, -1.0f}, {1.0f, 0.0f}},  // 右下
+        {{ 1.0f,  1.0f}, {1.0f, 1.0f}},  // 右上
+        {{-1.0f,  1.0f}, {0.0f, 1.0f}}   // 左上
     };
 
     std::vector<uint32_t> indexs = {
-        5,4,1,1,4,0,
-        2,3,6,6,3,7,
-        0,4,3,3,4,7,
-        5,1,6,6,1,2,
-        4,5,7,7,5,6,
-        1,0,2,2,0,3
+        2, 1, 0,
+        0, 3, 2 
     };
 }
 

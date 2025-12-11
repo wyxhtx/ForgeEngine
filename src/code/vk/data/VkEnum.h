@@ -36,8 +36,8 @@ namespace bufferEnum {
             sModelL,    //静态模型线性采样器
             dModelN,    //动态模型邻近采样器
             dModelL,    //动态模型线性采样器
+            osScence,   //离屏渲染采样器
             uiText,     //文本采样器
-            offScreen,  //离屏渲染采样器
 
             count
         };

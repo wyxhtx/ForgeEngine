@@ -55,8 +55,9 @@ namespace bufferList {
     };
 
     struct procDescriptorNode {
-        bufferStruct::descriptorNode scence;  //场景描述符
-        bufferStruct::descriptorNode uiText;  //文本描述符
+        bufferStruct::descriptorNode scence;        //场景描述符
+        bufferStruct::descriptorNode offScreen;     //离屏描述符
+        bufferStruct::descriptorNode uiText;        //文本描述符
 
         bufferStruct::descriptorBufferNode bufferInfo[2]{};
         bufferStruct::descriptorImageNode imageInfo[2]{};
@@ -69,6 +70,10 @@ namespace bufferList {
             {3,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER}	//高光贴图采样器描述符
         };
 
+        bufferStruct::writeDescriptorNode writeOffScreen{
+            0,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+        };
+
         bufferStruct::writeDescriptorNode writeUIText{ 
             0,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
         };
@@ -76,85 +81,52 @@ namespace bufferList {
 
 
         void createDescriptorPool(const VkDevice& device) {
-            /*scence*/
-            std::array<bufferStruct::descriptorPoolNode, 4> poolSizeScence{
-                bufferStruct::descriptorPoolNode{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,bufferInfo::bufferScenceNodeSize},           //顶点统一缓冲区
-                bufferStruct::descriptorPoolNode{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,bufferInfo::bufferScenceNodeSize},           //片段统一缓冲区
-                bufferStruct::descriptorPoolNode{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,bufferInfo::bufferScenceNodeSize},   //片段纹理贴图
-                bufferStruct::descriptorPoolNode{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,bufferInfo::bufferScenceNodeSize}    //片段高光贴图
+            //scence
+            std::vector<VkDescriptorPoolSize> poolSizeScence{
+                {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,bufferInfo::bufferScenceNodeSize},           //顶点统一缓冲区
+                {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,bufferInfo::bufferScenceNodeSize},           //片段统一缓冲区
+                {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,bufferInfo::bufferScenceNodeSize},   //片段纹理贴图
+                {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,bufferInfo::bufferScenceNodeSize}    //片段高光贴图
             };
+            createPool(device, poolSizeScence, bufferInfo::bufferScenceNodeSize, scence.pool);
 
-            VkDescriptorPoolCreateInfo descriptorPoolScenceInfo{
-                .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-                .maxSets        = bufferInfo::bufferScenceNodeSize,                 //poolSizeScence.descriptorCount最好填大点不支持自动分配
-                .poolSizeCount  = static_cast<uint32_t>(poolSizeScence.size()),
-                .pPoolSizes     = &poolSizeScence[0].node
+
+            //offScreen
+            std::vector<VkDescriptorPoolSize> poolSizeOffScreen{
+                {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,bufferInfo::bufferOffScreenNodeSize} //片段纹理贴图
             };
-
-            if (vkCreateDescriptorPool(device, &descriptorPoolScenceInfo, nullptr, &scence.pool) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "描述符池创建失败");
-                throw;
-            }
+            createPool(device, poolSizeOffScreen, bufferInfo::bufferOffScreenNodeSize, offScreen.pool);
 
 
-
-            /*uiText*/
-            std::array<bufferStruct::descriptorPoolNode, 1> poolSizeUItext{
-                bufferStruct::descriptorPoolNode{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,bufferInfo::bufferTextUINodeSize} 
+            //uiText
+            std::vector<VkDescriptorPoolSize> poolSizeUItext{
+                {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,bufferInfo::bufferUINodeSize}        //片段纹理贴图
             };
-
-            VkDescriptorPoolCreateInfo descriptorPoolUItextInfo{
-                .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-                .maxSets        = bufferInfo::bufferTextUINodeSize,
-                .poolSizeCount  = static_cast<uint32_t>(poolSizeUItext.size()),
-                .pPoolSizes     = &poolSizeUItext[0].node
-            };
-
-            if (vkCreateDescriptorPool(device, &descriptorPoolUItextInfo, nullptr, &uiText.pool) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "描述符池创建失败");
-                throw;
-            }
+            createPool(device, poolSizeUItext, bufferInfo::bufferUINodeSize, uiText.pool);
         }
 
         void createDescriptorSetLayout(const VkDevice& device) {
-            /*scence*/
-            std::array<bufferStruct::descriptorLayoutNode, 4> scenceLayoutBinding{
+            //scence
+            std::vector<bufferStruct::descriptorLayoutNode> scenceLayoutBinding{
                 bufferStruct::descriptorLayoutNode{0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT},
                 bufferStruct::descriptorLayoutNode{1,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT},
                 bufferStruct::descriptorLayoutNode{2,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT},
                 bufferStruct::descriptorLayoutNode{3,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT}
             };
-
-            VkDescriptorSetLayoutCreateInfo scenceLayoutInfo{
-                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                .pNext = nullptr,
-                .bindingCount = static_cast<uint32_t>(scenceLayoutBinding.size()),
-                .pBindings = &scenceLayoutBinding[0].node
-            };
-
-            if (vkCreateDescriptorSetLayout(device, &scenceLayoutInfo, nullptr, &scence.layout) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "scence描述符布局配置失败");
-                throw;
-            }
+            createLayout(device, scenceLayoutBinding, scence.layout);
 
 
-
-            /*uiText*/
-            std::array<bufferStruct::descriptorLayoutNode, 1> uiTextLayoutBinding{
+            //offScreen
+            std::vector<bufferStruct::descriptorLayoutNode> offScreenLayoutBinding{
                 bufferStruct::descriptorLayoutNode{0,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT}
             };
+            createLayout(device, offScreenLayoutBinding, offScreen.layout);
 
-            VkDescriptorSetLayoutCreateInfo uiTextLayoutInfo{
-                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                .pNext = nullptr,
-                .bindingCount = static_cast<uint32_t>(uiTextLayoutBinding.size()),
-                .pBindings = &uiTextLayoutBinding[0].node
+            //uiText
+            std::vector<bufferStruct::descriptorLayoutNode> uiTextLayoutBinding{
+                bufferStruct::descriptorLayoutNode{0,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT}
             };
-
-            if (vkCreateDescriptorSetLayout(device, &uiTextLayoutInfo, nullptr, &uiText.layout) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "uiText描述符布局配置失败");
-                throw;
-            }
+            createLayout(device, uiTextLayoutBinding, uiText.layout);
         }
 
         void clear(const VkDevice& device) {
@@ -162,9 +134,41 @@ namespace bufferList {
             vkDestroyDescriptorPool(device, scence.pool, nullptr);
             vkDestroyDescriptorSetLayout(device, scence.layout, nullptr);
 
+            //offScreen
+            vkDestroyDescriptorPool(device, offScreen.pool, nullptr);
+            vkDestroyDescriptorSetLayout(device, offScreen.layout, nullptr);
+
             //uiText
             vkDestroyDescriptorPool(device, uiText.pool, nullptr);
             vkDestroyDescriptorSetLayout(device, uiText.layout, nullptr);
+        }
+
+    private:
+        void createPool(const VkDevice& device, std::vector<VkDescriptorPoolSize>& poolSize, uint32_t maxSet, VkDescriptorPool& pool) {
+            VkDescriptorPoolCreateInfo poolInfo{
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                .maxSets = maxSet,
+                .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
+                .pPoolSizes = poolSize.data()
+            };
+
+            if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "描述符池创建失败");
+            }
+        }
+
+        void createLayout(const VkDevice& device, std::vector<bufferStruct::descriptorLayoutNode>& layoutBinding, VkDescriptorSetLayout& layout) {
+            VkDescriptorSetLayoutCreateInfo layoutInfo{
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                .pNext = nullptr,
+                .bindingCount = static_cast<uint32_t>(layoutBinding.size()),
+                .pBindings = &layoutBinding[0].node
+            };
+
+            if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
+                throw;
+            }
         }
     };
 
@@ -188,7 +192,7 @@ namespace bufferList {
 
                 //各向异性过滤器
                 samplerInfo.anisotropyEnable = VK_TRUE;
-                samplerInfo.maxAnisotropy = 16;
+                samplerInfo.maxAnisotropy = 16.0f;
 
                 //采样范围超过图像时候返回的颜色
                 samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
@@ -242,27 +246,18 @@ namespace bufferList {
                 throw;
             }
 
-            //uiText
+            //osScence
             samplerInfo.maxLod = 0.0f;
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::uiText]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "uiText采样器创建失败");
+            samplerInfo.maxAnisotropy = 1.0f;
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::osScence]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "osScence采样器创建失败");
                 throw;
             }
 
-            //offScreen
-            samplerInfo.magFilter     = VK_FILTER_LINEAR;                       //放大过滤器
-            samplerInfo.minFilter     = VK_FILTER_LINEAR;                       //缩小过滤器
-            samplerInfo.mipmapMode    = VK_SAMPLER_MIPMAP_MODE_LINEAR;          //MIP映射模式
-            samplerInfo.addressModeU  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;  //U方向寻址模式
-            samplerInfo.addressModeV  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;  //V方向寻址模式
-            samplerInfo.addressModeW  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;  //W方向寻址模式
-            samplerInfo.mipLodBias    = 0.0f;                                   //MIP LOD偏置
-            samplerInfo.maxAnisotropy = 1.0f;                                   //最大各向异性
-            samplerInfo.minLod        = 0.0f;                                   //最小LOD
-            samplerInfo.maxLod        = 1.0f;                                   //最大LOD
-            samplerInfo.borderColor   = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;     //边界颜色
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::offScreen]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "offScreenPass采样器创建失败");
+            //uiText
+            samplerInfo.maxAnisotropy = 16.0f;
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::uiText]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "uiText采样器创建失败");
                 throw;
             }
         }
@@ -327,6 +322,7 @@ namespace bufferList {
 namespace pipelineList {
     struct pipelineLayout {
         VkPipelineLayout scence;        //场景管线布局
+        VkPipelineLayout offScreen;     //离屏管线布局
         VkPipelineLayout uiText;        //文本管线布局
     };
 
@@ -335,33 +331,33 @@ namespace pipelineList {
         VkPipeline model;       //模型管线
         VkPipeline skybox;      //天空盒管线
         VkPipeline mine;        //挖掘选择框管线
-        VkPipeline offScreen;   //离屏渲染管线
+        VkPipeline osScence;    //离屏渲染管线
         VkPipeline uiText;      //文本管线
     };
 
     struct procPipelineNode {
-        //pipelineLayouts和pipelines方便传参
         pipelineList::pipelineLayout pipelineLayout;
         pipelineList::pipeline pipeline;
 
-        pipelineStruct::pipelineNode terrain    { pipelineLayout.scence,pipeline.terrain };
-        pipelineStruct::pipelineNode model      { pipelineLayout.scence,pipeline.model };
-        pipelineStruct::pipelineNode skybox     { pipelineLayout.scence,pipeline.skybox };
-        pipelineStruct::pipelineNode mine       { pipelineLayout.scence,pipeline.mine };
-        pipelineStruct::pipelineNode offScreen  { pipelineLayout.scence,pipeline.offScreen };
-        pipelineStruct::pipelineNode uiText     { pipelineLayout.uiText,pipeline.uiText };
+        pipelineStruct::pipelineNode terrain    { pipelineLayout.scence,    pipeline.terrain };
+        pipelineStruct::pipelineNode model      { pipelineLayout.scence,    pipeline.model };
+        pipelineStruct::pipelineNode skybox     { pipelineLayout.scence,    pipeline.skybox };
+        pipelineStruct::pipelineNode mine       { pipelineLayout.scence,    pipeline.mine };
+        pipelineStruct::pipelineNode osScence   { pipelineLayout.offScreen, pipeline.osScence };
+        pipelineStruct::pipelineNode uiText     { pipelineLayout.uiText,    pipeline.uiText };
 
 
 
         void cleanupSwapChain(const VkDevice& device) {
             vkDestroyPipelineLayout(device, pipelineLayout.scence, nullptr);
+            vkDestroyPipelineLayout(device, pipelineLayout.offScreen, nullptr);
             vkDestroyPipelineLayout(device, pipelineLayout.uiText, nullptr);
 
             vkDestroyPipeline(device, terrain.pipeline, nullptr);
             vkDestroyPipeline(device, model.pipeline, nullptr);
             vkDestroyPipeline(device, skybox.pipeline, nullptr);
             vkDestroyPipeline(device, mine.pipeline, nullptr);
-            vkDestroyPipeline(device, offScreen.pipeline, nullptr);
+            vkDestroyPipeline(device, osScence.pipeline, nullptr);
             vkDestroyPipeline(device, uiText.pipeline, nullptr);
         }
     };

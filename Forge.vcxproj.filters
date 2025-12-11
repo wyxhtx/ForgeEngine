@@ -43,7 +43,6 @@
     <None Include="src\shader_build\terrain_gts.bat">
       <Filter>源文件</Filter>
     </None>
-    <None Include="src\code\tool\temp\shader.frag" />
     <None Include="src\image_build\ktx.dll" />
     <None Include="src\image_build\toktx.exe" />
     <None Include="src\image_build\png_to_ktx2.bat">
@@ -78,10 +77,10 @@
     <None Include="src\shader_build\model_gts.bat">
       <Filter>源文件</Filter>
     </None>
-    <None Include="src\shader_build\offScreen\offScreen.vert" />
-    <None Include="src\shader_build\offScreen\offScreen.frag" />
-    <None Include="src\shader\offScreen\offScreenFrag.spv" />
-    <None Include="src\shader\offScreen\offScreenVert.spv" />
+    <None Include="src\shader_build\osScence\osScence.vert" />
+    <None Include="src\shader_build\osScence\osScence.frag" />
+    <None Include="src\shader\osScence\osScenceFrag.spv" />
+    <None Include="src\shader\osScence\osScenceVert.spv" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">
@@ -166,9 +165,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\code\vk\data\VkEnum.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\code\tool\temp\copy.txt">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\code\vk\graphic\Buffer.hpp">
