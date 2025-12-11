@@ -9,18 +9,15 @@ public:
 
 
 	Buffer(Device& Device) :Device{ Device } {
-		command.createCommandPool(Device.device, Device.queueFamilyIndex);
-
-
-
-		procRenderPass.createRenderPassInfo(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device);
 		createScResource();
 		createOsResource();
 
-
-
+		procRenderPass.createRenderPassInfo(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device);
 		procDescriptor.createDescriptorPool(Device.device);
 		procDescriptor.createDescriptorSetLayout(Device.device);
+
+		command.createCommandPool(Device.device, Device.queueFamilyIndex);
+		command.initCommandBuffer(uint32_t(procRenderPass.node[bufferEnum::procRenderId::scScence].scPtr->framebuffer.size()));
 
 		createMeshBuffer();
 		createUniformBuffer();
@@ -38,24 +35,11 @@ public:
 	}
 
 	~Buffer() {
-		command.clear(Device.device);
-
-
-
-		procRenderPass.clear(Device.device);
-		vkDestroyImageView(Device.device, colorImage.view, nullptr);
-		vmaDestroyImage(Device.allocator, colorImage.image, colorImage.imageMemory);
-		vkDestroyImageView(Device.device, depthImage.view, nullptr);
-		vmaDestroyImage(Device.allocator, depthImage.image, depthImage.imageMemory);
-
-
-
+		procRenderPass.clear(Device.device, Device.allocator);
 		procDescriptor.clear(Device.device);
 		procSampler.clear(Device.device);
 
-		for (int i = 0; i < scFramebuffers.size(); i++) {
-			vkDestroyFramebuffer(Device.device, scFramebuffers[i], nullptr);
-		}
+		command.clear(Device.device);
 
 		terrain.clear(Device.device, Device.allocator);
 		procModel.clear(Device.device, Device.allocator);
@@ -85,46 +69,39 @@ private:
 	bufferStruct::offScreenBufferNode offScreen{ bufferEnum::procSamplerId::offScreen };
 	bufferStruct::uiTextBufferNode	  uiText{ bufferEnum::procSamplerId::uiText };
 
-	bufferStruct::imageNode depthImage;
-	bufferStruct::imageNode colorImage;
 
-public:
-	//todo 到时候两个scFramebuffers都写进procRenderPass里
-	std::vector<VkFramebuffer> scFramebuffers;		//交换链帧缓冲，在一个渲染通道中所必要的一组图像附件（attachment）的集合
 
 private:
 	//创建交换链附件
 	void createScResource() {
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage.image, colorImage.imageMemory);
-		createImageView(colorImage.image, colorImage.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		bufferStruct::scFramebufferNode& frameNode = procRenderPass.getScFramebufferNode(bufferEnum::procRenderId::scScence);
 
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage.image, depthImage.imageMemory);
-		createImageView(depthImage.image, depthImage.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameNode.color.image, frameNode.color.imageMemory);
+		createImageView(frameNode.color.image, frameNode.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 
-		//(VkFormat format, VkImageAspectFlags aspectFlags) {
-		//createImage();
-		//scImageViews.resize(swapChainImages.size());
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameNode.depth.image, frameNode.depth.imageMemory);
+		createImageView(frameNode.depth.image, frameNode.depth.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 
-		for (int i = 0; i < InitSwapchain.swapChainImages.size(); i++) {
-			createImageView(InitSwapchain.swapChainImages[i], InitSwapchain.scImageViews[i], 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		InitSwapchain.createScImage(frameNode.scImage);
+		frameNode.scView.resize(frameNode.scImage.size());
+		for (int i = 0; i < frameNode.scImage.size(); i++) {
+			createImageView(frameNode.scImage[i], frameNode.scView[i], 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 		}
 	}
 
 	//创建离屏附件
 	void createOsResource() {
-		//创建离屏颜色附件
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.color.image, offScreen.color.imageMemory);
-		createImageView(offScreen.color.image, offScreen.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		bufferStruct::osFramebufferNode& frameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
 
-		//创建离屏深度附件
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.depth.image, offScreen.depth.imageMemory);
-		createImageView(offScreen.depth.image, offScreen.depth.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameNode.color.image, frameNode.color.imageMemory);
+		createImageView(frameNode.color.image, frameNode.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 
-		//创建离屏视图附件
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, offScreen.osView.image, offScreen.osView.imageMemory);
-		createImageView(offScreen.osView.image, offScreen.osView.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameNode.depth.image, frameNode.depth.imageMemory);
+		createImageView(frameNode.depth.image, frameNode.depth.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameNode.osView.image, frameNode.osView.imageMemory);
+		createImageView(frameNode.osView.image, frameNode.osView.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
-
 
 	void createMeshBuffer() {
 		//terrain
@@ -323,10 +300,11 @@ private:
 		}
 
 		//offScreen
+		bufferStruct::osFramebufferNode& frameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
 		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo.node, &offScreen.descriptorSet) == VK_SUCCESS) {
 			procDescriptor.writeScence[0].setBufferNode(offScreen.descriptorSet, procDescriptor.bufferInfo[0].getNode(offScreen.uniform.buffer, sizeof(offScreen.ubo)));
 			procDescriptor.writeScence[1].setBufferNode(offScreen.descriptorSet, procDescriptor.bufferInfo[1].getNode(offScreen.lightUniform.buffer, sizeof(offScreen.lightUbo)));
-			procDescriptor.writeScence[2].setImageNode(offScreen.descriptorSet, procDescriptor.imageInfo[0].getNode(procSampler.node[offScreen.samplerId], offScreen.osView.view));
+			procDescriptor.writeScence[2].setImageNode(offScreen.descriptorSet, procDescriptor.imageInfo[0].getNode(procSampler.node[offScreen.samplerId], frameNode.osView.view));
 
 			std::array<VkWriteDescriptorSet, 3> tempWrite{ 
 				procDescriptor.writeScence[0].node,
@@ -1133,11 +1111,11 @@ private:
 
 public:
 	void createPipelineLayout(pipelineList::pipelineLayout& pipelineLayout) {
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 1;
-		pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-		pipelineLayoutInfo.pPushConstantRanges = 0; // Optional
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType				  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount		  = 1;
+		pipelineLayoutInfo.pushConstantRangeCount = 0;
+		pipelineLayoutInfo.pPushConstantRanges	  = 0;
 
 		//scence
 		pipelineLayoutInfo.pSetLayouts = &procDescriptor.scence.layout;
@@ -1151,50 +1129,6 @@ public:
 
 		if (vkCreatePipelineLayout(Device.device, &pipelineLayoutInfo, nullptr, &pipelineLayout.uiText) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "管线布局创建失败");
-		}
-	}
-
-	//创建帧缓冲
-	void createScFramebuffers() {
-		scFramebuffers.resize(InitSwapchain.scImageViews.size());
-
-		VkFramebufferCreateInfo framebufferInfo{};
-		framebufferInfo.sType	   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = procRenderPass.node[bufferEnum::procRenderId::scScence].render;
-		framebufferInfo.width	   = InitSwapchain.scExtent.width;
-		framebufferInfo.height     = InitSwapchain.scExtent.height;
-		framebufferInfo.layers	   = 1;
-
-		for (size_t i = 0; i < InitSwapchain.scImageViews.size(); i++) {
-			//将subpass描述的内容呈现到屏幕上,必须对应
-			std::array<VkImageView, 3> attachments{ colorImage.view,depthImage.view,InitSwapchain.scImageViews[i] };
-
-			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-			framebufferInfo.pAttachments	= attachments.data();
-
-			if (vkCreateFramebuffer(Device.device, &framebufferInfo, nullptr, &scFramebuffers[i]) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "帧缓冲创建失败");
-				throw;
-			}
-		}
-	}
-
-	//创建离屏帧缓冲
-	void createOsFramebuffers() {
-		std::array<VkImageView, 3> attachments{ offScreen.color.view,offScreen.depth.view,offScreen.osView.view };
-
-		VkFramebufferCreateInfo framebufferInfo{};
-		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass		= procRenderPass.node[bufferEnum::procRenderId::osScence].render;	//渲染通道
-		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());	//附件数量
-		framebufferInfo.pAttachments	= attachments.data();							//附件
-		framebufferInfo.width			= InitSwapchain.scExtent.width;				//宽度
-		framebufferInfo.height			= InitSwapchain.scExtent.height;				//高度
-		framebufferInfo.layers			= 1;											//层数
-
-		if (vkCreateFramebuffer(Device.device, &framebufferInfo, nullptr, &offScreen.osFramebuffer) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "帧缓冲创建失败");
-			throw;
 		}
 	}
 
@@ -1246,8 +1180,6 @@ public:
 
 
 			//---
-			procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo.framebuffer = offScreen.osFramebuffer;
-
 			// 开始离屏渲染通道
 			vkCmdBeginRenderPass(command.commandBuffer[threadID][i], &procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 			
@@ -1274,12 +1206,10 @@ public:
 			// 结束离屏渲染通道
 			vkCmdEndRenderPass(command.commandBuffer[threadID][i]);
 
+
+
 			//---
-
-
-
-			procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo.framebuffer = scFramebuffers[i];
-
+			procRenderPass.node[bufferEnum::procRenderId::scScence].setScFramebuffer(i);
 			vkCmdBeginRenderPass(command.commandBuffer[threadID][i], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			//terrain
@@ -1496,46 +1426,23 @@ public:
 	}
 
 	void cleanupSwapChain(int threadID) {
-		InitSwapchain.cleanupSwapChain();
-
+		procRenderPass.cleanupSwapChain(Device.device, Device.allocator);
 		command.free(Device.device, threadID);
-
-
-
-		procRenderPass.clear(Device.device);
-		offScreen.clearResource(Device.device, Device.allocator);
-
-		vkDestroyImageView(Device.device, colorImage.view, nullptr);
-		vmaDestroyImage(Device.allocator, colorImage.image, colorImage.imageMemory);
-
-		vkDestroyImageView(Device.device, depthImage.view, nullptr);
-		vmaDestroyImage(Device.allocator, depthImage.image, depthImage.imageMemory);
-
-
-
-		for (size_t i = 0; i < scFramebuffers.size(); i++) {
-			vkDestroyFramebuffer(Device.device, scFramebuffers[i], nullptr);
-		}
-		vkDestroyFramebuffer(Device.device, offScreen.osFramebuffer, nullptr);
 	}
 
 	void recreateSwapChain() {
 		InitSwapchain.recreateSwapChain();
 
-
-
-		procRenderPass.createRenderPassInfo(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device);
-		//重建附件
 		createScResource();
 		createOsResource();
-
-
+		procRenderPass.recreateSwapChain(InitSwapchain.scExtent, Device.device);
 
 		//重建离屏描述符，因为交换链重建后osView也得重建
+		bufferStruct::osFramebufferNode& frameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
 		procDescriptor.allocInfo.setNode(procDescriptor.scence.pool, &procDescriptor.scence.layout);
 		procDescriptor.writeScence[0].setBufferNode(offScreen.descriptorSet, procDescriptor.bufferInfo[0].getNode(offScreen.uniform.buffer, sizeof(offScreen.ubo)));
 		procDescriptor.writeScence[1].setBufferNode(offScreen.descriptorSet, procDescriptor.bufferInfo[1].getNode(offScreen.lightUniform.buffer, sizeof(offScreen.lightUbo)));
-		procDescriptor.writeScence[2].setImageNode(offScreen.descriptorSet, procDescriptor.imageInfo[0].getNode(procSampler.node[offScreen.samplerId], offScreen.osView.view));
+		procDescriptor.writeScence[2].setImageNode(offScreen.descriptorSet, procDescriptor.imageInfo[0].getNode(procSampler.node[offScreen.samplerId], frameNode.osView.view));
 		std::array<VkWriteDescriptorSet, 3> tempWrite{ 
 			procDescriptor.writeScence[0].node,
 			procDescriptor.writeScence[1].node,

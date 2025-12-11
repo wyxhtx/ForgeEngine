@@ -14,17 +14,42 @@ namespace bufferList {
         };
 
         void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
-            node[bufferEnum::procRenderId::scScence].createScRenderPass(colorFormat, depthFormat, msaaSamples, device);
-            node[bufferEnum::procRenderId::osScence].createOsRenderPass(colorFormat, depthFormat, msaaSamples, device);
-
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].createRenderPassInfo(scExtent);
+                node[i].createRenderPassInfo(scExtent, colorFormat, depthFormat, msaaSamples, device);
             }
         }
 
-        void clear(const VkDevice& device) {
+        bufferStruct::scFramebufferNode& getScFramebufferNode(int procRenderId) {
+            if (node[procRenderId].frameNodeType != bufferEnum::frameNodeType::sc) {
+                Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
+            }
+
+            return *node[procRenderId].scPtr;
+        }
+
+        bufferStruct::osFramebufferNode& getOsFramebufferNode(int procRenderId) {
+            if (node[procRenderId].frameNodeType != bufferEnum::frameNodeType::os) {
+                Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
+            }
+
+            return *node[procRenderId].osPtr;
+        }
+
+        void cleanupSwapChain(const VkDevice& device, const VmaAllocator& allocator) {
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].clear(device);
+                node[i].cleanupSwapChain(device, allocator);
+            }
+        }
+
+        void recreateSwapChain(const VkExtent2D& scExtent, const VkDevice& device) {
+            for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
+                node[i].recreateSwapChain(scExtent, device);
+            }
+        }
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
+                node[i].clear(device, allocator);
             }
         }
     };

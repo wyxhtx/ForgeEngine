@@ -45,8 +45,7 @@ namespace windowInfo {
 }
 
 namespace swapchainInfo {
-    const VkExtent2D windowSize = { windowInfo::width, windowInfo::height };
-    const int MAX_FRAMES_IN_FLIGHT = 3;             //同时并行处理的帧数，需跟Swapchain.swapChainImages.size()相同
+    const VkExtent2D windowkExtent = { windowInfo::width, windowInfo::height };
 }
 
 namespace vertexInfo {
@@ -158,9 +157,6 @@ namespace fileInfo {
 }
 
 namespace threadCommInfo {
-    //一个在Swapchain的drawFrame，一个在Buffer的copyBuffer，因为改成单线程重建命令缓冲区，现已弃用
-    //std::mutex queueMutex;          //多线程命令缓冲区的重建导致多线程访问渲染队列，使用互斥锁进行同步
-
     bool plateLock = false;        //板块线程锁
     bool musicLock = false;        //音乐线程锁
 }

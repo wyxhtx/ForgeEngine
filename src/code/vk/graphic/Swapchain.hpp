@@ -10,19 +10,10 @@ public:
     VkSampleCountFlagBits msaaSamples;      //多重采样
 
 
-    //todo
-    std::vector<VkImage> swapChainImages;
-    std::vector<VkImageView> scImageViews;              //交换链视图，为帧缓冲服务
-
-
 
     Swapchain(Device& Device) :Device{ Device } {
         createScSupport();
-
-
-
         createSwapChain();
-
         createSyncObjects();
 
         if (debugInfo::LogSwitch) {
@@ -33,15 +24,13 @@ public:
 	}
 
 	~Swapchain() {
-        for (size_t i = 0; i < swapchainInfo::MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroySwapchainKHR(Device.device, swapchain, nullptr);
+
+        for (size_t i = 0; i < scSupport.scCreateInfo.minImageCount; i++) {
             vkDestroySemaphore(Device.device, renderFinishedSemaphores[i], nullptr);
             vkDestroySemaphore(Device.device, imageAvailableSemaphores[i], nullptr);
             vkDestroyFence(Device.device, inFlightFences[i], nullptr);
         }
-
-        cleanupSwapChain();
-
-        vkDestroySwapchainKHR(Device.device, swapchain, nullptr);
 
         if (debugInfo::LogSwitch) {
             Log::print("Swapchain已清除");
@@ -52,9 +41,6 @@ private:
     Device& Device;
 
     swapStruct::scSupportNode scSupport;
-
-
-
     VkSwapchainKHR swapchain;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;  //开始渲染
@@ -64,6 +50,7 @@ private:
 
 
 
+    //创建交换链支持结点
     void createScSupport() {
         scSupport.createScSupport(Device.physicalDevice, Device.surface);
         scSupport.createScCreateInfo(Device.surface, Device.availableDevices.queueIndices[0]);
@@ -74,34 +61,23 @@ private:
         msaaSamples = scSupport.getMsaaSamples(Device.physicalDevice);
 
         if (debugInfo::LogSwitch) {
-            Log::print("最大采样次数" + std::to_string(msaaSamples));
+            Log::print("最大采样次数:\t" + std::to_string(msaaSamples));
             Log::delimiter();
         }
     }
 
     //创建交换链
     void createSwapChain() {
-        uint32_t imageCount = scSupport.scCreateInfo.minImageCount;
-
         if (vkCreateSwapchainKHR(Device.device, &scSupport.scCreateInfo, nullptr, &swapchain) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "交换链创建失败");
         }
-        
-
-
-        vkGetSwapchainImagesKHR(Device.device, swapchain, &imageCount, nullptr);
-        swapChainImages.resize(imageCount);
-
-        //todo 待移出去
-        vkGetSwapchainImagesKHR(Device.device, swapchain, &imageCount, swapChainImages.data());
-        scImageViews.resize(swapChainImages.size());
     }
 
     //创建信号量
     void createSyncObjects() {
-        imageAvailableSemaphores.resize(swapchainInfo::MAX_FRAMES_IN_FLIGHT);
-        renderFinishedSemaphores.resize(swapchainInfo::MAX_FRAMES_IN_FLIGHT);
-        inFlightFences.resize(swapchainInfo::MAX_FRAMES_IN_FLIGHT);
+        imageAvailableSemaphores.resize(scSupport.scCreateInfo.minImageCount);
+        renderFinishedSemaphores.resize(scSupport.scCreateInfo.minImageCount);
+        inFlightFences.resize(scSupport.scCreateInfo.minImageCount);
 
         VkSemaphoreCreateInfo semaphoreInfo = {};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -110,7 +86,7 @@ private:
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-        for (size_t i = 0; i < swapchainInfo::MAX_FRAMES_IN_FLIGHT; i++) {
+        for (size_t i = 0; i < scSupport.scCreateInfo.minImageCount; i++) {
             if (vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS || vkCreateFence(Device.device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "信号量创建失败");
                 throw;
@@ -120,7 +96,6 @@ private:
 
 public:
     bool drawFrame(std::vector<VkCommandBuffer>& commandBuffer) {
-        //std::lock_guard<std::mutex> lock(threadCommInfo::queueMutex);
         vkWaitForFences(Device.device, 1, &inFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
         vkResetFences(Device.device, 1, &inFlightFences[currentFrame]);
 
@@ -166,7 +141,7 @@ public:
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
         presentInfo.pImageIndices = &imageIndex;
-        presentInfo.pResults = nullptr; // Optional
+        presentInfo.pResults = nullptr;
 
         result = vkQueuePresentKHR(Device.presentQueue, &presentInfo);
 
@@ -178,28 +153,27 @@ public:
             throw;
         }
 
-        currentFrame = (currentFrame + 1) % swapchainInfo::MAX_FRAMES_IN_FLIGHT;
+        currentFrame = (currentFrame + 1) % scSupport.scCreateInfo.minImageCount;
         return false;
+    }
+
+    void createScImage(std::vector<VkImage>& scImage) {
+        uint32_t imageCount = scSupport.scCreateInfo.minImageCount;
+        vkGetSwapchainImagesKHR(Device.device, swapchain, &imageCount, nullptr);
+
+        scImage.resize(imageCount);
+        vkGetSwapchainImagesKHR(Device.device, swapchain, &imageCount, scImage.data());
     }
     
 
-
-    void cleanupSwapChain() {
-        for (size_t i = 0; i < scImageViews.size(); i++) {
-            vkDestroyImageView(Device.device, scImageViews[i], nullptr);
-        }
-    }
 
     void recreateSwapChain() {
         scSupport.recreateScCreateInfo(Device.physicalDevice, Device.surface, swapchain);
         scExtent = scSupport.scCreateInfo.imageExtent;
 
-
-
         vkQueueWaitIdle(Device.graphicsQueue);
 
         VkSwapchainKHR tempSwapchain;
-
         if (vkCreateSwapchainKHR(Device.device, &scSupport.scCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "重建交换链创建失败");
             throw;
@@ -207,13 +181,5 @@ public:
 
         vkDestroySwapchainKHR(Device.device, swapchain, nullptr);
         swapchain = tempSwapchain;
-
-
-
-        vkGetSwapchainImagesKHR(Device.device, swapchain, &scSupport.scCreateInfo.minImageCount, nullptr);
-        swapChainImages.resize(scSupport.scCreateInfo.minImageCount);
-
-        vkGetSwapchainImagesKHR(Device.device, swapchain, &scSupport.scCreateInfo.minImageCount, swapChainImages.data());
-        scImageViews.resize(swapChainImages.size());
     }
 };

@@ -10,10 +10,6 @@ public:
 		createGraphicsPipeline();
 
 		InitBuffer.drawUIText(0);	//不在createCommandBuffers前初始化就不能显示UIText
-		InitBuffer.createScFramebuffers();
-		InitBuffer.createOsFramebuffers();
-
-		InitBuffer.command.initCommandBuffer(uint32_t(InitBuffer.scFramebuffers.size()));
 		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadID, procPipeline);
 
 		if (debugInfo::LogSwitch) {
@@ -500,8 +496,6 @@ private:
 		InitBuffer.createPipelineLayout(procPipeline.pipelineLayout);
 		createGraphicsPipeline();
 
-		InitBuffer.createScFramebuffers();
-		InitBuffer.createOsFramebuffers();
 		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadID, procPipeline);
 	}
 };

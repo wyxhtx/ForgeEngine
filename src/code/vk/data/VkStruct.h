@@ -550,11 +550,6 @@ namespace bufferStruct {
         bufferNode vertex;
         bufferNode index;
 
-        bufferStruct::imageNode color;          //颜色附件
-        bufferStruct::imageNode depth;          //深度附件
-        bufferStruct::imageNode osView;         //离屏视图
-        VkFramebuffer osFramebuffer;		    //离屏帧缓冲
-
         int samplerId;                          //采样器
 
         bufferNode uniform;                     //统一缓冲
@@ -576,22 +571,8 @@ namespace bufferStruct {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
             vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
 
-            clearResource(device, allocator);
-            vkDestroyFramebuffer(device, osFramebuffer, nullptr);
-
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
             vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
-        }
-
-        void clearResource(const VkDevice& device, const VmaAllocator& allocator) {
-            vkDestroyImageView(device, color.view, nullptr);
-            vmaDestroyImage(allocator, color.image, color.imageMemory);
-
-            vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(allocator, depth.image, depth.imageMemory);
-
-            vkDestroyImageView(device, osView.view, nullptr);
-            vmaDestroyImage(allocator, osView.image, osView.imageMemory);
         }
     };
 
@@ -702,20 +683,53 @@ namespace bufferStruct {
 
 
     struct scFramebufferNode {
-        bufferStruct::imageNode depth;
         bufferStruct::imageNode color;
-        std::vector<VkImage> scImage;
+        bufferStruct::imageNode depth;
+        std::vector<VkImage> scImage;       //由交换链负责释放
         std::vector<VkImageView> scView;
 
         std::vector<VkFramebuffer> framebuffer;
+
+        
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            vkDestroyImageView(device, color.view, nullptr);
+            vmaDestroyImage(allocator, color.image, color.imageMemory);
+
+            vkDestroyImageView(device, depth.view, nullptr);
+            vmaDestroyImage(allocator, depth.image, depth.imageMemory);
+
+            for (int i = 0; i < scView.size(); i++) {
+                vkDestroyImageView(device, scView[i], nullptr);
+            }
+
+            for (int i = 0; i < framebuffer.size(); i++) {
+                vkDestroyFramebuffer(device, framebuffer[i], nullptr);
+            }
+        }
     };
 
     struct osFramebufferNode {
-        bufferStruct::imageNode depth;
         bufferStruct::imageNode color;
-        bufferStruct::imageNode resolve;
-
+        bufferStruct::imageNode depth;
+        bufferStruct::imageNode osView;
+        
         VkFramebuffer framebuffer;
+
+
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            vkDestroyImageView(device, color.view, nullptr);
+            vmaDestroyImage(allocator, color.image, color.imageMemory);
+
+            vkDestroyImageView(device, depth.view, nullptr);
+            vmaDestroyImage(allocator, depth.image, depth.imageMemory);
+
+            vkDestroyImageView(device, osView.view, nullptr);
+            vmaDestroyImage(allocator, osView.image, osView.imageMemory);
+
+            vkDestroyFramebuffer(device, framebuffer, nullptr);
+        }
     };
 
     struct renderNode {
@@ -724,6 +738,8 @@ namespace bufferStruct {
 
         int frameNodeType;
         std::variant<scFramebufferNode, osFramebufferNode> frameNode;
+        scFramebufferNode* scPtr = nullptr;
+        osFramebufferNode* osPtr = nullptr;
 
         VkRenderPassBeginInfo renderInfo;
 
@@ -744,15 +760,37 @@ namespace bufferStruct {
 
             if (tempFrameNodeType == bufferEnum::frameNodeType::sc) {
                 frameNode = scFramebufferNode{};
+                scPtr = &std::get<bufferStruct::scFramebufferNode>(frameNode);
             }
             else if(tempFrameNodeType == bufferEnum::frameNodeType::os){
                 frameNode = osFramebufferNode{};
+                osPtr = &std::get<bufferStruct::osFramebufferNode>(frameNode);
             }
             else {
                 Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(tempFrameNodeType));
             }
         }
 
+        void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
+            if (frameNodeType == bufferEnum::frameNodeType::sc) {
+                createScRenderPass(colorFormat, depthFormat, msaaSamples, device);
+                createScFramebuffer(scExtent, device);
+            }
+            else {
+                createOsRenderPass(colorFormat, depthFormat, msaaSamples, device);
+                createOsFramebuffer(scExtent, device);
+            }
+
+            renderInfo.renderPass = render;
+            renderInfo.renderArea.extent = scExtent;
+        }
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            vkDestroyRenderPass(device, render, nullptr);
+            std::visit([&device, &allocator](auto& node) {node.clear(device, allocator); }, frameNode);
+        }
+
+    private:
         //创建交换链渲染通道
         void createScRenderPass(const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
             std::array<VkAttachmentDescription, 3> attachment{};                                                //附件描述
@@ -848,42 +886,54 @@ namespace bufferStruct {
             }
         }
 
-        void createRenderPassInfo(const VkExtent2D& scExtent) {
-            renderInfo.renderPass        = render;
-            renderInfo.renderArea.extent = scExtent;
+        //创建交换链帧缓冲
+        void createScFramebuffer(const VkExtent2D& scExtent, const VkDevice& device) {
+	    	VkFramebufferCreateInfo framebufferInfo{};
+	    	framebufferInfo.sType	   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	    	framebufferInfo.renderPass = render;
+	    	framebufferInfo.width	   = scExtent.width;
+	    	framebufferInfo.height     = scExtent.height;
+	    	framebufferInfo.layers	   = 1;
+
+            bufferStruct::scFramebufferNode& tempFrameNode = std::get<bufferStruct::scFramebufferNode>(frameNode);
+            tempFrameNode.framebuffer.resize(tempFrameNode.scView.size());
+
+	    	for (size_t i = 0; i < tempFrameNode.scView.size(); i++) {
+	    		std::array<VkImageView, 3> attachments{ tempFrameNode.color.view,tempFrameNode.depth.view,tempFrameNode.scView[i] };
+	    		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+	    		framebufferInfo.pAttachments	= attachments.data();
+
+	    		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer[i]) != VK_SUCCESS) {
+	    			Log::printError(__FILE__, __LINE__, "帧缓冲创建失败");
+	    			throw;
+	    		}
+	    	}
+	    }
+
+        //创建离屏帧缓冲
+        void createOsFramebuffer(const VkExtent2D& scExtent, const VkDevice& device) {
+            bufferStruct::osFramebufferNode& tempFrameNode = std::get<bufferStruct::osFramebufferNode>(frameNode);
+            std::array<VkImageView, 3> attachments{ tempFrameNode.color.view,tempFrameNode.depth.view,tempFrameNode.osView.view };
+
+		    VkFramebufferCreateInfo framebufferInfo{};
+		    framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		    framebufferInfo.renderPass		= render;	                                    //渲染通道
+		    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());	//附件数量
+		    framebufferInfo.pAttachments	= attachments.data();							//附件
+		    framebufferInfo.width			= scExtent.width;				                //宽度
+		    framebufferInfo.height			= scExtent.height;				                //高度
+		    framebufferInfo.layers			= 1;											//层数
+
+		    if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
+		    	Log::printError(__FILE__, __LINE__, "帧缓冲创建失败");
+		    	throw;
+		    }
+            
+            renderInfo.framebuffer = tempFrameNode.framebuffer;
         }
-
-        //void createFramebuffer(const VkDevice& device, const std::vector<VkImageView>& imageView, const VkExtent2D& scExtent) {
-        //    VkFramebufferCreateInfo framebufferInfo{};
-        //    framebufferInfo.sType       = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        //    framebufferInfo.renderPass  = render;
-        //    framebufferInfo.width       = scExtent.width;
-        //    framebufferInfo.height      = scExtent.height;
-        //    framebufferInfo.layers      = 1;
-        //
-        //    framebuffer.resize(imageView.size());
-        //
-        //    for (size_t i = 0; i < imageView.size(); i++) {
-        //        //将subpass描述的内容呈现到屏幕上,必须对应
-        //        std::array<VkImageView, 3> attachments{ colorImage.view,depthImage.view,imageView[i] };
-        //
-        //        framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-        //        framebufferInfo.pAttachments = attachments.data();
-        //
-        //        if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &framebuffer[i]) != VK_SUCCESS) {
-        //            Log::printError(__FILE__, __LINE__, "帧缓冲创建失败");
-        //            throw;
-        //        }
-        //    }
-        //}
+        	
 
 
-
-        void clear(const VkDevice& device) {
-            vkDestroyRenderPass(device, render, nullptr);
-        }
-    
-    private:
         void getAttachment(std::array<VkAttachmentDescription, 3>& attachment, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkImageLayout& finalLayout) {
             //颜色附件描述
             attachment[0].format           = colorFormat;									        //颜色附件格式
@@ -912,6 +962,26 @@ namespace bufferStruct {
             attachment[2].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;                      //模板存储-不关心
             attachment[2].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;                             //初始布局-未定义
             attachment[2].finalLayout      = finalLayout;                                           //最终布局
+        }
+
+    public:
+        void cleanupSwapChain(const VkDevice& device, const VmaAllocator& allocator) {
+            std::visit([&device, &allocator](auto& node) {node.clear(device, allocator); }, frameNode);
+        }
+
+        void recreateSwapChain(const VkExtent2D& scExtent, const VkDevice& device) {
+            if (frameNodeType == bufferEnum::frameNodeType::sc) {
+                createScFramebuffer(scExtent, device);
+            }
+            else {
+                createOsFramebuffer(scExtent, device);
+            }
+
+            renderInfo.renderArea.extent = scExtent;
+        }
+
+        void setScFramebuffer(int i) {
+            renderInfo.framebuffer = scPtr->framebuffer[i];
         }
     };
 
