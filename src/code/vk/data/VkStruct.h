@@ -1093,21 +1093,24 @@ namespace bufferStruct {
     };
 
     struct descriptorNode {
-        std::vector<bufferStruct::descriptorConfigNode> config;
+        std::vector<bufferStruct::descriptorConfigNode> config{};
 
-        VkDescriptorPool pool;          //描述符池
-        VkDescriptorSetLayout layout;   //描述符布局
+        VkDescriptorPool pool{};            //描述符池
+        VkDescriptorSetLayout layout{};     //描述符布局
+        VkPipelineLayout pipeLayout{};      //管线布局
 
 
 
         void createDescriptorNode(const VkDevice& device) {
             createPool(device);
             createLayout(device);
+            createPipelineLayout(device);
         }
 
         void clear(const VkDevice& device) {
             vkDestroyDescriptorPool(device, pool, nullptr);
             vkDestroyDescriptorSetLayout(device, layout, nullptr);
+            vkDestroyPipelineLayout(device, pipeLayout, nullptr);
         }
 
     private:
@@ -1147,17 +1150,41 @@ namespace bufferStruct {
                 throw;
             }
         }
+
+        void createPipelineLayout(const VkDevice& device) {
+            VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = 1;
+            pipelineLayoutInfo.pushConstantRangeCount = 0;
+            pipelineLayoutInfo.pPushConstantRanges = 0;
+            pipelineLayoutInfo.pSetLayouts = &layout;
+
+            if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipeLayout) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "管线布局创建失败");
+            }
+        }
     };
 }
 
 namespace pipelineStruct {
     struct pipelineNode {
-        VkPipelineLayout& pipelineLayout;
-        VkPipeline& pipeline;
+        std::string vertFile{};
+        std::string fragFile{};
+        
+        int pipeLayoutId;
+        VkPipeline pipeline{};
 
-        pipelineNode(VkPipelineLayout& layout, VkPipeline& pipe) :pipelineLayout(layout), pipeline(pipe) {}
 
-        pipelineNode() = delete;    //禁用默认构造函数
+
+        void createPipelineNode(int id, std::string vert, std::string frag) {
+            pipeLayoutId = id;
+            vertFile     = vert;
+            fragFile     = frag;
+        }
+
+        void clear(const VkDevice& device) {
+            vkDestroyPipeline(device, pipeline, nullptr);
+        }
     };
 }
 

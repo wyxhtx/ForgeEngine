@@ -5,8 +5,6 @@
 class Pipeline {
 public:
 	Pipeline(Device& Device) : Device{ Device } {
-		createPipelineCache();
-		InitBuffer.createPipelineLayout(procPipeline.pipelineLayout);
 		createGraphicsPipeline();
 
 		InitBuffer.drawUIText(0);	//不在createCommandBuffers前初始化就不能显示UIText
@@ -23,12 +21,7 @@ public:
 		//等待地形线程结束，防止小窗点x退出时线程冲突
 		while (threadCommInfo::plateLock);
 
-		for (auto shaderModule : shaderModule) {
-			vkDestroyShaderModule(Device.device, shaderModule, nullptr);
-		}
-
-		vkDestroyPipelineCache(Device.device, pipelineCache, nullptr);
-		procPipeline.cleanupSwapChain(Device.device);
+		procPipeline.clear(Device.device);
 
 		if (debugInfo::LogSwitch) {
 			Log::print("Pipeline已清除");
@@ -41,27 +34,13 @@ private:
 	Plate InitPlate{};
 	Buffer InitBuffer{ Device };
 
-	VkPipelineCache pipelineCache;
-	pipelineList::procPipelineNode procPipeline;
-	std::vector<VkShaderModule> shaderModule;
+	pipelineList::procPipelineNode	procPipeline;
 
-
-
-	//创建管线缓存
-	void createPipelineCache()
-	{
-		VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
-		pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-
-		if (vkCreatePipelineCache(Device.device, &pipelineCacheCreateInfo, nullptr, &pipelineCache)) {
-			Log::printError(__FILE__, __LINE__, "管线缓存创建失败");
-			throw;
-		}
-	}
+	
 
 	//创建图形管线
 	void createGraphicsPipeline() {
-		std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};						//加载着色器
+		std::array<VkPipelineShaderStageCreateInfo, 2> shaderStage{};						//加载着色器
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};								//配置顶点输入
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};								//配置输入装配
 		VkViewport viewport{};																//设置视口
@@ -147,8 +126,8 @@ private:
 			colorBlending.blendConstants[3] = 0.0f;				
 
 			pipelineInfo.sType				 = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-			pipelineInfo.stageCount			 = (uint32_t)shaderStages.size();
-			pipelineInfo.pStages			 = shaderStages.data();
+			pipelineInfo.stageCount			 = (uint32_t)shaderStage.size();
+			pipelineInfo.pStages			 = shaderStage.data();
 			pipelineInfo.pVertexInputState   = &vertexInputInfo;
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
 			pipelineInfo.pViewportState		 = &viewportState;
@@ -165,79 +144,37 @@ private:
 
 		//terrain
 		{
-			shaderStages[0] = loadShader(fileInfo::shader::terrainVert, VK_SHADER_STAGE_VERTEX_BIT);
-			shaderStages[1] = loadShader(fileInfo::shader::terrainFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
-
-			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(terrainVertex::vertexNode::getBindingDescription().size());
-			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(terrainVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions		= terrainVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions	= terrainVertex::vertexNode::getAttributeDescriptions().data();
-
-			pipelineInfo.layout = procPipeline.terrain.pipelineLayout;
-
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.terrain.pipeline) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "terrain管线创建失败");
-				throw;
-			}
+			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::terrain].pipeLayoutId);
+			procPipeline.createPipeline<terrainVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::terrain, shaderStage, vertexInputInfo, pipelineInfo);
 		}
 
 		//model
 		{
-			shaderStages[0] = loadShader(fileInfo::shader::pbrVert, VK_SHADER_STAGE_VERTEX_BIT);
-			shaderStages[1] = loadShader(fileInfo::shader::pbrFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
-
-			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(modelVertex::vertexNode::getBindingDescription().size());
-			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(modelVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions		= modelVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions	= modelVertex::vertexNode::getAttributeDescriptions().data();
-
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osMirror);
-			pipelineInfo.layout = procPipeline.model.pipelineLayout;
 
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.model.pipeline) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "model管线创建失败");
-				throw;
-			}
+			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::model].pipeLayoutId);
+			procPipeline.createPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::model, shaderStage, vertexInputInfo, pipelineInfo);
 
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
 		}
 
 		//skybox
 		{
-			shaderStages[0] = loadShader(fileInfo::shader::skyboxVert, VK_SHADER_STAGE_VERTEX_BIT);
-			shaderStages[1] = loadShader(fileInfo::shader::skyboxFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
-
-			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(skyboxVertex::vertexNode::getBindingDescription().size());
-			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(skyboxVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions		= skyboxVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions	= skyboxVertex::vertexNode::getAttributeDescriptions().data();
-
 			//实现只在空白处显示
 			VkPipelineDepthStencilStateCreateInfo tempDepthStencil = depthStencil;
 			tempDepthStencil.depthWriteEnable = VK_FALSE;
 			tempDepthStencil.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;
 
 			pipelineInfo.pDepthStencilState = &tempDepthStencil;
-			pipelineInfo.layout				= procPipeline.skybox.pipelineLayout;
 
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.skybox.pipeline) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "skybox管线创建失败");
-				throw;
-			}
-			
+			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::skybox].pipeLayoutId);
+			procPipeline.createPipeline<skyboxVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::skybox, shaderStage, vertexInputInfo, pipelineInfo);
+
 			pipelineInfo.pDepthStencilState = &depthStencil;
 		}
 
 		//mine
 		{
-			shaderStages[0] = loadShader(fileInfo::shader::mineVert, VK_SHADER_STAGE_VERTEX_BIT);
-			shaderStages[1] = loadShader(fileInfo::shader::mineFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
-
-			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(mineVertex::vertexNode::getBindingDescription().size());
-			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(mineVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions		= mineVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions	= mineVertex::vertexNode::getAttributeDescriptions().data();
-
 			//选择框覆盖方块的颜色混合
 			VkPipelineColorBlendAttachmentState tempColorBlendAttachment = colorBlendAttachment;
 			tempColorBlendAttachment.blendEnable		 = VK_TRUE;
@@ -257,12 +194,10 @@ private:
 			colorBlending.pAttachments		 = &tempColorBlendAttachment;
 			pipelineInfo.pInputAssemblyState = &tempInputAssembly;
 			pipelineInfo.pRasterizationState = &tempRasterizer;
-			pipelineInfo.layout				 = procPipeline.mine.pipelineLayout;
 
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.mine.pipeline) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "mine管线创建失败");
-				throw;
-			}
+			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::mine].pipeLayoutId);
+			procPipeline.createPipeline<mineVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::mine, shaderStage, vertexInputInfo, pipelineInfo);
+
 			
 			colorBlending.pAttachments		 = &colorBlendAttachment;
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
@@ -271,53 +206,23 @@ private:
 
 		//osMirror
 		{
-			shaderStages[0] = loadShader(fileInfo::shader::osMirrorVert, VK_SHADER_STAGE_VERTEX_BIT);
-			shaderStages[1] = loadShader(fileInfo::shader::osMirrorFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
+			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::osMirror].pipeLayoutId);
+			procPipeline.createPipeline<osMirrorVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osMirror, shaderStage, vertexInputInfo, pipelineInfo);
 
-			vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(osMirrorVertex::vertexNode::getBindingDescription().size());
-			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(osMirrorVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions = osMirrorVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions = osMirrorVertex::vertexNode::getAttributeDescriptions().data();
-
-			pipelineInfo.layout = procPipeline.osMirror.pipelineLayout;
-
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.osMirror.pipeline) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "osMirror管线创建失败");
-				throw;
-			}
 		}
 
 		//osScence
 		{
-			shaderStages[0] = loadShader(fileInfo::shader::osScenceVert, VK_SHADER_STAGE_VERTEX_BIT);
-			shaderStages[1] = loadShader(fileInfo::shader::osScenceFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
-
-			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(osScenceVertex::vertexNode::getBindingDescription().size());
-			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(osScenceVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions		= osScenceVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions	= osScenceVertex::vertexNode::getAttributeDescriptions().data();
-
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::scScence);
-			pipelineInfo.layout = procPipeline.osScence.pipelineLayout;
-			
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.osScence.pipeline) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "osScence管线创建失败");
-				throw;
-			}
+
+			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::osScence].pipeLayoutId);
+			procPipeline.createPipeline<osScenceVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osScence, shaderStage, vertexInputInfo, pipelineInfo);
 
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
 		}
 
 		//uiText
 		{
-			shaderStages[0] = loadShader(fileInfo::shader::uitextVert, VK_SHADER_STAGE_VERTEX_BIT);
-			shaderStages[1] = loadShader(fileInfo::shader::uitextFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
-
-			vertexInputInfo.vertexBindingDescriptionCount	= static_cast<uint32_t>(uiTextVertex::vertexNode::getBindingDescription().size());
-			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(uiTextVertex::vertexNode::getAttributeDescriptions().size());
-			vertexInputInfo.pVertexBindingDescriptions		= uiTextVertex::vertexNode::getBindingDescription().data();
-			vertexInputInfo.pVertexAttributeDescriptions	= uiTextVertex::vertexNode::getAttributeDescriptions().data();
-
 			//uiText和屏幕的颜色混合
 			VkPipelineColorBlendAttachmentState tempColorBlendAttachment = colorBlendAttachment;
 			tempColorBlendAttachment.blendEnable		 = VK_TRUE;
@@ -342,64 +247,16 @@ private:
 			pipelineInfo.pInputAssemblyState = &tempInputAssembly;
 			pipelineInfo.pRasterizationState = &tempRasterizer;
 			pipelineInfo.pDepthStencilState  = &tempDepthStencil;
-			pipelineInfo.layout				 = procPipeline.uiText.pipelineLayout;
 
-			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.uiText.pipeline) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "uiText管线创建失败");
-				throw;
-			}
+			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::uiText].pipeLayoutId);
+			procPipeline.createPipeline<uiTextVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::uiText, shaderStage, vertexInputInfo, pipelineInfo);
+
 
 			colorBlending.pAttachments		 = &colorBlendAttachment;
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
 			pipelineInfo.pRasterizationState = &rasterizer;
 			pipelineInfo.pDepthStencilState  = &depthStencil;
 		}
-	}
-
-
-
-	VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage){
-		shaderModule.push_back(createShaderModule(readFile(fileName)));
-
-		VkPipelineShaderStageCreateInfo shaderStage = {};
-		shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		shaderStage.stage = stage;
-		shaderStage.module = shaderModule.back();
-		shaderStage.pName = "main";
-		return shaderStage;
-	}
-
-	VkShaderModule createShaderModule(const std::vector<char>& code) {
-		VkShaderModuleCreateInfo createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		createInfo.codeSize = code.size();
-		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(Device.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "着色器创建失败");
-			throw;
-		}
-
-		return shaderModule;
-	}
-
-	static std::vector<char> readFile(const std::string& filename) {
-		std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-		if (!file.is_open()) {
-			Log::printError(__FILE__, __LINE__, "着色器文件打开失败");
-			throw;
-		}
-
-		size_t fileSize = (size_t)file.tellg();
-		std::vector<char> buffer(fileSize);
-
-		file.seekg(0);
-		file.read(buffer.data(), fileSize);
-		file.close();
-
-		return buffer;
 	}
 
 public:
@@ -514,7 +371,6 @@ private:
 		procPipeline.cleanupSwapChain(Device.device);
 
 		InitBuffer.recreateSwapChain();
-		InitBuffer.createPipelineLayout(procPipeline.pipelineLayout);
 		createGraphicsPipeline();
 
 		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadId, procPipeline);

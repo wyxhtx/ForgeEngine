@@ -256,46 +256,118 @@ namespace bufferList {
 }
 
 namespace pipelineList {
-    struct pipelineLayout {
-        VkPipelineLayout scence;        //场景管线布局
-        VkPipelineLayout uiText;        //文本管线布局
-    };
-
-    struct pipeline {
-        VkPipeline terrain;     //地形管线
-        VkPipeline model;       //模型管线
-        VkPipeline skybox;      //天空盒管线
-        VkPipeline mine;        //挖掘选择框管线
-        VkPipeline osMirror;    //离屏镜面渲染管线
-        VkPipeline osScence;    //离屏场景渲染管线
-        VkPipeline uiText;      //文本管线
-    };
-
     struct procPipelineNode {
-        pipelineList::pipelineLayout pipelineLayout;
-        pipelineList::pipeline pipeline;
-
-        pipelineStruct::pipelineNode terrain    { pipelineLayout.scence,    pipeline.terrain };
-        pipelineStruct::pipelineNode model      { pipelineLayout.scence,    pipeline.model };
-        pipelineStruct::pipelineNode skybox     { pipelineLayout.scence,    pipeline.skybox };
-        pipelineStruct::pipelineNode mine       { pipelineLayout.scence,    pipeline.mine };
-        pipelineStruct::pipelineNode osMirror   { pipelineLayout.scence,    pipeline.osMirror };
-        pipelineStruct::pipelineNode osScence   { pipelineLayout.scence,    pipeline.osScence };
-        pipelineStruct::pipelineNode uiText     { pipelineLayout.uiText,    pipeline.uiText };
+        std::array<pipelineStruct::pipelineNode, pipelineEnum::procPipelineId::count> node{};
 
 
+
+        procPipelineNode() {
+            node[pipelineEnum::procPipelineId::terrain] .createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag);
+            node[pipelineEnum::procPipelineId::model]   .createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag);
+            node[pipelineEnum::procPipelineId::skybox]  .createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag);
+            node[pipelineEnum::procPipelineId::mine]    .createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::mineVert,     fileInfo::shader::mineFrag);
+            node[pipelineEnum::procPipelineId::osMirror].createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag);
+            node[pipelineEnum::procPipelineId::osScence].createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag);
+            node[pipelineEnum::procPipelineId::uiText]  .createPipelineNode(bufferEnum::procDescriptorId::uiText, fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag);
+        }
+
+        template<typename VertexType>
+        void createPipeline(const VkDevice& device, int id, std::array<VkPipelineShaderStageCreateInfo, 2>& shader, VkPipelineVertexInputStateCreateInfo& input, VkGraphicsPipelineCreateInfo& pipelineInfo) {
+            shader[0] = loadShader(device, node[id].vertFile, VK_SHADER_STAGE_VERTEX_BIT);
+            shader[1] = loadShader(device, node[id].fragFile, VK_SHADER_STAGE_FRAGMENT_BIT);
+            
+            auto binding   = VertexType::getBindingDescription();
+            auto attribute = VertexType::getAttributeDescriptions();
+
+            input.vertexBindingDescriptionCount   = uint32_t(binding.size());
+            input.vertexAttributeDescriptionCount = uint32_t(attribute.size());
+            input.pVertexBindingDescriptions      = binding.data();
+            input.pVertexAttributeDescriptions    = attribute.data();
+
+            if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineInfo, nullptr, &node[id].pipeline) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "管线创建失败");
+                throw;
+            }
+        }
 
         void cleanupSwapChain(const VkDevice& device) {
-            vkDestroyPipelineLayout(device, pipelineLayout.scence, nullptr);
-            vkDestroyPipelineLayout(device, pipelineLayout.uiText, nullptr);
+            for (int i = 0; i < pipelineEnum::procPipelineId::count; i++) {
+                node[i].clear(device);
+            }
+        }
 
-            vkDestroyPipeline(device, terrain.pipeline, nullptr);
-            vkDestroyPipeline(device, model.pipeline, nullptr);
-            vkDestroyPipeline(device, skybox.pipeline, nullptr);
-            vkDestroyPipeline(device, mine.pipeline, nullptr);
-            vkDestroyPipeline(device, osMirror.pipeline, nullptr);
-            vkDestroyPipeline(device, osScence.pipeline, nullptr);
-            vkDestroyPipeline(device, uiText.pipeline, nullptr);
+        void clear(const VkDevice& device) {
+            for (int i = 0; i < pipelineEnum::procPipelineId::count; i++) {
+                node[i].clear(device);
+            }
+
+            vkDestroyPipelineCache(device, pipelineCache, nullptr);
+
+            for (auto shaderModule : shaderModule) {
+                vkDestroyShaderModule(device, shaderModule, nullptr);
+            }
+        }
+
+    private:
+        VkPipelineCache pipelineCache;
+        std::vector<VkShaderModule> shaderModule;
+
+
+
+        void createPipelineCache(const VkDevice& device){
+            VkPipelineCacheCreateInfo pipelineCacheCreateInfo{};
+            pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+
+            if (vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache)) {
+                Log::printError(__FILE__, __LINE__, "管线缓存创建失败");
+                throw;
+            }
+        }
+
+        VkPipelineShaderStageCreateInfo loadShader(const VkDevice& device, std::string fileName, VkShaderStageFlagBits stage) {
+            shaderModule.push_back(createShaderModule(device, readFile(fileName)));
+
+            VkPipelineShaderStageCreateInfo shaderStage = {};
+            shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shaderStage.stage = stage;
+            shaderStage.module = shaderModule.back();
+            shaderStage.pName = "main";
+            return shaderStage;
+        }
+
+
+
+        VkShaderModule createShaderModule(const VkDevice& device, const std::vector<char>& code) {
+            VkShaderModuleCreateInfo createInfo = {};
+            createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+            createInfo.codeSize = code.size();
+            createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+            VkShaderModule shaderModule;
+            if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "着色器创建失败");
+                throw;
+            }
+
+            return shaderModule;
+        }
+
+        static std::vector<char> readFile(const std::string& filename) {
+            std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+            if (!file.is_open()) {
+                Log::printError(__FILE__, __LINE__, "着色器文件打开失败");
+                throw;
+            }
+
+            size_t fileSize = (size_t)file.tellg();
+            std::vector<char> buffer(fileSize);
+
+            file.seekg(0);
+            file.read(buffer.data(), fileSize);
+            file.close();
+
+            return buffer;
         }
     };
 }

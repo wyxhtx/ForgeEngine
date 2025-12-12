@@ -1117,26 +1117,6 @@ private:
 	}
 
 public:
-	void createPipelineLayout(pipelineList::pipelineLayout& pipelineLayout) {
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-		pipelineLayoutInfo.sType				  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount		  = 1;
-		pipelineLayoutInfo.pushConstantRangeCount = 0;
-		pipelineLayoutInfo.pPushConstantRanges	  = 0;
-
-		//scence
-		pipelineLayoutInfo.pSetLayouts = &procDescriptor.node[bufferEnum::procDescriptorId::scence].layout;
-		if (vkCreatePipelineLayout(Device.device, &pipelineLayoutInfo, nullptr, &pipelineLayout.scence) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "scence管线布局创建失败");
-		}
-
-		//uiText
-		pipelineLayoutInfo.pSetLayouts = &procDescriptor.node[bufferEnum::procDescriptorId::uiText].layout;
-		if (vkCreatePipelineLayout(Device.device, &pipelineLayoutInfo, nullptr, &pipelineLayout.uiText) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "uiText管线布局创建失败");
-		}
-	}
-
 	void drawUIText(int fps) {
 		static std::ostringstream oss;
 		float width = 5.0;
@@ -1184,13 +1164,13 @@ public:
 
 			//model-sNode
 			for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.model.pipeline, procPipeline.model.pipelineLayout, procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::model].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::model].pipeLayoutId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
 			}
 
 			//model-dNode
 			for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
 				for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
-					command.createScenceCommandBuffer(threadId, frameId, procPipeline.model.pipeline, procPipeline.model.pipelineLayout, procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::model].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::model].pipeLayoutId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
 				}
 			}
 
@@ -1203,21 +1183,21 @@ public:
 			//terrain
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
 				if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-					command.createScenceCommandBuffer(threadId, frameId, procPipeline.terrain.pipeline, procPipeline.terrain.pipelineLayout, terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::terrain].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::terrain].pipeLayoutId), terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
 				}
 			}
-
+			
 			//skybox
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.skybox.pipeline, procPipeline.skybox.pipelineLayout, skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
-
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::skybox].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::skybox].pipeLayoutId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
+			
 			//mine
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.mine.pipeline, procPipeline.mine.pipelineLayout, mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
-
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::mine].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::mine].pipeLayoutId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
+			
 			//osMirror
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.osMirror.pipeline, procPipeline.osMirror.pipelineLayout, osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::osMirror].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::osMirror].pipeLayoutId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
 
 			//uiText
-			command.createUITextCommandBuffer(threadId, frameId, procPipeline.uiText.pipeline, procPipeline.uiText.pipelineLayout, uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
+			command.createUITextCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::uiText].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::uiText].pipeLayoutId), uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
 
 			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 
@@ -1227,11 +1207,11 @@ public:
 			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			//osScence
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.osScence.pipeline, procPipeline.osScence.pipelineLayout, osScence.descriptorSet, osScence.vertex.buffer, osScence.index.buffer, (uint32_t)osScenceVertex::indexs.size());
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::osScence].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::osScence].pipeLayoutId), osScence.descriptorSet, osScence.vertex.buffer, osScence.index.buffer, (uint32_t)osScenceVertex::indexs.size());
 
 			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 
-
+			
 			//结束渲染
 			command.endCommandBuffer(threadId, frameId);
 		}
@@ -1243,34 +1223,34 @@ public:
 
 
 
-	void recreateBuffer(int threadID, bool isLayer) {
-		command.free(Device.device, threadID);
+	void recreateBuffer(int threadId, bool isLayer) {
+		command.free(Device.device, threadId);
 
 		if (isLayer) {
 			int layer = terrainEnum::terrainLayer::Layer_0;		//先重建当前线程网格缓冲区
 			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
-				vmaDestroyBuffer(Device.allocator, terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
+				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
+				vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
 
-				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadID][layer]);
-				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadID][layer]);
+				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
+				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
 			}
 
 			layer = terrainEnum::terrainLayer::Layer_1;
 			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-				createTerrainVertexBuffer(threadID, layer);
-				createTerrainIndexBuffer(threadID, layer);
+				createTerrainVertexBuffer(threadId, layer);
+				createTerrainIndexBuffer(threadId, layer);
 			}
 		}
 		else {
 			int layer = terrainEnum::terrainLayer::Layer_0;
 
 			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadID][layer].buffer, terrain.vertex[threadID][layer].bufferMemory);
-				vmaDestroyBuffer(Device.allocator, terrain.index[threadID][layer].buffer, terrain.index[threadID][layer].bufferMemory);
+				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
+				vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
 
-				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadID][layer]);
-				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadID][layer]);
+				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
+				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
 			}
 		}
 	}
@@ -1402,9 +1382,9 @@ public:
 		}
 	}
 
-	void cleanupSwapChain(int threadID) {
+	void cleanupSwapChain(int threadId) {
 		procRenderPass.cleanupSwapChain(Device.device, Device.allocator);
-		command.free(Device.device, threadID);
+		command.free(Device.device, threadId);
 	}
 
 	void recreateSwapChain() {
@@ -1442,7 +1422,7 @@ private:
 
 
 	//创建地形顶点缓冲
-	void createTerrainVertexBuffer(int threadID, int layer) {
+	void createTerrainVertexBuffer(int threadId, int layer) {
 		VkDeviceSize bufferSize = sizeof(terrainVertex::vertexs[layer][0]) * terrainVertex::vertexs[layer].size();
 		bufferStruct::bufferNode tempBuffer;
 
@@ -1450,7 +1430,7 @@ private:
 		createMapMemory(tempBuffer.bufferMemory, terrainVertex::vertexs[layer].data(), (size_t)bufferSize);
 
 		for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
-			int thread = (threadID + i) % 2;
+			int thread = (threadId + i) % 2;
 
 			vmaDestroyBuffer(Device.allocator, terrain.vertex[thread][layer].buffer, terrain.vertex[thread][layer].bufferMemory);
 			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[thread][layer]);
@@ -1461,7 +1441,7 @@ private:
 	}
 
 	//创建地形索引缓冲
-	void createTerrainIndexBuffer(int threadID, int layer) {
+	void createTerrainIndexBuffer(int threadId, int layer) {
 		VkDeviceSize bufferSize = sizeof(terrainVertex::indexs[layer][0]) * terrainVertex::indexs[layer].size();
 		bufferStruct::bufferNode tempBuffer;
 
@@ -1469,7 +1449,7 @@ private:
 		createMapMemory(tempBuffer.bufferMemory, terrainVertex::indexs[layer].data(), (size_t)bufferSize);
 
 		for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
-			int thread = (threadID + i) % 2;
+			int thread = (threadId + i) % 2;
 
 			vmaDestroyBuffer(Device.allocator, terrain.index[thread][layer].buffer, terrain.index[thread][layer].bufferMemory);
 			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.index[thread][layer]);
@@ -1490,5 +1470,10 @@ public:
 
 	const VkSampleCountFlagBits& getMsaaSamples() {
 		return InitSwapchain.msaaSamples;
+	}
+
+	//todo 看看能不能优化？
+	const VkPipelineLayout& getPipeLayout(int pipeLayoutId) {
+		return procDescriptor.node[pipeLayoutId].pipeLayout;
 	}
 };

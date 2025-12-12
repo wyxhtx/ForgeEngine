@@ -37,8 +37,6 @@ namespace bufferEnum {
         };
     }
 
-    //todo 到时候扩展到管线布局？
-
     namespace procSamplerId {
         enum {
             terrain,    //地形采样器
@@ -64,6 +62,22 @@ namespace bufferEnum {
     namespace procDynamicModelId {
         enum {
             droid,		//机器人
+
+            count
+        };
+    }
+}
+
+namespace pipelineEnum {
+    namespace procPipelineId {
+        enum {
+            terrain,    //地形
+            model,      //模型
+            skybox,     //天空盒
+            mine,       //选择框
+            osMirror,   //离屏镜面
+            osScence,   //离屏场景
+            uiText,     //文本ui
 
             count
         };
