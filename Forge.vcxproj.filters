@@ -81,6 +81,10 @@
     <None Include="src\shader_build\osScence\osScence.frag" />
     <None Include="src\shader\osScence\osScenceFrag.spv" />
     <None Include="src\shader\osScence\osScenceVert.spv" />
+    <None Include="src\shader_build\osMirror\osMirror.vert" />
+    <None Include="src\shader_build\osMirror\osMirror.frag" />
+    <None Include="src\shader\osMirror\osMirrorFrag.spv" />
+    <None Include="src\shader\osMirror\osMirrorVert.spv" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">

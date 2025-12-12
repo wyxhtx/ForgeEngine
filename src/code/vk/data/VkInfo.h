@@ -94,8 +94,7 @@ namespace lightInfo {
 }
 
 namespace bufferInfo {
-    const uint32_t bufferScenceNodeSize = 7;    //描述符池上限，terrain，m_temple，m_droid*3，skybox，mine
-    const uint32_t bufferOffScreenNodeSize = 2; //描述符池上限，osScence，osMirror
+    const uint32_t bufferScenceNodeSize = 9;    //描述符池上限，terrain，m_temple，m_droid*3，skybox，mine，osMirror，osScence
     const uint32_t bufferUINodeSize = 1;        //描述符池上限，uiText
 
     const int commandThreadSize = 2;            //命令线程数
@@ -123,6 +122,9 @@ namespace fileInfo {
 
         const std::string uitextVert = "src/shader/uiText/uitextVert.spv";
         const std::string uitextFrag = "src/shader/uiText/uitextFrag.spv";
+
+        const std::string osMirrorVert = "src/shader/osMirror/osMirrorVert.spv";
+        const std::string osMirrorFrag = "src/shader/osMirror/osMirrorFrag.spv";
 
         const std::string osScenceVert = "src/shader/osScence/osScenceVert.spv";
         const std::string osScenceFrag = "src/shader/osScence/osScenceFrag.spv";

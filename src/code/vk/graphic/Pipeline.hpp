@@ -10,7 +10,7 @@ public:
 		createGraphicsPipeline();
 
 		InitBuffer.drawUIText(0);	//不在createCommandBuffers前初始化就不能显示UIText
-		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadID, procPipeline);
+		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadId, procPipeline);
 
 		if (debugInfo::LogSwitch) {
 			Log::printTitle("————————Pipeline已创建");
@@ -191,12 +191,15 @@ private:
 			vertexInputInfo.pVertexBindingDescriptions		= modelVertex::vertexNode::getBindingDescription().data();
 			vertexInputInfo.pVertexAttributeDescriptions	= modelVertex::vertexNode::getAttributeDescriptions().data();
 
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osMirror);
 			pipelineInfo.layout = procPipeline.model.pipelineLayout;
 
 			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.model.pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "model管线创建失败");
 				throw;
 			}
+
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
 		}
 
 		//skybox
@@ -264,6 +267,24 @@ private:
 			colorBlending.pAttachments		 = &colorBlendAttachment;
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
 			pipelineInfo.pRasterizationState = &rasterizer;
+		}
+
+		//osMirror
+		{
+			shaderStages[0] = loadShader(fileInfo::shader::osMirrorVert, VK_SHADER_STAGE_VERTEX_BIT);
+			shaderStages[1] = loadShader(fileInfo::shader::osMirrorFrag, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+			vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(osMirrorVertex::vertexNode::getBindingDescription().size());
+			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(osMirrorVertex::vertexNode::getAttributeDescriptions().size());
+			vertexInputInfo.pVertexBindingDescriptions = osMirrorVertex::vertexNode::getBindingDescription().data();
+			vertexInputInfo.pVertexAttributeDescriptions = osMirrorVertex::vertexNode::getAttributeDescriptions().data();
+
+			pipelineInfo.layout = procPipeline.osMirror.pipelineLayout;
+
+			if (vkCreateGraphicsPipelines(Device.device, pipelineCache, 1, &pipelineInfo, nullptr, &procPipeline.osMirror.pipeline) != VK_SUCCESS) {
+				Log::printError(__FILE__, __LINE__, "osMirror管线创建失败");
+				throw;
+			}
 		}
 
 		//osScence
@@ -398,7 +419,7 @@ public:
 			uiDeltaFrame = 0;
 
 			//地形线程数为1且命令缓冲区未变更时更新板块
-			if (InitBuffer.command.processingThreadSize == 1 && tempID == InitBuffer.command.currentThreadID) {
+			if (InitBuffer.command.processingThreadSize == 1 && tempId == InitBuffer.command.currentThreadId) {
 				static glm::dvec3 pos0 = glm::floor(playerInfo::initSpawnPos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
 				glm::dvec3 pos1 = glm::floor(Camera.node.pos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
 				
@@ -416,9 +437,9 @@ public:
 		if (cubeTick.isUpdate(fpsInfo::cubeFPS)) {
 			InitPlate.externalUpdateLock = true;
 			
-			if (!InitPlate.internalUpdateLock && tempID == InitBuffer.command.currentThreadID && !InitPlate.cubeChangeList.empty()) {
+			if (!InitPlate.internalUpdateLock && tempId == InitBuffer.command.currentThreadId && !InitPlate.cubeChangeList.empty()) {
 				InitPlate.updateDeltaCube();
-				tempID = (InitBuffer.command.currentThreadID + 1) % 2;
+				tempId = (InitBuffer.command.currentThreadId + 1) % 2;
 			}
 
 			InitPlate.externalUpdateLock = false;
@@ -427,7 +448,7 @@ public:
 		//更换命令缓冲区后重建命令缓冲区（5~9ms）
 		//r=1时，更新板块会把网格数组清空
 		InitPlate.externalUpdateLock = true;
-		if (!InitPlate.internalUpdateLock && tempID != InitBuffer.command.currentThreadID) {
+		if (!InitPlate.internalUpdateLock && tempId != InitBuffer.command.currentThreadId) {
 			//原点迁移会导致板块网格重写，所以尽可能避免频繁迁移
 			if (playerInfo::logicOriginPos != InitPlate.originPos) {
 				playerInfo::logicOriginPos = InitPlate.originPos;
@@ -447,16 +468,16 @@ public:
 				InitPlate.isEntireRebuild = false;
 
 				//地形管线全部重建，R(8)N(34)M(15)
-				InitBuffer.recreateBuffer(tempID, true);
+				InitBuffer.recreateBuffer(tempId, true);
 			}
 			else {
 				//只重建Lod_0地形管线，R(8)N(34)M(4)
-				InitBuffer.recreateBuffer(tempID, false);
+				InitBuffer.recreateBuffer(tempId, false);
 			}
 
-			InitBuffer.createCommandBuffer(tempID, procPipeline);
+			InitBuffer.createCommandBuffer(tempId, procPipeline);
 
-			InitBuffer.command.currentThreadID = tempID;
+			InitBuffer.command.currentThreadId = tempId;
 		}
 		InitPlate.externalUpdateLock = false;
 
@@ -470,7 +491,7 @@ public:
 	}
 
 private:
-	int tempID = InitBuffer.command.currentThreadID;		//命令缓冲区id标识，用于解决线程冲突
+	int tempId = InitBuffer.command.currentThreadId;		//命令缓冲区id标识，用于解决线程冲突
 
 
 
@@ -479,7 +500,7 @@ private:
 		timeStruct::timeNode time{};
 
 		InitPlate.updatePlate(playerPos);
-		tempID = (InitBuffer.command.currentThreadID + 1) % 2;
+		tempId = (InitBuffer.command.currentThreadId + 1) % 2;
 
 		Log::print("板块刷新用时:\t" + time.end());
 		InitBuffer.command.processingThreadSize--;
@@ -489,13 +510,13 @@ private:
 	void recreateSwapChain() {
 		vkDeviceWaitIdle(Device.device);
 
-		InitBuffer.cleanupSwapChain(InitBuffer.command.currentThreadID);
+		InitBuffer.cleanupSwapChain(InitBuffer.command.currentThreadId);
 		procPipeline.cleanupSwapChain(Device.device);
 
 		InitBuffer.recreateSwapChain();
 		InitBuffer.createPipelineLayout(procPipeline.pipelineLayout);
 		createGraphicsPipeline();
 
-		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadID, procPipeline);
+		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadId, procPipeline);
 	}
 };

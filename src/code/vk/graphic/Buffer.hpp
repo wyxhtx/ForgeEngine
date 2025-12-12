@@ -9,12 +9,9 @@ public:
 
 
 	Buffer(Device& Device) :Device{ Device } {
-		createScResource();
 		createOsResource();
-
+		createScResource();
 		procRenderPass.createRenderPassInfo(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device);
-		procDescriptor.createDescriptorPool(Device.device);
-		procDescriptor.createDescriptorSetLayout(Device.device);
 
 		command.createCommandPool(Device.device, Device.queueFamilyIndex);
 		command.initCommandBuffer(uint32_t(procRenderPass.node[bufferEnum::procRenderId::scScence].scPtr->framebuffer.size()));
@@ -45,6 +42,7 @@ public:
 		procModel.clear(Device.device, Device.allocator);
 		skybox.clear(Device.device, Device.allocator);
 		mine.clear(Device.device, Device.allocator);
+		osMirror.clear(Device.device, Device.allocator);
 		osScence.clear(Device.device, Device.allocator);
 		uiText.clear(Device.device, Device.allocator);
 
@@ -59,17 +57,46 @@ private:
 	Swapchain InitSwapchain{ Device };
 
 	bufferList::procRenderNode		procRenderPass{};
-	bufferList::procDescriptorNode	procDescriptor;
+	bufferList::procDescriptorNode	procDescriptor{ Device.device };
 	bufferList::procSamplerNode		procSampler;
 
 	bufferStruct::terrainBufferNode  terrain{ bufferEnum::procSamplerId::terrain };
 	bufferList::procModelNode		 procModel{};
 	bufferStruct::skyboxBufferNode	 skybox;
 	bufferStruct::baseBufferNode	 mine;
-	bufferStruct::osScenceBufferNode osScence{ bufferEnum::procSamplerId::osScence };
+	bufferStruct::osMirrorBufferNode osMirror{ bufferEnum::procSamplerId::offScreen };
+	bufferStruct::osScenceBufferNode osScence{ bufferEnum::procSamplerId::offScreen };
 	bufferStruct::uiTextBufferNode	 uiText{ bufferEnum::procSamplerId::uiText };
 
 
+
+	//创建离屏附件
+	void createOsResource() {
+		//osMirror
+		bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror);
+
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osMirrorFrameNode.color.image, osMirrorFrameNode.color.imageMemory);
+		createImageView(osMirrorFrameNode.color.image, osMirrorFrameNode.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osMirrorFrameNode.depth.image, osMirrorFrameNode.depth.imageMemory);
+		createImageView(osMirrorFrameNode.depth.image, osMirrorFrameNode.depth.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osMirrorFrameNode.osView.image, osMirrorFrameNode.osView.imageMemory);
+		createImageView(osMirrorFrameNode.osView.image, osMirrorFrameNode.osView.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+
+
+		//osScence
+		bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
+
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osScenceFrameNode.color.image, osScenceFrameNode.color.imageMemory);
+		createImageView(osScenceFrameNode.color.image, osScenceFrameNode.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osScenceFrameNode.depth.image, osScenceFrameNode.depth.imageMemory);
+		createImageView(osScenceFrameNode.depth.image, osScenceFrameNode.depth.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osScenceFrameNode.osView.image, osScenceFrameNode.osView.imageMemory);
+		createImageView(osScenceFrameNode.osView.image, osScenceFrameNode.osView.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+	}
 
 	//创建交换链附件
 	void createScResource() {
@@ -86,20 +113,6 @@ private:
 		for (int i = 0; i < frameNode.scImage.size(); i++) {
 			createImageView(frameNode.scImage[i], frameNode.scView[i], 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 		}
-	}
-
-	//创建离屏附件
-	void createOsResource() {
-		bufferStruct::osFramebufferNode& frameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
-
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameNode.color.image, frameNode.color.imageMemory);
-		createImageView(frameNode.color.image, frameNode.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameNode.depth.image, frameNode.depth.imageMemory);
-		createImageView(frameNode.depth.image, frameNode.depth.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameNode.osView.image, frameNode.osView.imageMemory);
-		createImageView(frameNode.osView.image, frameNode.osView.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 
 	void createMeshBuffer() {
@@ -136,6 +149,10 @@ private:
 		createVertexBuffer(mineVertex::vertexs, mine.vertex);
 		createIndexBuffer(mineVertex::indexs, mine.index);
 
+		//osMirror
+		createVertexBuffer(osMirrorVertex::vertexs, osMirror.vertex);
+		createIndexBuffer(osMirrorVertex::indexs, osMirror.index);
+
 		//osScence
 		createVertexBuffer(osScenceVertex::vertexs, osScence.vertex);
 		createIndexBuffer(osScenceVertex::indexs, osScence.index);
@@ -171,9 +188,9 @@ private:
 		//mine
 		createBuffer(sizeof(mine.ubo), mine.uniform);
 
-		//osScence
-		createBuffer(sizeof(osScence.ubo), osScence.uniform);
-		createBuffer(sizeof(osScence.lightUbo), osScence.lightUniform);
+		//osMirror
+		createBuffer(sizeof(osMirror.ubo), osMirror.uniform);
+		createBuffer(sizeof(osMirror.lightUbo), osMirror.lightUniform);
 	}
 
 	void createTexture() {
@@ -199,20 +216,15 @@ private:
 
 	void createDescriptorSet() {
 		/*配置scence描述符*/
-		procDescriptor.allocInfo.setNode(procDescriptor.scence.pool, &procDescriptor.scence.layout);
+		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scence);
 
 		//terrain
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo.node, &terrain.descriptorSet) == VK_SUCCESS) {
-			procDescriptor.writeScence[0].setBufferNode(terrain.descriptorSet, procDescriptor.bufferInfo[0].getNode(terrain.uniform.buffer, sizeof(terrain.ubo)));
-			procDescriptor.writeScence[1].setBufferNode(terrain.descriptorSet, procDescriptor.bufferInfo[1].getNode(terrain.lightUniform.buffer, sizeof(terrain.lightUbo)));
-			procDescriptor.writeScence[2].setImageNode(terrain.descriptorSet, procDescriptor.imageInfo[0].getNode(procSampler.node[terrain.samplerId], terrain.texture.view));
-			procDescriptor.writeScence[3].setImageNode(terrain.descriptorSet, procDescriptor.imageInfo[1].getNode(procSampler.node[terrain.samplerId], terrain.specular.view));
-
-			std::array<VkWriteDescriptorSet, 4> tempWrite{ 
-				procDescriptor.writeScence[0].node,
-				procDescriptor.writeScence[1].node,
-				procDescriptor.writeScence[2].node,
-				procDescriptor.writeScence[3].node
+		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &terrain.descriptorSet) == VK_SUCCESS) {
+			std::array<VkWriteDescriptorSet, 4> tempWrite{
+				procDescriptor.getWrite(0, terrain.descriptorSet, terrain.uniform.buffer, sizeof(terrain.ubo)),
+				procDescriptor.getWrite(1, terrain.descriptorSet, terrain.lightUniform.buffer, sizeof(terrain.lightUbo)),
+				procDescriptor.getWrite(2, terrain.descriptorSet, procSampler.node[terrain.samplerId], terrain.texture.view),
+				procDescriptor.getWrite(3, terrain.descriptorSet, procSampler.node[terrain.samplerId], terrain.specular.view)
 			};
 
 			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -224,15 +236,11 @@ private:
 
 		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo.node, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
-				procDescriptor.writeScence[0].setBufferNode(procModel.sNode[i].descriptorSet, procDescriptor.bufferInfo[0].getNode(procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)));
-				procDescriptor.writeScence[1].setBufferNode(procModel.sNode[i].descriptorSet, procDescriptor.bufferInfo[1].getNode(procModel.sNode[i].lightUniform.buffer, sizeof(procModel.sNode[i].lightUbo)));
-				procDescriptor.writeScence[2].setImageNode(procModel.sNode[i].descriptorSet, procDescriptor.imageInfo[0].getNode(procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view));
-
-				std::array<VkWriteDescriptorSet, 3> tempWrite{ 
-					procDescriptor.writeScence[0].node,
-					procDescriptor.writeScence[1].node,
-					procDescriptor.writeScence[2].node 
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 3> tempWrite{
+					procDescriptor.getWrite(0, procModel.sNode[i].descriptorSet, procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)),
+					procDescriptor.getWrite(1, procModel.sNode[i].descriptorSet, procModel.sNode[i].lightUniform.buffer, sizeof(procModel.sNode[i].lightUbo)),
+					procDescriptor.getWrite(2, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view)
 				};
 
 				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -246,15 +254,11 @@ private:
 		//model-dNode
 		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo.node, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
-					procDescriptor.writeScence[0].setBufferNode(procModel.dNode[i].node[j].descriptorSet, procDescriptor.bufferInfo[0].getNode(procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)));
-					procDescriptor.writeScence[1].setBufferNode(procModel.dNode[i].node[j].descriptorSet, procDescriptor.bufferInfo[1].getNode(procModel.dNode[i].lightUniform.buffer, sizeof(procModel.dNode[i].lightUbo)));
-					procDescriptor.writeScence[2].setImageNode(procModel.dNode[i].node[j].descriptorSet, procDescriptor.imageInfo[0].getNode(procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view));
-
-					std::array<VkWriteDescriptorSet, 3> tempWrite{ 
-						procDescriptor.writeScence[0].node,
-						procDescriptor.writeScence[1].node,
-						procDescriptor.writeScence[2].node 
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
+					std::array<VkWriteDescriptorSet, 3> tempWrite{
+						procDescriptor.getWrite(0, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)),
+						procDescriptor.getWrite(1, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].lightUniform.buffer, sizeof(procModel.dNode[i].lightUbo)),
+						procDescriptor.getWrite(2, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view)
 					};
 
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -267,13 +271,10 @@ private:
 		}
 
 		//skybox
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo.node, &skybox.descriptorSet) == VK_SUCCESS) {
-			procDescriptor.writeScence[0].setBufferNode(skybox.descriptorSet, procDescriptor.bufferInfo[0].getNode(skybox.uniform.buffer, sizeof(skybox.ubo)));
-			procDescriptor.writeScence[1].setBufferNode(skybox.descriptorSet, procDescriptor.bufferInfo[1].getNode(skybox.lightUniform.buffer, sizeof(skybox.lightUbo)));
-
-			std::array<VkWriteDescriptorSet, 2> tempWrite{ 
-				procDescriptor.writeScence[0].node,
-				procDescriptor.writeScence[1].node 
+		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &skybox.descriptorSet) == VK_SUCCESS) {
+			std::array<VkWriteDescriptorSet, 2> tempWrite{
+				procDescriptor.getWrite(0, skybox.descriptorSet, skybox.uniform.buffer, sizeof(skybox.ubo)),
+				procDescriptor.getWrite(1, skybox.descriptorSet, skybox.lightUniform.buffer, sizeof(skybox.lightUbo))
 			};
 
 			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -284,12 +285,11 @@ private:
 		}
 
 		//mine
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo.node, &mine.descriptorSet) == VK_SUCCESS) {
-			procDescriptor.writeScence[0].setBufferNode(mine.descriptorSet, procDescriptor.bufferInfo[0].getNode(mine.uniform.buffer, sizeof(mine.ubo)));
-
-			std::array<VkWriteDescriptorSet, 1> tempWrite{ 
-				procDescriptor.writeScence[0].node
+		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &mine.descriptorSet) == VK_SUCCESS) {
+			std::array<VkWriteDescriptorSet, 1> tempWrite{
+				procDescriptor.getWrite(0, mine.descriptorSet, mine.uniform.buffer, sizeof(mine.ubo)),
 			};
+
 
 			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 		}
@@ -298,18 +298,27 @@ private:
 			throw;
 		}
 
+		//osMirror
+		bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror);
+		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osMirror.descriptorSet) == VK_SUCCESS) {
+			std::array<VkWriteDescriptorSet, 3> tempWrite{
+				procDescriptor.getWrite(0, osMirror.descriptorSet, osMirror.uniform.buffer, sizeof(osMirror.ubo)),
+				procDescriptor.getWrite(1, osMirror.descriptorSet, osMirror.lightUniform.buffer, sizeof(osMirror.lightUbo)),
+				procDescriptor.getWrite(2, osMirror.descriptorSet, procSampler.node[osMirror.samplerId], osMirrorFrameNode.osView.view)
+			};
 
-
-		/*配置offScreen描述符*/
-		procDescriptor.allocInfo.setNode(procDescriptor.offScreen.pool, &procDescriptor.offScreen.layout);
-		bufferStruct::osFramebufferNode& frameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
+			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+		}
+		else {
+			Log::printError(__FILE__, __LINE__, "osMirror分配描述符集失败");
+			throw;
+		}
 
 		//osScence
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo.node, &osScence.descriptorSet) == VK_SUCCESS) {
-			procDescriptor.writeOffScreen.setImageNode(osScence.descriptorSet, procDescriptor.imageInfo[0].getNode(procSampler.node[osScence.samplerId], frameNode.osView.view));
-
-			std::array<VkWriteDescriptorSet, 1> tempWrite{ 
-				procDescriptor.writeOffScreen.node
+		bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
+		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osScence.descriptorSet) == VK_SUCCESS) {
+			std::array<VkWriteDescriptorSet, 1> tempWrite{
+				procDescriptor.getWrite(2, osScence.descriptorSet, procSampler.node[osScence.samplerId], osScenceFrameNode.osView.view)
 			};
 
 			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -322,14 +331,12 @@ private:
 
 
 		/*配置uiText描述符*/
-		procDescriptor.allocInfo.setNode(procDescriptor.uiText.pool, &procDescriptor.uiText.layout);
+		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::uiText);
 
 		//uiText
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo.node, &uiText.descriptorSet) == VK_SUCCESS) {
-			procDescriptor.writeUIText.setImageNode(uiText.descriptorSet, procDescriptor.imageInfo[0].getNode(procSampler.node[uiText.samplerId], uiText.texture.view));
-
-			std::array<VkWriteDescriptorSet, 1> tempWrite{ 
-				procDescriptor.writeUIText.node
+		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &uiText.descriptorSet) == VK_SUCCESS) {
+			std::array<VkWriteDescriptorSet, 1> tempWrite{
+				procDescriptor.getWrite(0, uiText.descriptorSet, procSampler.node[uiText.samplerId], uiText.texture.view)
 			};
 
 			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -381,12 +388,12 @@ private:
 		//mine
 		mine.ubo.proj = proj;
 
-		//osScence
-		osScence.ubo.proj = proj;
-		osScence.lightUbo.gLightColor	= lightInfo::gLightColor;
-		osScence.lightUbo.diffuseScale  = lightInfo::diffuseScale;
-		osScence.lightUbo.gLightDir		= lightInfo::gLightDir;
-		osScence.lightUbo.specularScale = lightInfo::specularScale;
+		//osMirror
+		osMirror.ubo.proj = proj;
+		osMirror.lightUbo.gLightColor	= lightInfo::gLightColor;
+		osMirror.lightUbo.diffuseScale  = lightInfo::diffuseScale;
+		osMirror.lightUbo.gLightDir		= lightInfo::gLightDir;
+		osMirror.lightUbo.specularScale = lightInfo::specularScale;
 	}
 
 
@@ -1118,19 +1125,13 @@ public:
 		pipelineLayoutInfo.pPushConstantRanges	  = 0;
 
 		//scence
-		pipelineLayoutInfo.pSetLayouts = &procDescriptor.scence.layout;
+		pipelineLayoutInfo.pSetLayouts = &procDescriptor.node[bufferEnum::procDescriptorId::scence].layout;
 		if (vkCreatePipelineLayout(Device.device, &pipelineLayoutInfo, nullptr, &pipelineLayout.scence) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "scence管线布局创建失败");
 		}
 
-		//offScreen
-		pipelineLayoutInfo.pSetLayouts = &procDescriptor.offScreen.layout;
-		if (vkCreatePipelineLayout(Device.device, &pipelineLayoutInfo, nullptr, &pipelineLayout.offScreen) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "offScreen管线布局创建失败");
-		}
-
 		//uiText
-		pipelineLayoutInfo.pSetLayouts = &procDescriptor.uiText.layout;
+		pipelineLayoutInfo.pSetLayouts = &procDescriptor.node[bufferEnum::procDescriptorId::uiText].layout;
 		if (vkCreatePipelineLayout(Device.device, &pipelineLayoutInfo, nullptr, &pipelineLayout.uiText) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "uiText管线布局创建失败");
 		}
@@ -1167,68 +1168,77 @@ public:
 		uiText.endTextUpdate(Device.allocator);
 	}
 
-	void createCommandBuffer(int threadID, pipelineList::procPipelineNode& procPipeline) {
-		if (vkAllocateCommandBuffers(Device.device, &command.allocInfo, command.commandBuffer[threadID].data()) != VK_SUCCESS) {
+	void createCommandBuffer(int threadId, pipelineList::procPipelineNode& procPipeline) {
+		if (vkAllocateCommandBuffers(Device.device, &command.allocInfo, command.commandBuffer[threadId].data()) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "基础命令缓冲创建失败");
 			throw;
 		}
 
-		for (int frameID = 0; frameID < command.commandBuffer[threadID].size(); frameID++) {
+		for (int frameId = 0; frameId < command.commandBuffer[threadId].size(); frameId++) {
 			//开始渲染
-			command.beginCommandBuffer(threadID, frameID);
+			command.beginCommandBuffer(threadId, frameId);
 
 
-			//离屏渲染
-			vkCmdBeginRenderPass(command.commandBuffer[threadID][frameID], &procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-			//terrain
-			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-					command.createScenceCommandBuffer(threadID, frameID, procPipeline.terrain.pipeline, procPipeline.terrain.pipelineLayout, terrain.descriptorSet, terrain.vertex[threadID][layer].buffer, terrain.index[threadID][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
-				}
-			}
+			/*osMirror*/
+			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osMirror].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			//model-sNode
 			for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-				command.createScenceCommandBuffer(threadID, frameID, procPipeline.model.pipeline, procPipeline.model.pipelineLayout, procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.model.pipeline, procPipeline.model.pipelineLayout, procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
 			}
 
 			//model-dNode
 			for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
 				for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
-					command.createScenceCommandBuffer(threadID, frameID, procPipeline.model.pipeline, procPipeline.model.pipelineLayout, procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.model.pipeline, procPipeline.model.pipelineLayout, procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+				}
+			}
+
+			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+
+
+			/*osScence*/
+			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+			//terrain
+			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+				if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.terrain.pipeline, procPipeline.terrain.pipelineLayout, terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
 				}
 			}
 
 			//skybox
-			command.createScenceCommandBuffer(threadID, frameID, procPipeline.skybox.pipeline, procPipeline.skybox.pipelineLayout, skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.skybox.pipeline, procPipeline.skybox.pipelineLayout, skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
 
 			//mine
-			command.createScenceCommandBuffer(threadID, frameID, procPipeline.mine.pipeline, procPipeline.mine.pipelineLayout, mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.mine.pipeline, procPipeline.mine.pipelineLayout, mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
+
+			//osMirror
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.osMirror.pipeline, procPipeline.osMirror.pipelineLayout, osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
 
 			//uiText
-			command.createUITextCommandBuffer(threadID, frameID, procPipeline.uiText.pipeline, procPipeline.uiText.pipelineLayout, uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
+			command.createUITextCommandBuffer(threadId, frameId, procPipeline.uiText.pipeline, procPipeline.uiText.pipelineLayout, uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
 
-			vkCmdEndRenderPass(command.commandBuffer[threadID][frameID]);
+			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 
 
-			//交换链渲染
-			procRenderPass.node[bufferEnum::procRenderId::scScence].setScFramebuffer(frameID);
-			vkCmdBeginRenderPass(command.commandBuffer[threadID][frameID], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+			/*scScence*/
+			procRenderPass.node[bufferEnum::procRenderId::scScence].setScFramebuffer(frameId);
+			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			//osScence
-			command.createScenceCommandBuffer(threadID, frameID, procPipeline.osScence.pipeline, procPipeline.osScence.pipelineLayout, osScence.descriptorSet, osScence.vertex.buffer, osScence.index.buffer, (uint32_t)osScenceVertex::indexs.size());
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.osScence.pipeline, procPipeline.osScence.pipelineLayout, osScence.descriptorSet, osScence.vertex.buffer, osScence.index.buffer, (uint32_t)osScenceVertex::indexs.size());
 
-			vkCmdEndRenderPass(command.commandBuffer[threadID][frameID]);
+			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 
 
 			//结束渲染
-			command.endCommandBuffer(threadID, frameID);
+			command.endCommandBuffer(threadId, frameId);
 		}
 	}
 
 	bool drawFrame() {
-		return InitSwapchain.drawFrame(command.commandBuffer[command.currentThreadID]);
+		return InitSwapchain.drawFrame(command.commandBuffer[command.currentThreadId]);
 	}
 
 
@@ -1365,22 +1375,23 @@ public:
 			createMapMemory(mine.uniform.bufferMemory, &mine.ubo, sizeof(mine.ubo));
 		}
 
-		//osScence
+		//osMirror
 		{
-			osScence.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(0));
-			osScence.ubo.modelTI			= glm::transpose(glm::inverse(osScence.ubo.model));
-			osScence.ubo.view				= camera.view;
-			osScence.lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			osScence.lightUbo.currentHour	= currentHour;
-			osScence.lightUbo.ambientScale	= lightInfo::ambientScale;
-			osScence.lightUbo.gLightPos		= offsetPos;
-			osScence.lightUbo.flashPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			osScence.lightUbo.flashDir		= camera.front;
-			osScence.lightUbo.flashCutOff	= glm::cos(glm::radians(12.5f));
-			osScence.lightUbo.outerCutOff	= glm::cos(glm::radians(14.5f));
+			osMirror.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(-16.0f, 16.0f, -16.0f));
+			osMirror.ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(32.0f));
+			osMirror.ubo.modelTI			= glm::transpose(glm::inverse(osMirror.ubo.model));
+			osMirror.ubo.view				= camera.view;
+			osMirror.lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			osMirror.lightUbo.currentHour	= currentHour;
+			osMirror.lightUbo.ambientScale	= lightInfo::ambientScale;
+			osMirror.lightUbo.gLightPos		= offsetPos;
+			osMirror.lightUbo.flashPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			osMirror.lightUbo.flashDir		= camera.front;
+			osMirror.lightUbo.flashCutOff	= glm::cos(glm::radians(12.5f));
+			osMirror.lightUbo.outerCutOff	= glm::cos(glm::radians(14.5f));
 
-			createMapMemory(osScence.uniform.bufferMemory, &osScence.ubo, sizeof(osScence.ubo));
-			createMapMemory(osScence.lightUniform.bufferMemory, &osScence.lightUbo, sizeof(osScence.lightUbo));
+			createMapMemory(osMirror.uniform.bufferMemory, &osMirror.ubo, sizeof(osMirror.ubo));
+			createMapMemory(osMirror.lightUniform.bufferMemory, &osMirror.lightUbo, sizeof(osMirror.lightUbo));
 		}
 
 		//showUIText
@@ -1398,17 +1409,31 @@ public:
 
 	void recreateSwapChain() {
 		InitSwapchain.recreateSwapChain();
-
-		createScResource();
 		createOsResource();
+		createScResource();
 		procRenderPass.recreateSwapChain(InitSwapchain.scExtent, Device.device);
 
 		//重建离屏描述符，因为交换链重建后osView也得重建
-		procDescriptor.allocInfo.setNode(procDescriptor.offScreen.pool, &procDescriptor.offScreen.layout);
-		bufferStruct::osFramebufferNode& frameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
-		procDescriptor.writeOffScreen.setImageNode(osScence.descriptorSet, procDescriptor.imageInfo[0].getNode(procSampler.node[osScence.samplerId], frameNode.osView.view));
-		std::array<VkWriteDescriptorSet, 1> tempWrite{ procDescriptor.writeOffScreen.node };
-		vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+		//osMirror
+		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scence);
+		{
+			bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror);
+			std::array<VkWriteDescriptorSet, 3> osMirrorWrite{
+				procDescriptor.getWrite(0, osMirror.descriptorSet, osMirror.uniform.buffer, sizeof(osMirror.ubo)),
+				procDescriptor.getWrite(1, osMirror.descriptorSet, osMirror.lightUniform.buffer, sizeof(osMirror.lightUbo)),
+				procDescriptor.getWrite(2, osMirror.descriptorSet, procSampler.node[osMirror.samplerId], osMirrorFrameNode.osView.view)
+			};
+			vkUpdateDescriptorSets(Device.device, uint32_t(osMirrorWrite.size()), osMirrorWrite.data(), 0, nullptr);
+		}
+
+		//osScence
+		{
+			bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
+			std::array<VkWriteDescriptorSet, 1> osScenceWrite{
+				procDescriptor.getWrite(2, osScence.descriptorSet, procSampler.node[osScence.samplerId], osScenceFrameNode.osView.view)
+			};
+			vkUpdateDescriptorSets(Device.device, uint32_t(osScenceWrite.size()), osScenceWrite.data(), 0, nullptr);
+		}
 	}
 
 private:

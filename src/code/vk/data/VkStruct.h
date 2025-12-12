@@ -247,16 +247,11 @@ namespace swapStruct {
 }
 
 namespace bufferStruct {
-    struct descriptorNode {
-        VkDescriptorPool pool;
-        VkDescriptorSetLayout layout;       //在图形管线中绑定资源（如统一缓冲区、图像、采样器等）到着色器中使用
-    };
-
     struct commandNode {
         VkCommandPool commandPool;
         std::vector<VkCommandBuffer> commandBuffer[bufferInfo::commandThreadSize];     //使用双重命令缓冲防止更新区块卡顿
 
-        int currentThreadID = 0;						                                //当前地形线程命令缓冲区id
+        int currentThreadId = 0;						                                //当前地形线程命令缓冲区id
         uint32_t processingThreadSize = 1;                                              //背后线程数量,避免上个线程没结束就开启新线程
 
         VkCommandBufferAllocateInfo allocInfo{};
@@ -482,7 +477,7 @@ namespace bufferStruct {
         }
     };
 
-    struct dynamicModelListNode {
+    struct dynamicModelSubNode {
         bufferNode vertex;
         bufferNode index;
 
@@ -509,7 +504,7 @@ namespace bufferStruct {
 
     struct dynamicModelNode {
         std::string modelFile;
-        std::vector<dynamicModelListNode> node;
+        std::vector<dynamicModelSubNode> node;
 
         bufferNode lightUniform;
         lightUBO lightUbo;
@@ -580,18 +575,43 @@ namespace bufferStruct {
         }
     };
 
-    struct osScenceBufferNode {
+    struct osMirrorBufferNode {
         bufferNode vertex;
         bufferNode index;
 
-        int samplerId;                          //采样器
+        int samplerId;                         
 
-        bufferNode uniform;                     //统一缓冲
+        bufferNode uniform;
         baseUBO ubo;
         bufferNode lightUniform;
         lightUBO lightUbo;
 
-        VkDescriptorSet descriptorSet;          //描述符
+        VkDescriptorSet descriptorSet;
+
+
+
+        osMirrorBufferNode(int tempSamplerId) {
+            samplerId = tempSamplerId;
+        }
+
+        osMirrorBufferNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
+            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+
+            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
+        }
+    };
+
+    struct osScenceBufferNode {
+        bufferNode vertex;
+        bufferNode index;
+
+        int samplerId;
+
+        VkDescriptorSet descriptorSet;
 
 
 
@@ -604,9 +624,6 @@ namespace bufferStruct {
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
             vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
-
-            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
-            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };
 
@@ -1019,94 +1036,116 @@ namespace bufferStruct {
         }
     };
 
-    //createDescriptorSetLayout
-    struct descriptorLayoutNode {
-        VkDescriptorSetLayoutBinding node{};
 
-        descriptorLayoutNode(uint32_t binding, VkDescriptorType descriptorType, VkShaderStageFlags stageFlags) {
-            node.descriptorCount    = 1;
-            node.pImmutableSamplers = nullptr;
 
-            node.binding            = binding;
-            node.descriptorType     = descriptorType;
-            node.stageFlags         = stageFlags;
+    struct descriptorConfigNode {
+        VkDescriptorPoolSize         pool{};
+        VkDescriptorSetLayoutBinding layout{};
+        VkWriteDescriptorSet         write{};
+
+
+
+        descriptorConfigNode(uint32_t id, VkDescriptorType type, VkShaderStageFlags stage, uint32_t count) {
+            pool.type = type;
+            pool.descriptorCount = count;
+
+            layout.descriptorCount = 1;
+            layout.pImmutableSamplers = nullptr;
+            layout.binding = id;
+            layout.descriptorType = type;
+            layout.stageFlags = stage;
+
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstArrayElement = 0;
+            write.descriptorCount = 1;
+            write.dstBinding = id;
+            write.descriptorType = type;
+
+            bufferInfo.offset = 0;
+            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         }
 
-        descriptorLayoutNode() = delete;
+        descriptorConfigNode() = delete;
+
+        const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkBuffer& buffer, const VkDeviceSize& range) {
+            bufferInfo.buffer = buffer;
+            bufferInfo.range = range;
+
+            write.dstSet = dstSet;
+            write.pBufferInfo = &bufferInfo;
+
+            return write;
+        }
+
+        const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkSampler& sampler, const VkImageView& imageView) {
+            imageInfo.sampler = sampler;
+            imageInfo.imageView = imageView;
+
+            write.dstSet = dstSet;
+            write.pImageInfo = &imageInfo;
+
+            return write;
+        }
+
+    private:
+        VkDescriptorBufferInfo bufferInfo{};
+        VkDescriptorImageInfo imageInfo{};
     };
 
-    //createDescriptorSet
-    struct descriptorBufferNode {
-        VkDescriptorBufferInfo node{};
+    struct descriptorNode {
+        std::vector<bufferStruct::descriptorConfigNode> config;
 
-        descriptorBufferNode() {
-            node.offset = 0;
+        VkDescriptorPool pool;          //描述符池
+        VkDescriptorSetLayout layout;   //描述符布局
+
+
+
+        void createDescriptorNode(const VkDevice& device) {
+            createPool(device);
+            createLayout(device);
         }
 
-        VkDescriptorBufferInfo* getNode(const VkBuffer& buffer, const VkDeviceSize& range) {
-            node.buffer = buffer;
-            node.range  = range;
-
-            return &node;
-        }
-    };
-
-    struct descriptorImageNode {
-        VkDescriptorImageInfo node{};
-
-        descriptorImageNode() {
-            node.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        void clear(const VkDevice& device) {
+            vkDestroyDescriptorPool(device, pool, nullptr);
+            vkDestroyDescriptorSetLayout(device, layout, nullptr);
         }
 
-        VkDescriptorImageInfo* getNode(const VkSampler& sampler, const VkImageView& imageView) {
-            node.sampler   = sampler;
-            node.imageView = imageView;
+    private:
+        void createPool(const VkDevice& device) {
+            std::vector<VkDescriptorPoolSize> poolSize{};
+            for (const auto& i : config) {
+                poolSize.push_back(i.pool);
+            }
 
-            return &node;
-        }
-    };
+            VkDescriptorPoolCreateInfo poolInfo{
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                .maxSets = config[0].pool.descriptorCount,
+                .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
+                .pPoolSizes = poolSize.data()
+            };
 
-    struct descriptorAllocateNode {
-        VkDescriptorSetAllocateInfo node{};
-
-        descriptorAllocateNode() {
-            node.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            node.pNext              = nullptr;
-            node.descriptorSetCount = 1;
-        }
-
-        void setNode(const VkDescriptorPool& descriptorPool, const VkDescriptorSetLayout* pSetLayouts) {
-            node.descriptorPool = descriptorPool;
-            node.pSetLayouts    = pSetLayouts;
-        }
-    };
-
-    struct writeDescriptorNode {
-        VkWriteDescriptorSet node{};        //一定要初始化，不然报错
-
-        writeDescriptorNode(uint32_t dstBinding, VkDescriptorType descriptorType) {
-            node.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            node.dstArrayElement = 0;
-            node.descriptorCount = 1;
-
-            node.dstBinding      = dstBinding;
-            node.descriptorType  = descriptorType;
+            if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "描述符池创建失败");
+            }
         }
 
-        writeDescriptorNode() = delete;
+        void createLayout(const VkDevice& device) {
+            std::vector<VkDescriptorSetLayoutBinding> layoutBinding{};
+            for (const auto& i : config) {
+                layoutBinding.push_back(i.layout);
+            }
 
-        void setBufferNode(const VkDescriptorSet& dstSet, const VkDescriptorBufferInfo* pBufferInfo) {
-            node.dstSet      = dstSet;
-            node.pBufferInfo = pBufferInfo;
+            VkDescriptorSetLayoutCreateInfo layoutInfo{
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                .pNext = nullptr,
+                .bindingCount = static_cast<uint32_t>(layoutBinding.size()),
+                .pBindings = layoutBinding.data()
+            };
 
-            node.pImageInfo  = nullptr;      //清理pImageInfo
-        }
-
-        void setImageNode(const VkDescriptorSet& dstSet, const VkDescriptorImageInfo* pImageInfo) {
-            node.dstSet      = dstSet;
-            node.pImageInfo  = pImageInfo;
-
-            node.pBufferInfo = nullptr;     //清理pBufferInfo
+            if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
+                throw;
+            }
         }
     };
 }

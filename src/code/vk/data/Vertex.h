@@ -221,7 +221,57 @@ namespace mineVertex {
     };
 }
 
-//离屏渲染
+//osMirror
+namespace osMirrorVertex {
+    struct vertexNode {
+        glm::vec3 position;
+
+        static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
+            std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
+            bindingDescription[0].binding   = 0;
+            bindingDescription[0].stride    = sizeof(vertexNode);
+            bindingDescription[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+            return bindingDescription;
+        }
+
+        static std::array<VkVertexInputAttributeDescription, 1> getAttributeDescriptions() {
+            std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions = {};
+
+            attributeDescriptions[0].binding  = 0;
+            attributeDescriptions[0].location = 0;
+            attributeDescriptions[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[0].offset   = offsetof(vertexNode, position);
+
+            return attributeDescriptions;
+        }
+    };
+
+    //顶点数组
+    std::vector<vertexNode> vertexs = {
+        {vertexInfo::vertexID[0]},
+        {vertexInfo::vertexID[1]},
+        {vertexInfo::vertexID[2]},
+        {vertexInfo::vertexID[3]},
+
+        {vertexInfo::vertexID[4]},
+        {vertexInfo::vertexID[5]},
+        {vertexInfo::vertexID[6]},
+        {vertexInfo::vertexID[7]}
+    };
+
+    //索引数组 面
+    std::vector<uint32_t> indexs = {
+        5,4,1,1,4,0,
+        2,3,6,6,3,7,
+        0,4,3,3,4,7,
+        5,1,6,6,1,2,
+        4,5,7,7,5,6,
+        1,0,2,2,0,3
+    };
+}
+
+//osScence
 namespace osScenceVertex {
     struct vertexNode {
         glm::vec2 position;     //坐标
