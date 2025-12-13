@@ -4,22 +4,22 @@
 
 namespace bufferEnum {
     namespace textAlignId {
-        enum Type {
-            alignLeft,
-            alignCenter,
-            alignRight
+        enum type {
+            left,
+            center,
+            right
         };
     }
 
-    namespace frameNodeType {
-        enum {
+    namespace frameNodeId {
+        enum type {
             sc,	        //交换链
             os	        //离屏
         };
     }
 
     namespace procRenderId {
-        enum {
+        enum type {
             osMirror,   //离屏镜面
             osScence,	//离屏场景，所有渲染结果先集中到此，最后统一提交到交换链场景
             scScence,	//交换链场景
@@ -29,7 +29,7 @@ namespace bufferEnum {
     }
 
     namespace procDescriptorId {
-        enum {
+        enum type {
             scence,     //场景描述符
             uiText,     //文本描述符
 
@@ -38,7 +38,7 @@ namespace bufferEnum {
     }
 
     namespace procSamplerId {
-        enum {
+        enum type {
             terrain,    //地形采样器
             sModelN,    //静态模型邻近采样器
             sModelL,    //静态模型线性采样器
@@ -52,7 +52,7 @@ namespace bufferEnum {
     }
 
     namespace procStaticModelId {
-        enum {
+        enum type {
             temple,		//神庙
 
             count
@@ -60,7 +60,7 @@ namespace bufferEnum {
     }
 
     namespace procDynamicModelId {
-        enum {
+        enum type {
             droid,		//机器人
 
             count
@@ -70,7 +70,7 @@ namespace bufferEnum {
 
 namespace pipelineEnum {
     namespace procPipelineId {
-        enum {
+        enum type {
             terrain,    //地形
             model,      //模型
             skybox,     //天空盒

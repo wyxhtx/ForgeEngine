@@ -60,13 +60,13 @@ private:
 	bufferList::procDescriptorNode	procDescriptor{ Device.device };
 	bufferList::procSamplerNode		procSampler;
 
-	bufferStruct::terrainBufferNode  terrain{ bufferEnum::procSamplerId::terrain };
-	bufferList::procModelNode		 procModel{};
-	bufferStruct::skyboxBufferNode	 skybox;
-	bufferStruct::baseBufferNode	 mine;
-	bufferStruct::osMirrorBufferNode osMirror{ bufferEnum::procSamplerId::offScreen };
-	bufferStruct::osScenceBufferNode osScence{ bufferEnum::procSamplerId::offScreen };
-	bufferStruct::uiTextBufferNode	 uiText{ bufferEnum::procSamplerId::uiText };
+	bufferStruct::terrainBufferNode  terrain	{ pipelineEnum::procPipelineId::terrain,  bufferEnum::procSamplerId::terrain };
+	bufferList::procModelNode		 procModel	{ pipelineEnum::procPipelineId::model	  };
+	bufferStruct::skyboxBufferNode	 skybox		{ pipelineEnum::procPipelineId::skybox	  };
+	bufferStruct::mineBufferNode	 mine		{ pipelineEnum::procPipelineId::mine	  };
+	bufferStruct::osMirrorBufferNode osMirror	{ pipelineEnum::procPipelineId::osMirror, bufferEnum::procSamplerId::offScreen };
+	bufferStruct::osScenceBufferNode osScence	{ pipelineEnum::procPipelineId::osScence, bufferEnum::procSamplerId::offScreen };
+	bufferStruct::uiTextBufferNode	 uiText		{ pipelineEnum::procPipelineId::uiText,   bufferEnum::procSamplerId::uiText };
 
 
 
@@ -1127,22 +1127,22 @@ public:
 		//世界坐标
 		oss << std::fixed << std::setprecision(0);	//设置输出流的格式,不保留小数
 		oss << "worldpos:  " << "x:" << std::setw(8) << std::left << showUIText.pos.x << "y:" << std::setw(8) << std::left << showUIText.pos.y << " z:" << std::setw(8) << std::left << showUIText.pos.z;
-		uiText.addText(oss.str(), width, height, bufferEnum::textAlignId::alignLeft);
+		uiText.addText(oss.str(), width, height, bufferEnum::textAlignId::left);
 		oss.str("");
 
 		//区块坐标
 		oss << "chunkpos:  " << "x:" << std::setw(8) << std::left << showUIText.chunkPos.x << "y:" << std::setw(8) << std::left << showUIText.chunkPos.y << " z:" << std::setw(8) << std::left << showUIText.chunkPos.z;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::alignLeft);
+		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::left);
 		oss.str("");
 
 		//选择框坐标
 		oss << "mineboxpos:" << "x:" << std::setw(8) << std::left << showUIText.minepos.x << "y:" << std::setw(8) << std::left << showUIText.minepos.y << " z:" << std::setw(8) << std::left << showUIText.minepos.z;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::alignLeft);
+		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::left);
 		oss.str("");
 
 		//帧率
 		oss << "fps:       " << std::setw(8) << std::left << fps;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::alignLeft);
+		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::left);
 		oss.str("");
 
 		uiText.endTextUpdate(Device.allocator);
@@ -1164,13 +1164,13 @@ public:
 
 			//model-sNode
 			for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::model].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::model].pipeLayoutId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
 			}
 
 			//model-dNode
 			for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
 				for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
-					command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::model].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::model].pipeLayoutId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
 				}
 			}
 
@@ -1183,21 +1183,21 @@ public:
 			//terrain
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
 				if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-					command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::terrain].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::terrain].pipeLayoutId), terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(terrain.pipeId), procPipeline.getPipeLayout(terrain.pipeId), terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
 				}
 			}
 			
 			//skybox
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::skybox].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::skybox].pipeLayoutId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
 			
 			//mine
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::mine].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::mine].pipeLayoutId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(mine.pipeId), procPipeline.getPipeLayout(mine.pipeId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
 			
 			//osMirror
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::osMirror].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::osMirror].pipeLayoutId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
 
 			//uiText
-			command.createUITextCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::uiText].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::uiText].pipeLayoutId), uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
+			command.createUITextCommandBuffer(threadId, frameId, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
 
 			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 
@@ -1207,7 +1207,7 @@ public:
 			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			//osScence
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.node[pipelineEnum::procPipelineId::osScence].pipeline, getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::osScence].pipeLayoutId), osScence.descriptorSet, osScence.vertex.buffer, osScence.index.buffer, (uint32_t)osScenceVertex::indexs.size());
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, osScence.vertex.buffer, osScence.index.buffer, (uint32_t)osScenceVertex::indexs.size());
 
 			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 
@@ -1460,7 +1460,11 @@ private:
 	}
 
 public:
-	const VkRenderPass& getRender(int renderId) {
+	bufferList::procDescriptorNode& getDst() {
+		return procDescriptor;
+	}
+
+	const VkRenderPass& getRender(bufferEnum::procRenderId::type renderId) {
 		return procRenderPass.node[renderId].render;
 	}
 
@@ -1470,10 +1474,5 @@ public:
 
 	const VkSampleCountFlagBits& getMsaaSamples() {
 		return InitSwapchain.msaaSamples;
-	}
-
-	//todo 看看能不能优化？
-	const VkPipelineLayout& getPipeLayout(int pipeLayoutId) {
-		return procDescriptor.node[pipeLayoutId].pipeLayout;
 	}
 };

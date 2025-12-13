@@ -5,7 +5,8 @@
 class Pipeline {
 public:
 	Pipeline(Device& Device) : Device{ Device } {
-		createGraphicsPipeline();
+		procPipeline.createPipeLayout(Device.device, InitBuffer.getDst().node);
+		createPipeline();
 
 		InitBuffer.drawUIText(0);	//不在createCommandBuffers前初始化就不能显示UIText
 		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadId, procPipeline);
@@ -39,7 +40,7 @@ private:
 	
 
 	//创建图形管线
-	void createGraphicsPipeline() {
+	void createPipeline() {
 		std::array<VkPipelineShaderStageCreateInfo, 2> shaderStage{};						//加载着色器
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};								//配置顶点输入
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};								//配置输入装配
@@ -144,7 +145,6 @@ private:
 
 		//terrain
 		{
-			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::terrain].pipeLayoutId);
 			procPipeline.createPipeline<terrainVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::terrain, shaderStage, vertexInputInfo, pipelineInfo);
 		}
 
@@ -152,7 +152,6 @@ private:
 		{
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osMirror);
 
-			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::model].pipeLayoutId);
 			procPipeline.createPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::model, shaderStage, vertexInputInfo, pipelineInfo);
 
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
@@ -167,7 +166,6 @@ private:
 
 			pipelineInfo.pDepthStencilState = &tempDepthStencil;
 
-			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::skybox].pipeLayoutId);
 			procPipeline.createPipeline<skyboxVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::skybox, shaderStage, vertexInputInfo, pipelineInfo);
 
 			pipelineInfo.pDepthStencilState = &depthStencil;
@@ -195,10 +193,8 @@ private:
 			pipelineInfo.pInputAssemblyState = &tempInputAssembly;
 			pipelineInfo.pRasterizationState = &tempRasterizer;
 
-			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::mine].pipeLayoutId);
 			procPipeline.createPipeline<mineVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::mine, shaderStage, vertexInputInfo, pipelineInfo);
 
-			
 			colorBlending.pAttachments		 = &colorBlendAttachment;
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
 			pipelineInfo.pRasterizationState = &rasterizer;
@@ -206,16 +202,13 @@ private:
 
 		//osMirror
 		{
-			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::osMirror].pipeLayoutId);
 			procPipeline.createPipeline<osMirrorVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osMirror, shaderStage, vertexInputInfo, pipelineInfo);
-
 		}
 
 		//osScence
 		{
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::scScence);
 
-			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::osScence].pipeLayoutId);
 			procPipeline.createPipeline<osScenceVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osScence, shaderStage, vertexInputInfo, pipelineInfo);
 
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
@@ -248,9 +241,7 @@ private:
 			pipelineInfo.pRasterizationState = &tempRasterizer;
 			pipelineInfo.pDepthStencilState  = &tempDepthStencil;
 
-			pipelineInfo.layout = InitBuffer.getPipeLayout(procPipeline.node[pipelineEnum::procPipelineId::uiText].pipeLayoutId);
 			procPipeline.createPipeline<uiTextVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::uiText, shaderStage, vertexInputInfo, pipelineInfo);
-
 
 			colorBlending.pAttachments		 = &colorBlendAttachment;
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
@@ -371,7 +362,7 @@ private:
 		procPipeline.cleanupSwapChain(Device.device);
 
 		InitBuffer.recreateSwapChain();
-		createGraphicsPipeline();
+		createPipeline();
 
 		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadId, procPipeline);
 	}

@@ -9,9 +9,9 @@ namespace bufferList {
 
 
         procRenderNode() {
-            node[bufferEnum::procRenderId::osMirror].createRenderNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeType::os);
-            node[bufferEnum::procRenderId::osScence].createRenderNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeType::os);
-            node[bufferEnum::procRenderId::scScence].createRenderNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeType::sc);
+            node[bufferEnum::procRenderId::osMirror].createRenderNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os);
+            node[bufferEnum::procRenderId::osScence].createRenderNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os);
+            node[bufferEnum::procRenderId::scScence].createRenderNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::sc);
         };
 
         void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
@@ -20,16 +20,16 @@ namespace bufferList {
             }
         }
 
-        bufferStruct::scFramebufferNode& getScFramebufferNode(int procRenderId) {
-            if (node[procRenderId].frameNodeType != bufferEnum::frameNodeType::sc) {
+        bufferStruct::scFramebufferNode& getScFramebufferNode(bufferEnum::procRenderId::type procRenderId) {
+            if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::sc) {
                 Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
             }
 
             return *node[procRenderId].scPtr;
         }
 
-        bufferStruct::osFramebufferNode& getOsFramebufferNode(int procRenderId) {
-            if (node[procRenderId].frameNodeType != bufferEnum::frameNodeType::os) {
+        bufferStruct::osFramebufferNode& getOsFramebufferNode(bufferEnum::procRenderId::type procRenderId) {
+            if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::os) {
                 Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
             }
 
@@ -57,7 +57,7 @@ namespace bufferList {
 
     struct procDescriptorNode {
         VkDescriptorSetAllocateInfo allocInfo{};
-        int nodeId = bufferEnum::procDescriptorId::count + 1;   //用于简化getWrite
+        bufferEnum::procDescriptorId::type nodeId;
 
         std::array<bufferStruct::descriptorNode, bufferEnum::procDescriptorId::count> node{};
 
@@ -86,7 +86,7 @@ namespace bufferList {
             }
         }
 
-        void setAllocInfo(int id) {
+        void setAllocInfo(bufferEnum::procDescriptorId::type id) {
             allocInfo.descriptorPool = node[id].pool;
             allocInfo.pSetLayouts    = &node[id].layout;
 
@@ -214,9 +214,11 @@ namespace bufferList {
         uint32_t sModelMip = 0;                  //在创建texture时赋值
         uint32_t dModelMip = 0;                  //在创建texture时赋值
 
+        pipelineEnum::procPipelineId::type pipeId;
 
 
-        procModelNode() {
+
+        procModelNode(pipelineEnum::procPipelineId::type pId) {
             sNode[bufferEnum::procStaticModelId::temple].create(fileInfo::model::temple, fileInfo::image::temple, bufferEnum::procSamplerId::sModelN);
 
             dNode[bufferEnum::procDynamicModelId::droid].create(fileInfo::model::droid, { fileInfo::image::droidBody,fileInfo::image::droidHead,fileInfo::image::droidMisc }, bufferEnum::procSamplerId::dModelL);
@@ -227,7 +229,11 @@ namespace bufferList {
                 modelVertex::dVertexs[i].resize(dNode[i].node.size());
                 modelVertex::dIndexs[i].resize(dNode[i].node.size());
             }
+
+            pipeId = pId;
         }
+
+        procModelNode() = delete;
 
         void getMaxModelMip() {
             std::vector<uint32_t> sMaxMip;
@@ -257,6 +263,7 @@ namespace bufferList {
 
 namespace pipelineList {
     struct procPipelineNode {
+        std::array<pipelineStruct::pipeLayoutNode, bufferEnum::procDescriptorId::count> nodeLayout{};
         std::array<pipelineStruct::pipelineNode, pipelineEnum::procPipelineId::count> node{};
 
 
@@ -271,8 +278,14 @@ namespace pipelineList {
             node[pipelineEnum::procPipelineId::uiText]  .createPipelineNode(bufferEnum::procDescriptorId::uiText, fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag);
         }
 
+        void createPipeLayout(const VkDevice& device, std::array<bufferStruct::descriptorNode, bufferEnum::procDescriptorId::count>& dstNode) {
+            for (size_t i = 0; i < bufferEnum::procDescriptorId::count; i++) {
+                nodeLayout[i].createPipeLayoutNode(device, dstNode[i].layout);
+            }
+        }
+
         template<typename VertexType>
-        void createPipeline(const VkDevice& device, int id, std::array<VkPipelineShaderStageCreateInfo, 2>& shader, VkPipelineVertexInputStateCreateInfo& input, VkGraphicsPipelineCreateInfo& pipelineInfo) {
+        void createPipeline(const VkDevice& device, pipelineEnum::procPipelineId::type id, std::array<VkPipelineShaderStageCreateInfo, 2>& shader, VkPipelineVertexInputStateCreateInfo& input, VkGraphicsPipelineCreateInfo& pipelineInfo) {
             shader[0] = loadShader(device, node[id].vertFile, VK_SHADER_STAGE_VERTEX_BIT);
             shader[1] = loadShader(device, node[id].fragFile, VK_SHADER_STAGE_FRAGMENT_BIT);
             
@@ -283,6 +296,8 @@ namespace pipelineList {
             input.vertexAttributeDescriptionCount = uint32_t(attribute.size());
             input.pVertexBindingDescriptions      = binding.data();
             input.pVertexAttributeDescriptions    = attribute.data();
+
+            pipelineInfo.layout = getPipeLayout(id);
 
             if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineInfo, nullptr, &node[id].pipeline) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "管线创建失败");
@@ -297,6 +312,10 @@ namespace pipelineList {
         }
 
         void clear(const VkDevice& device) {
+            for (size_t i = 0; i < bufferEnum::procDescriptorId::count; i++) {
+                nodeLayout[i].clear(device);
+            }
+
             for (int i = 0; i < pipelineEnum::procPipelineId::count; i++) {
                 node[i].clear(device);
             }
@@ -368,6 +387,15 @@ namespace pipelineList {
             file.close();
 
             return buffer;
+        }
+
+    public:
+        VkPipelineLayout& getPipeLayout(pipelineEnum::procPipelineId::type id) {
+            return nodeLayout[node[id].pipeLayoutId].pipeLayout;
+        }
+
+        VkPipeline& getPipeline(pipelineEnum::procPipelineId::type id) {
+            return node[id].pipeline;
         }
     };
 }

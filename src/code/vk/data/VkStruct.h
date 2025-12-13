@@ -394,7 +394,7 @@ namespace bufferStruct {
         imageNode specular;
 
         //纹理参数
-        int samplerId;
+        bufferEnum::procSamplerId::type samplerId;
         uint32_t arrayLayer;
         uint32_t mipLevel = 1;
 
@@ -407,14 +407,18 @@ namespace bufferStruct {
         //描述符缓冲
         VkDescriptorSet descriptorSet;
 
+        //管线索引
+        pipelineEnum::procPipelineId::type pipeId;
 
 
-        terrainBufferNode(int tempSamplerId) {
+
+        terrainBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type tempSamplerId) {
             textureFile = fileInfo::image::cube;
             specularFile = fileInfo::image::cubeSpecular;
             arrayLayer = textureInfo::arrayLayer;
 
             samplerId = tempSamplerId;
+            pipeId = pId;
         }
 
         terrainBufferNode() = delete;
@@ -447,7 +451,7 @@ namespace bufferStruct {
         const char* textureFile;
         imageNode texture;
 
-        int samplerId;
+        bufferEnum::procSamplerId::type samplerId;
         uint32_t mipLevel;                  //在创建texture时赋值
 
         bufferNode uniform;
@@ -459,7 +463,7 @@ namespace bufferStruct {
 
 
 
-        void create(const std::string tempModelFile, const char* tempTextureFile, int tempSamplerId) {
+        void create(const std::string tempModelFile, const char* tempTextureFile, bufferEnum::procSamplerId::type tempSamplerId) {
             modelFile = tempModelFile;
             textureFile = tempTextureFile;
             samplerId = tempSamplerId;
@@ -509,12 +513,12 @@ namespace bufferStruct {
         bufferNode lightUniform;
         lightUBO lightUbo;
 
-        int samplerId;
+        bufferEnum::procSamplerId::type samplerId;
         uint32_t mipLevel;
 
 
 
-        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, int tempSamplerId) {
+        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, bufferEnum::procSamplerId::type tempSamplerId) {
             modelFile = tempModelFile;
 
             node.resize(tempTextureFile.size());
@@ -545,7 +549,15 @@ namespace bufferStruct {
 
         VkDescriptorSet descriptorSet;
 
+        pipelineEnum::procPipelineId::type pipeId;
 
+
+
+        skyboxBufferNode(pipelineEnum::procPipelineId::type pId) {
+            pipeId = pId;
+        }
+
+        skyboxBufferNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
@@ -556,7 +568,7 @@ namespace bufferStruct {
         }
     };
 
-    struct baseBufferNode {
+    struct mineBufferNode {
         bufferNode vertex;
         bufferNode index;
 
@@ -565,7 +577,15 @@ namespace bufferStruct {
 
         VkDescriptorSet descriptorSet;
 
+        pipelineEnum::procPipelineId::type pipeId;
 
+
+
+        mineBufferNode(pipelineEnum::procPipelineId::type pId) {
+            pipeId = pId;
+        }
+
+        mineBufferNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
@@ -579,7 +599,7 @@ namespace bufferStruct {
         bufferNode vertex;
         bufferNode index;
 
-        int samplerId;                         
+        bufferEnum::procSamplerId::type samplerId;
 
         bufferNode uniform;
         baseUBO ubo;
@@ -588,10 +608,13 @@ namespace bufferStruct {
 
         VkDescriptorSet descriptorSet;
 
+        pipelineEnum::procPipelineId::type pipeId;
 
 
-        osMirrorBufferNode(int tempSamplerId) {
+
+        osMirrorBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type tempSamplerId) {
             samplerId = tempSamplerId;
+            pipeId = pId;
         }
 
         osMirrorBufferNode() = delete;
@@ -609,14 +632,17 @@ namespace bufferStruct {
         bufferNode vertex;
         bufferNode index;
 
-        int samplerId;
+        bufferEnum::procSamplerId::type samplerId;
 
         VkDescriptorSet descriptorSet;
 
+        pipelineEnum::procPipelineId::type pipeId;
 
 
-        osScenceBufferNode(int tempSamplerId) {
+
+        osScenceBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type tempSamplerId) {
             samplerId = tempSamplerId;
+            pipeId = pId;
         }
 
         osScenceBufferNode() = delete;
@@ -634,14 +660,17 @@ namespace bufferStruct {
         stb_fontchar* stbFontData = new stb_fontchar[STB_FONT_consolas_24_latin1_NUM_CHARS];    //字符数据
         glm::vec4* mapped = nullptr;
         uint32_t numLetters;
-        int samplerId;
+        bufferEnum::procSamplerId::type samplerId;
 
         VkDescriptorSet descriptorSet;
 
+        pipelineEnum::procPipelineId::type pipeId;
 
 
-        uiTextBufferNode(int tempSamplerId) {
+
+        uiTextBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type tempSamplerId) {
             samplerId = tempSamplerId;
+            pipeId = pId;
         }
 
         uiTextBufferNode() = delete;
@@ -651,7 +680,7 @@ namespace bufferStruct {
             numLetters = 0;
         }
 
-        void addText(std::string texts, float x, float y, bufferEnum::textAlignId::Type align) {
+        void addText(std::string texts, float x, float y, bufferEnum::textAlignId::type align) {
             // 字符的起始索引
             const uint32_t firstChar = STB_FONT_consolas_24_latin1_FIRST_CHAR;
 
@@ -672,13 +701,13 @@ namespace bufferStruct {
 
             // 根据对齐方式调整x坐标
             switch (align) {
-            case bufferEnum::textAlignId::alignRight:
+            case bufferEnum::textAlignId::right:
                 x -= textWidth;
                 break;
-            case bufferEnum::textAlignId::alignCenter:
+            case bufferEnum::textAlignId::center:
                 x -= textWidth / 2.0f;
                 break;
-            case bufferEnum::textAlignId::alignLeft:
+            case bufferEnum::textAlignId::left:
                 break;
             }
 
@@ -787,7 +816,7 @@ namespace bufferStruct {
         std::array<VkClearValue, 2> clearValue;
         VkRenderPass render;                        //指定渲染过程中，所绑定帧缓冲的参数（格式、内存布局）及各个渲染步骤之间的关系
 
-        int frameNodeType;
+        bufferEnum::frameNodeId::type frameNodeType;
         std::variant<scFramebufferNode, osFramebufferNode> frameNode;
         scFramebufferNode* scPtr = nullptr;
         osFramebufferNode* osPtr = nullptr;
@@ -796,7 +825,7 @@ namespace bufferStruct {
 
 
 
-        void createRenderNode(const VkClearColorValue& tempColor, const VkClearDepthStencilValue& tempDepthStencil, int tempFrameNodeType) {
+        void createRenderNode(const VkClearColorValue& tempColor, const VkClearDepthStencilValue& tempDepthStencil, bufferEnum::frameNodeId::type tempFrameNodeType) {
             clearValue[0].color        = tempColor;
             clearValue[1].depthStencil = tempDepthStencil;
 
@@ -809,11 +838,11 @@ namespace bufferStruct {
 
             frameNodeType = tempFrameNodeType;
 
-            if (tempFrameNodeType == bufferEnum::frameNodeType::sc) {
+            if (tempFrameNodeType == bufferEnum::frameNodeId::sc) {
                 frameNode = scFramebufferNode{};
                 scPtr = &std::get<bufferStruct::scFramebufferNode>(frameNode);
             }
-            else if(tempFrameNodeType == bufferEnum::frameNodeType::os){
+            else if(tempFrameNodeType == bufferEnum::frameNodeId::os){
                 frameNode = osFramebufferNode{};
                 osPtr = &std::get<bufferStruct::osFramebufferNode>(frameNode);
             }
@@ -823,7 +852,7 @@ namespace bufferStruct {
         }
 
         void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
-            if (frameNodeType == bufferEnum::frameNodeType::sc) {
+            if (frameNodeType == bufferEnum::frameNodeId::sc) {
                 createScRenderPass(colorFormat, depthFormat, msaaSamples, device);
                 createScFramebuffer(scExtent, device);
             }
@@ -1021,7 +1050,7 @@ namespace bufferStruct {
         }
 
         void recreateSwapChain(const VkExtent2D& scExtent, const VkDevice& device) {
-            if (frameNodeType == bufferEnum::frameNodeType::sc) {
+            if (frameNodeType == bufferEnum::frameNodeId::sc) {
                 createScFramebuffer(scExtent, device);
             }
             else {
@@ -1097,20 +1126,17 @@ namespace bufferStruct {
 
         VkDescriptorPool pool{};            //描述符池
         VkDescriptorSetLayout layout{};     //描述符布局
-        VkPipelineLayout pipeLayout{};      //管线布局
 
 
 
         void createDescriptorNode(const VkDevice& device) {
             createPool(device);
             createLayout(device);
-            createPipelineLayout(device);
         }
 
         void clear(const VkDevice& device) {
             vkDestroyDescriptorPool(device, pool, nullptr);
             vkDestroyDescriptorSetLayout(device, layout, nullptr);
-            vkDestroyPipelineLayout(device, pipeLayout, nullptr);
         }
 
     private:
@@ -1150,8 +1176,16 @@ namespace bufferStruct {
                 throw;
             }
         }
+    };
+}
 
-        void createPipelineLayout(const VkDevice& device) {
+namespace pipelineStruct {
+    struct pipeLayoutNode {
+        VkPipelineLayout pipeLayout{};      //管线布局
+
+
+
+        void createPipeLayoutNode(const VkDevice& device, VkDescriptorSetLayout& layout) {
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
             pipelineLayoutInfo.setLayoutCount = 1;
@@ -1163,20 +1197,22 @@ namespace bufferStruct {
                 Log::printError(__FILE__, __LINE__, "管线布局创建失败");
             }
         }
-    };
-}
 
-namespace pipelineStruct {
+        void clear(const VkDevice& device) {
+            vkDestroyPipelineLayout(device, pipeLayout, nullptr);
+        }
+    };
+
     struct pipelineNode {
         std::string vertFile{};
         std::string fragFile{};
         
-        int pipeLayoutId;
+        bufferEnum::procDescriptorId::type pipeLayoutId;
         VkPipeline pipeline{};
 
 
 
-        void createPipelineNode(int id, std::string vert, std::string frag) {
+        void createPipelineNode(bufferEnum::procDescriptorId::type id, std::string vert, std::string frag) {
             pipeLayoutId = id;
             vertFile     = vert;
             fragFile     = frag;
