@@ -11,10 +11,13 @@ namespace bufferEnum {
         };
     }
 
+    //一种帧结点类型意味着一种renderPass，各种离屏可以共用同一种renderPass
     namespace frameNodeId {
         enum type {
+            os,	        //离屏
             sc,	        //交换链
-            os	        //离屏
+
+            count
         };
     }
 

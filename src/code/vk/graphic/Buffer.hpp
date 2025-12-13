@@ -1287,19 +1287,19 @@ public:
 		//model-sNode
 		{
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				procModel.sNode[i].ubo.model = glm::translate(glm::mat4(1), offsetPos);											//位移
-				procModel.sNode[i].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
-				procModel.sNode[i].ubo.modelTI = glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
+				procModel.sNode[i].ubo.model			 = glm::translate(glm::mat4(1), offsetPos);											//位移
+				procModel.sNode[i].ubo.model			 *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
+				procModel.sNode[i].ubo.modelTI			 = glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
 				//procModel.sNode[i].ubo.model			 *= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
-				procModel.sNode[i].ubo.view = camera.view;
-				procModel.sNode[i].lightUbo.viewPos = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-				procModel.sNode[i].lightUbo.currentHour = currentHour;
+				procModel.sNode[i].ubo.view				 = camera.view;
+				procModel.sNode[i].lightUbo.viewPos		 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+				procModel.sNode[i].lightUbo.currentHour  = currentHour;
 				procModel.sNode[i].lightUbo.ambientScale = lightInfo::ambientScale;//(sin(gameTime) + 1) / 2;
-				procModel.sNode[i].lightUbo.gLightPos = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
-				procModel.sNode[i].lightUbo.flashPos = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-				procModel.sNode[i].lightUbo.flashDir = camera.front;
-				procModel.sNode[i].lightUbo.flashCutOff = glm::cos(glm::radians(12.5f));
-				procModel.sNode[i].lightUbo.outerCutOff = glm::cos(glm::radians(14.5f));
+				procModel.sNode[i].lightUbo.gLightPos	 = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+				procModel.sNode[i].lightUbo.flashPos	 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+				procModel.sNode[i].lightUbo.flashDir	 = camera.front;
+				procModel.sNode[i].lightUbo.flashCutOff	 = glm::cos(glm::radians(12.5f));
+				procModel.sNode[i].lightUbo.outerCutOff	 = glm::cos(glm::radians(14.5f));
 			}
 
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
@@ -1312,20 +1312,20 @@ public:
 		{
 			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-					procModel.dNode[i].node[j].ubo.model = glm::translate(glm::mat4(1), offsetPos);											//位移
-					procModel.dNode[i].node[j].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
+					procModel.dNode[i].node[j].ubo.model   = glm::translate(glm::mat4(1), offsetPos);											//位移
+					procModel.dNode[i].node[j].ubo.model   *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
 					procModel.dNode[i].node[j].ubo.modelTI = glm::transpose(glm::inverse(procModel.dNode[i].node[j].ubo.model));
-					procModel.dNode[i].node[j].ubo.view = camera.view;
+					procModel.dNode[i].node[j].ubo.view    = camera.view;
 				}
 
-				procModel.dNode[i].lightUbo.viewPos = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-				procModel.dNode[i].lightUbo.currentHour = currentHour;
+				procModel.dNode[i].lightUbo.viewPos		 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+				procModel.dNode[i].lightUbo.currentHour  = currentHour;
 				procModel.dNode[i].lightUbo.ambientScale = lightInfo::ambientScale;//(sin(gameTime) + 1) / 2;
-				procModel.dNode[i].lightUbo.gLightPos = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
-				procModel.dNode[i].lightUbo.flashPos = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-				procModel.dNode[i].lightUbo.flashDir = camera.front;
-				procModel.dNode[i].lightUbo.flashCutOff = glm::cos(glm::radians(12.5f));
-				procModel.dNode[i].lightUbo.outerCutOff = glm::cos(glm::radians(14.5f));
+				procModel.dNode[i].lightUbo.gLightPos	 = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
+				procModel.dNode[i].lightUbo.flashPos	 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+				procModel.dNode[i].lightUbo.flashDir	 = camera.front;
+				procModel.dNode[i].lightUbo.flashCutOff  = glm::cos(glm::radians(12.5f));
+				procModel.dNode[i].lightUbo.outerCutOff  = glm::cos(glm::radians(14.5f));
 			}
 
 			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
@@ -1339,7 +1339,7 @@ public:
 
 		//skybox
 		{
-			skybox.ubo.view = camera.view;
+			skybox.ubo.view				= camera.view;
 			skybox.lightUbo.currentHour = currentHour;
 
 			createMapMemory(skybox.uniform.bufferMemory, &skybox.ubo, sizeof(skybox.ubo));
@@ -1350,14 +1350,14 @@ public:
 		{
 			mine.ubo.model = glm::translate(glm::mat4(1), box.minepos);
 			mine.ubo.model *= glm::scale(glm::mat4(1), glm::vec3(1) * box.isVisible);
-			mine.ubo.view = camera.view;
+			mine.ubo.view  = camera.view;
 
 			createMapMemory(mine.uniform.bufferMemory, &mine.ubo, sizeof(mine.ubo));
 		}
 
 		//osMirror
 		{
-			osMirror.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(-16.0f, 16.0f, -16.0f));
+			osMirror.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(-16.0f, 24.0f, -16.0f));
 			osMirror.ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(32.0f));
 			osMirror.ubo.modelTI			= glm::transpose(glm::inverse(osMirror.ubo.model));
 			osMirror.ubo.view				= camera.view;
@@ -1376,9 +1376,9 @@ public:
 
 		//showUIText
 		{
-			showUIText.pos = glm::floor(camera.pos);
+			showUIText.pos		= glm::floor(camera.pos);
 			showUIText.chunkPos = glm::floor(camera.pos / (double)plateInfo::chunkLength);
-			showUIText.minepos = box.minepos;
+			showUIText.minepos  = box.minepos;
 		}
 	}
 
@@ -1464,8 +1464,8 @@ public:
 		return procDescriptor;
 	}
 
-	const VkRenderPass& getRender(bufferEnum::procRenderId::type renderId) {
-		return procRenderPass.node[renderId].render;
+	const VkRenderPass& getRender(bufferEnum::frameNodeId::type id) {
+		return procRenderPass.nodePass[id].render;
 	}
 
 	const VkExtent2D& getScExtent() {

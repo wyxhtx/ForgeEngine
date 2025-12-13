@@ -813,61 +813,21 @@ namespace bufferStruct {
     };
 
     struct renderNode {
-        std::array<VkClearValue, 2> clearValue;
-        VkRenderPass render;                        //指定渲染过程中，所绑定帧缓冲的参数（格式、内存布局）及各个渲染步骤之间的关系
-
-        bufferEnum::frameNodeId::type frameNodeType;
-        std::variant<scFramebufferNode, osFramebufferNode> frameNode;
-        scFramebufferNode* scPtr = nullptr;
-        osFramebufferNode* osPtr = nullptr;
-
-        VkRenderPassBeginInfo renderInfo;
+        VkRenderPass render;
+        
 
 
-
-        void createRenderNode(const VkClearColorValue& tempColor, const VkClearDepthStencilValue& tempDepthStencil, bufferEnum::frameNodeId::type tempFrameNodeType) {
-            clearValue[0].color        = tempColor;
-            clearValue[1].depthStencil = tempDepthStencil;
-
-            renderInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderInfo.renderArea.offset = { 0, 0 };
-            renderInfo.clearValueCount   = static_cast<uint32_t>(clearValue.size());
-            renderInfo.pClearValues      = clearValue.data();
-
-
-
-            frameNodeType = tempFrameNodeType;
-
-            if (tempFrameNodeType == bufferEnum::frameNodeId::sc) {
-                frameNode = scFramebufferNode{};
-                scPtr = &std::get<bufferStruct::scFramebufferNode>(frameNode);
-            }
-            else if(tempFrameNodeType == bufferEnum::frameNodeId::os){
-                frameNode = osFramebufferNode{};
-                osPtr = &std::get<bufferStruct::osFramebufferNode>(frameNode);
-            }
-            else {
-                Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(tempFrameNodeType));
-            }
-        }
-
-        void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
-            if (frameNodeType == bufferEnum::frameNodeId::sc) {
+        void createRenderNode(int id, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
+            if (id == bufferEnum::frameNodeId::sc) {
                 createScRenderPass(colorFormat, depthFormat, msaaSamples, device);
-                createScFramebuffer(scExtent, device);
             }
             else {
                 createOsRenderPass(colorFormat, depthFormat, msaaSamples, device);
-                createOsFramebuffer(scExtent, device);
             }
-
-            renderInfo.renderPass = render;
-            renderInfo.renderArea.extent = scExtent;
         }
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+        void clear(const VkDevice& device) {
             vkDestroyRenderPass(device, render, nullptr);
-            std::visit([&device, &allocator](auto& node) {node.clear(device, allocator); }, frameNode);
         }
 
     private:
@@ -966,8 +926,96 @@ namespace bufferStruct {
             }
         }
 
+
+
+        void getAttachment(std::array<VkAttachmentDescription, 3>& attachment, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkImageLayout& finalLayout) {
+            //颜色附件描述
+            attachment[0].format           = colorFormat;									        //颜色附件格式
+            attachment[0].samples          = msaaSamples;									        //采样数-多重采样
+            attachment[0].loadOp           = VK_ATTACHMENT_LOAD_OP_CLEAR;						    //加载操作-清除
+            attachment[0].storeOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;					    //存储操作-不关心
+            attachment[0].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;					    //模板加载-不关心
+            attachment[0].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;					    //模板存储-不关心
+            attachment[0].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;						        //初始布局-未定义
+            attachment[0].finalLayout      = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;			    //最终布局-颜色附件
+            //深度附件描述
+            attachment[1].format           = depthFormat;									        //深度附件格式
+            attachment[1].samples          = msaaSamples;									        //采样数-多重采样
+            attachment[1].loadOp           = VK_ATTACHMENT_LOAD_OP_CLEAR;						    //加载操作-清除
+            attachment[1].storeOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;					    //存储操作-不关心
+            attachment[1].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;					    //模板加载-不关心
+            attachment[1].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;					    //模板存储-不关心
+            attachment[1].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;							    //初始布局-未定义
+            attachment[1].finalLayout      = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;      //最终布局-深度附件
+            //多重采样后的像素颜色值的解析或合并过程描述
+            attachment[2].format           = colorFormat;									        //解析附件格式
+            attachment[2].samples          = VK_SAMPLE_COUNT_1_BIT;                                 //采样数-单采样（将4个采样点合并为1个最终颜色值）
+            attachment[2].loadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;                       //加载操作-不关心
+            attachment[2].storeOp          = VK_ATTACHMENT_STORE_OP_STORE;                          //存储操作-存储
+            attachment[2].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;                       //模板加载-不关心
+            attachment[2].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;                      //模板存储-不关心
+            attachment[2].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;                             //初始布局-未定义
+            attachment[2].finalLayout      = finalLayout;                                           //最终布局
+        }
+    };
+
+    struct renderInfoNode {
+        std::array<VkClearValue, 2> clearValue;
+
+        bufferEnum::frameNodeId::type frameNodeType;
+        std::variant<scFramebufferNode, osFramebufferNode> frameNode;
+        scFramebufferNode* scPtr = nullptr;
+        osFramebufferNode* osPtr = nullptr;
+
+        VkRenderPassBeginInfo renderInfo;
+
+
+
+        void createRenderInfoNode(const VkClearColorValue& tempColor, const VkClearDepthStencilValue& tempDepthStencil, bufferEnum::frameNodeId::type tempFrameNodeType) {
+            clearValue[0].color        = tempColor;
+            clearValue[1].depthStencil = tempDepthStencil;
+
+            renderInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderInfo.renderArea.offset = { 0, 0 };
+            renderInfo.clearValueCount   = static_cast<uint32_t>(clearValue.size());
+            renderInfo.pClearValues      = clearValue.data();
+
+
+
+            frameNodeType = tempFrameNodeType;
+
+            if (tempFrameNodeType == bufferEnum::frameNodeId::sc) {
+                frameNode = scFramebufferNode{};
+                scPtr = &std::get<bufferStruct::scFramebufferNode>(frameNode);
+            }
+            else if(tempFrameNodeType == bufferEnum::frameNodeId::os){
+                frameNode = osFramebufferNode{};
+                osPtr = &std::get<bufferStruct::osFramebufferNode>(frameNode);
+            }
+            else {
+                Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(tempFrameNodeType));
+            }
+        }
+
+        void createRenderInfo(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
+            if (frameNodeType == bufferEnum::frameNodeId::sc) {
+                createScFramebuffer(scExtent, render, device);
+            }
+            else {
+                createOsFramebuffer(scExtent, render, device);
+            }
+
+            renderInfo.renderPass = render;
+            renderInfo.renderArea.extent = scExtent;
+        }
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            std::visit([&device, &allocator](auto& node) {node.clear(device, allocator); }, frameNode);
+        }
+
+    private:
         //创建交换链帧缓冲
-        void createScFramebuffer(const VkExtent2D& scExtent, const VkDevice& device) {
+        void createScFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
 	    	VkFramebufferCreateInfo framebufferInfo{};
 	    	framebufferInfo.sType	   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	    	framebufferInfo.renderPass = render;
@@ -991,7 +1039,7 @@ namespace bufferStruct {
 	    }
 
         //创建离屏帧缓冲
-        void createOsFramebuffer(const VkExtent2D& scExtent, const VkDevice& device) {
+        void createOsFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
             bufferStruct::osFramebufferNode& tempFrameNode = std::get<bufferStruct::osFramebufferNode>(frameNode);
             std::array<VkImageView, 3> attachments{ tempFrameNode.color.view,tempFrameNode.depth.view,tempFrameNode.osView.view };
 
@@ -1049,12 +1097,12 @@ namespace bufferStruct {
             std::visit([&device, &allocator](auto& node) {node.clear(device, allocator); }, frameNode);
         }
 
-        void recreateSwapChain(const VkExtent2D& scExtent, const VkDevice& device) {
+        void recreateSwapChain(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
             if (frameNodeType == bufferEnum::frameNodeId::sc) {
-                createScFramebuffer(scExtent, device);
+                createScFramebuffer(scExtent, render, device);
             }
             else {
-                createOsFramebuffer(scExtent, device);
+                createOsFramebuffer(scExtent, render, device);
             }
 
             renderInfo.renderArea.extent = scExtent;

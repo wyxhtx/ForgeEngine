@@ -137,7 +137,7 @@ private:
 			pipelineInfo.pDepthStencilState  = &depthStencil;
 			pipelineInfo.pColorBlendState	 = &colorBlending;
 			pipelineInfo.pDynamicState		 = nullptr;					
-			pipelineInfo.renderPass			 = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
+			pipelineInfo.renderPass			 = InitBuffer.getRender(bufferEnum::frameNodeId::os);
 			pipelineInfo.subpass			 = 0;
 			pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;		
 			pipelineInfo.basePipelineIndex	 = -1;
@@ -150,11 +150,7 @@ private:
 
 		//model
 		{
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osMirror);
-
 			procPipeline.createPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::model, shaderStage, vertexInputInfo, pipelineInfo);
-
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
 		}
 
 		//skybox
@@ -207,11 +203,11 @@ private:
 
 		//osScence
 		{
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::scScence);
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::sc);
 
 			procPipeline.createPipeline<osScenceVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osScence, shaderStage, vertexInputInfo, pipelineInfo);
 
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::procRenderId::osScence);
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::os);
 		}
 
 		//uiText

@@ -4,19 +4,24 @@
 
 namespace bufferList {
     struct procRenderNode {
-        std::array<bufferStruct::renderNode, bufferEnum::procRenderId::count> node{};
+        std::array<bufferStruct::renderNode, bufferEnum::frameNodeId::count> nodePass{};
+        std::array<bufferStruct::renderInfoNode, bufferEnum::procRenderId::count> node{};
 
 
 
         procRenderNode() {
-            node[bufferEnum::procRenderId::osMirror].createRenderNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os);
-            node[bufferEnum::procRenderId::osScence].createRenderNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os);
-            node[bufferEnum::procRenderId::scScence].createRenderNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::sc);
+            node[bufferEnum::procRenderId::osMirror].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os);
+            node[bufferEnum::procRenderId::osScence].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os);
+            node[bufferEnum::procRenderId::scScence].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::sc);
         };
 
         void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
+            for (int i = 0; i < bufferEnum::frameNodeId::count; i++) {
+                nodePass[i].createRenderNode(i, colorFormat, depthFormat, msaaSamples, device);
+            }
+
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].createRenderPassInfo(scExtent, colorFormat, depthFormat, msaaSamples, device);
+                node[i].createRenderInfo(scExtent, nodePass[node[i].frameNodeType].render, device);
             }
         }
 
@@ -44,11 +49,15 @@ namespace bufferList {
 
         void recreateSwapChain(const VkExtent2D& scExtent, const VkDevice& device) {
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].recreateSwapChain(scExtent, device);
+                node[i].recreateSwapChain(scExtent, nodePass[node[i].frameNodeType].render, device);
             }
         }
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            for (int i = 0; i < bufferEnum::frameNodeId::count; i++) {
+                nodePass[i].clear(device);
+            }
+
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
                 node[i].clear(device, allocator);
             }
