@@ -108,7 +108,7 @@ namespace bufferList {
             };
 
             node[bufferEnum::procDescriptorId::dsScence].config = {
-                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::dsScenceSize},         //∂•µ„π‚’’
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize},         //∆¨∂Œπ‚’’
                 {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize},         //∆¨∂Œ◊¯±Í
                 {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize},         //∆¨∂Œ∑®œﬂ
                 {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize}          //∆¨∂Œ∑¥…‰
@@ -308,7 +308,7 @@ namespace pipelineList {
 
         procPipelineNode() {
             node[pipelineEnum::procPipelineId::terrain] .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag);
-            node[pipelineEnum::procPipelineId::model]   .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred, fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag);
+            node[pipelineEnum::procPipelineId::model]   .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag);
             node[pipelineEnum::procPipelineId::skybox]  .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag);
             node[pipelineEnum::procPipelineId::mine]    .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::mineVert,     fileInfo::shader::mineFrag);
             node[pipelineEnum::procPipelineId::osMirror].createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag);

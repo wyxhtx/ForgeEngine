@@ -22,8 +22,9 @@ out gl_PerVertex {
 
 
 void main() {
-    gl_Position  = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
-    fragPosition = vec3( ubo.model * vec4(inPosition, 1.0));
-	fragTexCoord = inTexCoord;
-    fragNormal   = mat3(ubo.modelTI) * inNormal;
+    vec4 worldPos = ubo.model * vec4(inPosition, 1.0);
+    gl_Position = ubo.proj * ubo.view * worldPos;
+    fragPosition = worldPos.xyz;
+    fragTexCoord = inTexCoord;
+    fragNormal = normalize(mat3(ubo.modelTI) * inNormal);
 }

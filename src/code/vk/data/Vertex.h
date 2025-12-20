@@ -314,45 +314,13 @@ namespace osScenceVertex {
 //dsScence
 namespace dsScenceVertex {
     struct vertexNode {
-        glm::vec2 position;     //坐标
-        glm::vec2 texCoord;     //uv
-
-        static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
-            std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
-            bindingDescription[0].binding = 0;
-            bindingDescription[0].stride = sizeof(vertexNode);
-            bindingDescription[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-            return bindingDescription;
+        static std::vector<VkVertexInputBindingDescription> getBindingDescription() {
+            return {};
         }
 
-        static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-            std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
-
-            attributeDescriptions[0].binding = 0;
-            attributeDescriptions[0].location = 0;
-            attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-            attributeDescriptions[0].offset = offsetof(vertexNode, position);
-
-            attributeDescriptions[1].binding = 0;
-            attributeDescriptions[1].location = 1;
-            attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-            attributeDescriptions[1].offset = offsetof(vertexNode, texCoord);
-
-            return attributeDescriptions;
+        static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
+            return {};
         }
-    };
-
-    std::vector<vertexNode> vertexs = {
-        {{-1.0f, -1.0f}, {0.0f, 0.0f}},  // 左下
-        {{ 1.0f, -1.0f}, {1.0f, 0.0f}},  // 右下
-        {{ 1.0f,  1.0f}, {1.0f, 1.0f}},  // 右上
-        {{-1.0f,  1.0f}, {0.0f, 1.0f}}   // 左上
-    };
-
-    std::vector<uint32_t> indexs = {
-        2, 1, 0,
-        0, 3, 2
     };
 }
 

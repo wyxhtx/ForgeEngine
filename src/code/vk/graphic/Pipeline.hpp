@@ -150,23 +150,7 @@ private:
 
 		//model
 		{
-			pipelineInfo.renderPass				= InitBuffer.getRender(bufferEnum::frameNodeId::ds);
-			multisampling.rasterizationSamples	= VK_SAMPLE_COUNT_1_BIT;
-
-			std::array<VkPipelineColorBlendAttachmentState, 3> tempColorBlendAttachment{};
-			tempColorBlendAttachment[0] = colorBlendAttachment[0];
-			tempColorBlendAttachment[1] = colorBlendAttachment[0];
-			tempColorBlendAttachment[2] = colorBlendAttachment[0];
-
-			colorBlending.attachmentCount = static_cast<uint32_t>(tempColorBlendAttachment.size());
-			colorBlending.pAttachments = tempColorBlendAttachment.data();
-
 			procPipeline.createPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::model, shaderStage, vertexInputInfo, pipelineInfo);
-
-			colorBlending.attachmentCount		= static_cast<uint32_t>(colorBlendAttachment.size());
-			colorBlending.pAttachments			= colorBlendAttachment.data();
-			multisampling.rasterizationSamples	= InitBuffer.getMsaaSamples();
-			pipelineInfo.renderPass				= InitBuffer.getRender(bufferEnum::frameNodeId::os);
 		}
 
 		//skybox

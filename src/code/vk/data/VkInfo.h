@@ -94,8 +94,8 @@ namespace lightInfo {
 }
 
 namespace bufferInfo {
-    const uint32_t scenceForwardSize  = 5;      //scenceForward描述符池上限，terrain，skybox，mine，osMirror，osScence
-    const uint32_t scenceDeferredSize = 4;      //scenceDeferred描述符池上限，m_temple，m_droid*3
+    const uint32_t scenceForwardSize  = 9;      //scenceForward描述符池上限，terrain，m_temple，m_droid*3，skybox，mine，osMirror，osScence
+    const uint32_t scenceDeferredSize = 1;      //scenceDeferred描述符池上限
     const uint32_t dsScenceSize       = 1;      //dsScence描述符池上限，dsScence
     const uint32_t uiTextSize         = 1;      //uiText描述符池上限，uiText
 
@@ -113,8 +113,11 @@ namespace fileInfo {
         const std::string terrainVert = "src/shader/terrain/terrainVert.spv";
         const std::string terrainFrag = "src/shader/terrain/terrainFrag.spv";
 
-        const std::string pbrVert = "src/shader/model/pbrDeferredVert.spv";
-        const std::string pbrFrag = "src/shader/model/pbrDeferredFrag.spv";
+        const std::string pbrVert = "src/shader/model/pbrForwardVert.spv";
+        const std::string pbrFrag = "src/shader/model/pbrForwardFrag.spv";
+
+        //const std::string pbrVert = "src/shader/model/pbrDeferredVert.spv";
+        //const std::string pbrFrag = "src/shader/model/pbrDeferredFrag.spv";
 
         const std::string skyboxVert = "src/shader/skybox/skyboxVert.spv";
         const std::string skyboxFrag = "src/shader/skybox/skyboxFrag.spv";
