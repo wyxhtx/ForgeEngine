@@ -10,35 +10,50 @@ namespace bufferList {
 
 
         procRenderNode() {
-            node[bufferEnum::procRenderId::osMirror].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os);
-            node[bufferEnum::procRenderId::osScence].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os);
             node[bufferEnum::procRenderId::scScence].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::sc);
+            node[bufferEnum::procRenderId::osScence].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os);
+            node[bufferEnum::procRenderId::osMirror].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os);
+            node[bufferEnum::procRenderId::dsScence].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::ds);
         };
 
-        void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
+        void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& allocator) {
             for (int i = 0; i < bufferEnum::frameNodeId::count; i++) {
                 nodePass[i].createRenderNode(i, colorFormat, depthFormat, msaaSamples, device);
             }
 
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].createRenderInfo(scExtent, nodePass[node[i].frameNodeType].render, device);
+                node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
             }
         }
 
         bufferStruct::scFramebufferNode& getScFramebufferNode(bufferEnum::procRenderId::type procRenderId) {
-            if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::sc) {
-                Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
+            if (debugInfo::LogSwitch) {
+                if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::sc) {
+                    Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
+                }
             }
 
             return *node[procRenderId].scPtr;
         }
 
         bufferStruct::osFramebufferNode& getOsFramebufferNode(bufferEnum::procRenderId::type procRenderId) {
-            if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::os) {
-                Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
+            if (debugInfo::LogSwitch) {
+                if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::os) {
+                    Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
+                }
             }
 
             return *node[procRenderId].osPtr;
+        }
+
+        bufferStruct::dsFramebufferNode& getDsFramebufferNode(bufferEnum::procRenderId::type procRenderId) {
+            if (debugInfo::LogSwitch) {
+                if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::ds) {
+                    Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
+                }
+            }
+
+            return *node[procRenderId].dsPtr;
         }
 
         void cleanupSwapChain(const VkDevice& device, const VmaAllocator& allocator) {
@@ -47,9 +62,9 @@ namespace bufferList {
             }
         }
 
-        void recreateSwapChain(const VkExtent2D& scExtent, const VkDevice& device) {
+        void recreateSwapChain(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& allocator) {
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].recreateSwapChain(scExtent, nodePass[node[i].frameNodeType].render, device);
+                node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
             }
         }
 
@@ -79,15 +94,28 @@ namespace bufferList {
             allocInfo.descriptorSetCount = 1;
 
             //node
-            node[bufferEnum::procDescriptorId::scence].config = {
-                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::bufferScenceNodeSize},     //顶点模型缓冲区描述符
-                {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::bufferScenceNodeSize},     //片段光照缓冲区描述符
-                {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::bufferScenceNodeSize},     //片段纹理采样器描述符
-                {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::bufferScenceNodeSize}      //片段高光采样器描述符
+            node[bufferEnum::procDescriptorId::scenceForward].config = {
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::scenceForwardSize},    //顶点模型缓冲区描述符
+                {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceForwardSize},    //片段光照缓冲区描述符
+                {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceForwardSize},    //片段纹理采样器描述符
+                {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceForwardSize}     //片段高光采样器描述符
+            };
+
+            node[bufferEnum::procDescriptorId::scenceDeferred].config = {
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::scenceDeferredSize},   //顶点模型
+                {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceDeferredSize},   //片段纹理
+                {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceDeferredSize}    //片段法线
+            };
+
+            node[bufferEnum::procDescriptorId::dsScence].config = {
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::dsScenceSize},         //顶点光照
+                {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize},         //片段坐标
+                {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize},         //片段法线
+                {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize}          //片段反射
             };
 
             node[bufferEnum::procDescriptorId::uiText].config = {
-                {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::bufferUINodeSize}          //片段纹理采样器描述符
+                {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::uiTextSize}            //片段纹理采样器描述符
             };
 
             for (int i = 0; i < bufferEnum::procDescriptorId::count; i++) {
@@ -228,9 +256,10 @@ namespace bufferList {
 
 
         procModelNode(pipelineEnum::procPipelineId::type pId) {
-            sNode[bufferEnum::procStaticModelId::temple].create(fileInfo::model::temple, fileInfo::image::temple, bufferEnum::procSamplerId::sModelN);
+            //todo temple没有法线贴图，暂时拿fileInfo::image::temple凑数
+            sNode[bufferEnum::procStaticModelId::temple].create(fileInfo::model::temple, fileInfo::image::temple, fileInfo::image::temple, bufferEnum::procSamplerId::sModelN);
 
-            dNode[bufferEnum::procDynamicModelId::droid].create(fileInfo::model::droid, { fileInfo::image::droidBody,fileInfo::image::droidHead,fileInfo::image::droidMisc }, bufferEnum::procSamplerId::dModelL);
+            dNode[bufferEnum::procDynamicModelId::droid].create(fileInfo::model::droid, { fileInfo::image::droidBodyC,fileInfo::image::droidHeadC,fileInfo::image::droidMiscC }, { fileInfo::image::droidBodyN,fileInfo::image::droidHeadN,fileInfo::image::droidMiscN }, bufferEnum::procSamplerId::dModelL);
 
 
 
@@ -278,13 +307,14 @@ namespace pipelineList {
 
 
         procPipelineNode() {
-            node[pipelineEnum::procPipelineId::terrain] .createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag);
-            node[pipelineEnum::procPipelineId::model]   .createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag);
-            node[pipelineEnum::procPipelineId::skybox]  .createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag);
-            node[pipelineEnum::procPipelineId::mine]    .createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::mineVert,     fileInfo::shader::mineFrag);
-            node[pipelineEnum::procPipelineId::osMirror].createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag);
-            node[pipelineEnum::procPipelineId::osScence].createPipelineNode(bufferEnum::procDescriptorId::scence, fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag);
-            node[pipelineEnum::procPipelineId::uiText]  .createPipelineNode(bufferEnum::procDescriptorId::uiText, fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag);
+            node[pipelineEnum::procPipelineId::terrain] .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag);
+            node[pipelineEnum::procPipelineId::model]   .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred, fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag);
+            node[pipelineEnum::procPipelineId::skybox]  .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag);
+            node[pipelineEnum::procPipelineId::mine]    .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::mineVert,     fileInfo::shader::mineFrag);
+            node[pipelineEnum::procPipelineId::osMirror].createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag);
+            node[pipelineEnum::procPipelineId::osScence].createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag);
+            node[pipelineEnum::procPipelineId::dsScence].createPipelineNode(bufferEnum::procDescriptorId::dsScence,       fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag);
+            node[pipelineEnum::procPipelineId::uiText]  .createPipelineNode(bufferEnum::procDescriptorId::uiText,         fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag);
         }
 
         void createPipeLayout(const VkDevice& device, std::array<bufferStruct::descriptorNode, bufferEnum::procDescriptorId::count>& dstNode) {

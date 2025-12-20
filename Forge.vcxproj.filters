@@ -50,8 +50,8 @@
     </None>
     <None Include="src\shader_build\mine\mine.frag" />
     <None Include="src\shader_build\mine\mine.vert" />
-    <None Include="src\shader_build\model\pbr.frag" />
-    <None Include="src\shader_build\model\pbr.vert" />
+    <None Include="src\shader_build\model\pbrForward.frag" />
+    <None Include="src\shader_build\model\pbrForward.vert" />
     <None Include="src\shader_build\skybox\skybox.frag" />
     <None Include="src\shader_build\skybox\skybox.vert" />
     <None Include="src\shader_build\terrain\terrain.frag" />
@@ -62,8 +62,6 @@
       <Filter>资源文件</Filter>
     </None>
     <None Include="src\model\temple\scene.gltf" />
-    <None Include="src\shader\model\pbrFrag.spv" />
-    <None Include="src\shader\model\pbrVert.spv" />
     <None Include="src\model\droid\scene.bin">
       <Filter>资源文件</Filter>
     </None>
@@ -85,6 +83,17 @@
     <None Include="src\shader_build\osMirror\osMirror.frag" />
     <None Include="src\shader\osMirror\osMirrorFrag.spv" />
     <None Include="src\shader\osMirror\osMirrorVert.spv" />
+    <None Include="src\shader_build\dsScence\dsScence.vert" />
+    <None Include="src\shader_build\dsScence\dsScence.frag" />
+    <None Include="src\shader\model\pbrForwardFrag.spv" />
+    <None Include="src\shader\model\pbrForwardVert.spv" />
+    <None Include="src\shader_build\model\pbrDeferred.frag" />
+    <None Include="src\shader_build\model\pbrDeferred.vert" />
+    <None Include="src\shader\model\pbrDeferredFrag.spv" />
+    <None Include="src\shader\model\pbrDeferredVert.spv" />
+    <None Include="src\image\model\droid\Misc_normal.ktx2" />
+    <None Include="src\image\model\droid\Head_normal.ktx2" />
+    <None Include="src\image\model\droid\Body_normal.ktx2" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">
@@ -314,6 +323,15 @@
       <Filter>资源文件</Filter>
     </Image>
     <Image Include="src\image_build\model\droid\Misc_baseColor.jpeg">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="src\image_build\model\droid\Misc_normal.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="src\image_build\model\droid\Head_normal.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="src\image_build\model\droid\Body_normal.png">
       <Filter>资源文件</Filter>
     </Image>
   </ItemGroup>

@@ -309,6 +309,27 @@ namespace bufferStruct {
             vkCmdDrawIndexed(commandBuffer[threadID][frameID], indexSize, 1, 0, 0, 0);
         }
 
+        //全屏三角形
+        void createScenceCommandBuffer(int threadID, int frameID, const VkPipeline& pipeline, const VkPipelineLayout& pipelineLayout, const VkDescriptorSet& descriptorSet, const VkExtent2D& scExtent) {
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = (float)scExtent.width;
+            viewport.height = (float)scExtent.height;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+
+            VkRect2D scissor{};
+            scissor.offset = { 0, 0 };
+            scissor.extent = scExtent;
+
+            vkCmdBindPipeline(commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+            vkCmdSetViewport(commandBuffer[threadID][frameID], 0, 1, &viewport);
+            vkCmdSetScissor(commandBuffer[threadID][frameID], 0, 1, &scissor);
+            vkCmdBindDescriptorSets(commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+            vkCmdDraw(commandBuffer[threadID][frameID], 3, 1, 0, 0);
+        }
+
         void createUITextCommandBuffer(int threadID, int frameID, const VkPipeline& pipeline, const VkPipelineLayout& pipelineLayout, const VkDescriptorSet& descriptorSet, const VkBuffer& vertexBuffer, uint32_t numLetters) {
             vkCmdBindPipeline(commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
             vkCmdBindDescriptorSets(commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
@@ -450,6 +471,8 @@ namespace bufferStruct {
 
         const char* textureFile;
         imageNode texture;
+        const char* normalFile;
+        imageNode normal;
 
         bufferEnum::procSamplerId::type samplerId;
         uint32_t mipLevel;                  //在创建texture时赋值
@@ -463,10 +486,11 @@ namespace bufferStruct {
 
 
 
-        void create(const std::string tempModelFile, const char* tempTextureFile, bufferEnum::procSamplerId::type tempSamplerId) {
-            modelFile = tempModelFile;
+        void create(const std::string tempModelFile, const char* tempTextureFile, const char* tempNormalFile, bufferEnum::procSamplerId::type tempSamplerId) {
+            modelFile   = tempModelFile;
             textureFile = tempTextureFile;
-            samplerId = tempSamplerId;
+            normalFile  = tempNormalFile;
+            samplerId   = tempSamplerId;
         }
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
@@ -475,6 +499,9 @@ namespace bufferStruct {
 
             vmaDestroyImage(allocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
+
+            vmaDestroyImage(allocator, normal.image, normal.imageMemory);
+            vkDestroyImageView(device, normal.view, nullptr);
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
             vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
@@ -487,6 +514,8 @@ namespace bufferStruct {
 
         const char* textureFile;
         imageNode texture;
+        const char* normalFile;
+        imageNode normal;
 
         bufferNode uniform;
         baseUBO ubo;
@@ -501,6 +530,9 @@ namespace bufferStruct {
 
             vmaDestroyImage(allocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
+
+            vmaDestroyImage(allocator, normal.image, normal.imageMemory);
+            vkDestroyImageView(device, normal.view, nullptr);
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
         }
@@ -518,12 +550,13 @@ namespace bufferStruct {
 
 
 
-        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, bufferEnum::procSamplerId::type tempSamplerId) {
+        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, std::vector<const char*> tempNormalFile, bufferEnum::procSamplerId::type tempSamplerId) {
             modelFile = tempModelFile;
 
             node.resize(tempTextureFile.size());
             for (int i = 0; i < tempTextureFile.size(); i++) {
                 node[i].textureFile = tempTextureFile[i];
+                node[i].normalFile = tempNormalFile[i];
             }
 
             samplerId = tempSamplerId;
@@ -650,6 +683,36 @@ namespace bufferStruct {
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
             vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+        }
+    };
+
+    struct dsScenceBufferNode {
+        bufferNode vertex;
+        bufferNode index;
+
+        bufferEnum::procSamplerId::type samplerId;
+
+        bufferNode lightUniform;
+        lightUBO lightUbo;
+
+        VkDescriptorSet descriptorSet;
+
+        pipelineEnum::procPipelineId::type pipeId;
+
+
+
+        dsScenceBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type tempSamplerId) {
+            samplerId = tempSamplerId;
+            pipeId = pId;
+        }
+
+        dsScenceBufferNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
+            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+
+            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };
 
@@ -812,6 +875,33 @@ namespace bufferStruct {
         }
     };
 
+    struct dsFramebufferNode {
+        bufferStruct::imageNode position;  //位置附件（世界空间坐标）
+        bufferStruct::imageNode normal;    //法线附件（世界空间法线）
+        bufferStruct::imageNode albedo;    //反照率附件（颜色+高光系数）
+        bufferStruct::imageNode depth;     //深度附件
+
+        VkFramebuffer framebuffer;
+
+
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            vkDestroyImageView(device, position.view, nullptr);
+            vmaDestroyImage(allocator, position.image, position.imageMemory);
+
+            vkDestroyImageView(device, normal.view, nullptr);
+            vmaDestroyImage(allocator, normal.image, normal.imageMemory);
+
+            vkDestroyImageView(device, albedo.view, nullptr);
+            vmaDestroyImage(allocator, albedo.image, albedo.imageMemory);
+
+            vkDestroyImageView(device, depth.view, nullptr);
+            vmaDestroyImage(allocator, depth.image, depth.imageMemory);
+
+            vkDestroyFramebuffer(device, framebuffer, nullptr);
+        }
+    };
+
     struct renderNode {
         VkRenderPass render;
         
@@ -821,8 +911,14 @@ namespace bufferStruct {
             if (id == bufferEnum::frameNodeId::sc) {
                 createScRenderPass(colorFormat, depthFormat, msaaSamples, device);
             }
-            else {
+            else if (id == bufferEnum::frameNodeId::os) {
                 createOsRenderPass(colorFormat, depthFormat, msaaSamples, device);
+            }
+            else if (id == bufferEnum::frameNodeId::ds) {
+                createDsRenderPass(depthFormat, device);
+            }
+            else {
+                Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(id));
             }
         }
 
@@ -834,7 +930,7 @@ namespace bufferStruct {
         //创建交换链渲染通道
         void createScRenderPass(const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
             std::array<VkAttachmentDescription, 3> attachment{};                                                //附件描述
-            getAttachment(attachment, colorFormat, depthFormat, msaaSamples, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);  //最终布局-屏幕呈现
+            getForwardAttachment(attachment, colorFormat, depthFormat, msaaSamples, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);  //最终布局-屏幕呈现
 
             //子通道描述
             VkAttachmentReference colorReference = { 0,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };              //颜色附件引用
@@ -876,7 +972,7 @@ namespace bufferStruct {
         //创建离屏渲染通道
         void createOsRenderPass(const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
             std::array<VkAttachmentDescription, 3> attachment{};                                                        //附件描述
-            getAttachment(attachment, colorFormat, depthFormat, msaaSamples, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL); //最终布局-着色器只读
+            getForwardAttachment(attachment, colorFormat, depthFormat, msaaSamples, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL); //最终布局-着色器只读
 
             //附件引用
             VkAttachmentReference colorReference = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };				//颜色附件引用
@@ -926,9 +1022,67 @@ namespace bufferStruct {
             }
         }
 
+        //创建延迟着色渲染通道
+        void createDsRenderPass(const VkFormat& depthFormat, const VkDevice& device) {
+            std::array<VkAttachmentDescription, 4> attachment{};
+            getDeferredAttachment(attachment, depthFormat);
+
+            //颜色附件引用
+            std::array<VkAttachmentReference, 3> colorReferences{};
+            colorReferences[0] = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };  //位置
+            colorReferences[1] = { 1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };  //法线
+            colorReferences[2] = { 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };  //反照率
+
+            //深度附件引用
+            VkAttachmentReference depthReference = { 3, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+
+            //子通道描述
+            VkSubpassDescription subpass{};
+            subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            subpass.pColorAttachments       = colorReferences.data();
+            subpass.colorAttachmentCount    = static_cast<uint32_t>(colorReferences.size());
+            subpass.pDepthStencilAttachment = &depthReference;
+
+            //子通道依赖
+            std::array<VkSubpassDependency, 2> dependencies{};
+
+            //从外部到本子通道
+            dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
+            dependencies[0].dstSubpass      = 0;
+            dependencies[0].srcStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+            dependencies[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependencies[0].srcAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
+            dependencies[0].dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+            //从本子通道到外部
+            dependencies[1].srcSubpass      = 0;
+            dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
+            dependencies[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependencies[1].dstStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+            dependencies[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            dependencies[1].dstAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
+            dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+            VkRenderPassCreateInfo renderPassInfo{};
+            renderPassInfo.sType            = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+            renderPassInfo.attachmentCount  = static_cast<uint32_t>(attachment.size());
+            renderPassInfo.pAttachments     = attachment.data();
+            renderPassInfo.subpassCount     = 1;
+            renderPassInfo.pSubpasses       = &subpass;
+            renderPassInfo.dependencyCount  = static_cast<uint32_t>(dependencies.size());
+            renderPassInfo.pDependencies    = dependencies.data();
+
+            if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &render) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "延迟着色渲染通道创建失败");
+                throw;
+            }
+        }
 
 
-        void getAttachment(std::array<VkAttachmentDescription, 3>& attachment, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkImageLayout& finalLayout) {
+
+        //创建前向附件
+        void getForwardAttachment(std::array<VkAttachmentDescription, 3>& attachment, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkImageLayout& finalLayout) {
             //颜色附件描述
             attachment[0].format           = colorFormat;									        //颜色附件格式
             attachment[0].samples          = msaaSamples;									        //采样数-多重采样
@@ -957,52 +1111,126 @@ namespace bufferStruct {
             attachment[2].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;                             //初始布局-未定义
             attachment[2].finalLayout      = finalLayout;                                           //最终布局
         }
+
+        //创建延迟附件
+        void getDeferredAttachment(std::array<VkAttachmentDescription, 4>& attachment, const VkFormat& depthFormat) {
+            //位置附件(世界空间位置)
+            attachment[0].format            = VK_FORMAT_R16G16B16A16_SFLOAT;    //16位浮点格式
+            attachment[0].samples           = VK_SAMPLE_COUNT_1_BIT;
+            attachment[0].loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachment[0].storeOp           = VK_ATTACHMENT_STORE_OP_STORE;
+            attachment[0].stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachment[0].stencilStoreOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachment[0].initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
+            attachment[0].finalLayout       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            //法线附件(世界空间法线)
+            attachment[1].format            = VK_FORMAT_R16G16B16A16_SFLOAT;    //16位浮点格式
+            attachment[1].samples           = VK_SAMPLE_COUNT_1_BIT;
+            attachment[1].loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachment[1].storeOp           = VK_ATTACHMENT_STORE_OP_STORE;
+            attachment[1].stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachment[1].stencilStoreOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachment[1].initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
+            attachment[1].finalLayout       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            //反照率附件(颜色+高光)
+            attachment[2].format            = VK_FORMAT_R8G8B8A8_UNORM;         //8位无符号归一化
+            attachment[2].samples           = VK_SAMPLE_COUNT_1_BIT;
+            attachment[2].loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachment[2].storeOp           = VK_ATTACHMENT_STORE_OP_STORE;
+            attachment[2].stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachment[2].stencilStoreOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachment[2].initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
+            attachment[2].finalLayout       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            //深度附件
+            attachment[3].format            = depthFormat;
+            attachment[3].samples           = VK_SAMPLE_COUNT_1_BIT;
+            attachment[3].loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachment[3].storeOp           = VK_ATTACHMENT_STORE_OP_STORE;
+            attachment[3].stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachment[3].stencilStoreOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachment[3].initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
+            attachment[3].finalLayout       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        }
     };
 
     struct renderInfoNode {
-        std::array<VkClearValue, 2> clearValue;
+        std::array<VkClearValue, 2> clearValueForward;     //解析附件不需要清除值
+        std::array<VkClearValue, 4> clearValueDeferred;
 
         bufferEnum::frameNodeId::type frameNodeType;
-        std::variant<scFramebufferNode, osFramebufferNode> frameNode;
+        std::variant<scFramebufferNode, osFramebufferNode, dsFramebufferNode> frameNode;
         scFramebufferNode* scPtr = nullptr;
         osFramebufferNode* osPtr = nullptr;
+        dsFramebufferNode* dsPtr = nullptr;
 
         VkRenderPassBeginInfo renderInfo;
 
 
 
         void createRenderInfoNode(const VkClearColorValue& tempColor, const VkClearDepthStencilValue& tempDepthStencil, bufferEnum::frameNodeId::type tempFrameNodeType) {
-            clearValue[0].color        = tempColor;
-            clearValue[1].depthStencil = tempDepthStencil;
+            clearValueForward[0].color        = tempColor;
+            clearValueForward[1].depthStencil = tempDepthStencil;
+
+            clearValueDeferred[0].color        = tempColor;
+            clearValueDeferred[1].color        = tempColor;
+            clearValueDeferred[2].color        = tempColor;
+            clearValueDeferred[3].depthStencil = tempDepthStencil;
 
             renderInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             renderInfo.renderArea.offset = { 0, 0 };
-            renderInfo.clearValueCount   = static_cast<uint32_t>(clearValue.size());
-            renderInfo.pClearValues      = clearValue.data();
-
-
 
             frameNodeType = tempFrameNodeType;
 
             if (tempFrameNodeType == bufferEnum::frameNodeId::sc) {
                 frameNode = scFramebufferNode{};
                 scPtr = &std::get<bufferStruct::scFramebufferNode>(frameNode);
+
+                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueForward.size());
+                renderInfo.pClearValues = clearValueForward.data();
             }
             else if(tempFrameNodeType == bufferEnum::frameNodeId::os){
                 frameNode = osFramebufferNode{};
                 osPtr = &std::get<bufferStruct::osFramebufferNode>(frameNode);
+
+                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueForward.size());
+                renderInfo.pClearValues = clearValueForward.data();
+            }
+            else if (tempFrameNodeType == bufferEnum::frameNodeId::ds) {
+                frameNode = dsFramebufferNode{};
+                dsPtr = &std::get<bufferStruct::dsFramebufferNode>(frameNode);
+
+                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueDeferred.size());
+                renderInfo.pClearValues = clearValueDeferred.data();
             }
             else {
                 Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(tempFrameNodeType));
             }
         }
 
-        void createRenderInfo(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
+        void createRenderInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkRenderPass& render, const VkDevice& device, const VmaAllocator& allocator) {
             if (frameNodeType == bufferEnum::frameNodeId::sc) {
                 createScFramebuffer(scExtent, render, device);
             }
-            else {
+            else if (frameNodeType == bufferEnum::frameNodeId::os) {
+                createImageNode(osPtr->color, scExtent.width, scExtent.height, colorFormat, msaaSamples, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
+                createImageNode(osPtr->depth, scExtent.width, scExtent.height, depthFormat, msaaSamples, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
+                createImageNode(osPtr->osView, scExtent.width, scExtent.height, colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
+
                 createOsFramebuffer(scExtent, render, device);
+            }
+            else if (frameNodeType == bufferEnum::frameNodeId::ds) {
+                createImageNode(dsPtr->position, scExtent.width, scExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
+                createImageNode(dsPtr->normal,   scExtent.width, scExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
+                createImageNode(dsPtr->albedo,   scExtent.width, scExtent.height, VK_FORMAT_R8G8B8A8_UNORM,      VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
+                createImageNode(dsPtr->depth,    scExtent.width, scExtent.height, depthFormat,                   VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
+
+                createDsFramebuffer(scExtent, render, device);
+            }
+            else {
+                Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(frameNodeType));
             }
 
             renderInfo.renderPass = render;
@@ -1032,7 +1260,7 @@ namespace bufferStruct {
 	    		framebufferInfo.pAttachments	= attachments.data();
 
 	    		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer[i]) != VK_SUCCESS) {
-	    			Log::printError(__FILE__, __LINE__, "帧缓冲创建失败");
+	    			Log::printError(__FILE__, __LINE__, "交换链帧缓冲创建失败");
 	    			throw;
 	    		}
 	    	}
@@ -1053,59 +1281,82 @@ namespace bufferStruct {
 		    framebufferInfo.layers			= 1;											//层数
 
 		    if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
-		    	Log::printError(__FILE__, __LINE__, "帧缓冲创建失败");
+		    	Log::printError(__FILE__, __LINE__, "离屏帧缓冲创建失败");
 		    	throw;
 		    }
             
             renderInfo.framebuffer = tempFrameNode.framebuffer;
         }
-        	
 
+        //创建延迟着色帧缓冲
+        void createDsFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
+            bufferStruct::dsFramebufferNode& tempFrameNode = std::get<bufferStruct::dsFramebufferNode>(frameNode);
+            std::array<VkImageView, 4> attachments{ tempFrameNode.position.view, tempFrameNode.normal.view,tempFrameNode.albedo.view,tempFrameNode.depth.view };
 
-        void getAttachment(std::array<VkAttachmentDescription, 3>& attachment, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkImageLayout& finalLayout) {
-            //颜色附件描述
-            attachment[0].format           = colorFormat;									        //颜色附件格式
-            attachment[0].samples          = msaaSamples;									        //采样数-多重采样
-            attachment[0].loadOp           = VK_ATTACHMENT_LOAD_OP_CLEAR;						    //加载操作-清除
-            attachment[0].storeOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;					    //存储操作-不关心
-            attachment[0].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;					    //模板加载-不关心
-            attachment[0].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;					    //模板存储-不关心
-            attachment[0].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;						        //初始布局-未定义
-            attachment[0].finalLayout      = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;			    //最终布局-颜色附件
-            //深度附件描述
-            attachment[1].format           = depthFormat;									        //深度附件格式
-            attachment[1].samples          = msaaSamples;									        //采样数-多重采样
-            attachment[1].loadOp           = VK_ATTACHMENT_LOAD_OP_CLEAR;						    //加载操作-清除
-            attachment[1].storeOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;					    //存储操作-不关心
-            attachment[1].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;					    //模板加载-不关心
-            attachment[1].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;					    //模板存储-不关心
-            attachment[1].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;							    //初始布局-未定义
-            attachment[1].finalLayout      = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;      //最终布局-深度附件
-            //多重采样后的像素颜色值的解析或合并过程描述
-            attachment[2].format           = colorFormat;									        //解析附件格式
-            attachment[2].samples          = VK_SAMPLE_COUNT_1_BIT;                                 //采样数-单采样（将4个采样点合并为1个最终颜色值）
-            attachment[2].loadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;                       //加载操作-不关心
-            attachment[2].storeOp          = VK_ATTACHMENT_STORE_OP_STORE;                          //存储操作-存储
-            attachment[2].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;                       //模板加载-不关心
-            attachment[2].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;                      //模板存储-不关心
-            attachment[2].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;                             //初始布局-未定义
-            attachment[2].finalLayout      = finalLayout;                                           //最终布局
+            VkFramebufferCreateInfo framebufferInfo{};
+            framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass      = render;
+            framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+            framebufferInfo.pAttachments    = attachments.data();
+            framebufferInfo.width           = scExtent.width;
+            framebufferInfo.height          = scExtent.height;
+            framebufferInfo.layers          = 1;
+
+            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "延迟着色帧缓冲创建失败");
+                throw;
+            }
+
+            renderInfo.framebuffer = tempFrameNode.framebuffer;
         }
+        
 
+
+        void createImageNode(imageNode& image, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& allocator) {
+            VkImageCreateInfo imageInfo = {};
+            imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+            imageInfo.format        = format;
+            imageInfo.extent.width  = width;
+            imageInfo.extent.height = height;
+            imageInfo.extent.depth  = 1;
+            imageInfo.mipLevels     = 1;
+            imageInfo.arrayLayers   = 1;
+            imageInfo.samples       = numSamples;
+            imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageInfo.usage         = usage;
+            imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+
+            VmaAllocationCreateInfo allocInfo = {};
+            allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+            allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+            if (vmaCreateImage(allocator, &imageInfo, &allocInfo, &image.image, &image.imageMemory, nullptr) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "图像创建失败");
+                throw;
+            }
+
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image      = image.image;
+            viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format     = format;
+            viewInfo.subresourceRange.aspectMask     = aspectFlags;
+            viewInfo.subresourceRange.baseMipLevel   = 0;
+            viewInfo.subresourceRange.levelCount     = 1;
+            viewInfo.subresourceRange.baseArrayLayer = 0;
+            viewInfo.subresourceRange.layerCount     = 1;
+
+            if (vkCreateImageView(device, &viewInfo, nullptr, &image.view) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "图像视图创建失败");
+                throw;
+            }
+        }
+    
     public:
         void cleanupSwapChain(const VkDevice& device, const VmaAllocator& allocator) {
             std::visit([&device, &allocator](auto& node) {node.clear(device, allocator); }, frameNode);
-        }
-
-        void recreateSwapChain(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
-            if (frameNodeType == bufferEnum::frameNodeId::sc) {
-                createScFramebuffer(scExtent, render, device);
-            }
-            else {
-                createOsFramebuffer(scExtent, render, device);
-            }
-
-            renderInfo.renderArea.extent = scExtent;
         }
 
         void setScFramebuffer(int i) {

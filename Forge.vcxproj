@@ -170,10 +170,21 @@
     <None Include=".gitattributes" />
     <None Include=".gitignore" />
     <None Include="README.md" />
+    <None Include="src\image\model\droid\Body_normal.ktx2" />
+    <None Include="src\image\model\droid\Head_normal.ktx2" />
+    <None Include="src\image\model\droid\Misc_normal.ktx2" />
+    <None Include="src\shader\model\pbrDeferredFrag.spv" />
+    <None Include="src\shader\model\pbrDeferredVert.spv" />
+    <None Include="src\shader\model\pbrForwardFrag.spv" />
+    <None Include="src\shader\model\pbrForwardVert.spv" />
     <None Include="src\shader\osMirror\osMirrorFrag.spv" />
     <None Include="src\shader\osMirror\osMirrorVert.spv" />
     <None Include="src\shader\osScence\osScenceFrag.spv" />
     <None Include="src\shader\osScence\osScenceVert.spv" />
+    <None Include="src\shader_build\dsScence\dsScence.frag" />
+    <None Include="src\shader_build\dsScence\dsScence.vert" />
+    <None Include="src\shader_build\model\pbrDeferred.frag" />
+    <None Include="src\shader_build\model\pbrDeferred.vert" />
     <None Include="src\shader_build\model_gts.bat" />
     <None Include="src\image\model\droid\Body_baseColor.ktx2" />
     <None Include="src\image\model\droid\Head_baseColor.ktx2" />
@@ -191,14 +202,12 @@
     <None Include="src\model\droid\scene.gltf" />
     <None Include="src\model\temple\scene.bin" />
     <None Include="src\model\temple\scene.gltf" />
-    <None Include="src\shader\model\pbrFrag.spv" />
-    <None Include="src\shader\model\pbrVert.spv" />
     <None Include="src\shader_build\glsl_to_spirv.bat" />
     <None Include="src\shader_build\glslangValidator.exe" />
     <None Include="src\shader_build\mine\mine.frag" />
     <None Include="src\shader_build\mine\mine.vert" />
-    <None Include="src\shader_build\model\pbr.frag" />
-    <None Include="src\shader_build\model\pbr.vert" />
+    <None Include="src\shader_build\model\pbrForward.frag" />
+    <None Include="src\shader_build\model\pbrForward.vert" />
     <None Include="src\shader_build\osMirror\osMirror.frag" />
     <None Include="src\shader_build\osMirror\osMirror.vert" />
     <None Include="src\shader_build\osScence\osScence.frag" />
@@ -294,8 +303,11 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="src\image_build\model\droid\Body_baseColor.jpeg" />
+    <Image Include="src\image_build\model\droid\Body_normal.png" />
     <Image Include="src\image_build\model\droid\Head_baseColor.jpeg" />
+    <Image Include="src\image_build\model\droid\Head_normal.png" />
     <Image Include="src\image_build\model\droid\Misc_baseColor.jpeg" />
+    <Image Include="src\image_build\model\droid\Misc_normal.png" />
     <Image Include="src\image_build\terrain\cube_16_64.png" />
     <Image Include="src\image_build\model\temple\baseColor.png" />
     <Image Include="src\image_build\terrain\cube_16_64_specular.png" />

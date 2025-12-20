@@ -94,8 +94,10 @@ namespace lightInfo {
 }
 
 namespace bufferInfo {
-    const uint32_t bufferScenceNodeSize = 9;    //描述符池上限，terrain，m_temple，m_droid*3，skybox，mine，osMirror，osScence
-    const uint32_t bufferUINodeSize = 1;        //描述符池上限，uiText
+    const uint32_t scenceForwardSize  = 5;      //scenceForward描述符池上限，terrain，skybox，mine，osMirror，osScence
+    const uint32_t scenceDeferredSize = 4;      //scenceDeferred描述符池上限，m_temple，m_droid*3
+    const uint32_t dsScenceSize       = 1;      //dsScence描述符池上限，dsScence
+    const uint32_t uiTextSize         = 1;      //uiText描述符池上限，uiText
 
     const int commandThreadSize = 2;            //命令线程数
 }
@@ -111,8 +113,8 @@ namespace fileInfo {
         const std::string terrainVert = "src/shader/terrain/terrainVert.spv";
         const std::string terrainFrag = "src/shader/terrain/terrainFrag.spv";
 
-        const std::string pbrVert = "src/shader/model/pbrVert.spv";
-        const std::string pbrFrag = "src/shader/model/pbrFrag.spv";
+        const std::string pbrVert = "src/shader/model/pbrDeferredVert.spv";
+        const std::string pbrFrag = "src/shader/model/pbrDeferredFrag.spv";
 
         const std::string skyboxVert = "src/shader/skybox/skyboxVert.spv";
         const std::string skyboxFrag = "src/shader/skybox/skyboxFrag.spv";
@@ -128,6 +130,9 @@ namespace fileInfo {
 
         const std::string osScenceVert = "src/shader/osScence/osScenceVert.spv";
         const std::string osScenceFrag = "src/shader/osScence/osScenceFrag.spv";
+
+        const std::string dsScenceVert = "src/shader/dsScence/dsScenceVert.spv";
+        const std::string dsScenceFrag = "src/shader/dsScence/dsScenceFrag.spv";
     }
 
     namespace music {
@@ -145,10 +150,13 @@ namespace fileInfo {
         const char* cube         = "src/image/terrain/cube_16_64.ktx2";
         const char* cubeSpecular = "src/image/terrain/cube_16_64_specular.ktx2";
 
-        const char* temple    = "src/image/model/temple/baseColor.ktx2";
-        const char* droidBody = "src/image/model/droid/Body_baseColor.ktx2";
-        const char* droidHead = "src/image/model/droid/Head_baseColor.ktx2";
-        const char* droidMisc = "src/image/model/droid/Misc_baseColor.ktx2";
+        const char* temple     = "src/image/model/temple/baseColor.ktx2";
+        const char* droidBodyC = "src/image/model/droid/Body_baseColor.ktx2";
+        const char* droidHeadC = "src/image/model/droid/Head_baseColor.ktx2";
+        const char* droidMiscC = "src/image/model/droid/Misc_baseColor.ktx2";
+        const char* droidBodyN = "src/image/model/droid/Body_normal.ktx2";
+        const char* droidHeadN = "src/image/model/droid/Head_normal.ktx2";
+        const char* droidMiscN = "src/image/model/droid/Misc_normal.ktx2";
     }
 
     namespace storage {

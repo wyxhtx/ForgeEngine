@@ -9,9 +9,8 @@ public:
 
 
 	Buffer(Device& Device) :Device{ Device } {
-		createOsResource();
 		createScResource();
-		procRenderPass.createRenderPassInfo(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device);
+		procRenderPass.createRenderPassInfo(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device, Device.allocator);
 
 		command.createCommandPool(Device.device, Device.queueFamilyIndex);
 		command.initCommandBuffer(uint32_t(procRenderPass.node[bufferEnum::procRenderId::scScence].scPtr->framebuffer.size()));
@@ -44,6 +43,7 @@ public:
 		mine.clear(Device.device, Device.allocator);
 		osMirror.clear(Device.device, Device.allocator);
 		osScence.clear(Device.device, Device.allocator);
+		dsScence.clear(Device.device, Device.allocator);
 		uiText.clear(Device.device, Device.allocator);
 
 		if (debugInfo::LogSwitch) {
@@ -66,37 +66,10 @@ private:
 	bufferStruct::mineBufferNode	 mine		{ pipelineEnum::procPipelineId::mine	  };
 	bufferStruct::osMirrorBufferNode osMirror	{ pipelineEnum::procPipelineId::osMirror, bufferEnum::procSamplerId::offScreen };
 	bufferStruct::osScenceBufferNode osScence	{ pipelineEnum::procPipelineId::osScence, bufferEnum::procSamplerId::offScreen };
+	bufferStruct::dsScenceBufferNode dsScence	{ pipelineEnum::procPipelineId::dsScence, bufferEnum::procSamplerId::offScreen };
 	bufferStruct::uiTextBufferNode	 uiText		{ pipelineEnum::procPipelineId::uiText,   bufferEnum::procSamplerId::uiText };
 
 
-
-	//¥¥Ω®¿Î∆¡∏Ωº˛
-	void createOsResource() {
-		//osMirror
-		bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror);
-
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osMirrorFrameNode.color.image, osMirrorFrameNode.color.imageMemory);
-		createImageView(osMirrorFrameNode.color.image, osMirrorFrameNode.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osMirrorFrameNode.depth.image, osMirrorFrameNode.depth.imageMemory);
-		createImageView(osMirrorFrameNode.depth.image, osMirrorFrameNode.depth.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osMirrorFrameNode.osView.image, osMirrorFrameNode.osView.imageMemory);
-		createImageView(osMirrorFrameNode.osView.image, osMirrorFrameNode.osView.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-
-
-		//osScence
-		bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
-
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osScenceFrameNode.color.image, osScenceFrameNode.color.imageMemory);
-		createImageView(osScenceFrameNode.color.image, osScenceFrameNode.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osScenceFrameNode.depth.image, osScenceFrameNode.depth.imageMemory);
-		createImageView(osScenceFrameNode.depth.image, osScenceFrameNode.depth.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-
-		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, osScenceFrameNode.osView.image, osScenceFrameNode.osView.imageMemory);
-		createImageView(osScenceFrameNode.osView.image, osScenceFrameNode.osView.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-	}
 
 	//¥¥Ω®Ωªªª¡¥∏Ωº˛
 	void createScResource() {
@@ -157,6 +130,10 @@ private:
 		createVertexBuffer(osScenceVertex::vertexs, osScence.vertex);
 		createIndexBuffer(osScenceVertex::indexs, osScence.index);
 
+		//dsScence
+		createVertexBuffer(dsScenceVertex::vertexs, dsScence.vertex);
+		createIndexBuffer(dsScenceVertex::indexs, dsScence.index);
+
 		//uiText
 		createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex);
 	}
@@ -191,6 +168,9 @@ private:
 		//osMirror
 		createBuffer(sizeof(osMirror.ubo), osMirror.uniform);
 		createBuffer(sizeof(osMirror.lightUbo), osMirror.lightUniform);
+
+		//dsScence
+		createBuffer(sizeof(dsScence.lightUbo), dsScence.lightUniform);
 	}
 
 	void createTexture() {
@@ -201,12 +181,14 @@ private:
 		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 			createTextureKtxNode(procModel.sNode[i].textureFile, procModel.sNode[i].texture, procModel.sNode[i].mipLevel);
+			createTextureKtxNode(procModel.sNode[i].normalFile,  procModel.sNode[i].normal,  procModel.sNode[i].mipLevel);
 		}
 
 		//model-dNode
 		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 				createTextureKtxNode(procModel.dNode[i].node[j].textureFile, procModel.dNode[i].node[j].texture, procModel.dNode[i].mipLevel);
+				createTextureKtxNode(procModel.dNode[i].node[j].normalFile,  procModel.dNode[i].node[j].normal,  procModel.dNode[i].mipLevel);
 			}
 		}
 
@@ -215,8 +197,8 @@ private:
 	}
 
 	void createDescriptorSet() {
-		/*≈‰÷√scence√Ë ˆ∑˚*/
-		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scence);
+		/*≈‰÷√scenceForward√Ë ˆ∑˚*/
+		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceForward);
 
 		//terrain
 		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &terrain.descriptorSet) == VK_SUCCESS) {
@@ -232,42 +214,6 @@ private:
 		else {
 			Log::printError(__FILE__, __LINE__, "terrain∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
 			throw;
-		}
-
-		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 3> tempWrite{
-					procDescriptor.getWrite(0, procModel.sNode[i].descriptorSet, procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)),
-					procDescriptor.getWrite(1, procModel.sNode[i].descriptorSet, procModel.sNode[i].lightUniform.buffer, sizeof(procModel.sNode[i].lightUbo)),
-					procDescriptor.getWrite(2, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view)
-				};
-
-				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-			}
-			else {
-				Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
-				throw;
-			}
-		}
-
-		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
-					std::array<VkWriteDescriptorSet, 3> tempWrite{
-						procDescriptor.getWrite(0, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)),
-						procDescriptor.getWrite(1, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].lightUniform.buffer, sizeof(procModel.dNode[i].lightUbo)),
-						procDescriptor.getWrite(2, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view)
-					};
-
-					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-				}
-				else {
-					Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
-					throw;
-				}
-			}
 		}
 
 		//skybox
@@ -325,6 +271,69 @@ private:
 		}
 		else {
 			Log::printError(__FILE__, __LINE__, "osScence∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+			throw;
+		}
+
+
+
+		/*≈‰÷√scenceDeferred√Ë ˆ∑˚*/
+		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceDeferred);
+
+		//model-sNode
+		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 3> tempWrite{
+					procDescriptor.getWrite(0, procModel.sNode[i].descriptorSet, procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)),
+					procDescriptor.getWrite(1, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view),
+					procDescriptor.getWrite(2, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].normal.view)
+				};
+
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+				throw;
+			}
+		}
+
+		//model-dNode
+		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
+					std::array<VkWriteDescriptorSet, 3> tempWrite{
+						procDescriptor.getWrite(0, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)),
+						procDescriptor.getWrite(1, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view),
+						procDescriptor.getWrite(2, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].normal.view)
+					};
+
+					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+					throw;
+				}
+			}
+		}
+
+
+
+		/*≈‰÷√dsScence√Ë ˆ∑˚*/
+		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence);
+
+		//dsScence
+		bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence);
+		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &dsScence.descriptorSet) == VK_SUCCESS) {
+			std::array<VkWriteDescriptorSet, 4> tempWrite{
+				procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
+				procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
+				procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
+				procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view)
+			};
+
+			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+		}
+		else {
+			Log::printError(__FILE__, __LINE__, "dsScence∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
 			throw;
 		}
 
@@ -394,6 +403,12 @@ private:
 		osMirror.lightUbo.diffuseScale  = lightInfo::diffuseScale;
 		osMirror.lightUbo.gLightDir		= lightInfo::gLightDir;
 		osMirror.lightUbo.specularScale = lightInfo::specularScale;
+
+		//dsScence
+		dsScence.lightUbo.gLightColor	= lightInfo::gLightColor;
+		dsScence.lightUbo.diffuseScale	= lightInfo::diffuseScale;
+		dsScence.lightUbo.gLightDir		= lightInfo::gLightDir;
+		dsScence.lightUbo.specularScale = lightInfo::specularScale;
 	}
 
 
@@ -1159,14 +1174,14 @@ public:
 			command.beginCommandBuffer(threadId, frameId);
 
 
-			/*osMirror*/
-			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osMirror].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+			/*dsScence*/
+			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::dsScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			//model-sNode
 			for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
 				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
 			}
-
+			
 			//model-dNode
 			for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
 				for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
@@ -1175,6 +1190,24 @@ public:
 			}
 
 			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+
+
+			/*osMirror*/
+			//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osMirror].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+			//
+			////model-sNode
+			//for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+			//	command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+			//}
+			//
+			////model-dNode
+			//for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
+			//	for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
+			//		command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+			//	}
+			//}
+			//
+			//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 
 
 			/*osScence*/
@@ -1194,7 +1227,10 @@ public:
 			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(mine.pipeId), procPipeline.getPipeLayout(mine.pipeId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
 			
 			//osMirror
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
+			//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
+
+			//dsScence
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
 
 			//uiText
 			command.createUITextCommandBuffer(threadId, frameId, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
@@ -1374,6 +1410,18 @@ public:
 			createMapMemory(osMirror.lightUniform.bufferMemory, &osMirror.lightUbo, sizeof(osMirror.lightUbo));
 		}
 
+		//dsScence
+		{
+			dsScence.lightUbo.viewPos = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			dsScence.lightUbo.currentHour = currentHour;
+			dsScence.lightUbo.ambientScale = lightInfo::ambientScale;
+			dsScence.lightUbo.gLightPos = offsetPos;
+			dsScence.lightUbo.flashPos = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			dsScence.lightUbo.flashDir = camera.front;
+			dsScence.lightUbo.flashCutOff = glm::cos(glm::radians(12.5f));
+			dsScence.lightUbo.outerCutOff = glm::cos(glm::radians(14.5f));
+		}
+
 		//showUIText
 		{
 			showUIText.pos		= glm::floor(camera.pos);
@@ -1389,13 +1437,15 @@ public:
 
 	void recreateSwapChain() {
 		InitSwapchain.recreateSwapChain();
-		createOsResource();
 		createScResource();
-		procRenderPass.recreateSwapChain(InitSwapchain.scExtent, Device.device);
+		procRenderPass.recreateSwapChain(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device, Device.allocator);
+
+
 
 		//÷ÿΩ®¿Î∆¡√Ë ˆ∑˚£¨“ÚŒ™Ωªªª¡¥÷ÿΩ®∫ÛosView“≤µ√÷ÿΩ®
+		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceForward);
+
 		//osMirror
-		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scence);
 		{
 			bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror);
 			std::array<VkWriteDescriptorSet, 3> osMirrorWrite{
@@ -1413,6 +1463,23 @@ public:
 				procDescriptor.getWrite(2, osScence.descriptorSet, procSampler.node[osScence.samplerId], osScenceFrameNode.osView.view)
 			};
 			vkUpdateDescriptorSets(Device.device, uint32_t(osScenceWrite.size()), osScenceWrite.data(), 0, nullptr);
+		}
+
+
+
+		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence);
+
+		//dsScence
+		{
+			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence);
+			std::array<VkWriteDescriptorSet, 4> dsScenceWrite{
+				procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
+				procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
+				procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
+				procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view)
+			};
+
+			vkUpdateDescriptorSets(Device.device, uint32_t(dsScenceWrite.size()), dsScenceWrite.data(), 0, nullptr);
 		}
 	}
 
