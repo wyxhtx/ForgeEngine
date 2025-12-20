@@ -126,10 +126,6 @@ private:
 		createVertexBuffer(osMirrorVertex::vertexs, osMirror.vertex);
 		createIndexBuffer(osMirrorVertex::indexs, osMirror.index);
 
-		//osScence
-		createVertexBuffer(osScenceVertex::vertexs, osScence.vertex);
-		createIndexBuffer(osScenceVertex::indexs, osScence.index);
-
 		//uiText
 		createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex);
 	}
@@ -1239,7 +1235,7 @@ public:
 			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			//osScence
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, osScence.vertex.buffer, osScence.index.buffer, (uint32_t)osScenceVertex::indexs.size());
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, InitSwapchain.scExtent);
 
 			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 

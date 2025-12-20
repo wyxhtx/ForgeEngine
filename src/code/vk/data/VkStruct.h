@@ -662,9 +662,6 @@ namespace bufferStruct {
     };
 
     struct osScenceBufferNode {
-        bufferNode vertex;
-        bufferNode index;
-
         bufferEnum::procSamplerId::type samplerId;
 
         VkDescriptorSet descriptorSet;
@@ -681,8 +678,7 @@ namespace bufferStruct {
         osScenceBufferNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+
         }
     };
 

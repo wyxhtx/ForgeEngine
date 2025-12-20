@@ -203,11 +203,21 @@ private:
 
 		//osScence
 		{
+			rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+
+			std::vector<VkDynamicState> dynamicStates = { VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR };
+			VkPipelineDynamicStateCreateInfo dynamicState{};
+			dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+			dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+			dynamicState.pDynamicStates = dynamicStates.data();
+			pipelineInfo.pDynamicState = &dynamicState;
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::sc);
 
-			procPipeline.createPipeline<osScenceVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osScence, shaderStage, vertexInputInfo, pipelineInfo);
+			procPipeline.createPipeline<offScreenVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osScence, shaderStage, vertexInputInfo, pipelineInfo);
 
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::os);
+			pipelineInfo.pDynamicState = nullptr;
+			rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 		}
 
 		//dsScence
@@ -221,7 +231,7 @@ private:
 			dynamicState.pDynamicStates = dynamicStates.data();
 			pipelineInfo.pDynamicState = &dynamicState;
 
-			procPipeline.createPipeline<dsScenceVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::dsScence, shaderStage, vertexInputInfo, pipelineInfo);
+			procPipeline.createPipeline<offScreenVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::dsScence, shaderStage, vertexInputInfo, pipelineInfo);
 
 			rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 			pipelineInfo.pDynamicState = nullptr;
