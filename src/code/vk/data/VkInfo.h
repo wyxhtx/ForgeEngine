@@ -157,9 +157,9 @@ namespace fileInfo {
         const char* droidBodyC = "src/image/model/droid/Body_baseColor.ktx2";
         const char* droidHeadC = "src/image/model/droid/Head_baseColor.ktx2";
         const char* droidMiscC = "src/image/model/droid/Misc_baseColor.ktx2";
-        const char* droidBodyN = "src/image/model/droid/Body_normal.ktx2";
-        const char* droidHeadN = "src/image/model/droid/Head_normal.ktx2";
-        const char* droidMiscN = "src/image/model/droid/Misc_normal.ktx2";
+        //const char* droidBodyN = "src/image/model/droid/Body_normal.ktx2";
+        //const char* droidHeadN = "src/image/model/droid/Head_normal.ktx2";
+        //const char* droidMiscN = "src/image/model/droid/Misc_normal.ktx2";
     }
 
     namespace storage {

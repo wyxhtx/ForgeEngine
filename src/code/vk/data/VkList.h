@@ -257,9 +257,9 @@ namespace bufferList {
 
         procModelNode(pipelineEnum::procPipelineId::type pId) {
             //todo temple没有法线贴图，暂时拿fileInfo::image::temple凑数
-            sNode[bufferEnum::procStaticModelId::temple].create(fileInfo::model::temple, fileInfo::image::temple, fileInfo::image::temple, bufferEnum::procSamplerId::sModelN);
+            sNode[bufferEnum::procStaticModelId::temple].create(fileInfo::model::temple, fileInfo::image::temple, /*fileInfo::image::temple,*/ bufferEnum::procSamplerId::sModelN);
 
-            dNode[bufferEnum::procDynamicModelId::droid].create(fileInfo::model::droid, { fileInfo::image::droidBodyC,fileInfo::image::droidHeadC,fileInfo::image::droidMiscC }, { fileInfo::image::droidBodyN,fileInfo::image::droidHeadN,fileInfo::image::droidMiscN }, bufferEnum::procSamplerId::dModelL);
+            dNode[bufferEnum::procDynamicModelId::droid].create(fileInfo::model::droid, { fileInfo::image::droidBodyC,fileInfo::image::droidHeadC,fileInfo::image::droidMiscC }, /*{ fileInfo::image::droidBodyN,fileInfo::image::droidHeadN,fileInfo::image::droidMiscN },*/ bufferEnum::procSamplerId::dModelL);
 
 
 

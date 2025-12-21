@@ -173,14 +173,14 @@ private:
 		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 			createTextureKtxNode(procModel.sNode[i].textureFile, procModel.sNode[i].texture, procModel.sNode[i].mipLevel);
-			createTextureKtxNode(procModel.sNode[i].normalFile,  procModel.sNode[i].normal,  procModel.sNode[i].mipLevel);
+			//createTextureKtxNode(procModel.sNode[i].normalFile,  procModel.sNode[i].normal,  procModel.sNode[i].mipLevel);
 		}
 
 		//model-dNode
 		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 				createTextureKtxNode(procModel.dNode[i].node[j].textureFile, procModel.dNode[i].node[j].texture, procModel.dNode[i].mipLevel);
-				createTextureKtxNode(procModel.dNode[i].node[j].normalFile,  procModel.dNode[i].node[j].normal,  procModel.dNode[i].mipLevel);
+				//createTextureKtxNode(procModel.dNode[i].node[j].normalFile,  procModel.dNode[i].node[j].normal,  procModel.dNode[i].mipLevel);
 			}
 		}
 

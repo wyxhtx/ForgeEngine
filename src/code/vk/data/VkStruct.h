@@ -471,8 +471,8 @@ namespace bufferStruct {
 
         const char* textureFile;
         imageNode texture;
-        const char* normalFile;
-        imageNode normal;
+        //const char* normalFile;
+        //imageNode normal;
 
         bufferEnum::procSamplerId::type samplerId;
         uint32_t mipLevel;                  //在创建texture时赋值
@@ -486,10 +486,10 @@ namespace bufferStruct {
 
 
 
-        void create(const std::string tempModelFile, const char* tempTextureFile, const char* tempNormalFile, bufferEnum::procSamplerId::type tempSamplerId) {
+        void create(const std::string tempModelFile, const char* tempTextureFile, /*const char* tempNormalFile,*/ bufferEnum::procSamplerId::type tempSamplerId) {
             modelFile   = tempModelFile;
             textureFile = tempTextureFile;
-            normalFile  = tempNormalFile;
+            //normalFile  = tempNormalFile;
             samplerId   = tempSamplerId;
         }
 
@@ -500,8 +500,8 @@ namespace bufferStruct {
             vmaDestroyImage(allocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
 
-            vmaDestroyImage(allocator, normal.image, normal.imageMemory);
-            vkDestroyImageView(device, normal.view, nullptr);
+            //vmaDestroyImage(allocator, normal.image, normal.imageMemory);
+            //vkDestroyImageView(device, normal.view, nullptr);
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
             vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
@@ -514,8 +514,8 @@ namespace bufferStruct {
 
         const char* textureFile;
         imageNode texture;
-        const char* normalFile;
-        imageNode normal;
+        //const char* normalFile;
+        //imageNode normal;
 
         bufferNode uniform;
         baseUBO ubo;
@@ -531,8 +531,8 @@ namespace bufferStruct {
             vmaDestroyImage(allocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
 
-            vmaDestroyImage(allocator, normal.image, normal.imageMemory);
-            vkDestroyImageView(device, normal.view, nullptr);
+            //vmaDestroyImage(allocator, normal.image, normal.imageMemory);
+            //vkDestroyImageView(device, normal.view, nullptr);
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
         }
@@ -550,13 +550,13 @@ namespace bufferStruct {
 
 
 
-        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, std::vector<const char*> tempNormalFile, bufferEnum::procSamplerId::type tempSamplerId) {
+        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, /*std::vector<const char*> tempNormalFile,*/ bufferEnum::procSamplerId::type tempSamplerId) {
             modelFile = tempModelFile;
 
             node.resize(tempTextureFile.size());
             for (int i = 0; i < tempTextureFile.size(); i++) {
                 node[i].textureFile = tempTextureFile[i];
-                node[i].normalFile = tempNormalFile[i];
+                //node[i].normalFile = tempNormalFile[i];
             }
 
             samplerId = tempSamplerId;
