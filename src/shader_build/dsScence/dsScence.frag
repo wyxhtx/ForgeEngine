@@ -133,29 +133,24 @@ float getAttenuation(vec3 fragPos, vec3 lightPos) {
 void main() {
     //从G-Buffer读取数据
     vec4 positionData = texture(samplerPosition, fragUV);
-    vec4 normalData = texture(samplerNormal, fragUV);
-    vec4 albedoData = texture(samplerAlbedo, fragUV);
+    vec4 normalData   = texture(samplerNormal, fragUV);
+    vec4 albedoData   = texture(samplerAlbedo, fragUV);
     
     //恢复数据
-    vec3 fragPos = positionData.rgb;
-    vec3 normal = normalize(normalData.rgb * 2.0 - 1.0); // 从[0,1]恢复到[-1,1]
+    vec3 fragPos  = positionData.rgb;
+    vec3 normal   = normalize(normalData.rgb);
     vec3 texColor = albedoData.rgb;
     float specularIntensity = albedoData.a;
-    
-    //跳过背景或无效像素（通过深度或其他方式检测）
-    //这里假设位置数据的alpha通道可能存储深度或其他标志
-    if (positionData.a == 0.0) {
-        outFragcolor = vec4(0.0, 0.0, 0.0, 1.0);
-        return;
-    }
     
     //归一化向量
     vec3 viewDir = normalize(light.viewPos - fragPos);
     
+
+
     //计算各种光源
-    LightResult pointLight = getPointLight(fragPos, normal, viewDir, texColor, specularIntensity);
+    LightResult pointLight       = getPointLight(fragPos, normal, viewDir, texColor, specularIntensity);
     LightResult directionalLight = getDirectionalLight(normal, viewDir, texColor, specularIntensity);
-    LightResult flashlight = getFlashLight(fragPos, normal, viewDir, texColor, specularIntensity);
+    LightResult flashlight       = getFlashLight(fragPos, normal, viewDir, texColor, specularIntensity);
     
     //计算衰减（点光源和聚光灯需要衰减，平行光不需要）
     float pointAttenuation = getAttenuation(fragPos, light.gLightPos);
@@ -169,8 +164,4 @@ void main() {
     
     //输出最终颜色
     outFragcolor = vec4(result, 1.0);
-    
-    // 可选：添加基于时间的效果（如昼夜循环）
-    // float timeFactor = sin(light.currentHour * 3.14159 / 12.0) * 0.5 + 0.5;
-    // outFragcolor.rgb *= mix(0.7, 1.2, timeFactor);
 }

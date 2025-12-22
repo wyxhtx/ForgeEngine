@@ -15,16 +15,12 @@ layout(location = 0) out vec3 fragPosition;
 layout(location = 1) out vec2 fragTexCoord;
 layout(location = 2) out vec3 fragNormal;
 
-out gl_PerVertex {
-    vec4 gl_Position;
-};
-
 
 
 void main() {
-    vec4 worldPos = ubo.model * vec4(inPosition, 1.0);
-    gl_Position = ubo.proj * ubo.view * worldPos;
-    fragPosition = worldPos.xyz;
+    vec4 worldPosition = ubo.model * vec4(inPosition, 1.0);
+    gl_Position  = ubo.proj * ubo.view * worldPosition;
+    fragPosition = vec3(worldPosition);
     fragTexCoord = inTexCoord;
-    fragNormal = normalize(mat3(ubo.modelTI) * inNormal);
+    fragNormal   = normalize(mat3(ubo.modelTI) * inNormal);
 }

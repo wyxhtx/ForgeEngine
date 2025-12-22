@@ -93,7 +93,7 @@ namespace bufferList {
             allocInfo.pNext = nullptr;
             allocInfo.descriptorSetCount = 1;
 
-            //node
+            //scenceForward
             node[bufferEnum::procDescriptorId::scenceForward].config = {
                 {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::scenceForwardSize},    //顶点模型缓冲区描述符
                 {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceForwardSize},    //片段光照缓冲区描述符
@@ -101,12 +101,13 @@ namespace bufferList {
                 {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceForwardSize}     //片段高光采样器描述符
             };
 
+            //scenceDeferred
             node[bufferEnum::procDescriptorId::scenceDeferred].config = {
                 {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::scenceDeferredSize},   //顶点模型
                 {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceDeferredSize},   //片段纹理
-                {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceDeferredSize}    //片段法线
             };
 
+            //dsScence
             node[bufferEnum::procDescriptorId::dsScence].config = {
                 {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize},         //片段光照
                 {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize},         //片段坐标
@@ -308,7 +309,7 @@ namespace pipelineList {
 
         procPipelineNode() {
             node[pipelineEnum::procPipelineId::terrain] .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag);
-            node[pipelineEnum::procPipelineId::model]   .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag);
+            node[pipelineEnum::procPipelineId::model]   .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred, fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag);
             node[pipelineEnum::procPipelineId::skybox]  .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag);
             node[pipelineEnum::procPipelineId::mine]    .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::mineVert,     fileInfo::shader::mineFrag);
             node[pipelineEnum::procPipelineId::osMirror].createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag);

@@ -138,7 +138,6 @@ private:
 		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 			createBuffer(sizeof(procModel.sNode[i].ubo), procModel.sNode[i].uniform);
-			createBuffer(sizeof(procModel.sNode[i].lightUbo), procModel.sNode[i].lightUniform);
 		}
 
 		//model-dNode
@@ -146,8 +145,6 @@ private:
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 				createBuffer(sizeof(procModel.dNode[i].node[j].ubo), procModel.dNode[i].node[j].uniform);
 			}
-
-			createBuffer(sizeof(procModel.dNode[i].lightUbo), procModel.dNode[i].lightUniform);
 		}
 
 		//skybox
@@ -206,42 +203,6 @@ private:
 		else {
 			Log::printError(__FILE__, __LINE__, "terrain∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
 			throw;
-		}
-
-		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 3> tempWrite{
-					procDescriptor.getWrite(0, procModel.sNode[i].descriptorSet, procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)),
-					procDescriptor.getWrite(1, procModel.sNode[i].descriptorSet, procModel.sNode[i].lightUniform.buffer, sizeof(procModel.sNode[i].lightUbo)),
-					procDescriptor.getWrite(2, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view)
-				};
-
-				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-			}
-			else {
-				Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
-				throw;
-			}
-		}
-
-		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
-					std::array<VkWriteDescriptorSet, 3> tempWrite{
-						procDescriptor.getWrite(0, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)),
-						procDescriptor.getWrite(1, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].lightUniform.buffer, sizeof(procModel.dNode[i].lightUbo)),
-						procDescriptor.getWrite(2, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view)
-					};
-
-					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-				}
-				else {
-					Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
-					throw;
-				}
-			}
 		}
 
 		//skybox
@@ -305,7 +266,41 @@ private:
 
 
 		/*≈‰÷√scenceDeferred√Ë ˆ∑˚*/
-		//procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceDeferred);
+		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceDeferred);
+		
+		//model-sNode
+		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 2> tempWrite{
+					procDescriptor.getWrite(0, procModel.sNode[i].descriptorSet, procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)),
+					procDescriptor.getWrite(1, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view)
+				};
+
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+				throw;
+			}
+		}
+
+		//model-dNode
+		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
+					std::array<VkWriteDescriptorSet, 2> tempWrite{
+						procDescriptor.getWrite(0, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)),
+						procDescriptor.getWrite(1, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view)
+					};
+
+					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+					throw;
+				}
+			}
+		}
 
 
 
@@ -364,11 +359,7 @@ private:
 
 		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			procModel.sNode[i].ubo.proj				  = proj;
-			procModel.sNode[i].lightUbo.gLightColor	  = lightInfo::gLightColor;
-			procModel.sNode[i].lightUbo.diffuseScale  = lightInfo::diffuseScale;
-			procModel.sNode[i].lightUbo.gLightDir	  = lightInfo::gLightDir;
-			procModel.sNode[i].lightUbo.specularScale = lightInfo::specularScale;
+			procModel.sNode[i].ubo.proj = proj;
 		}
 
 		//model-dNode
@@ -376,11 +367,6 @@ private:
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 				procModel.dNode[i].node[j].ubo.proj = proj;
 			}
-
-			procModel.dNode[i].lightUbo.gLightColor   = lightInfo::gLightColor;
-			procModel.dNode[i].lightUbo.diffuseScale  = lightInfo::diffuseScale;
-			procModel.dNode[i].lightUbo.gLightDir	  = lightInfo::gLightDir;
-			procModel.dNode[i].lightUbo.specularScale = lightInfo::specularScale;
 		}
 
 		//skybox
@@ -1167,9 +1153,21 @@ public:
 
 
 			/*dsScence*/
-			//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::dsScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-			//
-			//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::dsScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+			//model-sNode
+			for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+			}
+
+			//model-dNode
+			for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
+				for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+				}
+			}
+
+			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 
 
 			/*osMirror*/
@@ -1200,18 +1198,6 @@ public:
 				}
 			}
 
-			//model-sNode
-			for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
-			}
-
-			//model-dNode
-			for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
-				for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
-					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
-				}
-			}
-
 			//skybox
 			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
 			
@@ -1222,7 +1208,7 @@ public:
 			//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
 
 			//dsScence
-			//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
+			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
 
 			//uiText
 			command.createUITextCommandBuffer(threadId, frameId, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
@@ -1320,19 +1306,10 @@ public:
 				procModel.sNode[i].ubo.modelTI			 = glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
 				//procModel.sNode[i].ubo.model			 *= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//–˝◊™
 				procModel.sNode[i].ubo.view				 = camera.view;
-				procModel.sNode[i].lightUbo.viewPos		 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-				procModel.sNode[i].lightUbo.currentHour  = currentHour;
-				procModel.sNode[i].lightUbo.ambientScale = lightInfo::ambientScale;//(sin(gameTime) + 1) / 2;
-				procModel.sNode[i].lightUbo.gLightPos	 = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
-				procModel.sNode[i].lightUbo.flashPos	 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-				procModel.sNode[i].lightUbo.flashDir	 = camera.front;
-				procModel.sNode[i].lightUbo.flashCutOff	 = glm::cos(glm::radians(12.5f));
-				procModel.sNode[i].lightUbo.outerCutOff	 = glm::cos(glm::radians(14.5f));
 			}
 
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 				createMapMemory(procModel.sNode[i].uniform.bufferMemory, &procModel.sNode[i].ubo, sizeof(procModel.sNode[i].ubo));
-				createMapMemory(procModel.sNode[i].lightUniform.bufferMemory, &procModel.sNode[i].lightUbo, sizeof(procModel.sNode[i].lightUbo));
 			}
 		}
 
@@ -1345,23 +1322,12 @@ public:
 					procModel.dNode[i].node[j].ubo.modelTI = glm::transpose(glm::inverse(procModel.dNode[i].node[j].ubo.model));
 					procModel.dNode[i].node[j].ubo.view    = camera.view;
 				}
-
-				procModel.dNode[i].lightUbo.viewPos		 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-				procModel.dNode[i].lightUbo.currentHour  = currentHour;
-				procModel.dNode[i].lightUbo.ambientScale = lightInfo::ambientScale;//(sin(gameTime) + 1) / 2;
-				procModel.dNode[i].lightUbo.gLightPos	 = offsetPos;// glm::vec3{ glm::vec3{std::fmod(gameTime * 16, 128.0f), 32.f, 0.f} - glm::vec3{ playerInfo::logicOriginPos } };
-				procModel.dNode[i].lightUbo.flashPos	 = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-				procModel.dNode[i].lightUbo.flashDir	 = camera.front;
-				procModel.dNode[i].lightUbo.flashCutOff  = glm::cos(glm::radians(12.5f));
-				procModel.dNode[i].lightUbo.outerCutOff  = glm::cos(glm::radians(14.5f));
 			}
 
 			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 					createMapMemory(procModel.dNode[i].node[j].uniform.bufferMemory, &procModel.dNode[i].node[j].ubo, sizeof(procModel.dNode[i].node[j].ubo));
 				}
-
-				createMapMemory(procModel.dNode[i].lightUniform.bufferMemory, &procModel.dNode[i].lightUbo, sizeof(procModel.dNode[i].lightUbo));
 			}
 		}
 

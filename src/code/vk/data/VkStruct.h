@@ -479,8 +479,6 @@ namespace bufferStruct {
 
         bufferNode uniform;
         baseUBO ubo;
-        bufferNode lightUniform;
-        lightUBO lightUbo;
 
         VkDescriptorSet descriptorSet;
 
@@ -504,7 +502,6 @@ namespace bufferStruct {
             //vkDestroyImageView(device, normal.view, nullptr);
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
-            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };
 
@@ -542,9 +539,6 @@ namespace bufferStruct {
         std::string modelFile;
         std::vector<dynamicModelSubNode> node;
 
-        bufferNode lightUniform;
-        lightUBO lightUbo;
-
         bufferEnum::procSamplerId::type samplerId;
         uint32_t mipLevel;
 
@@ -566,8 +560,6 @@ namespace bufferStruct {
             for (int i = 0; i < node.size(); i++) {
                 node[i].clear(device, allocator);
             }
-
-            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };
 
@@ -905,7 +897,7 @@ namespace bufferStruct {
                 createOsRenderPass(colorFormat, depthFormat, msaaSamples, device);
             }
             else if (id == bufferEnum::frameNodeId::ds) {
-                createDsRenderPass(depthFormat, device);
+                createDsRenderPass(colorFormat, depthFormat, device);
             }
             else {
                 Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(id));
@@ -1013,9 +1005,9 @@ namespace bufferStruct {
         }
 
         //创建延迟着色渲染通道
-        void createDsRenderPass(const VkFormat& depthFormat, const VkDevice& device) {
+        void createDsRenderPass(const VkFormat& colorFormat, const VkFormat& depthFormat, const VkDevice& device) {
             std::array<VkAttachmentDescription, 4> attachment{};
-            getDeferredAttachment(attachment, depthFormat);
+            getDeferredAttachment(attachment, colorFormat, depthFormat);
 
             //颜色附件引用
             std::array<VkAttachmentReference, 3> colorReferences{};
@@ -1103,9 +1095,9 @@ namespace bufferStruct {
         }
 
         //创建延迟附件
-        void getDeferredAttachment(std::array<VkAttachmentDescription, 4>& attachment, const VkFormat& depthFormat) {
+        void getDeferredAttachment(std::array<VkAttachmentDescription, 4>& attachment, const VkFormat& colorFormat, const VkFormat& depthFormat) {
             //位置附件(世界空间位置)
-            attachment[0].format            = VK_FORMAT_R16G16B16A16_SFLOAT;    //16位浮点格式
+            attachment[0].format            = bufferInfo::dsPosFormat;
             attachment[0].samples           = VK_SAMPLE_COUNT_1_BIT;
             attachment[0].loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;
             attachment[0].storeOp           = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1115,7 +1107,7 @@ namespace bufferStruct {
             attachment[0].finalLayout       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             //法线附件(世界空间法线)
-            attachment[1].format            = VK_FORMAT_R16G16B16A16_SFLOAT;    //16位浮点格式
+            attachment[1].format            = colorFormat;
             attachment[1].samples           = VK_SAMPLE_COUNT_1_BIT;
             attachment[1].loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;
             attachment[1].storeOp           = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1125,7 +1117,7 @@ namespace bufferStruct {
             attachment[1].finalLayout       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             //反照率附件(颜色+高光)
-            attachment[2].format            = VK_FORMAT_R8G8B8A8_UNORM;         //8位无符号归一化
+            attachment[2].format            = colorFormat;
             attachment[2].samples           = VK_SAMPLE_COUNT_1_BIT;
             attachment[2].loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;
             attachment[2].storeOp           = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1212,10 +1204,10 @@ namespace bufferStruct {
                 createOsFramebuffer(scExtent, render, device);
             }
             else if (frameNodeType == bufferEnum::frameNodeId::ds) {
-                createImageNode(dsPtr->position, scExtent.width, scExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
-                createImageNode(dsPtr->normal,   scExtent.width, scExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
-                createImageNode(dsPtr->albedo,   scExtent.width, scExtent.height, VK_FORMAT_R8G8B8A8_UNORM,      VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
-                createImageNode(dsPtr->depth,    scExtent.width, scExtent.height, depthFormat,                   VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
+                createImageNode(dsPtr->position, scExtent.width, scExtent.height, bufferInfo::dsPosFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
+                createImageNode(dsPtr->normal,   scExtent.width, scExtent.height, colorFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
+                createImageNode(dsPtr->albedo,   scExtent.width, scExtent.height, colorFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
+                createImageNode(dsPtr->depth,    scExtent.width, scExtent.height, depthFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
 
                 createDsFramebuffer(scExtent, render, device);
             }

@@ -50,7 +50,8 @@ private:
 		VkPipelineRasterizationStateCreateInfo rasterizer{};								//配置光栅化
 		VkPipelineMultisampleStateCreateInfo multisampling{};								//配置多重采样
 		VkPipelineDepthStencilStateCreateInfo depthStencil{};								//配置深度/模板
-		std::array<VkPipelineColorBlendAttachmentState, 1> colorBlendAttachment{};			//设置颜色混合附件
+		std::array<VkPipelineColorBlendAttachmentState, 1> colorAttachmentForward{};		//设置颜色前向混合附件
+		std::array<VkPipelineColorBlendAttachmentState, 3> colorAttachmentDeferred{};		//设置颜色延迟混合附件
 		VkPipelineColorBlendStateCreateInfo colorBlending{};								//配置颜色混合
 		VkGraphicsPipelineCreateInfo pipelineInfo{};										//配置图形管线
 		{
@@ -107,20 +108,24 @@ private:
 			depthStencil.front				   = {};
 			depthStencil.back				   = {};
 
-			colorBlendAttachment[0].colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-			colorBlendAttachment[0].blendEnable			= VK_FALSE;
-			colorBlendAttachment[0].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;	
-			colorBlendAttachment[0].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-			colorBlendAttachment[0].colorBlendOp		= VK_BLEND_OP_ADD;			
-			colorBlendAttachment[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;	
-			colorBlendAttachment[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-			colorBlendAttachment[0].alphaBlendOp		= VK_BLEND_OP_ADD;
+			colorAttachmentForward[0].colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+			colorAttachmentForward[0].blendEnable			= VK_FALSE;
+			colorAttachmentForward[0].srcColorBlendFactor	= VK_BLEND_FACTOR_ONE;	
+			colorAttachmentForward[0].dstColorBlendFactor	= VK_BLEND_FACTOR_ZERO;
+			colorAttachmentForward[0].colorBlendOp			= VK_BLEND_OP_ADD;			
+			colorAttachmentForward[0].srcAlphaBlendFactor	= VK_BLEND_FACTOR_ONE;	
+			colorAttachmentForward[0].dstAlphaBlendFactor	= VK_BLEND_FACTOR_ZERO;
+			colorAttachmentForward[0].alphaBlendOp			= VK_BLEND_OP_ADD;
+
+			colorAttachmentDeferred[0] = colorAttachmentForward[0];
+			colorAttachmentDeferred[1] = colorAttachmentForward[0];
+			colorAttachmentDeferred[2] = colorAttachmentForward[0];
 
 			colorBlending.sType				= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 			colorBlending.logicOpEnable		= VK_FALSE;
 			colorBlending.logicOp			= VK_LOGIC_OP_COPY;			
-			colorBlending.attachmentCount	= static_cast<uint32_t>(colorBlendAttachment.size());
-			colorBlending.pAttachments		= colorBlendAttachment.data();
+			colorBlending.attachmentCount	= static_cast<uint32_t>(colorAttachmentForward.size());
+			colorBlending.pAttachments		= colorAttachmentForward.data();
 			colorBlending.blendConstants[0] = 0.0f;				
 			colorBlending.blendConstants[1] = 0.0f;				
 			colorBlending.blendConstants[2] = 0.0f;				
@@ -150,7 +155,17 @@ private:
 
 		//model
 		{
+			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentDeferred.size());
+			colorBlending.pAttachments = colorAttachmentDeferred.data();
+
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::ds);
 			procPipeline.createPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::model, shaderStage, vertexInputInfo, pipelineInfo);
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::os);
+
+			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentForward.size());
+			colorBlending.pAttachments = colorAttachmentForward.data();
+			multisampling.rasterizationSamples = InitBuffer.getMsaaSamples();
 		}
 
 		//skybox
@@ -170,7 +185,7 @@ private:
 		//mine
 		{
 			//选择框覆盖方块的颜色混合
-			VkPipelineColorBlendAttachmentState tempColorBlendAttachment = colorBlendAttachment[0];
+			VkPipelineColorBlendAttachmentState tempColorBlendAttachment = colorAttachmentForward[0];
 			tempColorBlendAttachment.blendEnable		 = VK_TRUE;
 			tempColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 			tempColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -191,7 +206,7 @@ private:
 
 			procPipeline.createPipeline<mineVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::mine, shaderStage, vertexInputInfo, pipelineInfo);
 
-			colorBlending.pAttachments		 = colorBlendAttachment.data();
+			colorBlending.pAttachments		 = colorAttachmentForward.data();
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
 			pipelineInfo.pRasterizationState = &rasterizer;
 		}
@@ -240,7 +255,7 @@ private:
 		//uiText
 		{
 			//uiText和屏幕的颜色混合
-			VkPipelineColorBlendAttachmentState tempColorBlendAttachment = colorBlendAttachment[0];
+			VkPipelineColorBlendAttachmentState tempColorBlendAttachment = colorAttachmentForward[0];
 			tempColorBlendAttachment.blendEnable		 = VK_TRUE;
 			tempColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 			tempColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -266,7 +281,7 @@ private:
 
 			procPipeline.createPipeline<uiTextVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::uiText, shaderStage, vertexInputInfo, pipelineInfo);
 
-			colorBlending.pAttachments		 = colorBlendAttachment.data();
+			colorBlending.pAttachments		 = colorAttachmentForward.data();
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
 			pipelineInfo.pRasterizationState = &rasterizer;
 			pipelineInfo.pDepthStencilState  = &depthStencil;
