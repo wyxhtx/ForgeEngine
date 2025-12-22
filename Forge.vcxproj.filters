@@ -58,14 +58,6 @@
     <None Include="src\shader_build\terrain\terrain.vert" />
     <None Include="src\shader_build\uiText\uiText.frag" />
     <None Include="src\shader_build\uiText\uiText.vert" />
-    <None Include="src\model\temple\scene.bin">
-      <Filter>资源文件</Filter>
-    </None>
-    <None Include="src\model\temple\scene.gltf" />
-    <None Include="src\model\droid\scene.bin">
-      <Filter>资源文件</Filter>
-    </None>
-    <None Include="src\model\droid\scene.gltf" />
     <None Include="src\image\terrain\cube_16_64.ktx2" />
     <None Include="src\image\terrain\cube_16_64_specular.ktx2" />
     <None Include="src\image\model\temple\baseColor.ktx2" />
@@ -94,6 +86,14 @@
     <None Include="src\image\model\droid\Misc_normal.ktx2" />
     <None Include="src\image\model\droid\Head_normal.ktx2" />
     <None Include="src\image\model\droid\Body_normal.ktx2" />
+    <None Include="src\model\droid\scene.bin">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="src\model\temple\scene.bin">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="src\model\droid\scene.gltf" />
+    <None Include="src\model\temple\scene.gltf" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">

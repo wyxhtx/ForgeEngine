@@ -173,6 +173,10 @@
     <None Include="src\image\model\droid\Body_normal.ktx2" />
     <None Include="src\image\model\droid\Head_normal.ktx2" />
     <None Include="src\image\model\droid\Misc_normal.ktx2" />
+    <None Include="src\model\droid\scene.bin" />
+    <None Include="src\model\droid\scene.gltf" />
+    <None Include="src\model\temple\scene.bin" />
+    <None Include="src\model\temple\scene.gltf" />
     <None Include="src\shader\model\pbrDeferredFrag.spv" />
     <None Include="src\shader\model\pbrDeferredVert.spv" />
     <None Include="src\shader\model\pbrForwardFrag.spv" />
@@ -198,10 +202,6 @@
     <None Include="src\library\dll\alut.dll" />
     <None Include="src\library\dll\ktx.dll" />
     <None Include="src\library\stb\stb_font_consolas_24_latin1.inl" />
-    <None Include="src\model\droid\scene.bin" />
-    <None Include="src\model\droid\scene.gltf" />
-    <None Include="src\model\temple\scene.bin" />
-    <None Include="src\model\temple\scene.gltf" />
     <None Include="src\shader_build\glsl_to_spirv.bat" />
     <None Include="src\shader_build\glslangValidator.exe" />
     <None Include="src\shader_build\mine\mine.frag" />
