@@ -165,7 +165,6 @@ private:
 	void createTexture() {
 		//terrain
 		createTextureKtxArrayNode(terrain.textureFile, terrain.texture, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8B8A8_UNORM, 4);
-		createTextureKtxArrayNode(terrain.specularFile, terrain.specular, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8_UNORM, 2);
 
 		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
@@ -191,11 +190,10 @@ private:
 
 		//terrain
 		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &terrain.descriptorSet) == VK_SUCCESS) {
-			std::array<VkWriteDescriptorSet, 4> tempWrite{
+			std::array<VkWriteDescriptorSet, 3> tempWrite{
 				procDescriptor.getWrite(0, terrain.descriptorSet, terrain.uniform.buffer, sizeof(terrain.ubo)),
 				procDescriptor.getWrite(1, terrain.descriptorSet, terrain.lightUniform.buffer, sizeof(terrain.lightUbo)),
 				procDescriptor.getWrite(2, terrain.descriptorSet, procSampler.node[terrain.samplerId], terrain.texture.view),
-				procDescriptor.getWrite(3, terrain.descriptorSet, procSampler.node[terrain.samplerId], terrain.specular.view)
 			};
 
 			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -1151,81 +1149,84 @@ public:
 			//¿ªÊ¼äÖÈ¾
 			command.beginCommandBuffer(threadId, frameId);
 
-
 			/*dsScence*/
-			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::dsScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+			{
+				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::dsScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-			//model-sNode
-			for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
-			}
-
-			//model-dNode
-			for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
-				for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
-					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+				//model-sNode
+				for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
 				}
+
+				//model-dNode
+				for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
+					for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
+						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+					}
+				}
+
+				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
-
-			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
-
 
 			/*osMirror*/
-			//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osMirror].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-			//
-			////model-sNode
-			//for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-			//	command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
-			//}
-			//
-			////model-dNode
-			//for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
-			//	for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
-			//		command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
-			//	}
-			//}
-			//
-			//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
-
-
-			/*osScence*/
-			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-			//terrain
-			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(terrain.pipeId), procPipeline.getPipeLayout(terrain.pipeId), terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
-				}
+			{
+				//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osMirror].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+				//
+				////model-sNode
+				//for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+				//	command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+				//}
+				//
+				////model-dNode
+				//for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
+				//	for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
+				//		command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+				//	}
+				//}
+				//
+				//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
 
-			//skybox
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
-			
-			//mine
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(mine.pipeId), procPipeline.getPipeLayout(mine.pipeId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
-			
-			//osMirror
-			//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
+			/*osScence*/
+			{
+				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-			//dsScence
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
+				//terrain
+				for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+					if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(terrain.pipeId), procPipeline.getPipeLayout(terrain.pipeId), terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
+					}
+				}
 
-			//uiText
-			command.createUITextCommandBuffer(threadId, frameId, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
+				//skybox
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
 
-			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+				//mine
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(mine.pipeId), procPipeline.getPipeLayout(mine.pipeId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
 
+				//osMirror
+				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
+
+				//uiText
+				command.createUITextCommandBuffer(threadId, frameId, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
+
+				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+			}
 
 			/*scScence*/
-			procRenderPass.node[bufferEnum::procRenderId::scScence].setScFramebuffer(frameId);
-			vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+			{
+				procRenderPass.node[bufferEnum::procRenderId::scScence].setScFramebuffer(frameId);
+				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-			//osScence
-			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, InitSwapchain.scExtent);
+				//dsScence
+				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
 
-			vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+				//osScence
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, InitSwapchain.scExtent);
 
-			
+				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+			}
+
 			//½áÊøäÖÈ¾
 			command.endCommandBuffer(threadId, frameId);
 		}

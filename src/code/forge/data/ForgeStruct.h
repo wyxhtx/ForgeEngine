@@ -19,7 +19,6 @@ namespace cubeStruct {
     struct propertyNode {
         std::vector<faceNode> faceId;   //纹理id
         short coverage;                 //方块覆盖顺序
-        float shininess;                //材质光泽度
     };
 }
 

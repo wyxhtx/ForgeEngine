@@ -112,8 +112,11 @@ namespace fpsInfo {
 
 namespace fileInfo {
     namespace shader {
-        const std::string terrainVert = "src/shader/terrain/terrainVert.spv";
-        const std::string terrainFrag = "src/shader/terrain/terrainFrag.spv";
+        //const std::string terrainVert = "src/shader/terrain/terrainForwardVert.spv";
+        //const std::string terrainFrag = "src/shader/terrain/terrainForwardFrag.spv";
+
+        const std::string terrainVert = "src/shader/terrain/terrainDeferredVert.spv";
+        const std::string terrainFrag = "src/shader/terrain/terrainDeferredFrag.spv";
 
         //const std::string pbrVert = "src/shader/model/pbrForwardVert.spv";
         //const std::string pbrFrag = "src/shader/model/pbrForwardFrag.spv";
@@ -153,7 +156,6 @@ namespace fileInfo {
 
     namespace image {
         const char* cube         = "src/image/terrain/cube_16_64.ktx2";
-        const char* cubeSpecular = "src/image/terrain/cube_16_64_specular.ktx2";
 
         const char* temple     = "src/image/model/temple/baseColor.ktx2";
         const char* droidBodyC = "src/image/model/droid/Body_baseColor.ktx2";

@@ -410,10 +410,6 @@ namespace bufferStruct {
         const char* textureFile;
         imageNode texture;
 
-        //高光贴图缓冲
-        const char* specularFile;
-        imageNode specular;
-
         //纹理参数
         bufferEnum::procSamplerId::type samplerId;
         uint32_t arrayLayer;
@@ -435,7 +431,6 @@ namespace bufferStruct {
 
         terrainBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type tempSamplerId) {
             textureFile = fileInfo::image::cube;
-            specularFile = fileInfo::image::cubeSpecular;
             arrayLayer = textureInfo::arrayLayer;
 
             samplerId = tempSamplerId;
@@ -455,9 +450,6 @@ namespace bufferStruct {
 
             vmaDestroyImage(allocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
-
-            vmaDestroyImage(allocator, specular.image, specular.imageMemory);
-            vkDestroyImageView(device, specular.view, nullptr);
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
             vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);

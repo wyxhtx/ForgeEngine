@@ -185,6 +185,8 @@
     <None Include="src\shader\osMirror\osMirrorVert.spv" />
     <None Include="src\shader\osScence\osScenceFrag.spv" />
     <None Include="src\shader\osScence\osScenceVert.spv" />
+    <None Include="src\shader\terrain\terrainDeferredFrag.spv" />
+    <None Include="src\shader\terrain\terrainDeferredVert.spv" />
     <None Include="src\shader_build\dsScence\dsScence.frag" />
     <None Include="src\shader_build\dsScence\dsScence.vert" />
     <None Include="src\shader_build\model\pbrDeferred.frag" />
@@ -195,7 +197,6 @@
     <None Include="src\image\model\droid\Misc_baseColor.ktx2" />
     <None Include="src\image\model\temple\baseColor.ktx2" />
     <None Include="src\image\terrain\cube_16_64.ktx2" />
-    <None Include="src\image\terrain\cube_16_64_specular.ktx2" />
     <None Include="src\image_build\ktx.dll" />
     <None Include="src\image_build\toktx.exe" />
     <None Include="src\image_build\png_to_ktx2.bat" />
@@ -214,8 +215,10 @@
     <None Include="src\shader_build\osScence\osScence.vert" />
     <None Include="src\shader_build\skybox\skybox.frag" />
     <None Include="src\shader_build\skybox\skybox.vert" />
-    <None Include="src\shader_build\terrain\terrain.frag" />
-    <None Include="src\shader_build\terrain\terrain.vert" />
+    <None Include="src\shader_build\terrain\terrainDeferred.frag" />
+    <None Include="src\shader_build\terrain\terrainDeferred.vert" />
+    <None Include="src\shader_build\terrain\terrainForward.frag" />
+    <None Include="src\shader_build\terrain\terrainForward.vert" />
     <None Include="src\shader_build\uiText\uiText.frag" />
     <None Include="src\shader_build\uiText\uiText.vert" />
     <None Include="src\shader\mine\mineFrag.spv" />
@@ -223,8 +226,8 @@
     <None Include="src\shader\skybox\skyboxFrag.spv" />
     <None Include="src\shader\skybox\skyboxVert.spv" />
     <None Include="src\shader_build\terrain_gts.bat" />
-    <None Include="src\shader\terrain\terrainFrag.spv" />
-    <None Include="src\shader\terrain\terrainVert.spv" />
+    <None Include="src\shader\terrain\terrainForwardFrag.spv" />
+    <None Include="src\shader\terrain\terrainForwardVert.spv" />
     <None Include="src\shader\uiText\uiTextFrag.spv" />
     <None Include="src\shader\uiText\uiTextVert.spv" />
   </ItemGroup>
@@ -310,7 +313,6 @@
     <Image Include="src\image_build\model\droid\Misc_normal.png" />
     <Image Include="src\image_build\terrain\cube_16_64.png" />
     <Image Include="src\image_build\model\temple\baseColor.png" />
-    <Image Include="src\image_build\terrain\cube_16_64_specular.png" />
   </ItemGroup>
   <ItemGroup>
     <Media Include="src\music\background\Greedy.wav" />

@@ -8,7 +8,6 @@ namespace terrainVertex {
         glm::vec3 position;     //坐标
         glm::vec3 texCoord;     //uv，xy用于循环平铺，z用于纹理数组索引
         glm::vec3 normal;       //法线
-        float mShininess;       //材质光泽度
 
         static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
             std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
@@ -19,8 +18,8 @@ namespace terrainVertex {
             return bindingDescription;
         }
 
-        static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
-            std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = {};
+        static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+            std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
 
             attributeDescriptions[0].binding  = 0;
             attributeDescriptions[0].location = 0;
@@ -36,11 +35,6 @@ namespace terrainVertex {
             attributeDescriptions[2].location = 2;
             attributeDescriptions[2].format   = VK_FORMAT_R32G32B32_SFLOAT;
             attributeDescriptions[2].offset   = offsetof(vertexNode, normal);
-
-            attributeDescriptions[3].binding  = 0;
-            attributeDescriptions[3].location = 3;
-            attributeDescriptions[3].format   = VK_FORMAT_R32_SFLOAT;
-            attributeDescriptions[3].offset   = offsetof(vertexNode, mShininess);
 
             return attributeDescriptions;
         }
