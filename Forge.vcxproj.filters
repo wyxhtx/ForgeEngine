@@ -97,6 +97,11 @@
     <None Include="src\shader_build\terrain\terrainDeferred.vert" />
     <None Include="src\shader\terrain\terrainDeferredFrag.spv" />
     <None Include="src\shader\terrain\terrainDeferredVert.spv" />
+    <None Include="src\shader_build\dsScence_gts.bat">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="src\shader\dsScence\dsScenceFrag.spv" />
+    <None Include="src\shader\dsScence\dsScenceVert.spv" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">

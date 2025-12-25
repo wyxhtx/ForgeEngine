@@ -156,6 +156,9 @@ private:
 			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentDeferred.size());
 			colorBlending.pAttachments = colorAttachmentDeferred.data();
 
+			//terrain
+			procPipeline.createPipeline<terrainVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::terrain, shaderStage, vertexInputInfo, pipelineInfo);
+
 			//model
 			procPipeline.createPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::model, shaderStage, vertexInputInfo, pipelineInfo);
 
@@ -167,11 +170,6 @@ private:
 		/*os*/
 		{
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::os);
-
-			//terrain
-			{
-				procPipeline.createPipeline<terrainVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::terrain, shaderStage, vertexInputInfo, pipelineInfo);
-			}
 
 			//skybox
 			{

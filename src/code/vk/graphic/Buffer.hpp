@@ -185,159 +185,160 @@ private:
 	}
 
 	void createDescriptorSet() {
-		/*≈‰÷√scenceForward√Ë ˆ∑˚*/
-		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceForward);
+		/*scenceForward*/
+		{
+			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceForward);
 
-		//terrain
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &terrain.descriptorSet) == VK_SUCCESS) {
-			std::array<VkWriteDescriptorSet, 3> tempWrite{
-				procDescriptor.getWrite(0, terrain.descriptorSet, terrain.uniform.buffer, sizeof(terrain.ubo)),
-				procDescriptor.getWrite(1, terrain.descriptorSet, terrain.lightUniform.buffer, sizeof(terrain.lightUbo)),
-				procDescriptor.getWrite(2, terrain.descriptorSet, procSampler.node[terrain.samplerId], terrain.texture.view),
-			};
-
-			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-		}
-		else {
-			Log::printError(__FILE__, __LINE__, "terrain∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
-			throw;
-		}
-
-		//skybox
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &skybox.descriptorSet) == VK_SUCCESS) {
-			std::array<VkWriteDescriptorSet, 2> tempWrite{
-				procDescriptor.getWrite(0, skybox.descriptorSet, skybox.uniform.buffer, sizeof(skybox.ubo)),
-				procDescriptor.getWrite(1, skybox.descriptorSet, skybox.lightUniform.buffer, sizeof(skybox.lightUbo))
-			};
-
-			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-		}
-		else {
-			Log::printError(__FILE__, __LINE__, "skybox∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
-			throw;
-		}
-
-		//mine
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &mine.descriptorSet) == VK_SUCCESS) {
-			std::array<VkWriteDescriptorSet, 1> tempWrite{
-				procDescriptor.getWrite(0, mine.descriptorSet, mine.uniform.buffer, sizeof(mine.ubo)),
-			};
-
-
-			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-		}
-		else {
-			Log::printError(__FILE__, __LINE__, "mine∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
-			throw;
-		}
-
-		//osMirror
-		bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror);
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osMirror.descriptorSet) == VK_SUCCESS) {
-			std::array<VkWriteDescriptorSet, 3> tempWrite{
-				procDescriptor.getWrite(0, osMirror.descriptorSet, osMirror.uniform.buffer, sizeof(osMirror.ubo)),
-				procDescriptor.getWrite(1, osMirror.descriptorSet, osMirror.lightUniform.buffer, sizeof(osMirror.lightUbo)),
-				procDescriptor.getWrite(2, osMirror.descriptorSet, procSampler.node[osMirror.samplerId], osMirrorFrameNode.osView.view)
-			};
-
-			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-		}
-		else {
-			Log::printError(__FILE__, __LINE__, "osMirror∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
-			throw;
-		}
-
-		//osScence
-		bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osScence.descriptorSet) == VK_SUCCESS) {
-			std::array<VkWriteDescriptorSet, 1> tempWrite{
-				procDescriptor.getWrite(2, osScence.descriptorSet, procSampler.node[osScence.samplerId], osScenceFrameNode.osView.view)
-			};
-
-			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-		}
-		else {
-			Log::printError(__FILE__, __LINE__, "osScence∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
-			throw;
-		}
-
-
-
-		/*≈‰÷√scenceDeferred√Ë ˆ∑˚*/
-		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceDeferred);
-		
-		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
+			//skybox
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &skybox.descriptorSet) == VK_SUCCESS) {
 				std::array<VkWriteDescriptorSet, 2> tempWrite{
-					procDescriptor.getWrite(0, procModel.sNode[i].descriptorSet, procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)),
-					procDescriptor.getWrite(1, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view)
+					procDescriptor.getWrite(0, skybox.descriptorSet, skybox.uniform.buffer, sizeof(skybox.ubo)),
+					procDescriptor.getWrite(1, skybox.descriptorSet, skybox.lightUniform.buffer, sizeof(skybox.lightUbo))
 				};
 
 				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 			}
 			else {
-				Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+				Log::printError(__FILE__, __LINE__, "skybox∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+				throw;
+			}
+
+			//mine
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &mine.descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 1> tempWrite{
+					procDescriptor.getWrite(0, mine.descriptorSet, mine.uniform.buffer, sizeof(mine.ubo)),
+				};
+
+
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "mine∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+				throw;
+			}
+
+			//osMirror
+			bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror);
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osMirror.descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 3> tempWrite{
+					procDescriptor.getWrite(0, osMirror.descriptorSet, osMirror.uniform.buffer, sizeof(osMirror.ubo)),
+					procDescriptor.getWrite(1, osMirror.descriptorSet, osMirror.lightUniform.buffer, sizeof(osMirror.lightUbo)),
+					procDescriptor.getWrite(2, osMirror.descriptorSet, procSampler.node[osMirror.samplerId], osMirrorFrameNode.osView.view)
+				};
+
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "osMirror∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+				throw;
+			}
+
+			//osScence
+			bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osScence.descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 1> tempWrite{
+					procDescriptor.getWrite(2, osScence.descriptorSet, procSampler.node[osScence.samplerId], osScenceFrameNode.osView.view)
+				};
+
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "osScence∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
 				throw;
 			}
 		}
 
-		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
+		/*scenceDeferred*/
+		{
+			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceDeferred);
+
+			//terrain
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &terrain.descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 2> tempWrite{
+					procDescriptor.getWrite(0, terrain.descriptorSet, terrain.uniform.buffer, sizeof(terrain.ubo)),
+					procDescriptor.getWrite(1, terrain.descriptorSet, procSampler.node[terrain.samplerId], terrain.texture.view),
+				};
+
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "terrain∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+				throw;
+			}
+
+			//model-sNode
+			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
 					std::array<VkWriteDescriptorSet, 2> tempWrite{
-						procDescriptor.getWrite(0, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)),
-						procDescriptor.getWrite(1, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view)
+						procDescriptor.getWrite(0, procModel.sNode[i].descriptorSet, procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)),
+						procDescriptor.getWrite(1, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view)
 					};
 
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 				}
 				else {
-					Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+					Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
 					throw;
+				}
+			}
+
+			//model-dNode
+			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+					if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
+						std::array<VkWriteDescriptorSet, 2> tempWrite{
+							procDescriptor.getWrite(0, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)),
+							procDescriptor.getWrite(1, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view)
+						};
+
+						vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+					}
+					else {
+						Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\t∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+						throw;
+					}
 				}
 			}
 		}
 
+		/*dsScence*/
+		{
+			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence);
 
+			//dsScence
+			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence);
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &dsScence.descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 4> tempWrite{
+					procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
+					procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
+					procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
+					procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view)
+				};
 
-		/*≈‰÷√dsScence√Ë ˆ∑˚*/
-		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence);
-
-		//dsScence
-		bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence);
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &dsScence.descriptorSet) == VK_SUCCESS) {
-			std::array<VkWriteDescriptorSet, 4> tempWrite{
-				procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
-				procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
-				procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
-				procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view)
-			};
-
-			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "dsScence∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+				throw;
+			}
 		}
-		else {
-			Log::printError(__FILE__, __LINE__, "dsScence∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
-			throw;
-		}
 
+		/*uiText*/
+		{
+			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::uiText);
 
+			//uiText
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &uiText.descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 1> tempWrite{
+					procDescriptor.getWrite(0, uiText.descriptorSet, procSampler.node[uiText.samplerId], uiText.texture.view)
+				};
 
-		/*≈‰÷√uiText√Ë ˆ∑˚*/
-		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::uiText);
-
-		//uiText
-		if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &uiText.descriptorSet) == VK_SUCCESS) {
-			std::array<VkWriteDescriptorSet, 1> tempWrite{
-				procDescriptor.getWrite(0, uiText.descriptorSet, procSampler.node[uiText.samplerId], uiText.texture.view)
-			};
-
-			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-		}
-		else {
-			Log::printError(__FILE__, __LINE__, "uiText∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
-			throw;
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "uiText∑÷≈‰√Ë ˆ∑˚ºØ ß∞‹");
+				throw;
+			}
 		}
 	}
 
@@ -1153,6 +1154,13 @@ public:
 			{
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::dsScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+				//terrain
+				for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+					if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(terrain.pipeId), procPipeline.getPipeLayout(terrain.pipeId), terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
+					}
+				}
+
 				//model-sNode
 				for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
 					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
@@ -1191,13 +1199,6 @@ public:
 			{
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-				//terrain
-				for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-					if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(terrain.pipeId), procPipeline.getPipeLayout(terrain.pipeId), terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
-					}
-				}
-
 				//skybox
 				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
 
@@ -1219,10 +1220,10 @@ public:
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 				//dsScence
-				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
 
 				//osScence
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, InitSwapchain.scExtent);
+				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, InitSwapchain.scExtent);
 
 				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}

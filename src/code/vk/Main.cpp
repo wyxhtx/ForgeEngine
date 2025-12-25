@@ -16,6 +16,9 @@ int main() {
 
     //system("cd src\\image_build && png_to_ktx2.bat");   //编译纹理
     //Log::print("");
+    
+    system("cd src\\shader_build && dsScence_gts.bat"); //编译着色器
+    Log::print("");
     //system("cd src\\shader_build && terrain_gts.bat");  //编译地形着色器
     //Log::print("");
     //system("cd src\\shader_build && model_gts.bat");    //编译模型着色器
@@ -24,7 +27,7 @@ int main() {
 
 
     //加载音乐线程耗时长，所以先声明
-    Music InitMusic{};
+    //Music InitMusic{};
     Window InitWindow{};
     Device InitDevice{ InitWindow.window };
     Pipeline InitPipeline{ InitDevice };

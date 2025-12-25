@@ -177,6 +177,8 @@
     <None Include="src\model\droid\scene.gltf" />
     <None Include="src\model\temple\scene.bin" />
     <None Include="src\model\temple\scene.gltf" />
+    <None Include="src\shader\dsScence\dsScenceFrag.spv" />
+    <None Include="src\shader\dsScence\dsScenceVert.spv" />
     <None Include="src\shader\model\pbrDeferredFrag.spv" />
     <None Include="src\shader\model\pbrDeferredVert.spv" />
     <None Include="src\shader\model\pbrForwardFrag.spv" />
@@ -187,6 +189,7 @@
     <None Include="src\shader\osScence\osScenceVert.spv" />
     <None Include="src\shader\terrain\terrainDeferredFrag.spv" />
     <None Include="src\shader\terrain\terrainDeferredVert.spv" />
+    <None Include="src\shader_build\dsScence_gts.bat" />
     <None Include="src\shader_build\dsScence\dsScence.frag" />
     <None Include="src\shader_build\dsScence\dsScence.vert" />
     <None Include="src\shader_build\model\pbrDeferred.frag" />

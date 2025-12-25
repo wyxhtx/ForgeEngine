@@ -307,7 +307,7 @@ namespace pipelineList {
 
 
         procPipelineNode() {
-            node[pipelineEnum::procPipelineId::terrain] .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag);
+            node[pipelineEnum::procPipelineId::terrain] .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred, fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag);
             node[pipelineEnum::procPipelineId::model]   .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred, fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag);
             node[pipelineEnum::procPipelineId::skybox]  .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag);
             node[pipelineEnum::procPipelineId::mine]    .createPipelineNode(bufferEnum::procDescriptorId::scenceForward,  fileInfo::shader::mineVert,     fileInfo::shader::mineFrag);

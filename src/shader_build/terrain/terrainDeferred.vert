@@ -8,7 +8,7 @@ layout(binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(location = 0) in vec3 inPosition;        //输入坐标
-layout(location = 1) in vec3 inTexCoord;        //输入uv
+layout(location = 1) in vec3 inTexCoord;        //输入uv，贴图id
 layout(location = 2) in vec3 inNormal;          //输入法线
 
 layout(location = 0) out vec3 fragPosition;     //输出坐标
@@ -18,8 +18,10 @@ layout(location = 2) out vec3 fragNormal;       //输出法线
 
 
 void main() {
-    gl_Position   = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
-    fragPosition  = vec3( ubo.model * vec4(inPosition, 1.0));
-	fragTexCoord  = inTexCoord;
-    fragNormal    = mat3(ubo.modelTI) * inNormal;
+    vec4 worldPosition = ubo.model * vec4(inPosition, 1.0);
+
+    gl_Position  = ubo.proj * ubo.view * worldPosition;
+    fragPosition = vec3(worldPosition);
+	fragTexCoord = inTexCoord;
+    fragNormal   = normalize(mat3(ubo.modelTI) * inNormal);
 }

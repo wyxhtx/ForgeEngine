@@ -2,5 +2,5 @@
 set compile=.\glslangValidator.exe
 set file=../shader
 
-%compile% -V terrain/terrain.vert -o %file%/terrain/terrainVert.spv
-%compile% -V terrain/terrain.frag -o %file%/terrain/terrainFrag.spv
+%compile% -V terrain/terrainDeferred.vert -o %file%/terrain/terrainDeferredVert.spv
+%compile% -V terrain/terrainDeferred.frag -o %file%/terrain/terrainDeferredFrag.spv
