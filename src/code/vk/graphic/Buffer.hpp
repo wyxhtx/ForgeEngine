@@ -1173,6 +1173,23 @@ public:
 					}
 				}
 
+				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+			}
+
+			/*osMirror*/
+			{
+				//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osMirror].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+				//
+				//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+			}
+
+			/*osScence*/
+			{
+				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+				
+				//osMirror
+				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
+
 
 
 				//todo 先到os再呈现？
@@ -1189,33 +1206,16 @@ public:
 				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
 
-			/*osMirror*/
-			{
-				//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osMirror].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-				//
-				//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
-			}
-
-			/*osScence*/
-			{
-				//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-				//
-				//osMirror
-				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
-				//
-				//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
-			}
-
 			/*scScence*/
 			{
 				procRenderPass.node[bufferEnum::procRenderId::scScence].setScFramebuffer(frameId);
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 				//dsScence
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
+				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
 
 				//osScence
-				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, InitSwapchain.scExtent);
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, InitSwapchain.scExtent);
 
 				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}

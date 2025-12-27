@@ -162,6 +162,15 @@ private:
 			//model
 			procPipeline.createPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::model, shaderStage, vertexInputInfo, pipelineInfo);
 
+			multisampling.rasterizationSamples = InitBuffer.getMsaaSamples();
+			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentForward.size());
+			colorBlending.pAttachments = colorAttachmentForward.data();
+		}
+
+		/*os*/
+		{
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::os);
+
 			//skybox
 			{
 				//实现只在空白处显示
@@ -195,15 +204,6 @@ private:
 				pipelineInfo.pInputAssemblyState = &inputAssembly;
 				pipelineInfo.pRasterizationState = &rasterizer;
 			}
-
-			multisampling.rasterizationSamples = InitBuffer.getMsaaSamples();
-			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentForward.size());
-			colorBlending.pAttachments = colorAttachmentForward.data();
-		}
-
-		/*os*/
-		{
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::os);
 
 			//osMirror
 			{
