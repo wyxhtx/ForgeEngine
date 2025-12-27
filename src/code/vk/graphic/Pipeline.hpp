@@ -162,15 +162,6 @@ private:
 			//model
 			procPipeline.createPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::model, shaderStage, vertexInputInfo, pipelineInfo);
 
-			multisampling.rasterizationSamples = InitBuffer.getMsaaSamples();
-			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentForward.size());
-			colorBlending.pAttachments = colorAttachmentForward.data();
-		}
-
-		/*os*/
-		{
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::os);
-
 			//skybox
 			{
 				//实现只在空白处显示
@@ -187,13 +178,6 @@ private:
 
 			//mine
 			{
-				//选择框覆盖方块的颜色混合
-				VkPipelineColorBlendAttachmentState tempColorBlendAttachment = colorAttachmentForward[0];
-				tempColorBlendAttachment.blendEnable = VK_TRUE;
-				tempColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-				tempColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-				tempColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-
 				//线段装配
 				VkPipelineInputAssemblyStateCreateInfo tempInputAssembly = inputAssembly;
 				tempInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
@@ -203,16 +187,23 @@ private:
 				tempRasterizer.polygonMode = VK_POLYGON_MODE_LINE;
 				tempRasterizer.lineWidth = 1.0f;
 
-				colorBlending.pAttachments = &tempColorBlendAttachment;
 				pipelineInfo.pInputAssemblyState = &tempInputAssembly;
 				pipelineInfo.pRasterizationState = &tempRasterizer;
 
 				procPipeline.createPipeline<mineVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::mine, shaderStage, vertexInputInfo, pipelineInfo);
 
-				colorBlending.pAttachments = colorAttachmentForward.data();
 				pipelineInfo.pInputAssemblyState = &inputAssembly;
 				pipelineInfo.pRasterizationState = &rasterizer;
 			}
+
+			multisampling.rasterizationSamples = InitBuffer.getMsaaSamples();
+			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentForward.size());
+			colorBlending.pAttachments = colorAttachmentForward.data();
+		}
+
+		/*os*/
+		{
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::os);
 
 			//osMirror
 			{
@@ -273,7 +264,6 @@ private:
 
 			//osScence
 			procPipeline.createPipeline<offScreenVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osScence, shaderStage, vertexInputInfo, pipelineInfo);
-
 
 			pipelineInfo.pDynamicState = nullptr;
 			rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;

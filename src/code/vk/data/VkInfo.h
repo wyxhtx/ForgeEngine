@@ -96,10 +96,10 @@ namespace lightInfo {
 namespace bufferInfo {
     const int commandThreadSize = 2;            //命令线程数
 
-    const uint32_t scenceForwardSize  = 4;      //scenceForward描述符池上限，skybox，mine，osMirror，osScence
-    const uint32_t scenceDeferredSize = 5;      //scenceDeferred描述符池上限，terrain，m_temple，m_droid*3
-    const uint32_t dsScenceSize       = 1;      //dsScence描述符池上限，dsScence
-    const uint32_t uiTextSize         = 1;      //uiText描述符池上限，uiText
+    const uint32_t scenceForwardSize  = 4;      //scenceForward描述符池上限，  skybox，mine，osMirror，osScence
+    const uint32_t scenceDeferredSize = 5;      //scenceDeferred描述符池上限， terrain，m_temple，m_droid*3
+    const uint32_t dsScenceSize       = 1;      //dsScence描述符池上限，       dsScence
+    const uint32_t uiTextSize         = 1;      //uiText描述符池上限，         uiText
 
     VkFormat dsPosFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
 }

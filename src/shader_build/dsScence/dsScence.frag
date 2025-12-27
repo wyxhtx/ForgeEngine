@@ -20,9 +20,9 @@ layout(binding = 0) uniform UniformBufferObject {
     float outerCutOff;          //聚光灯外圆锥
 } light;
 
-layout(binding = 1) uniform sampler2D samplerPosition;  //世界空间位置
+layout(binding = 1) uniform sampler2D samplerPosition;  //世界空间位置，兼前向渲染通道(a=0时)
 layout(binding = 2) uniform sampler2D samplerNormal;    //世界空间法线
-layout(binding = 3) uniform sampler2D samplerAlbedo;    //漫反射颜色, A: 高光强度
+layout(binding = 3) uniform sampler2D samplerAlbedo;    //漫反射颜色(a：高光强度)
 
 layout(location = 0) in  vec2 fragUV;
 layout(location = 0) out vec4 outFragcolor;
@@ -93,28 +93,29 @@ LightResult getFlashLight(vec3 fragPos, vec3 normal, vec3 viewDir, vec3 texColor
     vec3 lightDir = normalize(light.flashPos - fragPos);
     float NoL     = max(dot(normal, lightDir), 0.0);
 
-    //圆锥检查
-    float theta = dot(lightDir, normalize(-light.flashDir));
-
-    if (theta < light.outerCutOff) {
-        result.ambient = result.diffuse = result.specular = vec3(0.0);
-        return result;
-    }
-
+    float theta     = dot(lightDir, normalize(-light.flashDir));
     float epsilon   = light.flashCutOff - light.outerCutOff;
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
 
-    //漫反射
-    float diffWrap = max(NoL, 0.1) * 0.9 + 0.1;
+    if (theta < light.outerCutOff) {
+        float falloff = smoothstep(light.outerCutOff - 0.1, light.outerCutOff, theta);
+        result.ambient = texColor * light.ambientScale * light.gLightColor * 0.05 * falloff;
+        result.diffuse = vec3(0.0);
+        result.specular= vec3(0.0);
+        return result;
+    }
+
+    float ambientIntensity = 0.4 * intensity;                           //提亮暗面
+    result.ambient = texColor * light.ambientScale * light.gLightColor * ambientIntensity;
+    float diffWrap = max(NoL, 0.1) * 0.9 + 0.1;                         //最小10%
     result.diffuse = texColor * light.diffuseScale * light.gLightColor * diffWrap * intensity;
 
-    //镜面反射
     vec3  halfwayDir = normalize(lightDir + viewDir);
     float NoH        = dot(normal, halfwayDir);
     float spec       = remapSpecular(NoH, 0.15);
+    spec             = max(spec, 0.05);                                 //最小5%
     result.specular  = light.specularScale * light.gLightColor * specularIntensity * spec * intensity;
 
-    result.ambient = vec3(0.0);
     return result;
 }
 
@@ -125,6 +126,13 @@ float getAttenuation(vec3 fragPos, vec3 lightPos) {
 
 void main() {
     vec4 positionData = texture(samplerPosition, fragUV);
+
+    //直接呈现前向渲染内容
+    if (positionData.a == 0.0) {
+        outFragcolor = positionData;
+        return;
+    }
+
     vec4 normalData   = texture(samplerNormal,   fragUV);
     vec4 albedoData   = texture(samplerAlbedo,   fragUV);
 
