@@ -147,31 +147,22 @@ private:
 			pipelineInfo.basePipelineIndex	 = -1;
 		}
 
-		/*ds*/
+		/*ds_f*/
 		{
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::ds);
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::ds_f);
 
 			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
 			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentDeferred.size());
 			colorBlending.pAttachments = colorAttachmentDeferred.data();
 
-			//terrain
-			procPipeline.createPipeline<terrainVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::terrain, shaderStage, vertexInputInfo, pipelineInfo);
+			//terrain_p
+			procPipeline.createPipeline<terrainVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::terrain_p, shaderStage, vertexInputInfo, pipelineInfo);
 
-			//model
-			procPipeline.createPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::model, shaderStage, vertexInputInfo, pipelineInfo);
+			//model_p
+			procPipeline.createPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::model_p, shaderStage, vertexInputInfo, pipelineInfo);
 
-			multisampling.rasterizationSamples = InitBuffer.getMsaaSamples();
-			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentForward.size());
-			colorBlending.pAttachments = colorAttachmentForward.data();
-		}
-
-		/*os*/
-		{
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::os);
-
-			//skybox
+			//skybox_p
 			{
 				//实现只在空白处显示
 				VkPipelineDepthStencilStateCreateInfo tempDepthStencil = depthStencil;
@@ -180,12 +171,12 @@ private:
 
 				pipelineInfo.pDepthStencilState = &tempDepthStencil;
 
-				procPipeline.createPipeline<skyboxVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::skybox, shaderStage, vertexInputInfo, pipelineInfo);
+				procPipeline.createPipeline<skyboxVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::skybox_p, shaderStage, vertexInputInfo, pipelineInfo);
 
 				pipelineInfo.pDepthStencilState = &depthStencil;
 			}
 
-			//mine
+			//mine_p
 			{
 				//线段装配
 				VkPipelineInputAssemblyStateCreateInfo tempInputAssembly = inputAssembly;
@@ -199,26 +190,14 @@ private:
 				pipelineInfo.pInputAssemblyState = &tempInputAssembly;
 				pipelineInfo.pRasterizationState = &tempRasterizer;
 
-				procPipeline.createPipeline<mineVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::mine, shaderStage, vertexInputInfo, pipelineInfo);
+				procPipeline.createPipeline<mineVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::mine_p, shaderStage, vertexInputInfo, pipelineInfo);
 
 				pipelineInfo.pInputAssemblyState = &inputAssembly;
 				pipelineInfo.pRasterizationState = &rasterizer;
 			}
 
-			//osMirror
+			//uiText_p
 			{
-				procPipeline.createPipeline<osMirrorVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osMirror, shaderStage, vertexInputInfo, pipelineInfo);
-			}
-
-			//uiText
-			{
-				//uiText和屏幕的颜色混合
-				VkPipelineColorBlendAttachmentState tempColorBlendAttachment = colorAttachmentForward[0];
-				tempColorBlendAttachment.blendEnable = VK_TRUE;
-				tempColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-				tempColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-				tempColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-
 				//条带装配
 				VkPipelineInputAssemblyStateCreateInfo tempInputAssembly = inputAssembly;
 				tempInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
@@ -232,23 +211,35 @@ private:
 				tempDepthStencil.depthTestEnable = VK_FALSE;
 				tempDepthStencil.depthWriteEnable = VK_FALSE;
 
-				colorBlending.pAttachments = &tempColorBlendAttachment;
 				pipelineInfo.pInputAssemblyState = &tempInputAssembly;
 				pipelineInfo.pRasterizationState = &tempRasterizer;
 				pipelineInfo.pDepthStencilState = &tempDepthStencil;
 
-				procPipeline.createPipeline<uiTextVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::uiText, shaderStage, vertexInputInfo, pipelineInfo);
+				procPipeline.createPipeline<uiTextVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::uiText_p, shaderStage, vertexInputInfo, pipelineInfo);
 
-				colorBlending.pAttachments = colorAttachmentForward.data();
 				pipelineInfo.pInputAssemblyState = &inputAssembly;
 				pipelineInfo.pRasterizationState = &rasterizer;
 				pipelineInfo.pDepthStencilState = &depthStencil;
 			}
+
+			multisampling.rasterizationSamples = InitBuffer.getMsaaSamples();
+			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentForward.size());
+			colorBlending.pAttachments = colorAttachmentForward.data();
 		}
 
-		/*sc*/
+		/*os_f*/
 		{
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::sc);
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::os_f);
+
+			//osMirror_p
+			{
+				procPipeline.createPipeline<osMirrorVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osMirror_p, shaderStage, vertexInputInfo, pipelineInfo);
+			}
+		}
+
+		/*sc_f*/
+		{
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::sc_f);
 
 			std::vector<VkDynamicState> dynamicStates = { VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR };
 			VkPipelineDynamicStateCreateInfo dynamicState{};
@@ -259,11 +250,11 @@ private:
 
 			rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
 
-			//dsScence
-			procPipeline.createPipeline<offScreenVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::dsScence, shaderStage, vertexInputInfo, pipelineInfo);
+			//dsScence_p
+			procPipeline.createPipeline<offScreenVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::dsScence_p, shaderStage, vertexInputInfo, pipelineInfo);
 
-			//osScence
-			procPipeline.createPipeline<offScreenVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osScence, shaderStage, vertexInputInfo, pipelineInfo);
+			//osScence_p
+			procPipeline.createPipeline<offScreenVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osScence_p, shaderStage, vertexInputInfo, pipelineInfo);
 
 			pipelineInfo.pDynamicState = nullptr;
 			rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;

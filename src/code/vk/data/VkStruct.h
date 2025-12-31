@@ -882,13 +882,13 @@ namespace bufferStruct {
 
 
         void createRenderNode(int id, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device) {
-            if (id == bufferEnum::frameNodeId::sc) {
+            if (id == bufferEnum::frameNodeId::sc_f) {
                 createScRenderPass(colorFormat, depthFormat, msaaSamples, device);
             }
-            else if (id == bufferEnum::frameNodeId::os) {
+            else if (id == bufferEnum::frameNodeId::os_f) {
                 createOsRenderPass(colorFormat, depthFormat, msaaSamples, device);
             }
-            else if (id == bufferEnum::frameNodeId::ds) {
+            else if (id == bufferEnum::frameNodeId::ds_f) {
                 createDsRenderPass(colorFormat, depthFormat, device);
             }
             else {
@@ -1158,21 +1158,21 @@ namespace bufferStruct {
 
             frameNodeType = tempFrameNodeType;
 
-            if (tempFrameNodeType == bufferEnum::frameNodeId::sc) {
+            if (tempFrameNodeType == bufferEnum::frameNodeId::sc_f) {
                 frameNode = scFramebufferNode{};
                 scPtr = &std::get<bufferStruct::scFramebufferNode>(frameNode);
 
                 renderInfo.clearValueCount = static_cast<uint32_t>(clearValueForward.size());
                 renderInfo.pClearValues = clearValueForward.data();
             }
-            else if(tempFrameNodeType == bufferEnum::frameNodeId::os){
+            else if(tempFrameNodeType == bufferEnum::frameNodeId::os_f){
                 frameNode = osFramebufferNode{};
                 osPtr = &std::get<bufferStruct::osFramebufferNode>(frameNode);
 
                 renderInfo.clearValueCount = static_cast<uint32_t>(clearValueForward.size());
                 renderInfo.pClearValues = clearValueForward.data();
             }
-            else if (tempFrameNodeType == bufferEnum::frameNodeId::ds) {
+            else if (tempFrameNodeType == bufferEnum::frameNodeId::ds_f) {
                 frameNode = dsFramebufferNode{};
                 dsPtr = &std::get<bufferStruct::dsFramebufferNode>(frameNode);
 
@@ -1185,17 +1185,17 @@ namespace bufferStruct {
         }
 
         void createRenderInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkRenderPass& render, const VkDevice& device, const VmaAllocator& allocator) {
-            if (frameNodeType == bufferEnum::frameNodeId::sc) {
+            if (frameNodeType == bufferEnum::frameNodeId::sc_f) {
                 createScFramebuffer(scExtent, render, device);
             }
-            else if (frameNodeType == bufferEnum::frameNodeId::os) {
+            else if (frameNodeType == bufferEnum::frameNodeId::os_f) {
                 createImageNode(osPtr->color, scExtent.width, scExtent.height, colorFormat, msaaSamples, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
                 createImageNode(osPtr->depth, scExtent.width, scExtent.height, depthFormat, msaaSamples, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
                 createImageNode(osPtr->osView, scExtent.width, scExtent.height, colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
 
                 createOsFramebuffer(scExtent, render, device);
             }
-            else if (frameNodeType == bufferEnum::frameNodeId::ds) {
+            else if (frameNodeType == bufferEnum::frameNodeId::ds_f) {
                 createImageNode(dsPtr->position, scExtent.width, scExtent.height, bufferInfo::dsPosFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
                 createImageNode(dsPtr->normal,   scExtent.width, scExtent.height, colorFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
                 createImageNode(dsPtr->albedo,   scExtent.width, scExtent.height, colorFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);

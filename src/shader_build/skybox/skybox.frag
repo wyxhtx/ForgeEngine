@@ -240,5 +240,5 @@ void main() {
     float moonVisibility= getMoonVisibility(light.currentHour, moonDir, sunVisibility);         //计算月亮可见度
     finalColor          = addMoonEffect(finalColor, normalizedPos, moonDir, moonVisibility);    //添加月亮效果
     
-    outColor = vec4(finalColor, 1.0);
+    outColor  = vec4(finalColor, 0.0);
 }

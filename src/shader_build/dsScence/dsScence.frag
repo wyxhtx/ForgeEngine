@@ -20,12 +20,13 @@ layout(binding = 0) uniform UniformBufferObject {
     float outerCutOff;          //聚光灯外圆锥
 } light;
 
-layout(binding = 1) uniform sampler2D samplerPosition;  //世界空间位置，兼前向渲染通道(a=0时)
+layout(binding = 1) uniform sampler2D samplerPosition;  //世界空间位置，rgb兼前向颜色，a兼前向标识
 layout(binding = 2) uniform sampler2D samplerNormal;    //世界空间法线
-layout(binding = 3) uniform sampler2D samplerAlbedo;    //漫反射颜色(a：高光强度)
+layout(binding = 3) uniform sampler2D samplerAlbedo;    //漫反射颜色，a兼延迟高光强度
 
 layout(location = 0) in  vec2 fragUV;
-layout(location = 0) out vec4 outFragcolor;
+
+layout(location = 0) out vec4 outColor;
 
 struct LightResult {
     vec3 ambient;
@@ -126,10 +127,10 @@ float getAttenuation(vec3 fragPos, vec3 lightPos) {
 
 void main() {
     vec4 positionData = texture(samplerPosition, fragUV);
-
+    
     //直接呈现前向渲染内容
     if (positionData.a == 0.0) {
-        outFragcolor = positionData;
+        outColor = positionData;
         return;
     }
 
@@ -154,5 +155,5 @@ void main() {
     result      += (directionalLight.diffuse + directionalLight.specular) * 0.2;    //平行光
     result      += (flashlight.diffuse  + flashlight.specular)  * flashAtt;         //聚光灯
 
-    outFragcolor = vec4(result, 1.0);
+    outColor = vec4(result, 1.0);
 }

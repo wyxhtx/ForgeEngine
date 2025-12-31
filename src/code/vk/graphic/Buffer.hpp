@@ -13,7 +13,7 @@ public:
 		procRenderPass.createRenderPassInfo(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device, Device.allocator);
 
 		command.createCommandPool(Device.device, Device.queueFamilyIndex);
-		command.initCommandBuffer(uint32_t(procRenderPass.node[bufferEnum::procRenderId::scScence].scPtr->framebuffer.size()));
+		command.initCommandBuffer(uint32_t(procRenderPass.node[bufferEnum::procRenderId::scScence_r].scPtr->framebuffer.size()));
 
 		createMeshBuffer();
 		createUniformBuffer();
@@ -60,20 +60,20 @@ private:
 	bufferList::procDescriptorNode	procDescriptor{ Device.device };
 	bufferList::procSamplerNode		procSampler;
 
-	bufferStruct::terrainBufferNode  terrain	{ pipelineEnum::procPipelineId::terrain,  bufferEnum::procSamplerId::terrain };
-	bufferList::procModelNode		 procModel	{ pipelineEnum::procPipelineId::model	  };
-	bufferStruct::skyboxBufferNode	 skybox		{ pipelineEnum::procPipelineId::skybox	  };
-	bufferStruct::mineBufferNode	 mine		{ pipelineEnum::procPipelineId::mine	  };
-	bufferStruct::osMirrorBufferNode osMirror	{ pipelineEnum::procPipelineId::osMirror, bufferEnum::procSamplerId::offScreen };
-	bufferStruct::osScenceBufferNode osScence	{ pipelineEnum::procPipelineId::osScence, bufferEnum::procSamplerId::offScreen };
-	bufferStruct::dsScenceBufferNode dsScence	{ pipelineEnum::procPipelineId::dsScence, bufferEnum::procSamplerId::offScreen };
-	bufferStruct::uiTextBufferNode	 uiText		{ pipelineEnum::procPipelineId::uiText,   bufferEnum::procSamplerId::uiText };
+	bufferStruct::terrainBufferNode  terrain	{ pipelineEnum::procPipelineId::terrain_p,  bufferEnum::procSamplerId::terrain_s };
+	bufferList::procModelNode		 procModel	{ pipelineEnum::procPipelineId::model_p	  };
+	bufferStruct::skyboxBufferNode	 skybox		{ pipelineEnum::procPipelineId::skybox_p	  };
+	bufferStruct::mineBufferNode	 mine		{ pipelineEnum::procPipelineId::mine_p	  };
+	bufferStruct::osMirrorBufferNode osMirror	{ pipelineEnum::procPipelineId::osMirror_p, bufferEnum::procSamplerId::offScreen_s };
+	bufferStruct::osScenceBufferNode osScence	{ pipelineEnum::procPipelineId::osScence_p, bufferEnum::procSamplerId::offScreen_s };
+	bufferStruct::dsScenceBufferNode dsScence	{ pipelineEnum::procPipelineId::dsScence_p, bufferEnum::procSamplerId::offScreen_s };
+	bufferStruct::uiTextBufferNode	 uiText		{ pipelineEnum::procPipelineId::uiText_p,   bufferEnum::procSamplerId::uiText_s };
 
 
 
 	//创建交换链附件
 	void createScResource() {
-		bufferStruct::scFramebufferNode& frameNode = procRenderPass.getScFramebufferNode(bufferEnum::procRenderId::scScence);
+		bufferStruct::scFramebufferNode& frameNode = procRenderPass.getScFramebufferNode(bufferEnum::procRenderId::scScence_r);
 
 		createImage(InitSwapchain.scExtent.width, InitSwapchain.scExtent.height, 1, 1, InitSwapchain.colorFormat, InitSwapchain.msaaSamples, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameNode.color.image, frameNode.color.imageMemory);
 		createImageView(frameNode.color.image, frameNode.color.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, InitSwapchain.colorFormat, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -185,9 +185,9 @@ private:
 	}
 
 	void createDescriptorSet() {
-		/*scenceForward*/
+		/*scenceForward_d*/
 		{
-			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceForward);
+			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceForward_d);
 
 			//skybox
 			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &skybox.descriptorSet) == VK_SUCCESS) {
@@ -218,7 +218,7 @@ private:
 			}
 
 			//osMirror
-			bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror);
+			bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror_r);
 			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osMirror.descriptorSet) == VK_SUCCESS) {
 				std::array<VkWriteDescriptorSet, 3> tempWrite{
 					procDescriptor.getWrite(0, osMirror.descriptorSet, osMirror.uniform.buffer, sizeof(osMirror.ubo)),
@@ -234,7 +234,7 @@ private:
 			}
 
 			//osScence
-			bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
+			bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence_r);
 			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osScence.descriptorSet) == VK_SUCCESS) {
 				std::array<VkWriteDescriptorSet, 1> tempWrite{
 					procDescriptor.getWrite(2, osScence.descriptorSet, procSampler.node[osScence.samplerId], osScenceFrameNode.osView.view)
@@ -248,9 +248,9 @@ private:
 			}
 		}
 
-		/*scenceDeferred*/
+		/*scenceDeferred_d*/
 		{
-			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceDeferred);
+			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceDeferred_d);
 
 			//terrain
 			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &terrain.descriptorSet) == VK_SUCCESS) {
@@ -301,12 +301,12 @@ private:
 			}
 		}
 
-		/*dsScence*/
+		/*dsScence_d*/
 		{
-			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence);
+			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence_d);
 
 			//dsScence
-			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence);
+			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence_r);
 			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &dsScence.descriptorSet) == VK_SUCCESS) {
 				std::array<VkWriteDescriptorSet, 4> tempWrite{
 					procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
@@ -323,9 +323,9 @@ private:
 			}
 		}
 
-		/*uiText*/
+		/*uiText_d*/
 		{
-			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::uiText);
+			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::uiText_d);
 
 			//uiText
 			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &uiText.descriptorSet) == VK_SUCCESS) {
@@ -1150,9 +1150,9 @@ public:
 			//开始渲染
 			command.beginCommandBuffer(threadId, frameId);
 
-			/*dsScence*/
+			/*dsScence_r*/
 			{
-				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::dsScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::dsScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 				//terrain
 				for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
@@ -1173,27 +1173,6 @@ public:
 					}
 				}
 
-				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
-			}
-
-			/*osMirror*/
-			{
-				//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osMirror].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-				//
-				//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
-			}
-
-			/*osScence*/
-			{
-				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-				
-				//osMirror
-				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
-
-
-
-				//todo 先到os再呈现？
-
 				//skybox
 				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
 
@@ -1206,16 +1185,33 @@ public:
 				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
 
-			/*scScence*/
+			/*osMirror_r*/
 			{
-				procRenderPass.node[bufferEnum::procRenderId::scScence].setScFramebuffer(frameId);
-				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+				//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osMirror].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+				//
+				//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+			}
+
+			/*osScence_r*/
+			{
+				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+				
+				//osMirror
+				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
+
+				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+			}
+
+			/*scScence_r*/
+			{
+				procRenderPass.node[bufferEnum::procRenderId::scScence_r].setScFramebuffer(frameId);
+				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 				//dsScence
-				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
 
 				//osScence
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, InitSwapchain.scExtent);
+				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, InitSwapchain.scExtent);
 
 				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
@@ -1397,11 +1393,11 @@ public:
 
 
 		//重建离屏描述符，因为交换链重建后osView也得重建
-		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceForward);
+		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceForward_d);
 
 		//osMirror
 		{
-			bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror);
+			bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror_r);
 			std::array<VkWriteDescriptorSet, 3> osMirrorWrite{
 				procDescriptor.getWrite(0, osMirror.descriptorSet, osMirror.uniform.buffer, sizeof(osMirror.ubo)),
 				procDescriptor.getWrite(1, osMirror.descriptorSet, osMirror.lightUniform.buffer, sizeof(osMirror.lightUbo)),
@@ -1412,18 +1408,18 @@ public:
 
 		//osScence
 		{
-			bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence);
+			bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence_r);
 			std::array<VkWriteDescriptorSet, 1> osScenceWrite{
 				procDescriptor.getWrite(2, osScence.descriptorSet, procSampler.node[osScence.samplerId], osScenceFrameNode.osView.view)
 			};
 			vkUpdateDescriptorSets(Device.device, uint32_t(osScenceWrite.size()), osScenceWrite.data(), 0, nullptr);
 		}
 
-		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence);
+		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence_d);
 
 		//dsScence
 		{
-			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence);
+			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence_r);
 			std::array<VkWriteDescriptorSet, 4> dsScenceWrite{
 				procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
 				procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
