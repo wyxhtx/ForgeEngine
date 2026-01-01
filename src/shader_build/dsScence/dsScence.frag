@@ -21,8 +21,8 @@ layout(binding = 0) uniform UniformBufferObject {
 } light;
 
 layout(binding = 1) uniform sampler2D samplerPosition;  //世界空间位置，rgb兼前向颜色，a兼前向标识
-layout(binding = 2) uniform sampler2D samplerNormal;    //世界空间法线
-layout(binding = 3) uniform sampler2D samplerAlbedo;    //漫反射颜色，a兼延迟高光强度
+layout(binding = 2) uniform sampler2D samplerNormal;    //世界空间法线，a兼前向skybox标识
+layout(binding = 3) uniform sampler2D samplerAlbedo;    //漫反射颜色，  a兼延迟高光强度
 
 layout(location = 0) in  vec2 fragUV;
 
@@ -134,14 +134,22 @@ void main() {
         return;
     }
 
-    vec4 normalData   = texture(samplerNormal,   fragUV);
-    vec4 albedoData   = texture(samplerAlbedo,   fragUV);
+    vec4 normalData = texture(samplerNormal,   fragUV);
+    vec4 albedoData = texture(samplerAlbedo,   fragUV);
 
     vec3 fragPos  = positionData.rgb;
     vec3 normal   = normalize(normalData.rgb);
     vec3 texColor = albedoData.rgb;
     float specularIntensity = albedoData.a;
     vec3 viewDir = normalize(light.viewPos - fragPos);
+
+    vec3 result = texColor * light.ambientScale * light.gLightColor;    //环境光
+    
+    //skybox内容需要参与环境光light.ambientScale运算后呈现，不然出光点bug
+    if (normalData.a == 0.0) {
+        outColor = vec4(result, 1.0);
+        return;
+    }
 
     LightResult pointLight       = getPointLight(fragPos, normal, viewDir, texColor, specularIntensity);
     LightResult directionalLight = getDirectionalLight(normal, viewDir, texColor, specularIntensity);
@@ -150,10 +158,9 @@ void main() {
     float pointAtt = getAttenuation(fragPos, light.gLightPos);
     float flashAtt = getAttenuation(fragPos, light.flashPos);
 
-    vec3 result  = texColor * light.ambientScale * light.gLightColor;               //环境光
-    result      += (pointLight.diffuse + pointLight.specular) * pointAtt;           //点光源
-    result      += (directionalLight.diffuse + directionalLight.specular) * 0.2;    //平行光
-    result      += (flashlight.diffuse  + flashlight.specular)  * flashAtt;         //聚光灯
+    result += (pointLight.diffuse + pointLight.specular) * pointAtt;           //点光源
+    result += (directionalLight.diffuse + directionalLight.specular) * 0.2;    //平行光
+    result += (flashlight.diffuse  + flashlight.specular)  * flashAtt;         //聚光灯
 
     outColor = vec4(result, 1.0);
 }

@@ -1174,7 +1174,7 @@ public:
 				}
 
 				//skybox
-				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
 
 				//mine
 				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(mine.pipeId), procPipeline.getPipeLayout(mine.pipeId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());

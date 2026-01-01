@@ -16,7 +16,9 @@ layout(binding = 1) uniform UniformBufferObject {
 
 layout(location = 0) in vec3 fragPos;
 
-layout(location = 0) out vec4 outColor;
+layout(location = 0) out vec4 outPosition;
+layout(location = 1) out vec4 outNormal;
+layout(location = 2) out vec4 outAlbedo;
 
 const float PI = 3.14159265359;
 
@@ -229,16 +231,18 @@ void main() {
     float longitude = atan(normalizedPos.z, normalizedPos.x) * 180.0 / PI;
     float latitude  = asin(normalizedPos.y) * 180.0 / PI;
     
-    vec3 skyColor       = getSkyColor(light.currentHour, longitude, latitude);                  //获取基础天空颜色
-    skyColor            = addHorizonEffect(skyColor, normalizedPos.y);                          //添加地平线效果
-
-    vec3 sunDir         = getSunDirection(light.currentHour);                                   //计算太阳方向
-    float sunVisibility = getSunVisibility(light.currentHour, sunDir);                          //计算太阳可见度
-    vec3 finalColor     = addSunEffect(skyColor, normalizedPos, sunDir, sunVisibility);         //添加太阳效果
-
-    vec3 moonDir        = getMoonDirection(light.currentHour);                                  //计算月亮方向
-    float moonVisibility= getMoonVisibility(light.currentHour, moonDir, sunVisibility);         //计算月亮可见度
-    finalColor          = addMoonEffect(finalColor, normalizedPos, moonDir, moonVisibility);    //添加月亮效果
+    vec3 skyColor        = getSkyColor(light.currentHour, longitude, latitude);                  //获取基础天空颜色
+    skyColor             = addHorizonEffect(skyColor, normalizedPos.y);                          //添加地平线效果
+                         
+    vec3 sunDir          = getSunDirection(light.currentHour);                                   //计算太阳方向
+    float sunVisibility  = getSunVisibility(light.currentHour, sunDir);                          //计算太阳可见度
+    vec3 finalColor      = addSunEffect(skyColor, normalizedPos, sunDir, sunVisibility);         //添加太阳效果
+                         
+    vec3 moonDir         = getMoonDirection(light.currentHour);                                  //计算月亮方向
+    float moonVisibility = getMoonVisibility(light.currentHour, moonDir, sunVisibility);         //计算月亮可见度
+    finalColor           = addMoonEffect(finalColor, normalizedPos, moonDir, moonVisibility);    //添加月亮效果
     
-    outColor  = vec4(finalColor, 0.0);
+    outPosition = vec4(fragPos, 1.0);
+    outNormal   = vec4(0.0);
+    outAlbedo   = vec4(finalColor, 1.0);
 }
