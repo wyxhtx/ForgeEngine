@@ -143,13 +143,13 @@
     <ClInclude Include="src\code\vk\graphic\Swapchain.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\tool\Camera.hpp">
+    <ClInclude Include="src\code\vk\tool\Camera.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\tool\Log.hpp">
+    <ClInclude Include="src\code\vk\tool\Log.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\tool\Music.hpp">
+    <ClInclude Include="src\code\vk\tool\Music.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\code\vk\Main.h">

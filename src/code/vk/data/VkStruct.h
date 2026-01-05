@@ -370,6 +370,36 @@ namespace bufferStruct {
         VmaAllocation bufferMemory;
     };
 
+    //点光源结点
+    struct pointLightNode {
+        glm::vec3 position;     //位置
+        float radius;           //半径
+
+        glm::vec3 color;        //颜色
+        float placeholder;      //占位符
+    };
+
+    //平行光结点
+    struct dirLightNode {
+        glm::vec3 direction;    //方向
+        float scale;            //强度
+
+        glm::vec3 color;        //颜色
+        float placeholder;      //占位符
+    };
+
+    //聚光灯结点
+    struct spotLightNode {
+        glm::vec3 position;     //位置
+        float inner;            //内圆锥
+
+        glm::vec3 color;        //颜色
+        float outer;            //外圆锥
+
+        glm::vec3 direction;    //方向
+        float placeholder;      //占位符
+    };
+
     struct baseUBO {
         glm::mat4 model;            //模型矩阵，用于将模型变换到世界坐标系
         glm::mat4 modelTI;          //模型转置逆矩阵，用于计算光照法线
@@ -378,7 +408,7 @@ namespace bufferStruct {
     };
 
     //注意着色器内存对齐
-    struct lightUBO {
+    struct skyboxLightUBO {
         glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
         float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到，用于周期性效果
 
@@ -396,6 +426,20 @@ namespace bufferStruct {
 
         glm::vec3 flashDir;         //聚光灯方向
         float outerCutOff;          //聚光灯外圆锥
+    };
+
+    struct lightUBO {
+        glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
+        float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到，用于周期性效果
+
+        float ambientScale;         //环境光强度
+        float diffuseScale;         //漫反射强度
+        float specularScale;        //镜面反射强度
+        float placeholder;          //占位符
+
+        pointLightNode pointLightList[1];
+        dirLightNode dirLightList[1];
+        spotLightNode spotLightList[1];
     };
 
 
@@ -418,8 +462,6 @@ namespace bufferStruct {
         //统一缓冲
         bufferNode uniform;
         baseUBO ubo;
-        bufferNode lightUniform;
-        lightUBO lightUbo;
 
         //描述符缓冲
         VkDescriptorSet descriptorSet;
@@ -452,7 +494,6 @@ namespace bufferStruct {
             vkDestroyImageView(device, texture.view, nullptr);
 
             vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
-            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };
 
@@ -474,13 +515,19 @@ namespace bufferStruct {
 
         VkDescriptorSet descriptorSet;
 
+        //用于屏蔽超出视觉范围模型的命令提交和统一缓冲更新
+        glm::dvec3 modelWorldPos;           //模型世界坐标（d世界坐标系），在初始化时赋值
+        glm::dvec3 currentWorldPos;         //当前世界坐标（d世界坐标系），在更新统一缓冲时赋值
+        bool isVisible = true;              //模型可见标识，在提交命令时赋值
 
 
-        void create(const std::string tempModelFile, const char* tempTextureFile, /*const char* tempNormalFile,*/ bufferEnum::procSamplerId::type tempSamplerId) {
-            modelFile   = tempModelFile;
-            textureFile = tempTextureFile;
+
+        void create(const std::string tempModelFile, const char* tempTextureFile, /*const char* tempNormalFile,*/ bufferEnum::procSamplerId::type tempSamplerId, const glm::dvec3& tempModelWorldPos) {
+            modelFile     = tempModelFile;
+            textureFile   = tempTextureFile;
             //normalFile  = tempNormalFile;
-            samplerId   = tempSamplerId;
+            samplerId     = tempSamplerId;
+            modelWorldPos = tempModelWorldPos;
         }
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
@@ -534,9 +581,14 @@ namespace bufferStruct {
         bufferEnum::procSamplerId::type samplerId;
         uint32_t mipLevel;
 
+        //用于屏蔽超出视觉范围模型的命令提交和统一缓冲更新
+        glm::dvec3 modelWorldPos;           //模型世界坐标（d世界坐标系），在初始化时赋值
+        glm::dvec3 currentWorldPos;         //当前世界坐标（d世界坐标系），在更新统一缓冲时赋值
+        bool isVisible = true;              //模型可见标识，在提交命令时赋值
 
 
-        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, /*std::vector<const char*> tempNormalFile,*/ bufferEnum::procSamplerId::type tempSamplerId) {
+
+        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, /*std::vector<const char*> tempNormalFile,*/ bufferEnum::procSamplerId::type tempSamplerId, const glm::dvec3& tempModelWorldPos) {
             modelFile = tempModelFile;
 
             node.resize(tempTextureFile.size());
@@ -546,6 +598,7 @@ namespace bufferStruct {
             }
 
             samplerId = tempSamplerId;
+            modelWorldPos = tempModelWorldPos;
         }
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
@@ -562,7 +615,7 @@ namespace bufferStruct {
         bufferNode uniform;
         baseUBO ubo;
         bufferNode lightUniform;
-        lightUBO lightUbo;
+        skyboxLightUBO lightUbo;
 
         VkDescriptorSet descriptorSet;
 
@@ -621,7 +674,7 @@ namespace bufferStruct {
         bufferNode uniform;
         baseUBO ubo;
         bufferNode lightUniform;
-        lightUBO lightUbo;
+        skyboxLightUBO lightUbo;
 
         VkDescriptorSet descriptorSet;
 

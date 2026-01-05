@@ -85,7 +85,7 @@
 
 
 /*内部库文件*/
-#include "../tool/Log.hpp"
+#include "../vk/tool/Log.hpp"
 
 #include "../forge/data/ForgeInfo.h"
 #include "../forge/data/ForgeEnum.h"
@@ -104,8 +104,8 @@
 #pragma warning(pop)
 #include "data/VkList.h"
 
-#include "../tool/Camera.hpp"
-#include "../tool/Music.hpp"
+#include "../vk/tool/Camera.hpp"
+#include "../vk/tool/Music.hpp"
 
 #include "../forge/base/Noise.hpp"
 #include "../forge/base/Loop.hpp"

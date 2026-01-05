@@ -86,10 +86,10 @@ namespace coordsInfo {
 }
 
 namespace lightInfo {
-    const glm::vec3 gLightColor   = glm::vec3(1.0f, 1.0f, 1.0f);    //全局光照颜色
-    const glm::vec3 gLightDir     = glm::vec3(0.0f,-1.0f, 0.0f);    //全局光照方向
-    const float ambientScale      = 0.2f;                           //环境光缩放
-    const float diffuseScale      = 0.5f;                           //漫反射缩放
+    const glm::vec3 sunLightColor = glm::vec3(1.0f, 1.0f, 1.0f);    //太阳平行光颜色
+    const glm::vec3 sunLightDir   = glm::vec3(0.0f,-1.0f, 0.0f);    //太阳平行光方向
+    const float ambientScale      = 0.4f;                           //环境光缩放
+    const float diffuseScale      = 0.8f;                           //漫反射缩放
     const float specularScale     = 1.0f;                           //镜面反射缩放
 }
 

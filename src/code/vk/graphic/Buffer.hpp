@@ -133,7 +133,6 @@ private:
 	void createUniformBuffer() {
 		//terrain
 		createBuffer(sizeof(terrain.ubo), terrain.uniform);
-		createBuffer(sizeof(terrain.lightUbo), terrain.lightUniform);
 
 		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
@@ -348,13 +347,9 @@ private:
 		proj[1][1] *= -1;
 
 		//terrain
-		terrain.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(0));
-		terrain.ubo.modelTI				= glm::transpose(glm::inverse(terrain.ubo.model));
-		terrain.ubo.proj				= proj;
-		terrain.lightUbo.gLightColor	= lightInfo::gLightColor;
-		terrain.lightUbo.diffuseScale	= lightInfo::diffuseScale;
-		terrain.lightUbo.gLightDir		= lightInfo::gLightDir;
-		terrain.lightUbo.specularScale	= lightInfo::specularScale;
+		terrain.ubo.model	= glm::translate(glm::mat4(1), glm::vec3(0));
+		terrain.ubo.modelTI	= glm::transpose(glm::inverse(terrain.ubo.model));
+		terrain.ubo.proj	= proj;
 
 		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
@@ -376,15 +371,14 @@ private:
 
 		//osMirror
 		osMirror.ubo.proj = proj;
-		osMirror.lightUbo.gLightColor	= lightInfo::gLightColor;
+		osMirror.lightUbo.gLightColor	= lightInfo::sunLightColor;
 		osMirror.lightUbo.diffuseScale  = lightInfo::diffuseScale;
-		osMirror.lightUbo.gLightDir		= lightInfo::gLightDir;
+		osMirror.lightUbo.gLightDir		= lightInfo::sunLightDir;
 		osMirror.lightUbo.specularScale = lightInfo::specularScale;
 
 		//dsScence
-		dsScence.lightUbo.gLightColor	= lightInfo::gLightColor;
+		dsScence.lightUbo.ambientScale	= lightInfo::ambientScale;
 		dsScence.lightUbo.diffuseScale	= lightInfo::diffuseScale;
-		dsScence.lightUbo.gLightDir		= lightInfo::gLightDir;
 		dsScence.lightUbo.specularScale = lightInfo::specularScale;
 	}
 
@@ -1163,13 +1157,27 @@ public:
 
 				//model-sNode
 				for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+					if (glm::distance(procModel.sNode[nodeId].modelWorldPos, procModel.sNode[nodeId].currentWorldPos) < plateInfo::cubeSightRange) {
+						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+
+						procModel.sNode[nodeId].isVisible = true;
+					}
+					else {
+						procModel.sNode[nodeId].isVisible = false;
+					}
 				}
 
 				//model-dNode
 				for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
-					for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
-						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+					if (glm::distance(procModel.dNode[nodeId].modelWorldPos, procModel.dNode[nodeId].currentWorldPos) < plateInfo::cubeSightRange) {
+						for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
+							command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+						}
+
+						procModel.dNode[nodeId].isVisible = true;
+					}
+					else {
+						procModel.dNode[nodeId].isVisible = false;
 					}
 				}
 
@@ -1274,50 +1282,43 @@ public:
 
 		//terrain
 		{
-			terrain.ubo.view			  = camera.view;
-			terrain.lightUbo.viewPos	  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			terrain.lightUbo.currentHour  = currentHour;
-			terrain.lightUbo.ambientScale = lightInfo::ambientScale;
-			terrain.lightUbo.gLightPos	  = offsetPos;
-			terrain.lightUbo.flashPos	  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			terrain.lightUbo.flashDir	  = camera.front;
-			terrain.lightUbo.flashCutOff  = glm::cos(glm::radians(12.5f));
-			terrain.lightUbo.outerCutOff  = glm::cos(glm::radians(14.5f));
+			terrain.ubo.view = camera.view;
 
 			createMapMemory(terrain.uniform.bufferMemory, &terrain.ubo, sizeof(terrain.ubo));
-			createMapMemory(terrain.lightUniform.bufferMemory, &terrain.lightUbo, sizeof(terrain.lightUbo));
 		}
 
 		//model-sNode
 		{
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				procModel.sNode[i].ubo.model			 = glm::translate(glm::mat4(1), offsetPos);											//位移
-				procModel.sNode[i].ubo.model			 *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
-				procModel.sNode[i].ubo.modelTI			 = glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
-				//procModel.sNode[i].ubo.model			 *= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);	//旋转
-				procModel.sNode[i].ubo.view				 = camera.view;
-			}
+				if (procModel.sNode[i].isVisible) {
+					procModel.sNode[i].ubo.model	= glm::translate(glm::mat4(1), glm::vec3(procModel.sNode[i].modelWorldPos - playerInfo::logicOriginPos));	//位移
+					procModel.sNode[i].ubo.model	*= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
+					procModel.sNode[i].ubo.modelTI	= glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
+					//procModel.sNode[i].ubo.model	*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);							//旋转
+					procModel.sNode[i].ubo.view		= camera.view;
 
-			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				createMapMemory(procModel.sNode[i].uniform.bufferMemory, &procModel.sNode[i].ubo, sizeof(procModel.sNode[i].ubo));
+					createMapMemory(procModel.sNode[i].uniform.bufferMemory, &procModel.sNode[i].ubo, sizeof(procModel.sNode[i].ubo));
+				}
+
+				procModel.sNode[i].currentWorldPos = camera.pos;
 			}
 		}
 
 		//model-dNode
 		{
 			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-					procModel.dNode[i].node[j].ubo.model   = glm::translate(glm::mat4(1), offsetPos);											//位移
-					procModel.dNode[i].node[j].ubo.model   *= glm::scale(glm::mat4(1), glm::vec3(0.1f));										//缩放
-					procModel.dNode[i].node[j].ubo.modelTI = glm::transpose(glm::inverse(procModel.dNode[i].node[j].ubo.model));
-					procModel.dNode[i].node[j].ubo.view    = camera.view;
-				}
-			}
+				if (procModel.dNode[i].isVisible) {
+					for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+						procModel.dNode[i].node[j].ubo.model	= glm::translate(glm::mat4(1), glm::vec3(procModel.dNode[i].modelWorldPos - playerInfo::logicOriginPos));	//位移
+						procModel.dNode[i].node[j].ubo.model	*= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
+						procModel.dNode[i].node[j].ubo.modelTI	= glm::transpose(glm::inverse(procModel.dNode[i].node[j].ubo.model));
+						procModel.dNode[i].node[j].ubo.view		= camera.view;
 
-			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-					createMapMemory(procModel.dNode[i].node[j].uniform.bufferMemory, &procModel.dNode[i].node[j].ubo, sizeof(procModel.dNode[i].node[j].ubo));
+						createMapMemory(procModel.dNode[i].node[j].uniform.bufferMemory, &procModel.dNode[i].node[j].ubo, sizeof(procModel.dNode[i].node[j].ubo));
+					}
 				}
+
+				procModel.dNode[i].currentWorldPos = camera.pos;
 			}
 		}
 
@@ -1360,14 +1361,25 @@ public:
 
 		//dsScence
 		{
-			dsScence.lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			dsScence.lightUbo.currentHour	= currentHour;
-			dsScence.lightUbo.ambientScale	= lightInfo::ambientScale;
-			dsScence.lightUbo.gLightPos		= offsetPos;
-			dsScence.lightUbo.flashPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
-			dsScence.lightUbo.flashDir		= camera.front;
-			dsScence.lightUbo.flashCutOff	= glm::cos(glm::radians(12.5f));
-			dsScence.lightUbo.outerCutOff	= glm::cos(glm::radians(14.5f));
+			dsScence.lightUbo.viewPos	  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };	//位置
+			dsScence.lightUbo.currentHour = currentHour;											//时间
+			
+			//点光源
+			dsScence.lightUbo.pointLightList[0].position = offsetPos;								//位置
+			dsScence.lightUbo.pointLightList[0].radius	 = 16.0f;									//半径
+			dsScence.lightUbo.pointLightList[0].color	 = glm::vec3(1.0f);							//颜色
+
+			//平行光
+			dsScence.lightUbo.dirLightList[0].direction = lightInfo::sunLightDir;					//方向
+			dsScence.lightUbo.dirLightList[0].scale		= 0.5f;										//强度
+			dsScence.lightUbo.dirLightList[0].color		= lightInfo::sunLightColor;					//颜色
+
+			//聚光灯
+			dsScence.lightUbo.spotLightList[0].position  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };	//位置
+			dsScence.lightUbo.spotLightList[0].inner	 = glm::cos(glm::radians(12.5f));							//内圆锥
+			dsScence.lightUbo.spotLightList[0].color	 = glm::vec3(1.0f);											//颜色
+			dsScence.lightUbo.spotLightList[0].outer	 = glm::cos(glm::radians(14.5f));							//外圆锥
+			dsScence.lightUbo.spotLightList[0].direction = camera.front;											//方向
 
 			createMapMemory(dsScence.lightUniform.bufferMemory, &dsScence.lightUbo, sizeof(dsScence.lightUbo));
 		}

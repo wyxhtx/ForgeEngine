@@ -257,10 +257,9 @@ namespace bufferList {
 
 
         procModelNode(pipelineEnum::procPipelineId::type pId) {
-            //todo temple没有法线贴图，暂时拿fileInfo::image::temple凑数
-            sNode[bufferEnum::procStaticModelId::temple_m].create(fileInfo::model::temple, fileInfo::image::temple, /*fileInfo::image::temple,*/ bufferEnum::procSamplerId::staticModel_sn);
+            sNode[bufferEnum::procStaticModelId::temple_m].create(fileInfo::model::temple, fileInfo::image::temple, /*fileInfo::image::temple,*/ bufferEnum::procSamplerId::staticModel_sn, glm::dvec3(0, 32, 0));
 
-            dNode[bufferEnum::procDynamicModelId::droid_m].create(fileInfo::model::droid, { fileInfo::image::droidBodyC,fileInfo::image::droidHeadC,fileInfo::image::droidMiscC }, /*{ fileInfo::image::droidBodyN,fileInfo::image::droidHeadN,fileInfo::image::droidMiscN },*/ bufferEnum::procSamplerId::dynamicModel_sl);
+            dNode[bufferEnum::procDynamicModelId::droid_m].create(fileInfo::model::droid, { fileInfo::image::droidBodyC,fileInfo::image::droidHeadC,fileInfo::image::droidMiscC }, /*{ fileInfo::image::droidBodyN,fileInfo::image::droidHeadN,fileInfo::image::droidMiscN },*/ bufferEnum::procSamplerId::dynamicModel_sl, glm::dvec3(0, 32, 0));
 
 
 
