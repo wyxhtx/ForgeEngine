@@ -14,6 +14,7 @@ namespace bufferList {
             node[bufferEnum::procRenderId::osScence_r].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os_f);
             node[bufferEnum::procRenderId::osMirror_r].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os_f);
             node[bufferEnum::procRenderId::dsScence_r].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::ds_f);
+            node[bufferEnum::procRenderId::shadow_r]  .createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::sh_f);
         };
 
         void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& allocator) {
@@ -54,6 +55,16 @@ namespace bufferList {
             }
 
             return *node[procRenderId].dsPtr;
+        }
+
+        bufferStruct::shFramebufferNode& getShFramebufferNode(bufferEnum::procRenderId::type procRenderId) {
+            if (debugInfo::LogSwitch) {
+                if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::sh_f) {
+                    Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
+                }
+            }
+
+            return *node[procRenderId].shPtr;
         }
 
         void cleanupSwapChain(const VkDevice& device, const VmaAllocator& allocator) {
@@ -106,17 +117,23 @@ namespace bufferList {
                 {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceDeferredSize},   //片段纹理
             };
 
+            //uiText_d
+            node[bufferEnum::procDescriptorId::uiText_d].config = {
+                {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::uiTextSize}            //片段纹理采样器描述符
+            };
+
             //dsScence_d
             node[bufferEnum::procDescriptorId::dsScence_d].config = {
                 {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize},         //片段光照
                 {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize},         //片段坐标
                 {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize},         //片段法线
-                {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize}          //片段反射
+                {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize},         //片段反射
+                {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceSize}          //片段阴影
             };
 
-            //uiText_d
-            node[bufferEnum::procDescriptorId::uiText_d].config = {
-                {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::uiTextSize}            //片段纹理采样器描述符
+            //shadow_d
+            node[bufferEnum::procDescriptorId::shadow_d].config = {
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_GEOMETRY_BIT, bufferInfo::shadowSize}
             };
 
             for (int i = 0; i < bufferEnum::procDescriptorId::count; i++) {
@@ -166,7 +183,7 @@ namespace bufferList {
 
                 //各向异性过滤器
                 samplerInfo.anisotropyEnable = VK_TRUE;
-                samplerInfo.maxAnisotropy = 16.0f;
+                samplerInfo.maxAnisotropy    = 16.0f;
 
                 //采样范围超过图像时候返回的颜色
                 samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
@@ -176,23 +193,24 @@ namespace bufferList {
 
                 //开启比较功能，那么纹素首先和值进行比较，并且比较后的值用于过滤操作
                 samplerInfo.compareEnable = VK_FALSE;
-                samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+                samplerInfo.compareOp     = VK_COMPARE_OP_ALWAYS;
 
                 samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
                 samplerInfo.mipLodBias = 0.0f;
-                samplerInfo.minLod = 0.0f;
+                samplerInfo.minLod     = 0.0f;
             }
 
             //terrain_s
             samplerInfo.magFilter = VK_FILTER_NEAREST;
-            samplerInfo.maxLod = static_cast<float>(terrainMip);
+            samplerInfo.maxLod    = static_cast<float>(terrainMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::terrain_s]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "terrain采样器创建失败");
                 throw;
             }
 
             //staticModel_sn
-            samplerInfo.maxLod = static_cast<float>(sModelMip);
+            samplerInfo.magFilter = VK_FILTER_NEAREST;
+            samplerInfo.maxLod    = static_cast<float>(sModelMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::staticModel_sn]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "sModelN采样器创建失败");
                 throw;
@@ -207,7 +225,7 @@ namespace bufferList {
 
             //dynamicModel_sn
             samplerInfo.magFilter = VK_FILTER_NEAREST;
-            samplerInfo.maxLod = static_cast<float>(dModelMip);
+            samplerInfo.maxLod    = static_cast<float>(dModelMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::dynamicModel_sn]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "dModelN采样器创建失败");
                 throw;
@@ -220,18 +238,36 @@ namespace bufferList {
                 throw;
             }
 
+            //uiText_s
+            samplerInfo.magFilter     = VK_FILTER_LINEAR;
+            samplerInfo.maxAnisotropy = 16.0f;
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::uiText_s]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "uiText采样器创建失败");
+                throw;
+            }
+
             //offScreen_s
-            samplerInfo.maxLod = 0.0f;
+            samplerInfo.magFilter     = VK_FILTER_LINEAR;
+            samplerInfo.maxLod        = 0.0f;
             samplerInfo.maxAnisotropy = 1.0f;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::offScreen_s]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "offScreen采样器创建失败");
                 throw;
             }
 
-            //uiText_s
-            samplerInfo.maxAnisotropy = 16.0f;
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::uiText_s]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "uiText采样器创建失败");
+            //todo实现后进行视觉效果微调
+            //shadow_s
+            samplerInfo.magFilter = VK_FILTER_LINEAR;
+            samplerInfo.anisotropyEnable = VK_FALSE;
+            samplerInfo.maxAnisotropy = 0;
+            samplerInfo.compareEnable = VK_TRUE;
+            samplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+            samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            samplerInfo.mipLodBias = 0;
+            //samplerInfo.minLod           = 0;
+            //samplerInfo.maxLod           = VK_LOD_CLAMP_NONE;
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::shadow_s]) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "shadow采样器创建失败");
                 throw;
             }
         }
@@ -311,10 +347,11 @@ namespace pipelineList {
             node[pipelineEnum::procPipelineId::model_p]   .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred_d, fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag);
             node[pipelineEnum::procPipelineId::skybox_p]  .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag);
             node[pipelineEnum::procPipelineId::mine_p]    .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  fileInfo::shader::mineVert,     fileInfo::shader::mineFrag);
+            node[pipelineEnum::procPipelineId::uiText_p]  .createPipelineNode(bufferEnum::procDescriptorId::uiText_d,         fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag);
             node[pipelineEnum::procPipelineId::osMirror_p].createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag);
             node[pipelineEnum::procPipelineId::osScence_p].createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag);
             node[pipelineEnum::procPipelineId::dsScence_p].createPipelineNode(bufferEnum::procDescriptorId::dsScence_d,       fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag);
-            node[pipelineEnum::procPipelineId::uiText_p]  .createPipelineNode(bufferEnum::procDescriptorId::uiText_d,         fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag);
+            node[pipelineEnum::procPipelineId::shadow_p]  .createPipelineNode(bufferEnum::procDescriptorId::shadow_d,         fileInfo::shader::shadowVert,   fileInfo::shader::shadowGeom);
         }
 
         void createPipeLayout(const VkDevice& device, std::array<bufferStruct::descriptorNode, bufferEnum::procDescriptorId::count>& dstNode) {
@@ -335,6 +372,27 @@ namespace pipelineList {
             input.vertexAttributeDescriptionCount = uint32_t(attribute.size());
             input.pVertexBindingDescriptions      = binding.data();
             input.pVertexAttributeDescriptions    = attribute.data();
+
+            pipelineInfo.layout = getPipeLayout(id);
+
+            if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineInfo, nullptr, &node[id].pipeline) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "管线创建失败");
+                throw;
+            }
+        }
+
+        template<typename VertexType>
+        void createShadowPipeline(const VkDevice& device, pipelineEnum::procPipelineId::type id, std::array<VkPipelineShaderStageCreateInfo, 2>& shader, VkPipelineVertexInputStateCreateInfo& input, VkGraphicsPipelineCreateInfo& pipelineInfo) {
+            shader[0] = loadShader(device, node[id].vertFile, VK_SHADER_STAGE_VERTEX_BIT);
+            shader[1] = loadShader(device, node[id].fragFile, VK_SHADER_STAGE_GEOMETRY_BIT);
+
+            auto binding = VertexType::getBindingDescription();
+            auto attribute = VertexType::getAttributeDescriptions();
+
+            input.vertexBindingDescriptionCount = uint32_t(binding.size());
+            input.vertexAttributeDescriptionCount = uint32_t(attribute.size());
+            input.pVertexBindingDescriptions = binding.data();
+            input.pVertexAttributeDescriptions = attribute.data();
 
             pipelineInfo.layout = getPipeLayout(id);
 

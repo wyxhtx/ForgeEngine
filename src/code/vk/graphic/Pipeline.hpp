@@ -259,6 +259,23 @@ private:
 			pipelineInfo.pDynamicState = nullptr;
 			rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 		}
+
+
+		//todo避免麻烦故意放最后面
+		//todo目前不准日后再改
+		//sh_f
+		{
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::sh_f);
+
+			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+			rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+			rasterizer.depthBiasEnable = VK_TRUE;
+
+			procPipeline.createShadowPipeline<shadowVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::shadow_p, shaderStage, vertexInputInfo, pipelineInfo);
+		}
+
 	}
 
 public:

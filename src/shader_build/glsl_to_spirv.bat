@@ -5,7 +5,7 @@ set "COMPILER=.\glslangValidator.exe"
 set "SOURCE_DIR=."
 set "TARGET_DIR=..\shader"
 
-for /r "%SOURCE_DIR%" %%f in (*.vert *.frag) do (
+for /r "%SOURCE_DIR%" %%f in (*.vert *.frag *.geom) do (
     set "source_file=%%f"
     set "source_path=%%~dpf"
     
@@ -21,6 +21,8 @@ for /r "%SOURCE_DIR%" %%f in (*.vert *.frag) do (
         set "target_filename=!filename!Vert.spv"
     ) else if "%%~xf"==".frag" (
         set "target_filename=!filename!Frag.spv"
+    ) else if "%%~xf"==".geom" (
+        set "target_filename=!filename!Geom.spv"
     )
     
     REM 构建目标路径

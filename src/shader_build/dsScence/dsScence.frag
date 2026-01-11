@@ -52,6 +52,7 @@ layout(binding = 0) uniform UniformBufferObject {
 layout(binding = 1) uniform sampler2D samplerPosition;  //世界空间位置，rgb兼前向颜色，a兼前向标识
 layout(binding = 2) uniform sampler2D samplerNormal;    //世界空间法线，a兼前向skybox标识
 layout(binding = 3) uniform sampler2D samplerAlbedo;    //漫反射颜色，  a兼延迟高光强度
+//layout(binding = 4) uniform sampler2DArray samplerShadow;    //阴影
 
 layout(location = 0) in  vec2 fragUV;
 

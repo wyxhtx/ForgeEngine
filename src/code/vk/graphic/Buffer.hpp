@@ -33,18 +33,19 @@ public:
 	~Buffer() {
 		procRenderPass.clear(Device.device, Device.allocator);
 		procDescriptor.clear(Device.device);
-		procSampler.clear(Device.device);
+		procSampler	  .clear(Device.device);
 
 		command.clear(Device.device);
 
-		terrain.clear(Device.device, Device.allocator);
+		terrain	 .clear(Device.device, Device.allocator);
 		procModel.clear(Device.device, Device.allocator);
-		skybox.clear(Device.device, Device.allocator);
-		mine.clear(Device.device, Device.allocator);
-		osMirror.clear(Device.device, Device.allocator);
-		osScence.clear(Device.device, Device.allocator);
-		dsScence.clear(Device.device, Device.allocator);
-		uiText.clear(Device.device, Device.allocator);
+		skybox	 .clear(Device.device, Device.allocator);
+		mine	 .clear(Device.device, Device.allocator);
+		osMirror .clear(Device.device, Device.allocator);
+		osScence .clear(Device.device, Device.allocator);
+		dsScence .clear(Device.device, Device.allocator);
+		uiText	 .clear(Device.device, Device.allocator);
+		shadow	 .clear(Device.device, Device.allocator);
 
 		if (debugInfo::LogSwitch) {
 			Log::print("Buffer已清除");
@@ -61,13 +62,14 @@ private:
 	bufferList::procSamplerNode		procSampler;
 
 	bufferStruct::terrainBufferNode  terrain	{ pipelineEnum::procPipelineId::terrain_p,  bufferEnum::procSamplerId::terrain_s };
-	bufferList::procModelNode		 procModel	{ pipelineEnum::procPipelineId::model_p	  };
-	bufferStruct::skyboxBufferNode	 skybox		{ pipelineEnum::procPipelineId::skybox_p	  };
-	bufferStruct::mineBufferNode	 mine		{ pipelineEnum::procPipelineId::mine_p	  };
+	bufferList::procModelNode		 procModel	{ pipelineEnum::procPipelineId::model_p		};
+	bufferStruct::skyboxBufferNode	 skybox		{ pipelineEnum::procPipelineId::skybox_p	};
+	bufferStruct::mineBufferNode	 mine		{ pipelineEnum::procPipelineId::mine_p		};
+	bufferStruct::uiTextBufferNode	 uiText		{ pipelineEnum::procPipelineId::uiText_p,   bufferEnum::procSamplerId::uiText_s };
 	bufferStruct::osMirrorBufferNode osMirror	{ pipelineEnum::procPipelineId::osMirror_p, bufferEnum::procSamplerId::offScreen_s };
 	bufferStruct::osScenceBufferNode osScence	{ pipelineEnum::procPipelineId::osScence_p, bufferEnum::procSamplerId::offScreen_s };
 	bufferStruct::dsScenceBufferNode dsScence	{ pipelineEnum::procPipelineId::dsScence_p, bufferEnum::procSamplerId::offScreen_s };
-	bufferStruct::uiTextBufferNode	 uiText		{ pipelineEnum::procPipelineId::uiText_p,   bufferEnum::procSamplerId::uiText_s };
+	bufferStruct::shadowBufferNode	 shadow		{ pipelineEnum::procPipelineId::shadow_p,	bufferEnum::procSamplerId::shadow_s };
 
 
 
@@ -128,6 +130,31 @@ private:
 
 		//uiText
 		createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex);
+
+		//todo优化
+		//shadow
+		for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+			const auto& terrainVerts = terrainVertex::vertexs[layer];
+			const auto& terrainIndices = terrainVertex::indexs[layer];
+
+			//记录当前偏移量
+			size_t indexOffset = shadowVertex::vertexs.size();
+
+			//拷贝顶点：只拷贝 position
+			for (const auto& terrainVert : terrainVerts) {
+				shadowVertex::vertexNode shadowVert;
+				shadowVert.position = terrainVert.position;
+				shadowVertex::vertexs.push_back(shadowVert);
+			}
+
+			//拷贝索引：添加偏移量
+			for (auto index : terrainIndices) {
+				shadowVertex::indexs.push_back(static_cast<uint32_t>(index + indexOffset));
+			}
+		}
+
+		createVertexBuffer(shadowVertex::vertexs, shadow.vertex);
+		createIndexBuffer(shadowVertex::indexs, shadow.index);
 	}
 
 	void createUniformBuffer() {
@@ -159,6 +186,9 @@ private:
 
 		//dsScence
 		createBuffer(sizeof(dsScence.lightUbo), dsScence.lightUniform);
+
+		//shadow
+		createBuffer(sizeof(shadow.shadowUbo), shadow.shadowUniform);
 	}
 
 	void createTexture() {
@@ -300,28 +330,6 @@ private:
 			}
 		}
 
-		/*dsScence_d*/
-		{
-			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence_d);
-
-			//dsScence
-			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence_r);
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &dsScence.descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 4> tempWrite{
-					procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
-					procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
-					procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
-					procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view)
-				};
-
-				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-			}
-			else {
-				Log::printError(__FILE__, __LINE__, "dsScence分配描述符集失败");
-				throw;
-			}
-		}
-
 		/*uiText_d*/
 		{
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::uiText_d);
@@ -336,6 +344,51 @@ private:
 			}
 			else {
 				Log::printError(__FILE__, __LINE__, "uiText分配描述符集失败");
+				throw;
+			}
+		}
+
+		//todo优化
+		/*dsScence_d*/
+		{
+			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence_d);
+
+			//dsScence
+			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence_r);
+			bufferStruct::shFramebufferNode& shadowFrameNode   = procRenderPass.getShFramebufferNode(bufferEnum::procRenderId::shadow_r);
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &dsScence.descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 5> tempWrite{
+					procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
+					procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
+					procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
+					procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view),
+
+					//todo
+					procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], shadowFrameNode.depth.view)
+				};
+
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "dsScence分配描述符集失败");
+				throw;
+			}
+		}
+
+		//todo优化
+		/*shadow_d*/
+		{
+			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::shadow_d);
+		
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &shadow.descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 1> tempWrite{
+					procDescriptor.getWrite(0, shadow.descriptorSet, shadow.shadowUniform.buffer, sizeof(shadow.shadowUbo))
+				};
+		
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "阴影描述符集分配失败");
 				throw;
 			}
 		}
@@ -1144,6 +1197,17 @@ public:
 			//开始渲染
 			command.beginCommandBuffer(threadId, frameId);
 
+			//todo优化
+			/*shadow_r*/
+			{
+				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::shadow_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+				//shadow
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(shadow.pipeId), procPipeline.getPipeLayout(shadow.pipeId), shadow.descriptorSet, shadow.vertex.buffer, shadow.index.buffer, (uint32_t)shadowVertex::indexs.size());
+
+				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+			}
+
 			/*dsScence_r*/
 			{
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::dsScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -1156,36 +1220,36 @@ public:
 				}
 
 				//model-sNode
-				for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-					if (glm::distance(procModel.sNode[nodeId].modelWorldPos, procModel.sNode[nodeId].currentWorldPos) < plateInfo::cubeSightRange) {
-						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
-
-						procModel.sNode[nodeId].isVisible = true;
-					}
-					else {
-						procModel.sNode[nodeId].isVisible = false;
-					}
-				}
-
-				//model-dNode
-				for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
-					if (glm::distance(procModel.dNode[nodeId].modelWorldPos, procModel.dNode[nodeId].currentWorldPos) < plateInfo::cubeSightRange) {
-						for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
-							command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
-						}
-
-						procModel.dNode[nodeId].isVisible = true;
-					}
-					else {
-						procModel.dNode[nodeId].isVisible = false;
-					}
-				}
+				//for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+				//	if (glm::distance(procModel.sNode[nodeId].modelWorldPos, procModel.sNode[nodeId].currentWorldPos) < plateInfo::cubeSightRange) {
+				//		command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+				//
+				//		procModel.sNode[nodeId].isVisible = true;
+				//	}
+				//	else {
+				//		procModel.sNode[nodeId].isVisible = false;
+				//	}
+				//}
+				//
+				////model-dNode
+				//for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
+				//	if (glm::distance(procModel.dNode[nodeId].modelWorldPos, procModel.dNode[nodeId].currentWorldPos) < plateInfo::cubeSightRange) {
+				//		for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
+				//			command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+				//		}
+				//
+				//		procModel.dNode[nodeId].isVisible = true;
+				//	}
+				//	else {
+				//		procModel.dNode[nodeId].isVisible = false;
+				//	}
+				//}
 
 				//skybox
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
+				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
 
 				//mine
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(mine.pipeId), procPipeline.getPipeLayout(mine.pipeId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
+				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(mine.pipeId), procPipeline.getPipeLayout(mine.pipeId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
 
 				//uiText
 				command.createUITextCommandBuffer(threadId, frameId, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
@@ -1202,12 +1266,12 @@ public:
 
 			/*osScence_r*/
 			{
-				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-				
-				//osMirror
+				//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+				//
+				////osMirror
 				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
-
-				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+				//
+				//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
 
 			/*scScence_r*/
@@ -1359,6 +1423,7 @@ public:
 			createMapMemory(osMirror.lightUniform.bufferMemory, &osMirror.lightUbo, sizeof(osMirror.lightUbo));
 		}
 
+		//todo优化
 		//dsScence
 		{
 			dsScence.lightUbo.viewPos	  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };	//位置
@@ -1380,8 +1445,6 @@ public:
 			dsScence.lightUbo.spotLightList[0].color	 = glm::vec3(1.0f);											//颜色
 			dsScence.lightUbo.spotLightList[0].outer	 = glm::cos(glm::radians(14.5f));							//外圆锥
 			dsScence.lightUbo.spotLightList[0].direction = camera.front;											//方向
-
-			createMapMemory(dsScence.lightUniform.bufferMemory, &dsScence.lightUbo, sizeof(dsScence.lightUbo));
 		}
 
 		//showUIText
@@ -1389,6 +1452,58 @@ public:
 			showUIText.pos		= glm::floor(camera.pos);
 			showUIText.chunkPos = glm::floor(camera.pos / (double)plateInfo::chunkLength);
 			showUIText.minepos  = box.minepos;
+		}
+
+		//todo优化
+		//shadow
+		{
+			// 固定光源位置
+			glm::vec3 lightPos0 = glm::vec3(0.0f, 64.0f, 0.0f);
+
+			// 使用currentHour计算光源方向
+			// 将24小时转换为0-2π弧度
+			float hourRadians = currentHour * glm::pi<float>() / 12.0f;  // 每小时π/12弧度
+
+			// 光源方向绕X轴旋转
+			// 光源射线方向的单位向量（绕X轴旋转）
+			glm::vec3 lightDirection = glm::normalize(glm::vec3(
+				0.0f,                    // X方向固定为0
+				glm::sin(hourRadians),   // Y方向随角度变化
+				glm::cos(hourRadians)    // Z方向随角度变化
+			));
+
+			// 计算看向目标：从光源位置沿光线方向延伸一定距离
+			float targetDistance = 100.0f;  // 看向目标的距离
+			glm::vec3 lookAtTarget = lightPos0 + lightDirection * targetDistance;
+
+			// 创建光源视图矩阵
+			glm::mat4 lightView = glm::lookAt(
+				lightPos0,           // 光源位置（固定）
+				lookAtTarget,        // 看向目标（光线方向绕X轴旋转）
+				glm::vec3(0.0f, 1.0f, 0.0f)  // 上方向
+			);
+
+			// 投影矩阵
+			float range = 150.0f;
+			glm::mat4 lightProjection = glm::ortho(
+				-range, range,
+				-range, range,
+				0.1f, 300.0f
+			);
+
+			// 更新阴影UBO
+			shadow.shadowUbo.mvp[0] = lightProjection * lightView;
+			shadow.shadowUbo.instancePos[0] = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+
+			// 同时更新延迟渲染的光照空间矩阵
+			dsScence.lightUbo.lightSpaceMatrix = shadow.shadowUbo.mvp[0];
+
+			// 同时更新光照方向（注意：方向光通常使用从表面指向光源的方向）
+			dsScence.lightUbo.dirLightList[0].direction = -lightDirection;  // 负号是因为方向光通常定义的是光照方向
+
+			// 更新GPU内存
+			createMapMemory(shadow.shadowUniform.bufferMemory, &shadow.shadowUbo, sizeof(shadow.shadowUbo));
+			createMapMemory(dsScence.lightUniform.bufferMemory, &dsScence.lightUbo, sizeof(dsScence.lightUbo));
 		}
 	}
 
@@ -1429,17 +1544,22 @@ public:
 
 		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence_d);
 
+		//todo优化
 		//dsScence
 		{
 			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence_r);
-			std::array<VkWriteDescriptorSet, 4> dsScenceWrite{
+			bufferStruct::shFramebufferNode& shadowFrameNode = procRenderPass.getShFramebufferNode(bufferEnum::procRenderId::shadow_r);
+			std::array<VkWriteDescriptorSet, 5> tempWrite{
 				procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
 				procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
 				procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
-				procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view)
+				procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view),
+
+				//todo
+				procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], shadowFrameNode.depth.view)
 			};
 
-			vkUpdateDescriptorSets(Device.device, uint32_t(dsScenceWrite.size()), dsScenceWrite.data(), 0, nullptr);
+			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 		}
 	}
 

@@ -98,8 +98,9 @@ namespace bufferInfo {
 
     const uint32_t scenceForwardSize  = 4;      //scenceForward描述符池上限，  skybox，mine，osMirror，osScence
     const uint32_t scenceDeferredSize = 5;      //scenceDeferred描述符池上限， terrain，m_temple，m_droid*3
-    const uint32_t dsScenceSize       = 1;      //dsScence描述符池上限，       dsScence
     const uint32_t uiTextSize         = 1;      //uiText描述符池上限，         uiText
+    const uint32_t dsScenceSize       = 1;      //dsScence描述符池上限，       dsScence
+    const uint32_t shadowSize         = 1;      //shadow描述符池上限，         shadow
 
     VkFormat dsPosFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
 }
@@ -141,6 +142,9 @@ namespace fileInfo {
 
         const std::string dsScenceVert = "src/shader/dsScence/dsScenceVert.spv";
         const std::string dsScenceFrag = "src/shader/dsScence/dsScenceFrag.spv";
+
+        const std::string shadowVert = "src/shader/shadow/shadowVert.spv";
+        const std::string shadowGeom = "src/shader/shadow/shadowGeom.spv";
     }
 
     namespace music {

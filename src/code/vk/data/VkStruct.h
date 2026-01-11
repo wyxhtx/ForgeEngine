@@ -400,14 +400,15 @@ namespace bufferStruct {
         float placeholder;      //占位符
     };
 
-    struct baseUBO {
+    //变换统一结点
+    struct transformUBO {
         glm::mat4 model;            //模型矩阵，用于将模型变换到世界坐标系
         glm::mat4 modelTI;          //模型转置逆矩阵，用于计算光照法线
         glm::mat4 view;             //视图矩阵，用于将世界坐标系变换到观察者坐标系
         glm::mat4 proj;             //投影矩阵，用于将观察者坐标系变换到裁剪坐标系
     };
 
-    //注意着色器内存对齐
+    //天空盒光照统一结点
     struct skyboxLightUBO {
         glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
         float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到，用于周期性效果
@@ -428,6 +429,8 @@ namespace bufferStruct {
         float outerCutOff;          //聚光灯外圆锥
     };
 
+    //todo重构阴影结构
+    //光照统一结点
     struct lightUBO {
         glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
         float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到，用于周期性效果
@@ -440,6 +443,17 @@ namespace bufferStruct {
         pointLightNode pointLightList[1];
         dirLightNode dirLightList[1];
         spotLightNode spotLightList[1];
+
+        glm::mat4 lightSpaceMatrix;
+    };
+
+    const int tempArraySize = 3;
+
+    //todo重构阴影结构
+    //阴影统一结点
+    struct shadowUBO {
+        glm::mat4 mvp[tempArraySize];
+        glm::vec4 instancePos[tempArraySize];
     };
 
 
@@ -450,33 +464,33 @@ namespace bufferStruct {
         bufferNode vertex[bufferInfo::commandThreadSize][terrainEnum::terrainLayer::count];
         bufferNode index[bufferInfo::commandThreadSize][terrainEnum::terrainLayer::count];
 
-        //纹理贴图缓冲
+        //纹理缓冲
         const char* textureFile;
         imageNode texture;
 
         //纹理参数
-        bufferEnum::procSamplerId::type samplerId;
         uint32_t arrayLayer;
         uint32_t mipLevel = 1;
 
         //统一缓冲
         bufferNode uniform;
-        baseUBO ubo;
+        transformUBO ubo;
 
-        //描述符缓冲
+        //描述缓冲
         VkDescriptorSet descriptorSet;
 
-        //管线索引
-        pipelineEnum::procPipelineId::type pipeId;
+        //程序化索引
+        pipelineEnum::procPipelineId::type pipeId;  //管线索引
+        bufferEnum::procSamplerId::type samplerId;  //采样索引
 
 
 
-        terrainBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type tempSamplerId) {
+        terrainBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
             textureFile = fileInfo::image::cube;
             arrayLayer = textureInfo::arrayLayer;
 
-            samplerId = tempSamplerId;
             pipeId = pId;
+            samplerId = sId;
         }
 
         terrainBufferNode() = delete;
@@ -498,22 +512,31 @@ namespace bufferStruct {
     };
 
     struct staticModelNode {
+        //模型文件
         std::string modelFile;
+
+        //网格缓冲
         bufferNode vertex;
         bufferNode index;
 
+        //纹理缓冲
         const char* textureFile;
         imageNode texture;
         //const char* normalFile;
         //imageNode normal;
 
-        bufferEnum::procSamplerId::type samplerId;
+        //纹理参数
         uint32_t mipLevel;                  //在创建texture时赋值
 
+        //统一缓冲
         bufferNode uniform;
-        baseUBO ubo;
+        transformUBO ubo;
 
+        //描述缓冲
         VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        bufferEnum::procSamplerId::type samplerId;
 
         //用于屏蔽超出视觉范围模型的命令提交和统一缓冲更新
         glm::dvec3 modelWorldPos;           //模型世界坐标（d世界坐标系），在初始化时赋值
@@ -522,11 +545,11 @@ namespace bufferStruct {
 
 
 
-        void create(const std::string tempModelFile, const char* tempTextureFile, /*const char* tempNormalFile,*/ bufferEnum::procSamplerId::type tempSamplerId, const glm::dvec3& tempModelWorldPos) {
+        void create(const std::string tempModelFile, const char* tempTextureFile, /*const char* tempNormalFile,*/ bufferEnum::procSamplerId::type sId, const glm::dvec3& tempModelWorldPos) {
             modelFile     = tempModelFile;
             textureFile   = tempTextureFile;
             //normalFile  = tempNormalFile;
-            samplerId     = tempSamplerId;
+            samplerId     = sId;
             modelWorldPos = tempModelWorldPos;
         }
 
@@ -545,17 +568,21 @@ namespace bufferStruct {
     };
 
     struct dynamicModelSubNode {
+        //网格缓冲
         bufferNode vertex;
         bufferNode index;
 
+        //纹理缓冲
         const char* textureFile;
         imageNode texture;
         //const char* normalFile;
         //imageNode normal;
 
+        //统一缓冲
         bufferNode uniform;
-        baseUBO ubo;
+        transformUBO ubo;
 
+        //描述缓冲
         VkDescriptorSet descriptorSet;
 
 
@@ -575,11 +602,17 @@ namespace bufferStruct {
     };
 
     struct dynamicModelNode {
+        //模型文件
         std::string modelFile;
+
+        //动态模型结点列表
         std::vector<dynamicModelSubNode> node;
 
-        bufferEnum::procSamplerId::type samplerId;
+        //纹理参数
         uint32_t mipLevel;
+
+        //程序化索引
+        bufferEnum::procSamplerId::type samplerId;
 
         //用于屏蔽超出视觉范围模型的命令提交和统一缓冲更新
         glm::dvec3 modelWorldPos;           //模型世界坐标（d世界坐标系），在初始化时赋值
@@ -588,7 +621,7 @@ namespace bufferStruct {
 
 
 
-        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, /*std::vector<const char*> tempNormalFile,*/ bufferEnum::procSamplerId::type tempSamplerId, const glm::dvec3& tempModelWorldPos) {
+        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, /*std::vector<const char*> tempNormalFile,*/ bufferEnum::procSamplerId::type sId, const glm::dvec3& tempModelWorldPos) {
             modelFile = tempModelFile;
 
             node.resize(tempTextureFile.size());
@@ -597,7 +630,7 @@ namespace bufferStruct {
                 //node[i].normalFile = tempNormalFile[i];
             }
 
-            samplerId = tempSamplerId;
+            samplerId = sId;
             modelWorldPos = tempModelWorldPos;
         }
 
@@ -609,16 +642,20 @@ namespace bufferStruct {
     };
 
     struct skyboxBufferNode {
+        //网格缓冲
         bufferNode vertex;
         bufferNode index;
 
+        //统一缓冲
         bufferNode uniform;
-        baseUBO ubo;
+        transformUBO ubo;
         bufferNode lightUniform;
         skyboxLightUBO lightUbo;
 
+        //描述缓冲
         VkDescriptorSet descriptorSet;
 
+        //程序化索引
         pipelineEnum::procPipelineId::type pipeId;
 
 
@@ -639,14 +676,18 @@ namespace bufferStruct {
     };
 
     struct mineBufferNode {
+        //网格缓冲
         bufferNode vertex;
         bufferNode index;
 
+        //统一缓冲
         bufferNode uniform;
-        baseUBO ubo;
+        transformUBO ubo;
 
+        //描述缓冲
         VkDescriptorSet descriptorSet;
 
+        //程序化索引
         pipelineEnum::procPipelineId::type pipeId;
 
 
@@ -665,102 +706,30 @@ namespace bufferStruct {
         }
     };
 
-    struct osMirrorBufferNode {
-        bufferNode vertex;
-        bufferNode index;
-
-        bufferEnum::procSamplerId::type samplerId;
-
-        bufferNode uniform;
-        baseUBO ubo;
-        bufferNode lightUniform;
-        skyboxLightUBO lightUbo;
-
-        VkDescriptorSet descriptorSet;
-
-        pipelineEnum::procPipelineId::type pipeId;
-
-
-
-        osMirrorBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type tempSamplerId) {
-            samplerId = tempSamplerId;
-            pipeId = pId;
-        }
-
-        osMirrorBufferNode() = delete;
-
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
-
-            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
-            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
-        }
-    };
-
-    struct osScenceBufferNode {
-        bufferEnum::procSamplerId::type samplerId;
-
-        VkDescriptorSet descriptorSet;
-
-        pipelineEnum::procPipelineId::type pipeId;
-
-
-
-        osScenceBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type tempSamplerId) {
-            samplerId = tempSamplerId;
-            pipeId = pId;
-        }
-
-        osScenceBufferNode() = delete;
-
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-
-        }
-    };
-
-    struct dsScenceBufferNode {
-        bufferEnum::procSamplerId::type samplerId;
-
-        bufferNode lightUniform;
-        lightUBO lightUbo;
-
-        VkDescriptorSet descriptorSet;
-
-        pipelineEnum::procPipelineId::type pipeId;
-
-
-
-        dsScenceBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type tempSamplerId) {
-            samplerId = tempSamplerId;
-            pipeId = pId;
-        }
-
-        dsScenceBufferNode() = delete;
-
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
-        }
-    };
-
     struct uiTextBufferNode {
+        //网格缓冲
         bufferNode vertex;
 
+        //纹理缓冲
         imageNode texture;
         stb_fontchar* stbFontData = new stb_fontchar[STB_FONT_consolas_24_latin1_NUM_CHARS];    //字符数据
+
+        //纹理参数
         glm::vec4* mapped = nullptr;
         uint32_t numLetters;
-        bufferEnum::procSamplerId::type samplerId;
 
+        //描述缓冲
         VkDescriptorSet descriptorSet;
 
+        //程序化索引
         pipelineEnum::procPipelineId::type pipeId;
+        bufferEnum::procSamplerId::type samplerId;
 
 
 
-        uiTextBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type tempSamplerId) {
-            samplerId = tempSamplerId;
+        uiTextBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
             pipeId = pId;
+            samplerId = sId;
         }
 
         uiTextBufferNode() = delete;
@@ -850,6 +819,123 @@ namespace bufferStruct {
         }
     };
 
+    struct osMirrorBufferNode {
+        //网格缓冲
+        bufferNode vertex;
+        bufferNode index;
+
+        //统一缓冲
+        bufferNode uniform;
+        transformUBO ubo;
+        bufferNode lightUniform;
+        skyboxLightUBO lightUbo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        pipelineEnum::procPipelineId::type pipeId;
+        bufferEnum::procSamplerId::type samplerId;
+
+
+
+        osMirrorBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            pipeId = pId;
+            samplerId = sId;
+        }
+
+        osMirrorBufferNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
+            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+
+            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
+        }
+    };
+
+    struct osScenceBufferNode {
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        pipelineEnum::procPipelineId::type pipeId;
+        bufferEnum::procSamplerId::type samplerId;
+
+
+
+        osScenceBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            pipeId = pId;
+            samplerId = sId;
+        }
+
+        osScenceBufferNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+
+        }
+    };
+
+    struct dsScenceBufferNode {
+        //统一缓冲
+        bufferNode lightUniform;
+        lightUBO lightUbo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        pipelineEnum::procPipelineId::type pipeId;
+        bufferEnum::procSamplerId::type samplerId;
+
+
+
+        dsScenceBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            pipeId = pId;
+            samplerId = sId;
+        }
+
+        dsScenceBufferNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
+        }
+    };
+
+    struct shadowBufferNode {
+        //网格缓冲
+        bufferNode vertex;
+        bufferNode index;
+
+        //统一缓冲
+        bufferNode shadowUniform;
+        shadowUBO shadowUbo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        pipelineEnum::procPipelineId::type pipeId;
+        bufferEnum::procSamplerId::type samplerId;
+
+
+
+        shadowBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            pipeId = pId;
+            samplerId = sId;
+        }
+
+        shadowBufferNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
+            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+
+            vmaDestroyBuffer(allocator, shadowUniform.buffer, shadowUniform.bufferMemory);
+        }
+    };
+
 
 
     struct scFramebufferNode {
@@ -929,6 +1015,21 @@ namespace bufferStruct {
         }
     };
 
+    struct shFramebufferNode {
+        bufferStruct::imageNode depth;      //深度附件
+
+        VkFramebuffer framebuffer;
+
+
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            vkDestroyImageView(device, depth.view, nullptr);
+            vmaDestroyImage(allocator, depth.image, depth.imageMemory);
+
+            vkDestroyFramebuffer(device, framebuffer, nullptr);
+        }
+    };
+
     struct renderNode {
         VkRenderPass render;
         
@@ -943,6 +1044,9 @@ namespace bufferStruct {
             }
             else if (id == bufferEnum::frameNodeId::ds_f) {
                 createDsRenderPass(colorFormat, depthFormat, device);
+            }
+            else if (id == bufferEnum::frameNodeId::sh_f) {
+                createShRenderPass(depthFormat, device);
             }
             else {
                 Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(id));
@@ -1106,6 +1210,55 @@ namespace bufferStruct {
             }
         }
 
+        //创建阴影映射渲染通道
+        void createShRenderPass(const VkFormat& depthFormat, const VkDevice& device) {
+            std::array<VkAttachmentDescription, 1> attachment{};
+            getShadowAttachment(attachment, depthFormat);
+
+            //深度附件引用
+            VkAttachmentReference depthReference = { 0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+
+            //子通道描述
+            VkSubpassDescription subpass{};
+            subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            subpass.pDepthStencilAttachment = &depthReference;
+
+            //子通道依赖
+            std::array<VkSubpassDependency, 2> dependencies{};
+
+            //从外部到本子通道
+            dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
+            dependencies[0].dstSubpass      = 0;
+            dependencies[0].srcStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+            dependencies[0].dstStageMask    = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+            dependencies[0].srcAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
+            dependencies[0].dstAccessMask   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+            //从本子通道到外部
+            dependencies[1].srcSubpass      = 0;
+            dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
+            dependencies[1].srcStageMask    = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+            dependencies[1].dstStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            dependencies[1].srcAccessMask   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            dependencies[1].dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
+            dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+            VkRenderPassCreateInfo renderPassInfo{};
+            renderPassInfo.sType            = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+            renderPassInfo.attachmentCount  = static_cast<uint32_t>(attachment.size());
+            renderPassInfo.pAttachments     = attachment.data();
+            renderPassInfo.subpassCount     = 1;
+            renderPassInfo.pSubpasses       = &subpass;
+            renderPassInfo.dependencyCount  = static_cast<uint32_t>(dependencies.size());
+            renderPassInfo.pDependencies    = dependencies.data();
+
+            if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &render) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "阴影映射渲染通道创建失败");
+                throw;
+            }
+        }
+
 
 
         //创建前向附件
@@ -1181,17 +1334,31 @@ namespace bufferStruct {
             attachment[3].initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
             attachment[3].finalLayout       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         }
+
+        //创建阴影附件
+        void getShadowAttachment(std::array<VkAttachmentDescription, 1>& attachment, const VkFormat& depthFormat) {
+            attachment[0].format            = depthFormat;
+            attachment[0].samples           = VK_SAMPLE_COUNT_1_BIT;
+            attachment[0].loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachment[0].storeOp           = VK_ATTACHMENT_STORE_OP_STORE;
+            attachment[0].stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachment[0].stencilStoreOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachment[0].initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
+            attachment[0].finalLayout       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
     };
 
     struct renderInfoNode {
-        std::array<VkClearValue, 2> clearValueForward;     //解析附件不需要清除值
-        std::array<VkClearValue, 4> clearValueDeferred;
+        std::array<VkClearValue, 2> clearValueForward;      //前向清理（解析附件不需要清除值）
+        std::array<VkClearValue, 4> clearValueDeferred;     //延迟清理
+        std::array<VkClearValue, 1> clearValueShadow;       //阴影清理
 
         bufferEnum::frameNodeId::type frameNodeType;
-        std::variant<scFramebufferNode, osFramebufferNode, dsFramebufferNode> frameNode;
+        std::variant<scFramebufferNode, osFramebufferNode, dsFramebufferNode, shFramebufferNode> frameNode;
         scFramebufferNode* scPtr = nullptr;
         osFramebufferNode* osPtr = nullptr;
         dsFramebufferNode* dsPtr = nullptr;
+        shFramebufferNode* shPtr = nullptr;
 
         VkRenderPassBeginInfo renderInfo;
 
@@ -1206,6 +1373,8 @@ namespace bufferStruct {
             clearValueDeferred[2].color        = tempColor;
             clearValueDeferred[3].depthStencil = tempDepthStencil;
 
+            clearValueShadow[0].depthStencil = tempDepthStencil;
+
             renderInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             renderInfo.renderArea.offset = { 0, 0 };
 
@@ -1213,24 +1382,31 @@ namespace bufferStruct {
 
             if (tempFrameNodeType == bufferEnum::frameNodeId::sc_f) {
                 frameNode = scFramebufferNode{};
-                scPtr = &std::get<bufferStruct::scFramebufferNode>(frameNode);
+                scPtr     = &std::get<bufferStruct::scFramebufferNode>(frameNode);
 
                 renderInfo.clearValueCount = static_cast<uint32_t>(clearValueForward.size());
-                renderInfo.pClearValues = clearValueForward.data();
+                renderInfo.pClearValues    = clearValueForward.data();
             }
             else if(tempFrameNodeType == bufferEnum::frameNodeId::os_f){
                 frameNode = osFramebufferNode{};
-                osPtr = &std::get<bufferStruct::osFramebufferNode>(frameNode);
+                osPtr     = &std::get<bufferStruct::osFramebufferNode>(frameNode);
 
                 renderInfo.clearValueCount = static_cast<uint32_t>(clearValueForward.size());
-                renderInfo.pClearValues = clearValueForward.data();
+                renderInfo.pClearValues    = clearValueForward.data();
             }
             else if (tempFrameNodeType == bufferEnum::frameNodeId::ds_f) {
                 frameNode = dsFramebufferNode{};
-                dsPtr = &std::get<bufferStruct::dsFramebufferNode>(frameNode);
+                dsPtr     = &std::get<bufferStruct::dsFramebufferNode>(frameNode);
 
                 renderInfo.clearValueCount = static_cast<uint32_t>(clearValueDeferred.size());
-                renderInfo.pClearValues = clearValueDeferred.data();
+                renderInfo.pClearValues    = clearValueDeferred.data();
+            }
+            else if (tempFrameNodeType == bufferEnum::frameNodeId::sh_f) {
+                frameNode = shFramebufferNode{};
+                shPtr     = &std::get<bufferStruct::shFramebufferNode>(frameNode);
+                
+                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueShadow.size());
+                renderInfo.pClearValues    = clearValueShadow.data();
             }
             else {
                 Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(tempFrameNodeType));
@@ -1242,9 +1418,9 @@ namespace bufferStruct {
                 createScFramebuffer(scExtent, render, device);
             }
             else if (frameNodeType == bufferEnum::frameNodeId::os_f) {
-                createImageNode(osPtr->color, scExtent.width, scExtent.height, colorFormat, msaaSamples, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
-                createImageNode(osPtr->depth, scExtent.width, scExtent.height, depthFormat, msaaSamples, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
-                createImageNode(osPtr->osView, scExtent.width, scExtent.height, colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
+                createImageNode(osPtr->color,   scExtent.width, scExtent.height, colorFormat, msaaSamples, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
+                createImageNode(osPtr->depth,   scExtent.width, scExtent.height, depthFormat, msaaSamples, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
+                createImageNode(osPtr->osView,  scExtent.width, scExtent.height, colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
 
                 createOsFramebuffer(scExtent, render, device);
             }
@@ -1255,6 +1431,11 @@ namespace bufferStruct {
                 createImageNode(dsPtr->depth,    scExtent.width, scExtent.height, depthFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
 
                 createDsFramebuffer(scExtent, render, device);
+            }
+            else if (frameNodeType == bufferEnum::frameNodeId::sh_f) {
+                createImageArrayNode(shPtr->depth, scExtent.width, scExtent.height, tempArraySize, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
+
+                createShFramebuffer(scExtent, render, device);
             }
             else {
                 Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(frameNodeType));
@@ -1336,7 +1517,28 @@ namespace bufferStruct {
 
             renderInfo.framebuffer = tempFrameNode.framebuffer;
         }
-        
+
+        //创建阴影映射帧缓冲
+        void createShFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
+            bufferStruct::shFramebufferNode& tempFrameNode = std::get<bufferStruct::shFramebufferNode>(frameNode);
+
+            VkFramebufferCreateInfo framebufferInfo{};
+            framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass      = render;
+            framebufferInfo.attachmentCount = 1;
+            framebufferInfo.pAttachments    = &tempFrameNode.depth.view;
+            framebufferInfo.width           = scExtent.width;
+            framebufferInfo.height          = scExtent.height;
+            framebufferInfo.layers          = tempArraySize;
+
+            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "阴影映射帧缓冲创建失败");
+                throw;
+            }
+
+            renderInfo.framebuffer = tempFrameNode.framebuffer;
+        }
+
 
 
         void createImageNode(imageNode& image, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& allocator) {
@@ -1380,7 +1582,49 @@ namespace bufferStruct {
                 throw;
             }
         }
-    
+        
+        void createImageArrayNode(imageNode& image, uint32_t width, uint32_t height, uint32_t array, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& allocator) {
+            VkImageCreateInfo imageInfo = {};
+            imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+            imageInfo.format        = format;
+            imageInfo.extent.width  = width;
+            imageInfo.extent.height = height;
+            imageInfo.extent.depth  = 1;
+            imageInfo.mipLevels     = 1;
+            imageInfo.arrayLayers   = array;
+            imageInfo.samples       = numSamples;
+            imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageInfo.usage         = usage;
+            imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+
+            VmaAllocationCreateInfo allocInfo = {};
+            allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
+            allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+            if (vmaCreateImage(allocator, &imageInfo, &allocInfo, &image.image, &image.imageMemory, nullptr) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "图像创建失败");
+                throw;
+            }
+
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image      = image.image;
+            viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+            viewInfo.format     = format;
+            viewInfo.subresourceRange.aspectMask     = aspectFlags;
+            viewInfo.subresourceRange.baseMipLevel   = 0;
+            viewInfo.subresourceRange.levelCount     = 1;
+            viewInfo.subresourceRange.baseArrayLayer = 0;
+            viewInfo.subresourceRange.layerCount     = array;
+
+            if (vkCreateImageView(device, &viewInfo, nullptr, &image.view) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "图像视图创建失败");
+                throw;
+            }
+        }
+
     public:
         void cleanupSwapChain(const VkDevice& device, const VmaAllocator& allocator) {
             std::visit([&device, &allocator](auto& node) {node.clear(device, allocator); }, frameNode);

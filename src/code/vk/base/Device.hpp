@@ -284,6 +284,11 @@ private:
         VkPhysicalDeviceFeatures supportedFeatures;
         vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
 
+        //几何着色器支持检测
+        if (!supportedFeatures.geometryShader) {
+            Log::printError(__FILE__, __LINE__, "设备不支持几何着色器");
+        }
+
         return extensionsSupported && supportedFeatures.samplerAnisotropy;
     }
 

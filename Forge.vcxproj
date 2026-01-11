@@ -217,6 +217,8 @@
     <None Include="src\shader_build\osMirror\osMirror.vert" />
     <None Include="src\shader_build\osScence\osScence.frag" />
     <None Include="src\shader_build\osScence\osScence.vert" />
+    <None Include="src\shader_build\shadow\shadow.geom" />
+    <None Include="src\shader_build\shadow\shadow.vert" />
     <None Include="src\shader_build\skybox\skybox.frag" />
     <None Include="src\shader_build\skybox\skybox.vert" />
     <None Include="src\shader_build\terrain\terrainDeferred.frag" />
