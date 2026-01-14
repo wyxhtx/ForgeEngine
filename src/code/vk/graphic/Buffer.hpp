@@ -124,31 +124,42 @@ private:
 		createVertexBuffer(mineVertex::vertexs, mine.vertex);
 		createIndexBuffer(mineVertex::indexs, mine.index);
 
+		//uiText
+		createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex);
+
 		//osMirror
 		createVertexBuffer(osMirrorVertex::vertexs, osMirror.vertex);
 		createIndexBuffer(osMirrorVertex::indexs, osMirror.index);
 
-		//uiText
-		createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex);
-
-		//todo优化
+		//todo待优化
 		//shadow
-		for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-			const auto& terrainVerts = terrainVertex::vertexs[layer];
-			const auto& terrainIndices = terrainVertex::indexs[layer];
+		//for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+		//	const auto& terrainVerts = terrainVertex::vertexs[layer];
+		//	const auto& terrainIndexs = terrainVertex::indexs[layer];
+		//
+		//	//当前偏移量
+		//	size_t indexOffset = shadowVertex::vertexs.size();
+		//
+		//	for (const auto& terrainVert : terrainVerts) {
+		//		shadowVertex::vertexs.push_back(shadowVertex::vertexNode{ terrainVert.position });
+		//	}
+		//
+		//	for (auto index : terrainIndexs) {
+		//		shadowVertex::indexs.push_back(static_cast<uint32_t>(index + indexOffset));
+		//	}
+		//}
 
-			//记录当前偏移量
+		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+			const auto& modelVerts = modelVertex::sVertexs[i];
+			const auto& modelIndices = modelVertex::sIndexs[i];
+
 			size_t indexOffset = shadowVertex::vertexs.size();
 
-			//拷贝顶点：只拷贝 position
-			for (const auto& terrainVert : terrainVerts) {
-				shadowVertex::vertexNode shadowVert;
-				shadowVert.position = terrainVert.position;
-				shadowVertex::vertexs.push_back(shadowVert);
+			for (const auto& vert : modelVerts) {
+				shadowVertex::vertexs.push_back(shadowVertex::vertexNode{ vert.position });
 			}
 
-			//拷贝索引：添加偏移量
-			for (auto index : terrainIndices) {
+			for (auto index : modelIndices) {
 				shadowVertex::indexs.push_back(static_cast<uint32_t>(index + indexOffset));
 			}
 		}
@@ -348,7 +359,6 @@ private:
 			}
 		}
 
-		//todo优化
 		/*dsScence_d*/
 		{
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence_d);
@@ -362,8 +372,6 @@ private:
 					procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
 					procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
 					procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view),
-
-					//todo
 					procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], shadowFrameNode.depth.view)
 				};
 
@@ -375,7 +383,6 @@ private:
 			}
 		}
 
-		//todo优化
 		/*shadow_d*/
 		{
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::shadow_d);
@@ -396,34 +403,42 @@ private:
 
 	void initUniformBuffer() {
 		//设置透视投影，参数依次是视野角度、宽高比、近裁剪面和远裁剪面，以及proj[1][1] *= -1轴向修正
-		glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)InitSwapchain.scExtent.width / (float)InitSwapchain.scExtent.height, 0.1f, plateInfo::cubeSightRange);
-		proj[1][1] *= -1;
+		glm::mat4 perspProj = glm::perspective(glm::radians(45.0f), (float)InitSwapchain.scExtent.width / (float)InitSwapchain.scExtent.height, 0.1f, plateInfo::cubeSightRange);
+		perspProj[1][1] *= -1;
+
+		//设置正交投影
+		float tempHeight	= 64.0f;
+		float tempWidth		= tempHeight * (float)InitSwapchain.scExtent.width / (float)InitSwapchain.scExtent.height;
+		glm::mat4 orthoProj = glm::ortho(-tempWidth, tempWidth, -tempHeight, tempHeight, 0.1f, plateInfo::cubeSightRange);
+		orthoProj[1][1] *= -1;
+
+
 
 		//terrain
 		terrain.ubo.model	= glm::translate(glm::mat4(1), glm::vec3(0));
 		terrain.ubo.modelTI	= glm::transpose(glm::inverse(terrain.ubo.model));
-		terrain.ubo.proj	= proj;
+		terrain.ubo.proj	= perspProj;
 
 		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			procModel.sNode[i].ubo.proj = proj;
+			procModel.sNode[i].ubo.proj = perspProj;
 		}
 
 		//model-dNode
 		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-				procModel.dNode[i].node[j].ubo.proj = proj;
+				procModel.dNode[i].node[j].ubo.proj = perspProj;
 			}
 		}
 
 		//skybox
-		skybox.ubo.proj = proj;
+		skybox.ubo.proj = perspProj;
 			
 		//mine
-		mine.ubo.proj = proj;
+		mine.ubo.proj = perspProj;
 
 		//osMirror
-		osMirror.ubo.proj = proj;
+		osMirror.ubo.proj = perspProj;
 		osMirror.lightUbo.gLightColor	= lightInfo::sunLightColor;
 		osMirror.lightUbo.diffuseScale  = lightInfo::diffuseScale;
 		osMirror.lightUbo.gLightDir		= lightInfo::sunLightDir;
@@ -433,6 +448,9 @@ private:
 		dsScence.lightUbo.ambientScale	= lightInfo::ambientScale;
 		dsScence.lightUbo.diffuseScale	= lightInfo::diffuseScale;
 		dsScence.lightUbo.specularScale = lightInfo::specularScale;
+
+		//shadow
+		shadow.proj = orthoProj;
 	}
 
 
@@ -1187,6 +1205,7 @@ public:
 		uiText.endTextUpdate(Device.allocator);
 	}
 
+	//todo优化
 	void createCommandBuffer(int threadId, pipelineList::procPipelineNode& procPipeline) {
 		if (vkAllocateCommandBuffers(Device.device, &command.allocInfo, command.commandBuffer[threadId].data()) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "基础命令缓冲创建失败");
@@ -1197,7 +1216,6 @@ public:
 			//开始渲染
 			command.beginCommandBuffer(threadId, frameId);
 
-			//todo优化
 			/*shadow_r*/
 			{
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::shadow_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -1220,17 +1238,17 @@ public:
 				}
 
 				//model-sNode
-				//for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-				//	if (glm::distance(procModel.sNode[nodeId].modelWorldPos, procModel.sNode[nodeId].currentWorldPos) < plateInfo::cubeSightRange) {
-				//		command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
-				//
-				//		procModel.sNode[nodeId].isVisible = true;
-				//	}
-				//	else {
-				//		procModel.sNode[nodeId].isVisible = false;
-				//	}
-				//}
-				//
+				for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+					if (glm::distance(procModel.sNode[nodeId].modelWorldPos, procModel.sNode[nodeId].currentWorldPos) < plateInfo::cubeSightRange) {
+						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+				
+						procModel.sNode[nodeId].isVisible = true;
+					}
+					else {
+						procModel.sNode[nodeId].isVisible = false;
+					}
+				}
+				
 				////model-dNode
 				//for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
 				//	if (glm::distance(procModel.dNode[nodeId].modelWorldPos, procModel.dNode[nodeId].currentWorldPos) < plateInfo::cubeSightRange) {
@@ -1356,7 +1374,8 @@ public:
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 				if (procModel.sNode[i].isVisible) {
 					procModel.sNode[i].ubo.model	= glm::translate(glm::mat4(1), glm::vec3(procModel.sNode[i].modelWorldPos - playerInfo::logicOriginPos));	//位移
-					procModel.sNode[i].ubo.model	*= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
+					//todo暂时屏蔽
+					//procModel.sNode[i].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
 					procModel.sNode[i].ubo.modelTI	= glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
 					//procModel.sNode[i].ubo.model	*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);							//旋转
 					procModel.sNode[i].ubo.view		= camera.view;
@@ -1404,6 +1423,13 @@ public:
 			createMapMemory(mine.uniform.bufferMemory, &mine.ubo, sizeof(mine.ubo));
 		}
 
+		//showUIText
+		{
+			showUIText.pos = glm::floor(camera.pos);
+			showUIText.chunkPos = glm::floor(camera.pos / (double)plateInfo::chunkLength);
+			showUIText.minepos = box.minepos;
+		}
+
 		//osMirror
 		{
 			osMirror.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(-16.0f, 24.0f, -16.0f));
@@ -1445,63 +1471,45 @@ public:
 			dsScence.lightUbo.spotLightList[0].color	 = glm::vec3(1.0f);											//颜色
 			dsScence.lightUbo.spotLightList[0].outer	 = glm::cos(glm::radians(14.5f));							//外圆锥
 			dsScence.lightUbo.spotLightList[0].direction = camera.front;											//方向
-		}
 
-		//showUIText
-		{
-			showUIText.pos		= glm::floor(camera.pos);
-			showUIText.chunkPos = glm::floor(camera.pos / (double)plateInfo::chunkLength);
-			showUIText.minepos  = box.minepos;
+			//todo
+			//createMapMemory(dsScence.lightUniform.bufferMemory, &dsScence.lightUbo, sizeof(dsScence.lightUbo));
 		}
 
 		//todo优化
 		//shadow
+		//{
+		//	glm::vec3 lightPos = glm::vec3(0.0f, 164.0f, 0.0f);
+		//	glm::vec3 lightDir = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
+		//	glm::quat rota	   = glm::quatLookAt(lightDir, glm::vec3(0, -1, 0));
+		//
+		//	glm::mat4 shadowView  = glm::mat4_cast(glm::conjugate(rota)) * glm::translate(glm::mat4(1.0f), glm::vec3(playerInfo::logicOriginPos) - lightPos);
+		//	glm::mat4 shadowModel = glm::translate(glm::mat4(1), lightPos - glm::vec3(playerInfo::logicOriginPos));
+		//
+		//	shadow.shadowUbo.mvp[0]		= shadow.proj * shadowView * shadowModel;
+		//	dsScence.lightUbo.shadowMvp = shadow.shadowUbo.mvp[0];
+		//
+		//	createMapMemory(shadow.shadowUniform.bufferMemory, &shadow.shadowUbo, sizeof(shadow.shadowUbo));
+		//	createMapMemory(dsScence.lightUniform.bufferMemory, &dsScence.lightUbo, sizeof(dsScence.lightUbo));
+		//}
+		
+		//shadow
 		{
-			// 固定光源位置
-			glm::vec3 lightPos0 = glm::vec3(0.0f, 64.0f, 0.0f);
+			float hourRad = (currentHour / 24.0f) * 2.0f * glm::pi<float>();   // 0~2π
+			float radius = 200.0f;                                              // 可视半径
+			glm::vec3 lightPos = glm::vec3(0.0f,                          // 固定 X
+				radius * cos(hourRad),         // Y 绕 X 轴
+				radius * sin(hourRad));        // Z 绕 X 轴
 
-			// 使用currentHour计算光源方向
-			// 将24小时转换为0-2π弧度
-			float hourRadians = currentHour * glm::pi<float>() / 12.0f;  // 每小时π/12弧度
+			glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);              // 指向场景中心
+			glm::vec3 lightDir = glm::normalize(target - lightPos);
 
-			// 光源方向绕X轴旋转
-			// 光源射线方向的单位向量（绕X轴旋转）
-			glm::vec3 lightDirection = glm::normalize(glm::vec3(
-				0.0f,                    // X方向固定为0
-				glm::sin(hourRadians),   // Y方向随角度变化
-				glm::cos(hourRadians)    // Z方向随角度变化
-			));
+			glm::mat4 shadowView = glm::lookAt(lightPos, target, glm::vec3(1, 0, 0)); // up 可改
+			glm::mat4 shadowModel = glm::translate(glm::mat4(1), -glm::vec3(playerInfo::logicOriginPos));
 
-			// 计算看向目标：从光源位置沿光线方向延伸一定距离
-			float targetDistance = 100.0f;  // 看向目标的距离
-			glm::vec3 lookAtTarget = lightPos0 + lightDirection * targetDistance;
+			shadow.shadowUbo.mvp[0] = shadow.proj * shadowView * shadowModel;
+			dsScence.lightUbo.shadowMvp = shadow.shadowUbo.mvp[0];
 
-			// 创建光源视图矩阵
-			glm::mat4 lightView = glm::lookAt(
-				lightPos0,           // 光源位置（固定）
-				lookAtTarget,        // 看向目标（光线方向绕X轴旋转）
-				glm::vec3(0.0f, 1.0f, 0.0f)  // 上方向
-			);
-
-			// 投影矩阵
-			float range = 150.0f;
-			glm::mat4 lightProjection = glm::ortho(
-				-range, range,
-				-range, range,
-				0.1f, 300.0f
-			);
-
-			// 更新阴影UBO
-			shadow.shadowUbo.mvp[0] = lightProjection * lightView;
-			shadow.shadowUbo.instancePos[0] = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
-
-			// 同时更新延迟渲染的光照空间矩阵
-			dsScence.lightUbo.lightSpaceMatrix = shadow.shadowUbo.mvp[0];
-
-			// 同时更新光照方向（注意：方向光通常使用从表面指向光源的方向）
-			dsScence.lightUbo.dirLightList[0].direction = -lightDirection;  // 负号是因为方向光通常定义的是光照方向
-
-			// 更新GPU内存
 			createMapMemory(shadow.shadowUniform.bufferMemory, &shadow.shadowUbo, sizeof(shadow.shadowUbo));
 			createMapMemory(dsScence.lightUniform.bufferMemory, &dsScence.lightUbo, sizeof(dsScence.lightUbo));
 		}
@@ -1544,18 +1552,16 @@ public:
 
 		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence_d);
 
-		//todo优化
 		//dsScence
 		{
 			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence_r);
-			bufferStruct::shFramebufferNode& shadowFrameNode = procRenderPass.getShFramebufferNode(bufferEnum::procRenderId::shadow_r);
+			bufferStruct::shFramebufferNode& shadowFrameNode   = procRenderPass.getShFramebufferNode(bufferEnum::procRenderId::shadow_r);
+
 			std::array<VkWriteDescriptorSet, 5> tempWrite{
 				procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
 				procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
 				procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
 				procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view),
-
-				//todo
 				procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], shadowFrameNode.depth.view)
 			};
 

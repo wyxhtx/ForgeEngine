@@ -7,22 +7,17 @@ layout (triangle_strip, max_vertices = 3) out;		//Êä³öÎªÈı½ÇĞÎÌõ´ø£¬	×î´ó¶¥µãÊıÎ
 
 layout (binding = 0) uniform shadowUBO {
 	mat4 mvp[lightCount];
-	vec4 instancePos[lightCount];
 } shadow;
-
-layout (location = 0) in int inInstanceIndex[];
 
 
 
 void main() {
-	vec4 instancedPos = shadow.instancePos[inInstanceIndex[0]];			//»ñÈ¡µ±Ç°Í¼ÔªµÚÒ»¸ö¶¥µãµÄÊµÀıÎ»ÖÃÆ«ÒÆ
-
 	for (int i = 0; i < gl_in.length(); i++) {
-		gl_Layer = gl_InvocationID;										//ÉèÖÃÊä³öµ½ÌùÍ¼Êı×éµÄÄÄÒ»²ã
-		vec4 tmpPos = gl_in[i].gl_Position + instancedPos;				//½«¶¥µãÎ»ÖÃ¼ÓÉÏÊµÀıÆ«ÒÆ
-		gl_Position = shadow.mvp[gl_InvocationID] * tmpPos;				//Ó¦ÓÃµ±Ç°¹âÔ´µÄMVP±ä»»¾ØÕó
-		EmitVertex();													//·¢Éä¶¥µãµ½Êä³öÁ÷
+		gl_Layer = gl_InvocationID;											//ÉèÖÃÊä³öµ½ÌùÍ¼Êı×éµÄÄÄÒ»²ã
+		gl_Position = shadow.mvp[gl_InvocationID] * gl_in[i].gl_Position;	//Ó¦ÓÃµ±Ç°¹âÔ´µÄMVP±ä»»¾ØÕó
+
+		EmitVertex();														//·¢Éä¶¥µãµ½Êä³öÁ÷
 	}
 
-	EndPrimitive();														//½áÊøÍ¼Ôª×°Åä
+	EndPrimitive();															//½áÊøÍ¼Ôª×°Åä
 }

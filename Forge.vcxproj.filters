@@ -104,6 +104,8 @@
     <None Include="src\shader\dsScence\dsScenceVert.spv" />
     <None Include="src\shader_build\shadow\shadow.vert" />
     <None Include="src\shader_build\shadow\shadow.geom" />
+    <None Include="src\shader\shadow\shadowGeom.spv" />
+    <None Include="src\shader\shadow\shadowVert.spv" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">

@@ -444,16 +444,15 @@ namespace bufferStruct {
         dirLightNode dirLightList[1];
         spotLightNode spotLightList[1];
 
-        glm::mat4 lightSpaceMatrix;
+        glm::mat4 shadowMvp;
+        //todo
+        //glm::mat4 shadowMvp[bufferInfo::lightArraySize];
     };
-
-    const int tempArraySize = 3;
 
     //todo重构阴影结构
     //阴影统一结点
     struct shadowUBO {
-        glm::mat4 mvp[tempArraySize];
-        glm::vec4 instancePos[tempArraySize];
+        glm::mat4 mvp[bufferInfo::lightArraySize];
     };
 
 
@@ -911,6 +910,7 @@ namespace bufferStruct {
         //统一缓冲
         bufferNode shadowUniform;
         shadowUBO shadowUbo;
+        glm::mat4 proj;           //辅助shadowUbo计算
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
@@ -1433,7 +1433,7 @@ namespace bufferStruct {
                 createDsFramebuffer(scExtent, render, device);
             }
             else if (frameNodeType == bufferEnum::frameNodeId::sh_f) {
-                createImageArrayNode(shPtr->depth, scExtent.width, scExtent.height, tempArraySize, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
+                createImageArrayNode(shPtr->depth, scExtent.width, scExtent.height, bufferInfo::lightArraySize, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
 
                 createShFramebuffer(scExtent, render, device);
             }
@@ -1529,7 +1529,7 @@ namespace bufferStruct {
             framebufferInfo.pAttachments    = &tempFrameNode.depth.view;
             framebufferInfo.width           = scExtent.width;
             framebufferInfo.height          = scExtent.height;
-            framebufferInfo.layers          = tempArraySize;
+            framebufferInfo.layers          = bufferInfo::lightArraySize;
 
             if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "阴影映射帧缓冲创建失败");

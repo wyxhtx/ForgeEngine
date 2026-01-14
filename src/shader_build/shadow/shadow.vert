@@ -1,13 +1,9 @@
 #version 450
-#extension GL_KHR_vulkan_glsl : enable
 
-layout (location = 0) in vec4 inPos;
-
-layout (location = 0) out int outInstanceIndex;
+layout (location = 0) in vec3 inPos;
 
 
 
 void main() {
-	gl_Position = inPos;
-	outInstanceIndex = gl_InstanceIndex;
+	gl_Position = vec4(inPos, 1.0);
 }

@@ -102,6 +102,8 @@ namespace bufferInfo {
     const uint32_t dsScenceSize       = 1;      //dsScence描述符池上限，       dsScence
     const uint32_t shadowSize         = 1;      //shadow描述符池上限，         shadow
 
+    const int lightArraySize = 2;               //光源数量，三大光源阴影贴图数量和，一个点光源要6张贴图，平行光和聚光灯要一张贴图
+
     VkFormat dsPosFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
 }
 

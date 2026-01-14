@@ -188,6 +188,8 @@
     <None Include="src\shader\osMirror\osMirrorVert.spv" />
     <None Include="src\shader\osScence\osScenceFrag.spv" />
     <None Include="src\shader\osScence\osScenceVert.spv" />
+    <None Include="src\shader\shadow\shadowGeom.spv" />
+    <None Include="src\shader\shadow\shadowVert.spv" />
     <None Include="src\shader\terrain\terrainDeferredFrag.spv" />
     <None Include="src\shader\terrain\terrainDeferredVert.spv" />
     <None Include="src\shader_build\dsScence_gts.bat" />
