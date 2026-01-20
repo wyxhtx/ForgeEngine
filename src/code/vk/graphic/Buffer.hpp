@@ -92,7 +92,7 @@ private:
 
 	void createMeshBuffer() {
 		//terrain
-		for (int thread = 0; thread < bufferInfo::commandThreadSize; thread++) {
+		for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
 				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[thread][layer]);
 				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[thread][layer]);
@@ -1168,7 +1168,7 @@ public:
 		uiText.endTextUpdate(Device.allocator);
 	}
 
-	//todo优化
+	//todo 优化
 	void createCommandBuffer(int threadId, pipelineList::procPipelineNode& procPipeline) {
 		if (vkAllocateCommandBuffers(Device.device, &command.allocInfo, command.commandBuffer[threadId].data()) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "基础命令缓冲创建失败");
@@ -1411,7 +1411,7 @@ public:
 			createMapMemory(osMirror.lightUniform.bufferMemory, &osMirror.lightUbo, sizeof(osMirror.lightUbo));
 		}
 
-		//todo优化
+		//todo 优化
 		//dsScence
 		{
 			dsScence.lightUbo.viewPos	  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };	//位置
@@ -1438,22 +1438,32 @@ public:
 			//createMapMemory(dsScence.lightUniform.bufferMemory, &dsScence.lightUbo, sizeof(dsScence.lightUbo));
 		}
 
-		//todo优化
 		//shadow
-		//{
-		//	glm::vec3 lightPos = glm::vec3(0.0f, 164.0f, 0.0f);
-		//	glm::vec3 lightDir = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
-		//	glm::quat rota	   = glm::quatLookAt(lightDir, glm::vec3(0, -1, 0));
-		//
-		//	glm::mat4 shadowView  = glm::mat4_cast(glm::conjugate(rota)) * glm::translate(glm::mat4(1.0f), glm::vec3(playerInfo::logicOriginPos) - lightPos);
-		//	glm::mat4 shadowModel = glm::translate(glm::mat4(1), lightPos - glm::vec3(playerInfo::logicOriginPos));
-		//
-		//	shadow.shadowUbo.mvp[0]		= shadow.proj * shadowView * shadowModel;
-		//	dsScence.lightUbo.shadowMvp = shadow.shadowUbo.mvp[0];
-		//
-		//	createMapMemory(shadow.shadowUniform.bufferMemory, &shadow.shadowUbo, sizeof(shadow.shadowUbo));
-		//	createMapMemory(dsScence.lightUniform.bufferMemory, &dsScence.lightUbo, sizeof(dsScence.lightUbo));
-		//}
+		{
+			float hourRad = (currentHour / 24.0f) * 2.0f * glm::pi<float>();	// 0~2π
+			float radius = 200.0f;												// 可视半径
+			// 计算绕Y轴旋转的位置
+			glm::vec3 lightPos = glm::vec3(
+				radius * cos(hourRad),	//X坐标：半径 * cos(角度)
+				64.0f,					//Y坐标：固定高度
+				radius * sin(hourRad)	//Z坐标：半径 * sin(角度)
+			);
+
+
+
+			//glm::vec3 lightPos = glm::vec3(0.0f, 64.0f, 0.0f);
+			glm::vec3 lightDir = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
+			glm::quat rota	   = glm::quatLookAt(lightDir, glm::vec3(0, -1, 0));
+		
+			glm::mat4 shadowView  = glm::mat4_cast(glm::conjugate(rota)) * glm::translate(glm::mat4(1.0f), glm::vec3(playerInfo::logicOriginPos) - lightPos);
+			glm::mat4 shadowModel = glm::translate(glm::mat4(1), lightPos - glm::vec3(playerInfo::logicOriginPos));
+		
+			shadow.shadowUbo.mvp[0]		= shadow.proj * shadowView * shadowModel;
+			dsScence.lightUbo.shadowMvp = shadow.shadowUbo.mvp[0];
+		
+			createMapMemory(shadow.shadowUniform.bufferMemory, &shadow.shadowUbo, sizeof(shadow.shadowUbo));
+			createMapMemory(dsScence.lightUniform.bufferMemory, &dsScence.lightUbo, sizeof(dsScence.lightUbo));
+		}
 		
 		//shadow
 		{
@@ -1467,7 +1477,7 @@ public:
 			glm::vec3 lightDir = glm::normalize(target - lightPos);
 
 			glm::mat4 shadowView = glm::lookAt(lightPos, target, glm::vec3(1, 0, 0)); // up 可改
-			glm::mat4 shadowModel = glm::translate(glm::mat4(1), -glm::vec3(playerInfo::logicOriginPos));
+			glm::mat4 shadowModel = glm::translate(glm::mat4(1), lightPos - glm::vec3(playerInfo::logicOriginPos));
 
 			shadow.shadowUbo.mvp[0] = shadow.proj * shadowView * shadowModel;
 			dsScence.lightUbo.shadowMvp = shadow.shadowUbo.mvp[0];
@@ -1544,7 +1554,7 @@ private:
 		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer);
 		createMapMemory(tempBuffer.bufferMemory, terrainVertex::vertexs[layer].data(), (size_t)bufferSize);
 
-		for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
+		for (int i = 0; i < bufferInfo::commandThreadCount; i++) {
 			int thread = (threadId + i) % 2;
 
 			vmaDestroyBuffer(Device.allocator, terrain.vertex[thread][layer].buffer, terrain.vertex[thread][layer].bufferMemory);
@@ -1563,7 +1573,7 @@ private:
 		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer);
 		createMapMemory(tempBuffer.bufferMemory, terrainVertex::indexs[layer].data(), (size_t)bufferSize);
 
-		for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
+		for (int i = 0; i < bufferInfo::commandThreadCount; i++) {
 			int thread = (threadId + i) % 2;
 
 			vmaDestroyBuffer(Device.allocator, terrain.index[thread][layer].buffer, terrain.index[thread][layer].bufferMemory);

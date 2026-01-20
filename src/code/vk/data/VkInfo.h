@@ -94,17 +94,17 @@ namespace lightInfo {
 }
 
 namespace bufferInfo {
-    const int commandThreadSize = 2;            //命令线程数
+    const int commandThreadCount = 2;           //命令线程数
 
-    const uint32_t scenceForwardSize  = 4;      //scenceForward描述符池上限，  skybox，mine，osMirror，osScence
-    const uint32_t scenceDeferredSize = 5;      //scenceDeferred描述符池上限， terrain，m_temple，m_droid*3
-    const uint32_t uiTextSize         = 1;      //uiText描述符池上限，         uiText
-    const uint32_t dsScenceSize       = 1;      //dsScence描述符池上限，       dsScence
-    const uint32_t shadowSize         = 1;      //shadow描述符池上限，         shadow
+    const uint32_t scenceForwardCount  = 4;     //scenceForward描述符池上限，  skybox，mine，osMirror，osScence
+    const uint32_t scenceDeferredCount = 5;     //scenceDeferred描述符池上限， terrain，m_temple，m_droid*3
+    const uint32_t uiTextCount         = 1;     //uiText描述符池上限，         uiText
+    const uint32_t dsScenceCount       = 1;     //dsScence描述符池上限，       dsScence
+    const uint32_t shadowCount         = 1;     //shadow描述符池上限，         shadow
 
     VkFormat dsPosFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
 
-    const int shadowMapCount = 3;                //阴影映射数量，三大光源阴影贴图数量和，一个点光源要6张贴图，平行光和聚光灯要一张贴图
+    const int shadowMapCount = 3;               //阴影映射数量，三大光源阴影贴图数量和，一个点光源要6张贴图，平行光和聚光灯要一张贴图
 }
 
 namespace fpsInfo {

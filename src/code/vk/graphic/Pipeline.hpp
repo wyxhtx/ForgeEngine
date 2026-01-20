@@ -260,8 +260,7 @@ private:
 			rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 		}
 
-		//todo 避免麻烦故意放最后面
-		//todo 目前不准日后再改
+		//todo 避免麻烦故意放最后面，目前不准日后再改
 		//sh_f
 		{
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::sh_f);

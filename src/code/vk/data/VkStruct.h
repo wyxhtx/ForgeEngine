@@ -249,7 +249,7 @@ namespace swapStruct {
 namespace bufferStruct {
     struct commandNode {
         VkCommandPool commandPool;
-        std::vector<VkCommandBuffer> commandBuffer[bufferInfo::commandThreadSize];     //使用双重命令缓冲防止更新区块卡顿
+        std::vector<VkCommandBuffer> commandBuffer[bufferInfo::commandThreadCount];     //使用双重命令缓冲防止更新区块卡顿
 
         int currentThreadId = 0;						                                //当前地形线程命令缓冲区id
         uint32_t processingThreadSize = 1;                                              //背后线程数量,避免上个线程没结束就开启新线程
@@ -274,7 +274,7 @@ namespace bufferStruct {
         }
 
         void initCommandBuffer(const uint32_t frameSize) {
-            for (int i = 0; i < bufferInfo::commandThreadSize; i++) {
+            for (int i = 0; i < bufferInfo::commandThreadCount; i++) {
                 commandBuffer[i].resize(frameSize);
             }
 
@@ -459,8 +459,8 @@ namespace bufferStruct {
     /*管线缓冲区*/
     struct terrainBufferNode {
         //网格缓冲
-        bufferNode vertex[bufferInfo::commandThreadSize][terrainEnum::terrainLayer::count];
-        bufferNode index[bufferInfo::commandThreadSize][terrainEnum::terrainLayer::count];
+        bufferNode vertex[bufferInfo::commandThreadCount][terrainEnum::terrainLayer::count];
+        bufferNode index[bufferInfo::commandThreadCount][terrainEnum::terrainLayer::count];
 
         //纹理缓冲
         const char* textureFile;
@@ -495,7 +495,7 @@ namespace bufferStruct {
 
         //清理结构体，descriptorSet由描述符池管理，无需手动清理
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            for (int thread = 0; thread < bufferInfo::commandThreadSize; thread++) {
+            for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
                 for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
                     vmaDestroyBuffer(allocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMemory);
                     vmaDestroyBuffer(allocator, index[thread][layer].buffer, index[thread][layer].bufferMemory);
