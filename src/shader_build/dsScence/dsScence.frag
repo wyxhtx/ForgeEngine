@@ -63,9 +63,33 @@ layout(location = 0) out vec4 outColor;
 
 
 void main() {
-    float depth = texture(samplerShadow_sss, vec3(fragUV, 0.0)).r;
-    float contrast = 1.5;               //非线性对比度调整，增强近处细节
-    depth = pow(depth, 1.0/contrast);   //使用幂函数增强对比度
+    vec4 positionData = texture(samplerPosition, fragUV);
+    if (positionData.a == 0.0) { outColor = positionData; return; }
+
+    // 1. 读 G-Buffer
+    vec3 worldPos = texture(samplerPosition, fragUV).rgb;
+    vec3 albedo   = texture(samplerAlbedo,    fragUV).rgb;   // 漫反射颜色
     
-    outColor = vec4(depth, 1.0, 1.0, 1.0);
+    // 2. 投影到光源空间
+    vec4 projPos   = light.shadowMvp * vec4(worldPos, 1.0);
+    projPos.xyz   /= projPos.w;
+    projPos.xyz    = projPos.xyz * 0.5 + 0.5;   // [-1,1] → [0,1]
+
+    // 3. 视锥外强制无阴影
+    if (projPos.z > 1.0 || projPos.z < 0.0 ||
+        projPos.x > 1.0 || projPos.x < 0.0 ||
+        projPos.y > 1.0 || projPos.y < 0.0)
+    {
+        outColor = vec4(albedo, 1.0);
+        return;
+    }
+
+    // 4. 深度比较
+    float currentDepth = projPos.z;
+    float closestDepth = texture(samplerShadow_sss, vec3(projPos.xy, 0.0)).r;
+    float bias         = 0.005;
+    float shadow       = (currentDepth - bias) > closestDepth ? 1.0 : 0.0;
+
+    // 5. 输出：有阴影=黑，无阴影=原漫反射颜色
+    outColor = vec4(mix(albedo, vec3(0.0), shadow), 1.0);
 }

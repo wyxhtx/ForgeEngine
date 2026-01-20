@@ -255,15 +255,18 @@ namespace bufferList {
                 throw;
             }
 
-            //todo实现后进行视觉效果微调
+            //todo 实现后进行视觉效果微调
             //shadow_s
-            samplerInfo.magFilter = VK_FILTER_LINEAR;
+            samplerInfo.magFilter        = VK_FILTER_NEAREST;
+            samplerInfo.addressModeU     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerInfo.addressModeV     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerInfo.addressModeW     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
             samplerInfo.anisotropyEnable = VK_FALSE;
-            samplerInfo.maxAnisotropy = 0;
-            samplerInfo.compareEnable = VK_TRUE;
-            samplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-            samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-            samplerInfo.mipLodBias = 0;
+            samplerInfo.maxAnisotropy    = 0;
+            samplerInfo.compareEnable    = VK_TRUE;
+            samplerInfo.compareOp        = VK_COMPARE_OP_LESS_OR_EQUAL;
+            samplerInfo.mipmapMode       = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            samplerInfo.mipLodBias       = 0;
             //samplerInfo.minLod           = 0;
             //samplerInfo.maxLod           = VK_LOD_CLAMP_NONE;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::shadow_s]) != VK_SUCCESS) {

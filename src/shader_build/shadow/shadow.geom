@@ -1,12 +1,12 @@
 #version 450
 
-#define lightCount 3
+#define shadowMapSize 3
 
-layout (triangles, invocations = lightCount) in;	//输入为三角形，		设置几何着色器调用次数
+layout (triangles, invocations = shadowMapSize) in;	//输入为三角形，		设置几何着色器调用次数
 layout (triangle_strip, max_vertices = 3) out;		//输出为三角形条带，	最大顶点数为3
 
 layout (binding = 0) uniform shadowUBO {
-	mat4 mvp[lightCount];
+	mat4 mvp[shadowMapSize];
 } shadow;
 
 

@@ -260,9 +260,8 @@ private:
 			rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 		}
 
-
-		//todo避免麻烦故意放最后面
-		//todo目前不准日后再改
+		//todo 避免麻烦故意放最后面
+		//todo 目前不准日后再改
 		//sh_f
 		{
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::sh_f);
@@ -273,9 +272,8 @@ private:
 			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 			rasterizer.depthBiasEnable = VK_TRUE;
 
-			procPipeline.createShadowPipeline<shadowVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::shadow_p, shaderStage, vertexInputInfo, pipelineInfo);
+			procPipeline.createShadowPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::shadow_p, shaderStage, vertexInputInfo, pipelineInfo);
 		}
-
 	}
 
 public:

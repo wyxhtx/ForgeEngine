@@ -41,10 +41,10 @@ public:
 		procModel.clear(Device.device, Device.allocator);
 		skybox	 .clear(Device.device, Device.allocator);
 		mine	 .clear(Device.device, Device.allocator);
+		uiText	 .clear(Device.device, Device.allocator);
 		osMirror .clear(Device.device, Device.allocator);
 		osScence .clear(Device.device, Device.allocator);
 		dsScence .clear(Device.device, Device.allocator);
-		uiText	 .clear(Device.device, Device.allocator);
 		shadow	 .clear(Device.device, Device.allocator);
 
 		if (debugInfo::LogSwitch) {
@@ -130,42 +130,6 @@ private:
 		//osMirror
 		createVertexBuffer(osMirrorVertex::vertexs, osMirror.vertex);
 		createIndexBuffer(osMirrorVertex::indexs, osMirror.index);
-
-		//todo待优化
-		//shadow
-		//for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-		//	const auto& terrainVerts = terrainVertex::vertexs[layer];
-		//	const auto& terrainIndexs = terrainVertex::indexs[layer];
-		//
-		//	//当前偏移量
-		//	size_t indexOffset = shadowVertex::vertexs.size();
-		//
-		//	for (const auto& terrainVert : terrainVerts) {
-		//		shadowVertex::vertexs.push_back(shadowVertex::vertexNode{ terrainVert.position });
-		//	}
-		//
-		//	for (auto index : terrainIndexs) {
-		//		shadowVertex::indexs.push_back(static_cast<uint32_t>(index + indexOffset));
-		//	}
-		//}
-
-		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			const auto& modelVerts = modelVertex::sVertexs[i];
-			const auto& modelIndices = modelVertex::sIndexs[i];
-
-			size_t indexOffset = shadowVertex::vertexs.size();
-
-			for (const auto& vert : modelVerts) {
-				shadowVertex::vertexs.push_back(shadowVertex::vertexNode{ vert.position });
-			}
-
-			for (auto index : modelIndices) {
-				shadowVertex::indexs.push_back(static_cast<uint32_t>(index + indexOffset));
-			}
-		}
-
-		createVertexBuffer(shadowVertex::vertexs, shadow.vertex);
-		createIndexBuffer(shadowVertex::indexs, shadow.index);
 	}
 
 	void createUniformBuffer() {
@@ -248,7 +212,6 @@ private:
 				std::array<VkWriteDescriptorSet, 1> tempWrite{
 					procDescriptor.getWrite(0, mine.descriptorSet, mine.uniform.buffer, sizeof(mine.ubo)),
 				};
-
 
 				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 			}
@@ -372,7 +335,7 @@ private:
 					procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
 					procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
 					procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view),
-					procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], shadowFrameNode.depth.view)
+					procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[shadow.samplerId],	 shadowFrameNode.depth.view)
 				};
 
 				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -404,13 +367,13 @@ private:
 	void initUniformBuffer() {
 		//设置透视投影，参数依次是视野角度、宽高比、近裁剪面和远裁剪面，以及proj[1][1] *= -1轴向修正
 		glm::mat4 perspProj = glm::perspective(glm::radians(45.0f), (float)InitSwapchain.scExtent.width / (float)InitSwapchain.scExtent.height, 0.1f, plateInfo::cubeSightRange);
-		perspProj[1][1] *= -1;
+		perspProj[1][1]		*= -1;
 
 		//设置正交投影
 		float tempHeight	= 64.0f;
 		float tempWidth		= tempHeight * (float)InitSwapchain.scExtent.width / (float)InitSwapchain.scExtent.height;
 		glm::mat4 orthoProj = glm::ortho(-tempWidth, tempWidth, -tempHeight, tempHeight, 0.1f, plateInfo::cubeSightRange);
-		orthoProj[1][1] *= -1;
+		orthoProj[1][1]		*= -1;
 
 
 
@@ -1221,7 +1184,7 @@ public:
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::shadow_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 				//shadow
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(shadow.pipeId), procPipeline.getPipeLayout(shadow.pipeId), shadow.descriptorSet, shadow.vertex.buffer, shadow.index.buffer, (uint32_t)shadowVertex::indexs.size());
+				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(shadow.pipeId), procPipeline.getPipeLayout(shadow.pipeId), shadow.descriptorSet, procModel.sNode[0].vertex.buffer, procModel.sNode[0].index.buffer, (uint32_t)modelVertex::sIndexs[0].size());
 
 				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
@@ -1374,10 +1337,9 @@ public:
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 				if (procModel.sNode[i].isVisible) {
 					procModel.sNode[i].ubo.model	= glm::translate(glm::mat4(1), glm::vec3(procModel.sNode[i].modelWorldPos - playerInfo::logicOriginPos));	//位移
-					//todo暂时屏蔽
-					//procModel.sNode[i].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
-					procModel.sNode[i].ubo.modelTI	= glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
+					procModel.sNode[i].ubo.model	*= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
 					//procModel.sNode[i].ubo.model	*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);							//旋转
+					procModel.sNode[i].ubo.modelTI	= glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
 					procModel.sNode[i].ubo.view		= camera.view;
 
 					createMapMemory(procModel.sNode[i].uniform.bufferMemory, &procModel.sNode[i].ubo, sizeof(procModel.sNode[i].ubo));
@@ -1558,11 +1520,11 @@ public:
 			bufferStruct::shFramebufferNode& shadowFrameNode   = procRenderPass.getShFramebufferNode(bufferEnum::procRenderId::shadow_r);
 
 			std::array<VkWriteDescriptorSet, 5> tempWrite{
-				procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
+				procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer,		 sizeof(dsScence.lightUbo)),
 				procDescriptor.getWrite(1, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
 				procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
 				procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view),
-				procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], shadowFrameNode.depth.view)
+				procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[shadow.samplerId],	 shadowFrameNode.depth.view)
 			};
 
 			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);

@@ -311,34 +311,3 @@ namespace uiTextVertex {
         }
     };
 }
-
-//shadow
-namespace shadowVertex {
-    struct vertexNode {
-        glm::vec3 position;
-
-        static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
-            std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
-            bindingDescription[0].binding = 0;
-            bindingDescription[0].stride = sizeof(vertexNode);
-            bindingDescription[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-            return bindingDescription;
-        }
-
-        static std::array<VkVertexInputAttributeDescription, 1> getAttributeDescriptions() {
-            std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions = {};
-
-            attributeDescriptions[0].binding = 0;
-            attributeDescriptions[0].location = 0;
-            attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[0].offset = offsetof(vertexNode, position);
-
-            return attributeDescriptions;
-        }
-    };
-
-    std::vector<vertexNode> vertexs;
-
-    std::vector<uint32_t> indexs;
-}

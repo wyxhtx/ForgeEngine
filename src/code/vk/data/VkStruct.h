@@ -429,7 +429,7 @@ namespace bufferStruct {
         float outerCutOff;          //聚光灯外圆锥
     };
 
-    //todo重构阴影结构
+    //todo
     //光照统一结点
     struct lightUBO {
         glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
@@ -441,18 +441,17 @@ namespace bufferStruct {
         float placeholder;          //占位符
 
         pointLightNode pointLightList[1];
-        dirLightNode dirLightList[1];
-        spotLightNode spotLightList[1];
+        dirLightNode   dirLightList[1];
+        spotLightNode  spotLightList[1];
 
         glm::mat4 shadowMvp;
-        //todo
-        //glm::mat4 shadowMvp[bufferInfo::lightArraySize];
+        //glm::mat4 shadowMvp[bufferInfo::shadowMapCount];
     };
 
-    //todo重构阴影结构
+    //todo
     //阴影统一结点
     struct shadowUBO {
-        glm::mat4 mvp[bufferInfo::lightArraySize];
+        glm::mat4 mvp[bufferInfo::shadowMapCount];
     };
 
 
@@ -1433,7 +1432,7 @@ namespace bufferStruct {
                 createDsFramebuffer(scExtent, render, device);
             }
             else if (frameNodeType == bufferEnum::frameNodeId::sh_f) {
-                createImageArrayNode(shPtr->depth, scExtent.width, scExtent.height, bufferInfo::lightArraySize, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
+                createImageArrayNode(shPtr->depth, scExtent.width, scExtent.height, bufferInfo::shadowMapCount, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
 
                 createShFramebuffer(scExtent, render, device);
             }
@@ -1529,7 +1528,7 @@ namespace bufferStruct {
             framebufferInfo.pAttachments    = &tempFrameNode.depth.view;
             framebufferInfo.width           = scExtent.width;
             framebufferInfo.height          = scExtent.height;
-            framebufferInfo.layers          = bufferInfo::lightArraySize;
+            framebufferInfo.layers          = bufferInfo::shadowMapCount;
 
             if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "阴影映射帧缓冲创建失败");
