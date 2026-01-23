@@ -449,9 +449,17 @@ namespace bufferStruct {
     };
 
     //todo
+    //阴影变换统一结点
+    struct shadowModelUBO {
+        glm::mat4 model;    //阴影模型变换
+        //glm::mat4 model;[bufferInfo::shadowModelCount];
+    };
+
+    //todo
     //阴影统一结点
     struct shadowUBO {
-        glm::mat4 mvp[bufferInfo::shadowMapCount];
+        glm::mat4 mvp[bufferInfo::shadowMapCount];     //阴影mvp变换
+        //glm::mat4 mvp[bufferInfo::shadowMapCount]
     };
 
 
@@ -907,9 +915,11 @@ namespace bufferStruct {
         bufferNode index;
 
         //统一缓冲
+        bufferNode shadowModelUniform;
+        shadowModelUBO shadowModelUbo;
         bufferNode shadowUniform;
         shadowUBO shadowUbo;
-        glm::mat4 proj;           //辅助shadowUbo计算
+        glm::mat4 orthoProj;           //辅助shadowUbo计算
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
@@ -931,6 +941,7 @@ namespace bufferStruct {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
             vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
 
+            vmaDestroyBuffer(allocator, shadowModelUniform.buffer, shadowModelUniform.bufferMemory);
             vmaDestroyBuffer(allocator, shadowUniform.buffer, shadowUniform.bufferMemory);
         }
     };

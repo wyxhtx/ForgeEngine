@@ -133,7 +133,8 @@ namespace bufferList {
 
             //shadow_d
             node[bufferEnum::procDescriptorId::shadow_d].config = {
-                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_GEOMETRY_BIT, bufferInfo::shadowCount}
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::shadowCount},  //顶点阴影模型
+                {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_GEOMETRY_BIT, bufferInfo::shadowCount}   //顶点阴影映射
             };
 
             for (int i = 0; i < bufferEnum::procDescriptorId::count; i++) {

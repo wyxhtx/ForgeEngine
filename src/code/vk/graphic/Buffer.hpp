@@ -163,6 +163,7 @@ private:
 		createBuffer(sizeof(dsScence.lightUbo), dsScence.lightUniform);
 
 		//shadow
+		createBuffer(sizeof(shadow.shadowModelUbo), shadow.shadowModelUniform);
 		createBuffer(sizeof(shadow.shadowUbo), shadow.shadowUniform);
 	}
 
@@ -351,8 +352,9 @@ private:
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::shadow_d);
 		
 			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &shadow.descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 1> tempWrite{
-					procDescriptor.getWrite(0, shadow.descriptorSet, shadow.shadowUniform.buffer, sizeof(shadow.shadowUbo))
+				std::array<VkWriteDescriptorSet, 2> tempWrite{
+					procDescriptor.getWrite(0, shadow.descriptorSet, shadow.shadowModelUniform.buffer, sizeof(shadow.shadowModelUbo)),
+					procDescriptor.getWrite(1, shadow.descriptorSet, shadow.shadowUniform.buffer, sizeof(shadow.shadowUbo))
 				};
 		
 				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -413,7 +415,7 @@ private:
 		dsScence.lightUbo.specularScale = lightInfo::specularScale;
 
 		//shadow
-		shadow.proj = orthoProj;
+		shadow.orthoProj = orthoProj;
 	}
 
 
@@ -1168,7 +1170,7 @@ public:
 		uiText.endTextUpdate(Device.allocator);
 	}
 
-	//todo 优化
+	//todo优化
 	void createCommandBuffer(int threadId, pipelineList::procPipelineNode& procPipeline) {
 		if (vkAllocateCommandBuffers(Device.device, &command.allocInfo, command.commandBuffer[threadId].data()) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "基础命令缓冲创建失败");
@@ -1411,7 +1413,7 @@ public:
 			createMapMemory(osMirror.lightUniform.bufferMemory, &osMirror.lightUbo, sizeof(osMirror.lightUbo));
 		}
 
-		//todo 优化
+		//todo优化
 		//dsScence
 		{
 			dsScence.lightUbo.viewPos	  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };	//位置
@@ -1440,50 +1442,20 @@ public:
 
 		//shadow
 		{
-			float hourRad = (currentHour / 24.0f) * 2.0f * glm::pi<float>();	// 0~2π
-			float radius = 200.0f;												// 可视半径
-			// 计算绕Y轴旋转的位置
-			glm::vec3 lightPos = glm::vec3(
-				radius * cos(hourRad),	//X坐标：半径 * cos(角度)
-				64.0f,					//Y坐标：固定高度
-				radius * sin(hourRad)	//Z坐标：半径 * sin(角度)
-			);
-
-
-
-			//glm::vec3 lightPos = glm::vec3(0.0f, 64.0f, 0.0f);
+			float hourRad	   = (currentHour / 24.0f) * 2.0f * glm::pi<float>();															//0~2π
+			float radius	   = 200.0f;																									//可视半径
+			glm::vec3 lightPos = glm::vec3(radius * cos(hourRad), 64.0f, radius * sin(hourRad)) - glm::vec3(playerInfo::logicOriginPos);	//绕Y轴旋转的位置
 			glm::vec3 lightDir = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
 			glm::quat rota	   = glm::quatLookAt(lightDir, glm::vec3(0, -1, 0));
 		
-			glm::mat4 shadowView  = glm::mat4_cast(glm::conjugate(rota)) * glm::translate(glm::mat4(1.0f), glm::vec3(playerInfo::logicOriginPos) - lightPos);
-			glm::mat4 shadowModel = glm::translate(glm::mat4(1), lightPos - glm::vec3(playerInfo::logicOriginPos));
-		
-			shadow.shadowUbo.mvp[0]		= shadow.proj * shadowView * shadowModel;
-			dsScence.lightUbo.shadowMvp = shadow.shadowUbo.mvp[0];
-		
-			createMapMemory(shadow.shadowUniform.bufferMemory, &shadow.shadowUbo, sizeof(shadow.shadowUbo));
-			createMapMemory(dsScence.lightUniform.bufferMemory, &dsScence.lightUbo, sizeof(dsScence.lightUbo));
-		}
-		
-		//shadow
-		{
-			float hourRad = (currentHour / 24.0f) * 2.0f * glm::pi<float>();   // 0~2π
-			float radius = 200.0f;                                              // 可视半径
-			glm::vec3 lightPos = glm::vec3(0.0f,                          // 固定 X
-				radius * cos(hourRad),         // Y 绕 X 轴
-				radius * sin(hourRad));        // Z 绕 X 轴
-
-			glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);              // 指向场景中心
-			glm::vec3 lightDir = glm::normalize(target - lightPos);
-
-			glm::mat4 shadowView = glm::lookAt(lightPos, target, glm::vec3(1, 0, 0)); // up 可改
-			glm::mat4 shadowModel = glm::translate(glm::mat4(1), lightPos - glm::vec3(playerInfo::logicOriginPos));
-
-			shadow.shadowUbo.mvp[0] = shadow.proj * shadowView * shadowModel;
+			//todo 待扩展sNode[0]
+			shadow.shadowModelUbo.model = procModel.sNode[0].ubo.model;
+			shadow.shadowUbo.mvp[0]		= shadow.orthoProj * glm::lookAt(lightPos/*摄像机坐标*/, glm::vec3(procModel.sNode[0].modelWorldPos - playerInfo::logicOriginPos)/*被观测坐标*/, coordsInfo::worldUp)/* * glm::mat4(1.0f)*/;
 			dsScence.lightUbo.shadowMvp = shadow.shadowUbo.mvp[0];
 
-			createMapMemory(shadow.shadowUniform.bufferMemory, &shadow.shadowUbo, sizeof(shadow.shadowUbo));
-			createMapMemory(dsScence.lightUniform.bufferMemory, &dsScence.lightUbo, sizeof(dsScence.lightUbo));
+			createMapMemory(shadow.shadowModelUniform.bufferMemory, &shadow.shadowModelUbo, sizeof(shadow.shadowModelUbo));
+			createMapMemory(shadow.shadowUniform.bufferMemory,		&shadow.shadowUbo,		sizeof(shadow.shadowUbo));
+			createMapMemory(dsScence.lightUniform.bufferMemory,		&dsScence.lightUbo,		sizeof(dsScence.lightUbo));
 		}
 	}
 

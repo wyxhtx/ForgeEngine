@@ -5,7 +5,7 @@
 layout (triangles, invocations = shadowMapCount) in;	//输入为三角形，		设置几何着色器调用次数
 layout (triangle_strip, max_vertices = 3) out;			//输出为三角形条带，	最大顶点数为3
 
-layout (binding = 0) uniform shadowUBO {
+layout (binding = 1) uniform shadowUBO {
 	mat4 mvp[shadowMapCount];
 } shadow;
 
