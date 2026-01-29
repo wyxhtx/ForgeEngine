@@ -124,11 +124,12 @@ namespace bufferList {
 
             //dsScence_d
             node[bufferEnum::procDescriptorId::dsScence_d].config = {
-                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段光照
-                {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段坐标
-                {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段法线
-                {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段反射
-                {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount}          //片段阴影
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段光照统一缓冲
+                {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段阴影统一缓冲
+                {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段坐标
+                {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段法线
+                {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段反射
+                {5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount}          //片段阴影
             };
 
             //shadow_d
@@ -256,7 +257,6 @@ namespace bufferList {
                 throw;
             }
 
-            //todo 实现后进行视觉效果微调
             //shadow_s
             samplerInfo.magFilter        = VK_FILTER_NEAREST;
             samplerInfo.addressModeU     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -264,12 +264,10 @@ namespace bufferList {
             samplerInfo.addressModeW     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
             samplerInfo.anisotropyEnable = VK_FALSE;
             samplerInfo.maxAnisotropy    = 0;
-            samplerInfo.compareEnable    = VK_TRUE;
-            samplerInfo.compareOp        = VK_COMPARE_OP_LESS_OR_EQUAL;
             samplerInfo.mipmapMode       = VK_SAMPLER_MIPMAP_MODE_LINEAR;
             samplerInfo.mipLodBias       = 0;
-            //samplerInfo.minLod           = 0;
-            //samplerInfo.maxLod           = VK_LOD_CLAMP_NONE;
+            samplerInfo.minLod           = 0.0f;
+            samplerInfo.maxLod           = 0.0f;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::shadow_s]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "shadow采样器创建失败");
                 throw;

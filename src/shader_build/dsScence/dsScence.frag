@@ -35,7 +35,7 @@ struct spotLightNode {
     float placeholder;          //占位符
 };
 
-layout(binding = 0) uniform UniformBufferObject {
+layout(binding = 0) uniform dsScenceLightUBO {
     vec3  viewPos;              //观察者坐标（世界空间）
     float currentHour;          //当前小时
 
@@ -47,14 +47,18 @@ layout(binding = 0) uniform UniformBufferObject {
     pointLightNode pointLightList[pointLightCount];     //点光源
     dirLightNode   dirLightList[dirLightCount];         //平行光
     spotLightNode  spotLightList[spotLightCount];       //聚光灯
-
-    mat4 shadowMvp;
 } light;
 
-layout(binding = 1) uniform sampler2D samplerPosition;              //世界空间位置，rgb兼前向颜色，a兼前向标识
-layout(binding = 2) uniform sampler2D samplerNormal;                //世界空间法线，a兼前向skybox标识
-layout(binding = 3) uniform sampler2D samplerAlbedo;                //漫反射颜色，  a兼延迟高光强度
-layout(binding = 4) uniform sampler2DArray samplerShadow_sss;       //阴影贴图
+//todo目前先这样凑合用
+layout(binding = 1) uniform dsScenceShadowUBO {
+    mat4 shadowMvp;             //阴影mvp
+    vec2 shadowExtent;          //阴影贴图大小
+} shadow;
+
+layout(binding = 2) uniform sampler2D samplerPosition;              //世界空间位置，rgb兼前向颜色，a兼前向标识
+layout(binding = 3) uniform sampler2D samplerNormal;                //世界空间法线，a兼前向skybox标识
+layout(binding = 4) uniform sampler2D samplerAlbedo;                //漫反射颜色，  a兼延迟高光强度
+layout(binding = 5) uniform sampler2DArray samplerShadowArray;      //阴影贴图
 
 layout(location = 0) in  vec2 fragUV;
 
@@ -70,6 +74,9 @@ struct LightResult {
 const float constant  = 1.0;
 const float linear    = 0.045;
 const float quadratic = 0.0075;
+
+//深度偏移参数
+const float shadowBias = 0.005;
 
 
 
@@ -178,6 +185,38 @@ float getAttenuation(vec3 fragPos, vec3 lightPos) {
     return 1.0 / (constant + linear * dist + quadratic * dist * dist);
 }
 
+//PCF阴影采样
+float shadowPCF(vec4 shadowCoord, vec2 offset, float bias) {
+    float shadow = 1.0;
+    
+    if (shadowCoord.z > -1.0 && shadowCoord.z < 1.0) {
+        float adjustedDepth = shadowCoord.z - bias;     //应用深度偏移
+        float dist          = texture(samplerShadowArray, vec3(shadowCoord.st + offset, 0)).r;
+        
+        if (shadowCoord.w > 0.0 && dist < adjustedDepth) {
+            shadow = 0.5;
+        }
+    }
+    
+    return shadow;
+}
+
+//PCF阴影计算
+float filterPCF(vec4 shadowCoord) {
+    float dx           = 1.0 / shadow.shadowExtent.x;
+    float dy           = 1.0 / shadow.shadowExtent.y;
+    float shadowFactor = 0.0;
+    
+    //3x3 PCF滤波
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            shadowFactor += shadowPCF(shadowCoord, vec2(dx * x, dy * y), shadowBias);
+        }
+    }
+    
+    return shadowFactor / 9.0;
+}
+
 
 
 void main() {
@@ -187,11 +226,11 @@ void main() {
     vec4 normalData = texture(samplerNormal, fragUV);
     vec4 albedoData = texture(samplerAlbedo, fragUV);
 
-    vec3 fragPos = positionData.rgb;
-    vec3 normal = normalize(normalData.rgb);
+    vec3 fragPos  = positionData.rgb;
+    vec3 normal   = normalize(normalData.rgb);
     vec3 texColor = albedoData.rgb;
     float specularIntensity = albedoData.a;
-    vec3 viewDir = normalize(light.viewPos - fragPos);
+    vec3 viewDir  = normalize(light.viewPos - fragPos);
     
     vec3 result = texColor * light.ambientScale * light.dirLightList[0].color;
     
@@ -201,6 +240,9 @@ void main() {
         return;
     }
     
+
+
+    //-光照-
     //点光源
     for (int i = 0; i < pointLightCount; i++) {
         LightResult pointLight = getPointLight(light.pointLightList[i], fragPos, normal, viewDir, texColor, specularIntensity);
@@ -220,5 +262,19 @@ void main() {
         result += spotLight.ambient + (spotLight.diffuse + spotLight.specular) * attenuation;
     }
 
-    outColor = vec4(result, 1.0);
+
+    
+    //-阴影-
+    vec4 shadowCoord = shadow.shadowMvp * vec4(fragPos, 1.0);   //将世界空间位置转换到阴影贴图空间
+    shadowCoord.xyz  /= shadowCoord.w;                          //透视除法，将坐标转换到NDC空间
+    shadowCoord.xy   = shadowCoord.xy * 0.5 + 0.5;              //将NDC坐标转换到纹理坐标[0,1]范围
+    
+    float shadow = 1.0;
+    
+    //检查坐标是否在阴影贴图范围内
+    if (shadowCoord.x >= 0.0 && shadowCoord.x <= 1.0 && shadowCoord.y >= 0.0 && shadowCoord.y <= 1.0 &&shadowCoord.z >= 0.0 && shadowCoord.z <= 1.0) {
+        shadow = filterPCF(shadowCoord);
+    }
+    
+    outColor = vec4(result * shadow, 1.0);
 }

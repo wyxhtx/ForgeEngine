@@ -1,6 +1,6 @@
 #version 450
 
-layout(binding = 1) uniform UniformBufferObject {
+layout(binding = 1) uniform forwardLightUBO {
     vec3 viewPos;               //观察者坐标
     float currentHour;          //当前小时
     

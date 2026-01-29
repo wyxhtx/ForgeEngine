@@ -358,17 +358,20 @@ namespace bufferStruct {
 
 
 
-    /*缓冲结点*/
+    //图像缓冲结点
     struct imageNode {
         VkImage image;
         VmaAllocation imageMemory;
         VkImageView view;
     };
 
+    //通用缓冲结点
     struct bufferNode {
         VkBuffer buffer;
         VmaAllocation bufferMemory;
     };
+
+
 
     //点光源结点
     struct pointLightNode {
@@ -400,16 +403,16 @@ namespace bufferStruct {
         float placeholder;      //占位符
     };
 
-    //变换统一结点
-    struct transformUBO {
+    //mvp统一结点
+    struct mvpUBO {
         glm::mat4 model;            //模型矩阵，用于将模型变换到世界坐标系
         glm::mat4 modelTI;          //模型转置逆矩阵，用于计算光照法线
         glm::mat4 view;             //视图矩阵，用于将世界坐标系变换到观察者坐标系
         glm::mat4 proj;             //投影矩阵，用于将观察者坐标系变换到裁剪坐标系
     };
 
-    //天空盒光照统一结点
-    struct skyboxLightUBO {
+    //前向光照统一结点
+    struct forwardLightUBO {
         glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
         float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到，用于周期性效果
 
@@ -429,35 +432,40 @@ namespace bufferStruct {
         float outerCutOff;          //聚光灯外圆锥
     };
 
-    //todo
-    //光照统一结点
-    struct lightUBO {
+    //延迟光照统一结点
+    struct deferredLightUBO {
         glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
         float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到，用于周期性效果
-
+        
         float ambientScale;         //环境光强度
         float diffuseScale;         //漫反射强度
         float specularScale;        //镜面反射强度
         float placeholder;          //占位符
-
+        
         pointLightNode pointLightList[1];
         dirLightNode   dirLightList[1];
         spotLightNode  spotLightList[1];
+    };
 
-        glm::mat4 shadowMvp;
+    //延迟阴影统一结点
+    struct deferredShadowUBO {
+        //todo 待优化
+        glm::mat4 shadowMvp;        //阴影mvp
+        glm::vec2 shadowExtent;     //阴影贴图大小
+
         //glm::mat4 shadowMvp[bufferInfo::shadowMapCount];
     };
 
-    //todo
     //阴影变换统一结点
     struct shadowModelUBO {
+        //todo 待优化
         glm::mat4 model;    //阴影模型变换
         //glm::mat4 model;[bufferInfo::shadowModelCount];
     };
 
-    //todo
-    //阴影统一结点
-    struct shadowUBO {
+    //阴影mvp统一结点
+    struct shadowMvpUBO {
+        //todo 待优化
         glm::mat4 mvp[bufferInfo::shadowMapCount];     //阴影mvp变换
         //glm::mat4 mvp[bufferInfo::shadowMapCount]
     };
@@ -480,7 +488,7 @@ namespace bufferStruct {
 
         //统一缓冲
         bufferNode uniform;
-        transformUBO ubo;
+        mvpUBO ubo;
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
@@ -536,7 +544,7 @@ namespace bufferStruct {
 
         //统一缓冲
         bufferNode uniform;
-        transformUBO ubo;
+        mvpUBO ubo;
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
@@ -586,7 +594,7 @@ namespace bufferStruct {
 
         //统一缓冲
         bufferNode uniform;
-        transformUBO ubo;
+        mvpUBO ubo;
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
@@ -654,9 +662,9 @@ namespace bufferStruct {
 
         //统一缓冲
         bufferNode uniform;
-        transformUBO ubo;
+        mvpUBO ubo;
         bufferNode lightUniform;
-        skyboxLightUBO lightUbo;
+        forwardLightUBO lightUbo;
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
@@ -688,7 +696,7 @@ namespace bufferStruct {
 
         //统一缓冲
         bufferNode uniform;
-        transformUBO ubo;
+        mvpUBO ubo;
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
@@ -832,9 +840,9 @@ namespace bufferStruct {
 
         //统一缓冲
         bufferNode uniform;
-        transformUBO ubo;
+        mvpUBO ubo;
         bufferNode lightUniform;
-        skyboxLightUBO lightUbo;
+        forwardLightUBO lightUbo;
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
@@ -886,7 +894,9 @@ namespace bufferStruct {
     struct dsScenceBufferNode {
         //统一缓冲
         bufferNode lightUniform;
-        lightUBO lightUbo;
+        deferredLightUBO lightUbo;
+        bufferNode shadowUniform;
+        deferredShadowUBO shadowUbo;
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
@@ -905,7 +915,8 @@ namespace bufferStruct {
         dsScenceBufferNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
+            vmaDestroyBuffer(allocator, lightUniform.buffer,  lightUniform.bufferMemory);
+            vmaDestroyBuffer(allocator, shadowUniform.buffer, shadowUniform.bufferMemory);
         }
     };
 
@@ -918,7 +929,7 @@ namespace bufferStruct {
         bufferNode shadowModelUniform;
         shadowModelUBO shadowModelUbo;
         bufferNode shadowUniform;
-        shadowUBO shadowUbo;
+        shadowMvpUBO shadowUbo;
         glm::mat4 orthoProj;           //辅助shadowUbo计算
 
         //描述缓冲

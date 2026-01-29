@@ -1,17 +1,23 @@
 #version 450
 
-layout(binding = 1) uniform UniformBufferObject {
+layout(binding = 1) uniform forwardLightUBO {
     vec3 viewPos;               //观察者坐标
     float currentHour;          //当前小时
     
     vec3 gLightColor;           //全局光照颜色
     float ambientScale;         //环境光缩放
     
-    vec3 gLightPos;             //全局光照坐标
+    vec3 gLightPos;             //点光源坐标
     float diffuseScale;         //漫反射缩放
     
-    vec3 gLightDir;             //全局光照方向
+    vec3 gLightDir;             //平行光方向
     float specularScale;        //镜面反射缩放
+    
+    vec3 flashPos;              //聚光灯坐标
+    float flashCutOff;          //聚光灯内圆锥
+
+    vec3 flashDir;              //聚光灯方向
+    float outerCutOff;          //聚光灯外圆锥
 } light;
 
 layout(location = 0) in vec3 fragPos;
@@ -222,6 +228,8 @@ vec3 addMoonEffect(vec3 skyColor, vec3 fragDir, vec3 moonDir, float visibility) 
     
     return finalColor;
 }
+
+
 
 void main() {
     //归一化顶点坐标，得到单位球面上对应的坐标

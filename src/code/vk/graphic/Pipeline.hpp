@@ -147,14 +147,27 @@ private:
 			pipelineInfo.basePipelineIndex	 = -1;
 		}
 
+		//sh_f
+		{
+			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::sh_f);
+
+			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+			depthStencil.depthCompareOp		   = VK_COMPARE_OP_LESS_OR_EQUAL;
+
+			//todo 
+			procPipeline.createShadowPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::shadow_p, shaderStage, vertexInputInfo, pipelineInfo);
+
+			multisampling.rasterizationSamples = InitBuffer.getMsaaSamples();
+			depthStencil.depthCompareOp		   = VK_COMPARE_OP_LESS;
+		}
+
 		/*ds_f*/
 		{
 			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::ds_f);
 
 			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentDeferred.size());
-			colorBlending.pAttachments = colorAttachmentDeferred.data();
+			colorBlending.attachmentCount	   = static_cast<uint32_t>(colorAttachmentDeferred.size());
+			colorBlending.pAttachments		   = colorAttachmentDeferred.data();
 
 			//terrain_p
 			procPipeline.createPipeline<terrainVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::terrain_p, shaderStage, vertexInputInfo, pipelineInfo);
@@ -223,8 +236,8 @@ private:
 			}
 
 			multisampling.rasterizationSamples = InitBuffer.getMsaaSamples();
-			colorBlending.attachmentCount = static_cast<uint32_t>(colorAttachmentForward.size());
-			colorBlending.pAttachments = colorAttachmentForward.data();
+			colorBlending.attachmentCount	   = static_cast<uint32_t>(colorAttachmentForward.size());
+			colorBlending.pAttachments		   = colorAttachmentForward.data();
 		}
 
 		/*os_f*/
@@ -243,12 +256,11 @@ private:
 
 			std::vector<VkDynamicState> dynamicStates = { VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR };
 			VkPipelineDynamicStateCreateInfo dynamicState{};
-			dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+			dynamicState.sType			   = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 			dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-			dynamicState.pDynamicStates = dynamicStates.data();
-			pipelineInfo.pDynamicState = &dynamicState;
-
-			rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+			dynamicState.pDynamicStates    = dynamicStates.data();
+			pipelineInfo.pDynamicState	   = &dynamicState;
+			rasterizer.cullMode			   = VK_CULL_MODE_FRONT_BIT;
 
 			//dsScence_p
 			procPipeline.createPipeline<offScreenVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::dsScence_p, shaderStage, vertexInputInfo, pipelineInfo);
@@ -257,21 +269,7 @@ private:
 			procPipeline.createPipeline<offScreenVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osScence_p, shaderStage, vertexInputInfo, pipelineInfo);
 
 			pipelineInfo.pDynamicState = nullptr;
-			rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-		}
-
-		//todo 避免麻烦故意放最后面，目前不准日后再改
-		//sh_f
-		{
-			pipelineInfo.renderPass = InitBuffer.getRender(bufferEnum::frameNodeId::sh_f);
-
-			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-			rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
-			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-			rasterizer.depthBiasEnable = VK_TRUE;
-
-			procPipeline.createShadowPipeline<modelVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::shadow_p, shaderStage, vertexInputInfo, pipelineInfo);
+			rasterizer.cullMode		   = VK_CULL_MODE_BACK_BIT;
 		}
 	}
 
