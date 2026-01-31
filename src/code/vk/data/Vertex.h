@@ -2,7 +2,7 @@
 
 
 
-//地形
+//terrain
 namespace terrainVertex {
     struct vertexNode {
         glm::vec3 position;     //坐标
@@ -44,7 +44,7 @@ namespace terrainVertex {
     std::vector<uint32_t> indexs[terrainEnum::terrainLayer::count];     //索引数组
 }
 
-//模型
+//model
 namespace modelVertex {
     struct vertexNode {
         glm::vec3 position;     //坐标
@@ -89,14 +89,14 @@ namespace modelVertex {
 
     //静态模型网格
     std::vector<vertexNode> sVertexs[bufferEnum::procStaticModelId::count];
-    std::vector<uint32_t> sIndexs[bufferEnum::procStaticModelId::count];
+    std::vector<uint32_t>   sIndexs[bufferEnum::procStaticModelId::count];
 
     //动态模型网格
     std::vector<std::vector<vertexNode>> dVertexs[bufferEnum::procDynamicModelId::count];
-    std::vector<std::vector<uint32_t>> dIndexs[bufferEnum::procDynamicModelId::count];
+    std::vector<std::vector<uint32_t>>   dIndexs[bufferEnum::procDynamicModelId::count];
 }
 
-//服务loadModel
+//服务于model加载
 namespace std {
     template<> struct hash<modelVertex::vertexNode> {
         size_t operator()(modelVertex::vertexNode const& vertex) const {
@@ -105,7 +105,7 @@ namespace std {
     };
 }
 
-//天空盒
+//skybox
 namespace skyboxVertex {
     struct vertexNode {
         glm::vec3 position;     //坐标
@@ -155,15 +155,15 @@ namespace skyboxVertex {
     };
 }
 
-//方块边框
+//mine
 namespace mineVertex {
     struct vertexNode {
         glm::vec3 position;     //坐标
 
         static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
             std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
-            bindingDescription[0].binding = 0;
-            bindingDescription[0].stride = sizeof(vertexNode);
+            bindingDescription[0].binding   = 0;
+            bindingDescription[0].stride    = sizeof(vertexNode);
             bindingDescription[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
             return bindingDescription;
@@ -171,11 +171,10 @@ namespace mineVertex {
 
         static std::array<VkVertexInputAttributeDescription, 1> getAttributeDescriptions() {
             std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions = {};
-
-            attributeDescriptions[0].binding = 0;
+            attributeDescriptions[0].binding  = 0;
             attributeDescriptions[0].location = 0;
-            attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[0].offset = offsetof(vertexNode, position);
+            attributeDescriptions[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[0].offset   = offsetof(vertexNode, position);
 
             return attributeDescriptions;
         }
@@ -212,6 +211,45 @@ namespace mineVertex {
         1,2,2,6,6,5,5,1,
         2,3,3,0,0,1,1,2,
         4,5,5,6,6,7,7,4
+    };
+}
+
+//uiText
+namespace uiTextVertex {
+    struct vertexNode {
+        //绑定描述
+        static std::array<VkVertexInputBindingDescription, 2> getBindingDescription() {
+            std::array<VkVertexInputBindingDescription, 2> vertexInputBindings = {};
+
+            vertexInputBindings[0] = {};
+            vertexInputBindings[0].binding = 0;
+            vertexInputBindings[0].stride = sizeof(glm::vec4);
+            vertexInputBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+            vertexInputBindings[1] = {};
+            vertexInputBindings[1].binding = 1;
+            vertexInputBindings[1].stride = sizeof(glm::vec4);
+            vertexInputBindings[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+            return vertexInputBindings;
+        }
+
+        //属性描述
+        static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+            std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributes = {};
+
+            vertexInputAttributes[0].location = 0;
+            vertexInputAttributes[0].binding = 0;
+            vertexInputAttributes[0].format = VK_FORMAT_R32G32_SFLOAT;
+            vertexInputAttributes[0].offset = 0;
+
+            vertexInputAttributes[1].location = 1;
+            vertexInputAttributes[1].binding = 1;
+            vertexInputAttributes[1].format = VK_FORMAT_R32G32_SFLOAT;
+            vertexInputAttributes[1].offset = sizeof(glm::vec2);
+
+            return vertexInputAttributes;
+        }
     };
 }
 
@@ -273,41 +311,51 @@ namespace offScreenVertex {
     };
 }
 
-//uiText
-namespace uiTextVertex {
+//shadow
+namespace shadowVertex {
     struct vertexNode {
-        //绑定描述
-        static std::array<VkVertexInputBindingDescription, 2> getBindingDescription() {
-            std::array<VkVertexInputBindingDescription, 2> vertexInputBindings = {};
+        glm::vec3 position;     //坐标
 
-            vertexInputBindings[0] = {};
-            vertexInputBindings[0].binding = 0;
-            vertexInputBindings[0].stride = sizeof(glm::vec4);
-            vertexInputBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
+            std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
+            bindingDescription[0].binding   = 0;
+            bindingDescription[0].stride    = sizeof(vertexNode);
+            bindingDescription[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-            vertexInputBindings[1] = {};
-            vertexInputBindings[1].binding = 1;
-            vertexInputBindings[1].stride = sizeof(glm::vec4);
-            vertexInputBindings[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-            return vertexInputBindings;
+            return bindingDescription;
         }
 
-        //属性描述
-        static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-            std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributes = {};
+        static std::array<VkVertexInputAttributeDescription, 1> getAttributeDescriptions() {
+            std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions = {};
+            attributeDescriptions[0].binding  = 0;
+            attributeDescriptions[0].location = 0;
+            attributeDescriptions[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[0].offset   = offsetof(vertexNode, position);
 
-            vertexInputAttributes[0].location = 0;
-            vertexInputAttributes[0].binding = 0;
-            vertexInputAttributes[0].format = VK_FORMAT_R32G32_SFLOAT;
-            vertexInputAttributes[0].offset = 0;
-
-            vertexInputAttributes[1].location = 1;
-            vertexInputAttributes[1].binding = 1;
-            vertexInputAttributes[1].format = VK_FORMAT_R32G32_SFLOAT;
-            vertexInputAttributes[1].offset = sizeof(glm::vec2);
-
-            return vertexInputAttributes;
+            return attributeDescriptions;
         }
     };
+
+    //地形网格
+    std::vector<vertexNode> tVertexs[terrainEnum::terrainLayer::count];
+
+    //静态模型网格
+    std::vector<vertexNode> sVertexs[bufferEnum::procStaticModelId::count];
+
+    //动态模型网格
+    std::vector<std::vector<vertexNode>> dVertexs[bufferEnum::procDynamicModelId::count];
+
+
+
+    void loadTerrainVertexs() {
+        //遍历所有地形层
+        for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+            const auto& terrainVertices = terrainVertex::vertexs[layer];
+
+            //只保留位置信息
+            for (const auto& terrainVert : terrainVertices) {
+                tVertexs[layer].push_back(vertexNode{terrainVert.position});
+            }
+        }
+    }
 }

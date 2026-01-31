@@ -37,15 +37,15 @@ public:
 
 		command.clear(Device.device);
 
-		terrain	 .clear(Device.device, Device.allocator);
-		procModel.clear(Device.device, Device.allocator);
-		skybox	 .clear(Device.device, Device.allocator);
-		mine	 .clear(Device.device, Device.allocator);
-		uiText	 .clear(Device.device, Device.allocator);
-		osMirror .clear(Device.device, Device.allocator);
-		osScence .clear(Device.device, Device.allocator);
-		dsScence .clear(Device.device, Device.allocator);
-		shadow	 .clear(Device.device, Device.allocator);
+		terrain	  .clear(Device.device, Device.allocator);
+		procModel .clear(Device.device, Device.allocator);
+		skybox	  .clear(Device.device, Device.allocator);
+		mine	  .clear(Device.device, Device.allocator);
+		uiText	  .clear(Device.device, Device.allocator);
+		osMirror  .clear(Device.device, Device.allocator);
+		osScence  .clear(Device.device, Device.allocator);
+		dsScence  .clear(Device.device, Device.allocator);
+		procShadow.clear(Device.device, Device.allocator);
 
 		if (debugInfo::LogSwitch) {
 			Log::print("Buffer已清除");
@@ -69,7 +69,7 @@ private:
 	bufferStruct::osMirrorBufferNode osMirror	{ pipelineEnum::procPipelineId::osMirror_p, bufferEnum::procSamplerId::offScreen_s };
 	bufferStruct::osScenceBufferNode osScence	{ pipelineEnum::procPipelineId::osScence_p, bufferEnum::procSamplerId::offScreen_s };
 	bufferStruct::dsScenceBufferNode dsScence	{ pipelineEnum::procPipelineId::dsScence_p, bufferEnum::procSamplerId::offScreen_s };
-	bufferStruct::shadowBufferNode	 shadow		{ pipelineEnum::procPipelineId::shadow_p,	bufferEnum::procSamplerId::shadow_s };
+	bufferList::procShadowNode		 procShadow { pipelineEnum::procPipelineId::shadow_p,	bufferEnum::procSamplerId::shadow_s };
 
 
 
@@ -95,41 +95,63 @@ private:
 		for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
 			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
 				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[thread][layer]);
-				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[thread][layer]);
+				createIndexBuffer(terrainVertex::indexs[layer],   terrain.index[thread][layer]);
 			}
 		}
 
 		//model-sNode
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			loadStaticModel(procModel.sNode[i].modelFile, modelVertex::sVertexs[i], modelVertex::sIndexs[i]);
+			loadStaticModel(procModel.sNode[i].modelFile, modelVertex::sVertexs[i], modelVertex::sIndexs[i], shadowVertex::sVertexs[i]);
+
 			createVertexBuffer(modelVertex::sVertexs[i], procModel.sNode[i].vertex);
-			createIndexBuffer(modelVertex::sIndexs[i], procModel.sNode[i].index);
+			createIndexBuffer(modelVertex::sIndexs[i],   procModel.sNode[i].index);
 		}
 
 		//model-dNode
 		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-			loadDynamicModel(procModel.dNode[i].modelFile, modelVertex::dVertexs[i], modelVertex::dIndexs[i]);
+			shadowVertex::dVertexs[i].resize(modelVertex::dIndexs[i].size());
+			procShadow.dShadowNode[i].resize(modelVertex::dIndexs[i].size());
+
+			loadDynamicModel(procModel.dNode[i].modelFile, modelVertex::dVertexs[i], modelVertex::dIndexs[i], shadowVertex::dVertexs[i]);
 
 			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
 				createVertexBuffer(modelVertex::dVertexs[i][j], procModel.dNode[i].node[j].vertex);
-				createIndexBuffer(modelVertex::dIndexs[i][j], procModel.dNode[i].node[j].index);
+				createIndexBuffer(modelVertex::dIndexs[i][j],   procModel.dNode[i].node[j].index);
 			}
 		}
 
 		//skybox
 		createVertexBuffer(skyboxVertex::vertexs, skybox.vertex);
-		createIndexBuffer(skyboxVertex::indexs, skybox.index);
+		createIndexBuffer(skyboxVertex::indexs,   skybox.index);
 
 		//mine
 		createVertexBuffer(mineVertex::vertexs, mine.vertex);
-		createIndexBuffer(mineVertex::indexs, mine.index);
+		createIndexBuffer(mineVertex::indexs,   mine.index);
 
 		//uiText
 		createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex);
 
 		//osMirror
 		createVertexBuffer(osMirrorVertex::vertexs, osMirror.vertex);
-		createIndexBuffer(osMirrorVertex::indexs, osMirror.index);
+		createIndexBuffer(osMirrorVertex::indexs,   osMirror.index);
+
+		//shadow-terrain
+		shadowVertex::loadTerrainVertexs();
+		for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+			createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode[layer].vertex);
+		}
+
+		//shadow-sNode
+		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+			createVertexBuffer(shadowVertex::sVertexs[i], procShadow.sShadowNode[i].vertex);
+		}
+
+		//shadow-dNode
+		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+			for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
+				createVertexBuffer(shadowVertex::dVertexs[i][j], procShadow.dShadowNode[i][j].vertex);
+			}
+		}
 	}
 
 	void createUniformBuffer() {
@@ -164,8 +186,21 @@ private:
 		createBuffer(sizeof(dsScence.shadowUbo), dsScence.shadowUniform);
 
 		//shadow
-		createBuffer(sizeof(shadow.shadowModelUbo), shadow.shadowModelUniform);
-		createBuffer(sizeof(shadow.shadowUbo),		shadow.shadowUniform);
+		for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+			createBuffer(sizeof(procShadow.tShadowNode[layer].shadowModelUbo), procShadow.tShadowNode[layer].shadowModelUniform);
+		}
+
+		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+			createBuffer(sizeof(procShadow.sShadowNode[i].shadowModelUbo), procShadow.sShadowNode[i].shadowModelUniform);
+		}
+
+		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+			for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
+				createBuffer(sizeof(procShadow.dShadowNode[i][j].shadowModelUbo), procShadow.dShadowNode[i][j].shadowModelUniform);
+			}
+		}
+
+		createBuffer(sizeof(procShadow.shadowUbo), procShadow.shadowUniform);
 	}
 
 	void createTexture() {
@@ -333,12 +368,12 @@ private:
 			bufferStruct::shFramebufferNode& shadowFrameNode   = procRenderPass.getShFramebufferNode(bufferEnum::procRenderId::shadow_r);
 			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &dsScence.descriptorSet) == VK_SUCCESS) {
 				std::array<VkWriteDescriptorSet, 6> tempWrite{
-					procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer, sizeof(dsScence.lightUbo)),
-					procDescriptor.getWrite(1, dsScence.descriptorSet, dsScence.shadowUniform.buffer, sizeof(dsScence.shadowUbo)),
-					procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
-					procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
-					procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view),
-					procDescriptor.getWrite(5, dsScence.descriptorSet, procSampler.node[shadow.samplerId],	 shadowFrameNode.depth.view)
+					procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer,		   sizeof(dsScence.lightUbo)),
+					procDescriptor.getWrite(1, dsScence.descriptorSet, dsScence.shadowUniform.buffer,		   sizeof(dsScence.shadowUbo)),
+					procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId],   dsScenceFrameNode.position.view),
+					procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId],   dsScenceFrameNode.normal.view),
+					procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[dsScence.samplerId],   dsScenceFrameNode.albedo.view),
+					procDescriptor.getWrite(5, dsScence.descriptorSet, procSampler.node[procShadow.samplerId], shadowFrameNode.depth.view)
 				};
 
 				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -352,18 +387,55 @@ private:
 		/*shadow_d*/
 		{
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::shadow_d);
-		
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &shadow.descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 2> tempWrite{
-					procDescriptor.getWrite(0, shadow.descriptorSet, shadow.shadowModelUniform.buffer, sizeof(shadow.shadowModelUbo)),
-					procDescriptor.getWrite(1, shadow.descriptorSet, shadow.shadowUniform.buffer, sizeof(shadow.shadowUbo))
-				};
-		
-				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+
+			//shadow-terrain
+			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procShadow.tShadowNode[layer].descriptorSet) == VK_SUCCESS) {
+					std::array<VkWriteDescriptorSet, 2> tempWrite{
+						procDescriptor.getWrite(0, procShadow.tShadowNode[layer].descriptorSet, procShadow.tShadowNode[layer].shadowModelUniform.buffer, sizeof(procShadow.tShadowNode[layer].shadowModelUbo)),
+						procDescriptor.getWrite(1, procShadow.tShadowNode[layer].descriptorSet, procShadow.shadowUniform.buffer, sizeof(procShadow.shadowUbo))
+					};
+
+					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "shadow-terrain描述符集分配失败");
+					throw;
+				}
 			}
-			else {
-				Log::printError(__FILE__, __LINE__, "阴影描述符集分配失败");
-				throw;
+
+			//shadow-sNode
+			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procShadow.sShadowNode[i].descriptorSet) == VK_SUCCESS) {
+					std::array<VkWriteDescriptorSet, 2> tempWrite{
+						procDescriptor.getWrite(0, procShadow.sShadowNode[i].descriptorSet, procShadow.sShadowNode[i].shadowModelUniform.buffer, sizeof(procShadow.sShadowNode[i].shadowModelUbo)),
+						procDescriptor.getWrite(1, procShadow.sShadowNode[i].descriptorSet, procShadow.shadowUniform.buffer, sizeof(procShadow.shadowUbo))
+					};
+
+					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "shadow-sNode描述符集分配失败");
+					throw;
+				}
+			}
+
+			//shadow-dNode
+			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+				for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
+					if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procShadow.dShadowNode[i][j].descriptorSet) == VK_SUCCESS) {
+						std::array<VkWriteDescriptorSet, 2> tempWrite{
+							procDescriptor.getWrite(0, procShadow.dShadowNode[i][j].descriptorSet, procShadow.dShadowNode[i][j].shadowModelUniform.buffer, sizeof(procShadow.dShadowNode[i][j].shadowModelUbo)),
+							procDescriptor.getWrite(1, procShadow.dShadowNode[i][j].descriptorSet, procShadow.shadowUniform.buffer, sizeof(procShadow.shadowUbo))
+						};
+
+						vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+					}
+					else {
+						Log::printError(__FILE__, __LINE__, "shadow-dNode描述符集分配失败");
+						throw;
+					}
+				}
 			}
 		}
 	}
@@ -417,7 +489,7 @@ private:
 		dsScence.lightUbo.specularScale = lightInfo::specularScale;
 
 		//shadow
-		shadow.orthoProj = orthoProj;
+		procShadow.orthoProj = orthoProj;
 	}
 
 
@@ -465,7 +537,7 @@ private:
 	}
 
 	//加载静态模型
-	void loadStaticModel(const std::string& filename, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs) {
+	void loadStaticModel(const std::string& filename, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::vector<shadowVertex::vertexNode>& shadowVertexs) {
 		tinygltf::Model model;
 		tinygltf::TinyGLTF loader;
 		std::string err, warn;
@@ -510,7 +582,7 @@ private:
 		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
 
 		for (const tinygltf::Mesh& mesh : model.meshes) {
-			loadGltfModel(model, mesh, vertexs, indexs, uniqueVertices);
+			loadGltfModel(model, mesh, vertexs, indexs, shadowVertexs, uniqueVertices);
 		}
 
 		if (debugInfo::LogSwitch) {
@@ -525,7 +597,7 @@ private:
 	}
 
 	//加载动态模型
-	void loadDynamicModel(const std::string& filename, std::vector<std::vector<modelVertex::vertexNode>>& vertexsList, std::vector<std::vector<uint32_t>>& indexsList) {
+	void loadDynamicModel(const std::string& filename, std::vector<std::vector<modelVertex::vertexNode>>& vertexsList, std::vector<std::vector<uint32_t>>& indexsList, std::vector<std::vector<shadowVertex::vertexNode>>& shadowVertexsList) {
 		tinygltf::Model model;
 		tinygltf::TinyGLTF loader;
 		std::string err, warn;
@@ -569,7 +641,7 @@ private:
 		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
 
 		for (int i = 0; i < model.meshes.size(); i++) {
-			loadGltfModel(model, model.meshes[i], vertexsList[i], indexsList[i], uniqueVertices);
+			loadGltfModel(model, model.meshes[i], vertexsList[i], indexsList[i], shadowVertexsList[i], uniqueVertices);
 
 			if (debugInfo::LogSwitch) {
 				if (vertexsList[i].empty()) {
@@ -583,7 +655,7 @@ private:
 		}
 	}
 	
-	void loadGltfModel(const tinygltf::Model& model, const tinygltf::Mesh& mesh, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::unordered_map<modelVertex::vertexNode, uint32_t>& uniqueVertices) {
+	void loadGltfModel(const tinygltf::Model& model, const tinygltf::Mesh& mesh, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::vector<shadowVertex::vertexNode>& shadowVertexs, std::unordered_map<modelVertex::vertexNode, uint32_t>& uniqueVertices) {
 		for (const auto& primitive : mesh.primitives) {
 			//获取顶点数据  
 			const float* positions = nullptr;
@@ -685,7 +757,9 @@ private:
 				//使用顶点去重
 				if (uniqueVertices.count(vertex) == 0) {
 					uniqueVertices[vertex] = static_cast<uint32_t>(vertexs.size());
+
 					vertexs.push_back(vertex);
+					shadowVertexs.push_back(shadowVertex::vertexNode{ vertex.position });
 				}
 
 				//记录原始顶点到去重后顶点的映射
@@ -1186,8 +1260,24 @@ public:
 			{
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::shadow_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-				//shadow
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(shadow.pipeId), procPipeline.getPipeLayout(shadow.pipeId), shadow.descriptorSet, procModel.sNode[0].vertex.buffer, procModel.sNode[0].index.buffer, (uint32_t)modelVertex::sIndexs[0].size());
+				//shadow-terrain
+				for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+					if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.tShadowNode[layer].descriptorSet, procShadow.tShadowNode[layer].vertex.buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
+					}
+				}
+
+				//shadow-sNode
+				for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.sShadowNode[nodeId].descriptorSet, procShadow.sShadowNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+				}
+
+				//shadow-dNode
+				for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
+					for (int subNode = 0; subNode < procShadow.dShadowNode[nodeId].size(); subNode++) {
+						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.dShadowNode[nodeId][subNode].descriptorSet, procShadow.dShadowNode[nodeId][subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+					}
+				}
 
 				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
@@ -1416,15 +1506,32 @@ public:
 
 		//shadow
 		{
-			float	  hourRad  = (currentHour / 24.0f) * 2.0f * glm::pi<float>();															//0~2π
-			float	  radius   = 32.0f;																										//可视半径
+			float	  hourRad = (currentHour / 24.0f) * 2.0f * glm::pi<float>();															//0~2π
+			float	  radius = 32.0f;																										//可视半径
 			glm::vec3 lightPos = glm::vec3(radius * cos(hourRad), 64.0f, radius * sin(hourRad)) - glm::vec3(playerInfo::logicOriginPos);	//光源绕Y轴旋转的位置
 
-			shadow.shadowModelUbo.model = procModel.sNode[0].ubo.model;
-			shadow.shadowUbo.mvp[0]		= shadow.orthoProj * glm::lookAt(lightPos/*摄像机坐标*/, glm::vec3(procModel.sNode[0].modelWorldPos - playerInfo::logicOriginPos)/*被观测坐标*/, coordsInfo::worldUp)/* * glm::mat4(1.0f)*/;
+			procShadow.shadowUbo.mvp[0] = procShadow.orthoProj * glm::lookAt(lightPos/*摄像机坐标*/, glm::vec3(procModel.sNode[0].modelWorldPos - playerInfo::logicOriginPos)/*被观测坐标*/, coordsInfo::worldUp)/* * glm::mat4(1.0f)*/;
+			createMapMemory(procShadow.shadowUniform.bufferMemory, &procShadow.shadowUbo, sizeof(procShadow.shadowUbo));
 
-			createMapMemory(shadow.shadowModelUniform.bufferMemory, &shadow.shadowModelUbo, sizeof(shadow.shadowModelUbo));
-			createMapMemory(shadow.shadowUniform.bufferMemory,		&shadow.shadowUbo,		sizeof(shadow.shadowUbo));
+			//shadow-terrain
+			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+				procShadow.tShadowNode[layer].shadowModelUbo.model = terrain.ubo.model;
+				createMapMemory(procShadow.tShadowNode[layer].shadowModelUniform.bufferMemory, &procShadow.tShadowNode[layer].shadowModelUbo, sizeof(procShadow.tShadowNode[layer].shadowModelUbo));
+			}
+
+			//shadow-sNode
+			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+				procShadow.sShadowNode[i].shadowModelUbo.model = procModel.sNode[i].ubo.model;
+				createMapMemory(procShadow.sShadowNode[i].shadowModelUniform.bufferMemory, &procShadow.sShadowNode[i].shadowModelUbo, sizeof(procShadow.sShadowNode[i].shadowModelUbo));
+			}
+
+			//shadow-dNode
+			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+				for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
+					procShadow.dShadowNode[i][j].shadowModelUbo.model = procModel.dNode[i].node[j].ubo.model;
+					createMapMemory(procShadow.dShadowNode[i][j].shadowModelUniform.bufferMemory, &procShadow.dShadowNode[i][j].shadowModelUbo, sizeof(procShadow.dShadowNode[i][j].shadowModelUbo));
+				}
+			}
 		}
 
 		//dsScence
@@ -1449,7 +1556,7 @@ public:
 			dsScence.lightUbo.spotLightList[0].outer	 = glm::cos(glm::radians(14.5f));							//外圆锥
 			dsScence.lightUbo.spotLightList[0].direction = camera.front;											//方向
 
-			dsScence.shadowUbo.shadowMvp    = shadow.shadowUbo.mvp[0];
+			dsScence.shadowUbo.shadowMvp    = procShadow.shadowUbo.mvp[0];
 			dsScence.shadowUbo.shadowExtent = glm::vec2{ InitSwapchain.scExtent.width,InitSwapchain.scExtent.height };
 
 			createMapMemory(dsScence.lightUniform.bufferMemory,  &dsScence.lightUbo,  sizeof(dsScence.lightUbo));
@@ -1499,12 +1606,12 @@ public:
 			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence_r);
 			bufferStruct::shFramebufferNode& shadowFrameNode   = procRenderPass.getShFramebufferNode(bufferEnum::procRenderId::shadow_r);
 			std::array<VkWriteDescriptorSet, 6> tempWrite{
-				procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer,		 sizeof(dsScence.lightUbo)),
-				procDescriptor.getWrite(1, dsScence.descriptorSet, dsScence.shadowUniform.buffer,		 sizeof(dsScence.shadowUbo)),
-				procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.position.view),
-				procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.normal.view),
-				procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[dsScence.samplerId], dsScenceFrameNode.albedo.view),
-				procDescriptor.getWrite(5, dsScence.descriptorSet, procSampler.node[shadow.samplerId],	 shadowFrameNode.depth.view)
+				procDescriptor.getWrite(0, dsScence.descriptorSet, dsScence.lightUniform.buffer,		   sizeof(dsScence.lightUbo)),
+				procDescriptor.getWrite(1, dsScence.descriptorSet, dsScence.shadowUniform.buffer,		   sizeof(dsScence.shadowUbo)),
+				procDescriptor.getWrite(2, dsScence.descriptorSet, procSampler.node[dsScence.samplerId],   dsScenceFrameNode.position.view),
+				procDescriptor.getWrite(3, dsScence.descriptorSet, procSampler.node[dsScence.samplerId],   dsScenceFrameNode.normal.view),
+				procDescriptor.getWrite(4, dsScence.descriptorSet, procSampler.node[dsScence.samplerId],   dsScenceFrameNode.albedo.view),
+				procDescriptor.getWrite(5, dsScence.descriptorSet, procSampler.node[procShadow.samplerId], shadowFrameNode.depth.view)
 			};
 
 			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);

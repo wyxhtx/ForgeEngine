@@ -1,7 +1,5 @@
 #version 450
 
-//#define shadowModelCount 2
-
 layout(binding = 0) uniform shadowModelUBO {
     mat4 model;
 } shadowModel;

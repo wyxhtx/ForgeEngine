@@ -335,6 +335,48 @@ namespace bufferList {
             }
         }
     };
+
+    struct procShadowNode {
+        std::array<bufferStruct::shadowBufferNode, terrainEnum::terrainLayer::count>                   tShadowNode;     //地形阴影
+        std::array<bufferStruct::shadowBufferNode, bufferEnum::procStaticModelId::count>               sShadowNode;     //静态模型阴影
+        std::array<std::vector<bufferStruct::shadowBufferNode>, bufferEnum::procDynamicModelId::count> dShadowNode;     //动态模型阴影
+
+        //统一缓冲
+        bufferStruct::bufferNode shadowUniform;
+        bufferStruct::shadowMvpUBO shadowUbo;
+        glm::mat4 orthoProj;                        //辅助shadowUbo计算
+
+        //程序化索引
+        pipelineEnum::procPipelineId::type pipeId;
+        bufferEnum::procSamplerId::type samplerId;
+
+
+
+        procShadowNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            pipeId = pId;
+            samplerId = sId;
+        }
+
+        procShadowNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+                tShadowNode[layer].clear(device, allocator);
+            }
+
+            for (int i = 0; i < sShadowNode.size(); i++) {
+                sShadowNode[i].clear(device, allocator);
+            }
+
+            for (int i = 0; i < dShadowNode.size(); i++) {
+                for (int j = 0; j < dShadowNode[i].size(); j++) {
+                    dShadowNode[i][j].clear(device, allocator);
+                }
+            }
+
+            vmaDestroyBuffer(allocator, shadowUniform.buffer, shadowUniform.bufferMemory);
+        }
+    };
 }
 
 namespace pipelineList {

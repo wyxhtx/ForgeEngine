@@ -458,16 +458,13 @@ namespace bufferStruct {
 
     //阴影变换统一结点
     struct shadowModelUBO {
-        //todo 待优化
-        glm::mat4 model;    //阴影模型变换
-        //glm::mat4 model;[bufferInfo::shadowModelCount];
+        glm::mat4 model;            //阴影模型变换
     };
 
     //阴影mvp统一结点
     struct shadowMvpUBO {
         //todo 待优化
-        glm::mat4 mvp[bufferInfo::shadowMapCount];     //阴影mvp变换
-        //glm::mat4 mvp[bufferInfo::shadowMapCount]
+        glm::mat4 mvp[bufferInfo::shadowMapCount];      //阴影mvp变换
     };
 
 
@@ -921,39 +918,22 @@ namespace bufferStruct {
     };
 
     struct shadowBufferNode {
-        //网格缓冲
+        //网格缓冲，索引直接用源网格的
         bufferNode vertex;
-        bufferNode index;
 
         //统一缓冲
         bufferNode shadowModelUniform;
         shadowModelUBO shadowModelUbo;
-        bufferNode shadowUniform;
-        shadowMvpUBO shadowUbo;
-        glm::mat4 orthoProj;           //辅助shadowUbo计算
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
 
-        //程序化索引
-        pipelineEnum::procPipelineId::type pipeId;
-        bufferEnum::procSamplerId::type samplerId;
 
-
-
-        shadowBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
-            pipeId = pId;
-            samplerId = sId;
-        }
-
-        shadowBufferNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
 
             vmaDestroyBuffer(allocator, shadowModelUniform.buffer, shadowModelUniform.bufferMemory);
-            vmaDestroyBuffer(allocator, shadowUniform.buffer, shadowUniform.bufferMemory);
         }
     };
 
