@@ -449,13 +449,11 @@ namespace bufferStruct {
 
     //延迟阴影统一结点
     struct deferredShadowUBO {
-        //todo 待优化
         glm::mat4 shadowMvp;        //阴影mvp
         glm::vec2 shadowExtent;     //阴影贴图大小
-
-        //glm::mat4 shadowMvp[bufferInfo::shadowMapCount];
     };
 
+    //todo等写frag时直接用mvp
     //阴影变换统一结点
     struct shadowModelUBO {
         glm::mat4 model;            //阴影模型变换
@@ -464,7 +462,7 @@ namespace bufferStruct {
     //阴影mvp统一结点
     struct shadowMvpUBO {
         //todo 待优化
-        glm::mat4 mvp[bufferInfo::shadowMapCount];      //阴影mvp变换
+        glm::mat4 mvp;              //阴影mvp变换
     };
 
 
@@ -914,6 +912,28 @@ namespace bufferStruct {
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, lightUniform.buffer,  lightUniform.bufferMemory);
             vmaDestroyBuffer(allocator, shadowUniform.buffer, shadowUniform.bufferMemory);
+        }
+    };
+
+    struct shadowTerrainBufferNode {
+        //网格缓冲，索引直接用源网格的
+        bufferNode vertex[terrainEnum::terrainLayer::count];
+
+        //统一缓冲
+        bufferNode shadowModelUniform;
+        shadowModelUBO shadowModelUbo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+
+
+        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+            for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+                vmaDestroyBuffer(allocator, vertex[layer].buffer, vertex[layer].bufferMemory);
+            }
+
+            vmaDestroyBuffer(allocator, shadowModelUniform.buffer, shadowModelUniform.bufferMemory);
         }
     };
 
@@ -1434,7 +1454,7 @@ namespace bufferStruct {
                 createDsFramebuffer(scExtent, render, device);
             }
             else if (frameNodeType == bufferEnum::frameNodeId::sh_f) {
-                createImageArrayNode(shPtr->depth, scExtent.width, scExtent.height, bufferInfo::shadowMapCount, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
+                createImageNode(shPtr->depth, scExtent.width, scExtent.height, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
 
                 createShFramebuffer(scExtent, render, device);
             }
@@ -1530,7 +1550,7 @@ namespace bufferStruct {
             framebufferInfo.pAttachments    = &tempFrameNode.depth.view;
             framebufferInfo.width           = scExtent.width;
             framebufferInfo.height          = scExtent.height;
-            framebufferInfo.layers          = bufferInfo::shadowMapCount;
+            framebufferInfo.layers          = 1;
 
             if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "阴影映射帧缓冲创建失败");
@@ -1584,6 +1604,7 @@ namespace bufferStruct {
             }
         }
         
+        /*
         void createImageArrayNode(imageNode& image, uint32_t width, uint32_t height, uint32_t array, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& allocator) {
             VkImageCreateInfo imageInfo = {};
             imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -1625,6 +1646,7 @@ namespace bufferStruct {
                 throw;
             }
         }
+        */
 
     public:
         void cleanupSwapChain(const VkDevice& device, const VmaAllocator& allocator) {

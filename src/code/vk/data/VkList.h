@@ -337,7 +337,7 @@ namespace bufferList {
     };
 
     struct procShadowNode {
-        std::array<bufferStruct::shadowBufferNode, terrainEnum::terrainLayer::count>                   tShadowNode;     //地形阴影
+        bufferStruct::shadowTerrainBufferNode tShadowNode;      //地形阴影
         std::array<bufferStruct::shadowBufferNode, bufferEnum::procStaticModelId::count>               sShadowNode;     //静态模型阴影
         std::array<std::vector<bufferStruct::shadowBufferNode>, bufferEnum::procDynamicModelId::count> dShadowNode;     //动态模型阴影
 
@@ -360,9 +360,7 @@ namespace bufferList {
         procShadowNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-                tShadowNode[layer].clear(device, allocator);
-            }
+            tShadowNode.clear(device, allocator);
 
             for (int i = 0; i < sShadowNode.size(); i++) {
                 sShadowNode[i].clear(device, allocator);

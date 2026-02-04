@@ -49,7 +49,6 @@ layout(binding = 0) uniform dsScenceLightUBO {
     spotLightNode  spotLightList[spotLightCount];       //聚光灯
 } light;
 
-//todo目前先这样凑合用
 layout(binding = 1) uniform dsScenceShadowUBO {
     mat4 shadowMvp;             //阴影mvp
     vec2 shadowExtent;          //阴影贴图大小
@@ -58,7 +57,7 @@ layout(binding = 1) uniform dsScenceShadowUBO {
 layout(binding = 2) uniform sampler2D samplerPosition;              //世界空间位置，rgb兼前向颜色，a兼前向标识
 layout(binding = 3) uniform sampler2D samplerNormal;                //世界空间法线，a兼前向skybox标识
 layout(binding = 4) uniform sampler2D samplerAlbedo;                //漫反射颜色，  a兼延迟高光强度
-layout(binding = 5) uniform sampler2DArray samplerShadowArray;      //阴影贴图
+layout(binding = 5) uniform sampler2D samplerShadowMap;             //阴影贴图
 
 layout(location = 0) in  vec2 fragUV;
 
@@ -191,7 +190,7 @@ float shadowPCF(vec4 shadowCoord, vec2 offset, float bias) {
     
     if (shadowCoord.z > -1.0 && shadowCoord.z < 1.0) {
         float adjustedDepth = shadowCoord.z - bias;     //应用深度偏移
-        float dist          = texture(samplerShadowArray, vec3(shadowCoord.st + offset, 0)).r;
+        float dist          = texture(samplerShadowMap, shadowCoord.st + offset).r;
         
         if (shadowCoord.w > 0.0 && dist < adjustedDepth) {
             shadow = 0.5;
@@ -225,14 +224,13 @@ void main() {
 
     vec4 normalData = texture(samplerNormal, fragUV);
     vec4 albedoData = texture(samplerAlbedo, fragUV);
-
+    
+    float specularIntensity = albedoData.a;
     vec3 fragPos  = positionData.rgb;
     vec3 normal   = normalize(normalData.rgb);
     vec3 texColor = albedoData.rgb;
-    float specularIntensity = albedoData.a;
     vec3 viewDir  = normalize(light.viewPos - fragPos);
-    
-    vec3 result = texColor * light.ambientScale * light.dirLightList[0].color;
+    vec3 result   = texColor * light.ambientScale * light.dirLightList[0].color;
     
     //skybox内容需要参与环境光light.ambientScale运算后呈现
     if (normalData.a == 0.0) {

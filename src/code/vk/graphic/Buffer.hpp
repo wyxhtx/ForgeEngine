@@ -138,7 +138,7 @@ private:
 		//shadow-terrain
 		shadowVertex::loadTerrainVertexs();
 		for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-			createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode[layer].vertex);
+			createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
 		}
 
 		//shadow-sNode
@@ -186,9 +186,7 @@ private:
 		createBuffer(sizeof(dsScence.shadowUbo), dsScence.shadowUniform);
 
 		//shadow
-		for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-			createBuffer(sizeof(procShadow.tShadowNode[layer].shadowModelUbo), procShadow.tShadowNode[layer].shadowModelUniform);
-		}
+		createBuffer(sizeof(procShadow.tShadowNode.shadowModelUbo), procShadow.tShadowNode.shadowModelUniform);
 
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 			createBuffer(sizeof(procShadow.sShadowNode[i].shadowModelUbo), procShadow.sShadowNode[i].shadowModelUniform);
@@ -389,19 +387,17 @@ private:
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::shadow_d);
 
 			//shadow-terrain
-			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procShadow.tShadowNode[layer].descriptorSet) == VK_SUCCESS) {
-					std::array<VkWriteDescriptorSet, 2> tempWrite{
-						procDescriptor.getWrite(0, procShadow.tShadowNode[layer].descriptorSet, procShadow.tShadowNode[layer].shadowModelUniform.buffer, sizeof(procShadow.tShadowNode[layer].shadowModelUbo)),
-						procDescriptor.getWrite(1, procShadow.tShadowNode[layer].descriptorSet, procShadow.shadowUniform.buffer, sizeof(procShadow.shadowUbo))
-					};
+			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procShadow.tShadowNode.descriptorSet) == VK_SUCCESS) {
+				std::array<VkWriteDescriptorSet, 2> tempWrite{
+					procDescriptor.getWrite(0, procShadow.tShadowNode.descriptorSet, procShadow.tShadowNode.shadowModelUniform.buffer, sizeof(procShadow.tShadowNode.shadowModelUbo)),
+					procDescriptor.getWrite(1, procShadow.tShadowNode.descriptorSet, procShadow.shadowUniform.buffer, sizeof(procShadow.shadowUbo))
+				};
 
-					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-				}
-				else {
-					Log::printError(__FILE__, __LINE__, "shadow-terrain描述符集分配失败");
-					throw;
-				}
+				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+			}
+			else {
+				Log::printError(__FILE__, __LINE__, "shadow-terrain描述符集分配失败");
+				throw;
 			}
 
 			//shadow-sNode
@@ -1263,7 +1259,7 @@ public:
 				//shadow-terrain
 				for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
 					if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.tShadowNode[layer].descriptorSet, procShadow.tShadowNode[layer].vertex.buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
+						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.tShadowNode.descriptorSet, procShadow.tShadowNode.vertex[layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
 					}
 				}
 
@@ -1510,14 +1506,12 @@ public:
 			float	  radius = 32.0f;																										//可视半径
 			glm::vec3 lightPos = glm::vec3(radius * cos(hourRad), 64.0f, radius * sin(hourRad)) - glm::vec3(playerInfo::logicOriginPos);	//光源绕Y轴旋转的位置
 
-			procShadow.shadowUbo.mvp[0] = procShadow.orthoProj * glm::lookAt(lightPos/*摄像机坐标*/, glm::vec3(procModel.sNode[0].modelWorldPos - playerInfo::logicOriginPos)/*被观测坐标*/, coordsInfo::worldUp)/* * glm::mat4(1.0f)*/;
+			procShadow.shadowUbo.mvp = procShadow.orthoProj * glm::lookAt(lightPos/*摄像机坐标*/, glm::vec3(procModel.sNode[0].modelWorldPos - playerInfo::logicOriginPos)/*被观测坐标*/, coordsInfo::worldUp)/* * glm::mat4(1.0f)*/;
 			createMapMemory(procShadow.shadowUniform.bufferMemory, &procShadow.shadowUbo, sizeof(procShadow.shadowUbo));
 
 			//shadow-terrain
-			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-				procShadow.tShadowNode[layer].shadowModelUbo.model = terrain.ubo.model;
-				createMapMemory(procShadow.tShadowNode[layer].shadowModelUniform.bufferMemory, &procShadow.tShadowNode[layer].shadowModelUbo, sizeof(procShadow.tShadowNode[layer].shadowModelUbo));
-			}
+			procShadow.tShadowNode.shadowModelUbo.model = terrain.ubo.model;
+			createMapMemory(procShadow.tShadowNode.shadowModelUniform.bufferMemory, &procShadow.tShadowNode.shadowModelUbo, sizeof(procShadow.tShadowNode.shadowModelUbo));
 
 			//shadow-sNode
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
@@ -1556,7 +1550,7 @@ public:
 			dsScence.lightUbo.spotLightList[0].outer	 = glm::cos(glm::radians(14.5f));							//外圆锥
 			dsScence.lightUbo.spotLightList[0].direction = camera.front;											//方向
 
-			dsScence.shadowUbo.shadowMvp    = procShadow.shadowUbo.mvp[0];
+			dsScence.shadowUbo.shadowMvp    = procShadow.shadowUbo.mvp;
 			dsScence.shadowUbo.shadowExtent = glm::vec2{ InitSwapchain.scExtent.width,InitSwapchain.scExtent.height };
 
 			createMapMemory(dsScence.lightUniform.bufferMemory,  &dsScence.lightUbo,  sizeof(dsScence.lightUbo));
