@@ -186,19 +186,17 @@ private:
 		createBuffer(sizeof(dsScence.shadowUbo), dsScence.shadowUniform);
 
 		//shadow
-		createBuffer(sizeof(procShadow.tShadowNode.shadowModelUbo), procShadow.tShadowNode.shadowModelUniform);
+		createBuffer(sizeof(procShadow.tShadowNode.shadowMvpUbo), procShadow.tShadowNode.shadowMvpUniform);
 
 		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			createBuffer(sizeof(procShadow.sShadowNode[i].shadowModelUbo), procShadow.sShadowNode[i].shadowModelUniform);
+			createBuffer(sizeof(procShadow.sShadowNode[i].shadowMvpUbo), procShadow.sShadowNode[i].shadowMvpUniform);
 		}
 
 		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 			for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
-				createBuffer(sizeof(procShadow.dShadowNode[i][j].shadowModelUbo), procShadow.dShadowNode[i][j].shadowModelUniform);
+				createBuffer(sizeof(procShadow.dShadowNode[i][j].shadowMvpUbo), procShadow.dShadowNode[i][j].shadowMvpUniform);
 			}
 		}
-
-		createBuffer(sizeof(procShadow.shadowUbo), procShadow.shadowUniform);
 	}
 
 	void createTexture() {
@@ -388,9 +386,8 @@ private:
 
 			//shadow-terrain
 			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procShadow.tShadowNode.descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 2> tempWrite{
-					procDescriptor.getWrite(0, procShadow.tShadowNode.descriptorSet, procShadow.tShadowNode.shadowModelUniform.buffer, sizeof(procShadow.tShadowNode.shadowModelUbo)),
-					procDescriptor.getWrite(1, procShadow.tShadowNode.descriptorSet, procShadow.shadowUniform.buffer, sizeof(procShadow.shadowUbo))
+				std::array<VkWriteDescriptorSet, 1> tempWrite{
+					procDescriptor.getWrite(0, procShadow.tShadowNode.descriptorSet, procShadow.tShadowNode.shadowMvpUniform.buffer, sizeof(procShadow.tShadowNode.shadowMvpUbo)),
 				};
 
 				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -403,9 +400,8 @@ private:
 			//shadow-sNode
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
 				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procShadow.sShadowNode[i].descriptorSet) == VK_SUCCESS) {
-					std::array<VkWriteDescriptorSet, 2> tempWrite{
-						procDescriptor.getWrite(0, procShadow.sShadowNode[i].descriptorSet, procShadow.sShadowNode[i].shadowModelUniform.buffer, sizeof(procShadow.sShadowNode[i].shadowModelUbo)),
-						procDescriptor.getWrite(1, procShadow.sShadowNode[i].descriptorSet, procShadow.shadowUniform.buffer, sizeof(procShadow.shadowUbo))
+					std::array<VkWriteDescriptorSet, 1> tempWrite{
+						procDescriptor.getWrite(0, procShadow.sShadowNode[i].descriptorSet, procShadow.sShadowNode[i].shadowMvpUniform.buffer, sizeof(procShadow.sShadowNode[i].shadowMvpUbo)),
 					};
 
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -420,9 +416,8 @@ private:
 			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 				for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
 					if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procShadow.dShadowNode[i][j].descriptorSet) == VK_SUCCESS) {
-						std::array<VkWriteDescriptorSet, 2> tempWrite{
-							procDescriptor.getWrite(0, procShadow.dShadowNode[i][j].descriptorSet, procShadow.dShadowNode[i][j].shadowModelUniform.buffer, sizeof(procShadow.dShadowNode[i][j].shadowModelUbo)),
-							procDescriptor.getWrite(1, procShadow.dShadowNode[i][j].descriptorSet, procShadow.shadowUniform.buffer, sizeof(procShadow.shadowUbo))
+						std::array<VkWriteDescriptorSet, 1> tempWrite{
+							procDescriptor.getWrite(0, procShadow.dShadowNode[i][j].descriptorSet, procShadow.dShadowNode[i][j].shadowMvpUniform.buffer, sizeof(procShadow.dShadowNode[i][j].shadowMvpUbo)),
 						};
 
 						vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -485,7 +480,7 @@ private:
 		dsScence.lightUbo.specularScale = lightInfo::specularScale;
 
 		//shadow
-		procShadow.orthoProj = orthoProj;
+		procShadow.shadowProj = orthoProj;
 	}
 
 
@@ -1506,24 +1501,23 @@ public:
 			float	  radius = 32.0f;																										//可视半径
 			glm::vec3 lightPos = glm::vec3(radius * cos(hourRad), 64.0f, radius * sin(hourRad)) - glm::vec3(playerInfo::logicOriginPos);	//光源绕Y轴旋转的位置
 
-			procShadow.shadowUbo.mvp = procShadow.orthoProj * glm::lookAt(lightPos/*摄像机坐标*/, glm::vec3(procModel.sNode[0].modelWorldPos - playerInfo::logicOriginPos)/*被观测坐标*/, coordsInfo::worldUp)/* * glm::mat4(1.0f)*/;
-			createMapMemory(procShadow.shadowUniform.bufferMemory, &procShadow.shadowUbo, sizeof(procShadow.shadowUbo));
+			procShadow.shadowVP = procShadow.shadowProj * glm::lookAt(lightPos/*摄像机坐标*/, glm::vec3(procModel.sNode[0].modelWorldPos - playerInfo::logicOriginPos)/*被观测坐标*/, coordsInfo::worldUp);
 
 			//shadow-terrain
-			procShadow.tShadowNode.shadowModelUbo.model = terrain.ubo.model;
-			createMapMemory(procShadow.tShadowNode.shadowModelUniform.bufferMemory, &procShadow.tShadowNode.shadowModelUbo, sizeof(procShadow.tShadowNode.shadowModelUbo));
+			procShadow.tShadowNode.shadowMvpUbo.mvp = procShadow.shadowVP * terrain.ubo.model;
+			createMapMemory(procShadow.tShadowNode.shadowMvpUniform.bufferMemory, &procShadow.tShadowNode.shadowMvpUbo, sizeof(procShadow.tShadowNode.shadowMvpUbo));
 
 			//shadow-sNode
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				procShadow.sShadowNode[i].shadowModelUbo.model = procModel.sNode[i].ubo.model;
-				createMapMemory(procShadow.sShadowNode[i].shadowModelUniform.bufferMemory, &procShadow.sShadowNode[i].shadowModelUbo, sizeof(procShadow.sShadowNode[i].shadowModelUbo));
+				procShadow.sShadowNode[i].shadowMvpUbo.mvp = procShadow.shadowVP * procModel.sNode[i].ubo.model;
+				createMapMemory(procShadow.sShadowNode[i].shadowMvpUniform.bufferMemory, &procShadow.sShadowNode[i].shadowMvpUbo, sizeof(procShadow.sShadowNode[i].shadowMvpUbo));
 			}
 
 			//shadow-dNode
 			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 				for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
-					procShadow.dShadowNode[i][j].shadowModelUbo.model = procModel.dNode[i].node[j].ubo.model;
-					createMapMemory(procShadow.dShadowNode[i][j].shadowModelUniform.bufferMemory, &procShadow.dShadowNode[i][j].shadowModelUbo, sizeof(procShadow.dShadowNode[i][j].shadowModelUbo));
+					procShadow.dShadowNode[i][j].shadowMvpUbo.mvp = procShadow.shadowVP * procModel.dNode[i].node[j].ubo.model;
+					createMapMemory(procShadow.dShadowNode[i][j].shadowMvpUniform.bufferMemory, &procShadow.dShadowNode[i][j].shadowMvpUbo, sizeof(procShadow.dShadowNode[i][j].shadowMvpUbo));
 				}
 			}
 		}
@@ -1550,7 +1544,7 @@ public:
 			dsScence.lightUbo.spotLightList[0].outer	 = glm::cos(glm::radians(14.5f));							//外圆锥
 			dsScence.lightUbo.spotLightList[0].direction = camera.front;											//方向
 
-			dsScence.shadowUbo.shadowMvp    = procShadow.shadowUbo.mvp;
+			dsScence.shadowUbo.shadowMvp    = procShadow.shadowVP;
 			dsScence.shadowUbo.shadowExtent = glm::vec2{ InitSwapchain.scExtent.width,InitSwapchain.scExtent.height };
 
 			createMapMemory(dsScence.lightUniform.bufferMemory,  &dsScence.lightUbo,  sizeof(dsScence.lightUbo));

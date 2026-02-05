@@ -134,8 +134,7 @@ namespace bufferList {
 
             //shadow_d
             node[bufferEnum::procDescriptorId::shadow_d].config = {
-                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::shadowCount},  //顶点阴影模型
-                {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_GEOMETRY_BIT, bufferInfo::shadowCount}   //顶点阴影映射
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, bufferInfo::shadowCount}     //顶点阴影mvp映射
             };
 
             for (int i = 0; i < bufferEnum::procDescriptorId::count; i++) {
@@ -341,10 +340,9 @@ namespace bufferList {
         std::array<bufferStruct::shadowBufferNode, bufferEnum::procStaticModelId::count>               sShadowNode;     //静态模型阴影
         std::array<std::vector<bufferStruct::shadowBufferNode>, bufferEnum::procDynamicModelId::count> dShadowNode;     //动态模型阴影
 
-        //统一缓冲
-        bufferStruct::bufferNode shadowUniform;
-        bufferStruct::shadowMvpUBO shadowUbo;
-        glm::mat4 orthoProj;                        //辅助shadowUbo计算
+        //辅助shadowMvp计算
+        glm::mat4 shadowProj;
+        glm::mat4 shadowVP;
 
         //程序化索引
         pipelineEnum::procPipelineId::type pipeId;
@@ -371,8 +369,6 @@ namespace bufferList {
                     dShadowNode[i][j].clear(device, allocator);
                 }
             }
-
-            vmaDestroyBuffer(allocator, shadowUniform.buffer, shadowUniform.bufferMemory);
         }
     };
 }
@@ -393,7 +389,7 @@ namespace pipelineList {
             node[pipelineEnum::procPipelineId::osMirror_p].createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag);
             node[pipelineEnum::procPipelineId::osScence_p].createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag);
             node[pipelineEnum::procPipelineId::dsScence_p].createPipelineNode(bufferEnum::procDescriptorId::dsScence_d,       fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag);
-            node[pipelineEnum::procPipelineId::shadow_p]  .createPipelineNode(bufferEnum::procDescriptorId::shadow_d,         fileInfo::shader::shadowVert,   fileInfo::shader::shadowGeom);
+            node[pipelineEnum::procPipelineId::shadow_p]  .createPipelineNode(bufferEnum::procDescriptorId::shadow_d,         fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag);
         }
 
         void createPipeLayout(const VkDevice& device, std::array<bufferStruct::descriptorNode, bufferEnum::procDescriptorId::count>& dstNode) {
@@ -423,6 +419,7 @@ namespace pipelineList {
             }
         }
 
+        /*
         template<typename VertexType>
         void createShadowPipeline(const VkDevice& device, pipelineEnum::procPipelineId::type id, std::array<VkPipelineShaderStageCreateInfo, 2>& shader, VkPipelineVertexInputStateCreateInfo& input, VkGraphicsPipelineCreateInfo& pipelineInfo) {
             shader[0] = loadShader(device, node[id].vertFile, VK_SHADER_STAGE_VERTEX_BIT);
@@ -443,6 +440,7 @@ namespace pipelineList {
                 throw;
             }
         }
+        */
 
         void cleanupSwapChain(const VkDevice& device) {
             for (int i = 0; i < pipelineEnum::procPipelineId::count; i++) {

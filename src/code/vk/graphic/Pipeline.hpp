@@ -154,7 +154,7 @@ private:
 			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 			depthStencil.depthCompareOp		   = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-			procPipeline.createShadowPipeline<shadowVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::shadow_p, shaderStage, vertexInputInfo, pipelineInfo);
+			procPipeline.createPipeline<shadowVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::shadow_p, shaderStage, vertexInputInfo, pipelineInfo);
 
 			multisampling.rasterizationSamples = InitBuffer.getMsaaSamples();
 			depthStencil.depthCompareOp		   = VK_COMPARE_OP_LESS;

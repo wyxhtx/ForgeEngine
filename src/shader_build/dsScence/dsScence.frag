@@ -224,19 +224,16 @@ void main() {
 
     vec4 normalData = texture(samplerNormal, fragUV);
     vec4 albedoData = texture(samplerAlbedo, fragUV);
-    
+
+    //skybox
+    if (normalData.a == 0.0) { outColor = vec4(albedoData.rgb, 1.0); return; }
+
     float specularIntensity = albedoData.a;
     vec3 fragPos  = positionData.rgb;
     vec3 normal   = normalize(normalData.rgb);
     vec3 texColor = albedoData.rgb;
     vec3 viewDir  = normalize(light.viewPos - fragPos);
     vec3 result   = texColor * light.ambientScale * light.dirLightList[0].color;
-    
-    //skybox内容需要参与环境光light.ambientScale运算后呈现
-    if (normalData.a == 0.0) {
-        outColor = vec4(result, 1.0);
-        return;
-    }
     
 
 

@@ -88,7 +88,7 @@ namespace coordsInfo {
 namespace lightInfo {
     const glm::vec3 sunLightColor = glm::vec3(1.0f, 1.0f, 1.0f);    //太阳平行光颜色
     const glm::vec3 sunLightDir   = glm::vec3(0.0f,-1.0f, 0.0f);    //太阳平行光方向
-    const float ambientScale      = 0.4f;                           //环境光缩放
+    const float ambientScale      = 0.8f;                           //环境光缩放
     const float diffuseScale      = 0.8f;                           //漫反射缩放
     const float specularScale     = 1.0f;                           //镜面反射缩放
 }
@@ -144,7 +144,7 @@ namespace fileInfo {
         const std::string dsScenceFrag = "src/shader/dsScence/dsScenceFrag.spv";
 
         const std::string shadowVert = "src/shader/shadow/shadowVert.spv";
-        const std::string shadowGeom = "src/shader/shadow/shadowGeom.spv";
+        const std::string shadowFrag = "src/shader/shadow/shadowFrag.spv";
     }
 
     namespace music {

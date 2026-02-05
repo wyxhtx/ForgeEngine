@@ -453,15 +453,8 @@ namespace bufferStruct {
         glm::vec2 shadowExtent;     //阴影贴图大小
     };
 
-    //todo等写frag时直接用mvp
-    //阴影变换统一结点
-    struct shadowModelUBO {
-        glm::mat4 model;            //阴影模型变换
-    };
-
     //阴影mvp统一结点
     struct shadowMvpUBO {
-        //todo 待优化
         glm::mat4 mvp;              //阴影mvp变换
     };
 
@@ -920,8 +913,8 @@ namespace bufferStruct {
         bufferNode vertex[terrainEnum::terrainLayer::count];
 
         //统一缓冲
-        bufferNode shadowModelUniform;
-        shadowModelUBO shadowModelUbo;
+        bufferNode shadowMvpUniform;
+        shadowMvpUBO shadowMvpUbo;
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
@@ -933,7 +926,7 @@ namespace bufferStruct {
                 vmaDestroyBuffer(allocator, vertex[layer].buffer, vertex[layer].bufferMemory);
             }
 
-            vmaDestroyBuffer(allocator, shadowModelUniform.buffer, shadowModelUniform.bufferMemory);
+            vmaDestroyBuffer(allocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMemory);
         }
     };
 
@@ -942,8 +935,8 @@ namespace bufferStruct {
         bufferNode vertex;
 
         //统一缓冲
-        bufferNode shadowModelUniform;
-        shadowModelUBO shadowModelUbo;
+        bufferNode shadowMvpUniform;
+        shadowMvpUBO shadowMvpUbo;
 
         //描述缓冲
         VkDescriptorSet descriptorSet;
@@ -953,7 +946,7 @@ namespace bufferStruct {
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
             vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
 
-            vmaDestroyBuffer(allocator, shadowModelUniform.buffer, shadowModelUniform.bufferMemory);
+            vmaDestroyBuffer(allocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMemory);
         }
     };
 
