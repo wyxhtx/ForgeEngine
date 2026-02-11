@@ -136,8 +136,8 @@ private:
 		createIndexBuffer(osMirrorVertex::indexs,   osMirror.index);
 
 		//shadow-terrain
-		shadowVertex::loadTerrainVertexs();
 		for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+			shadowVertex::loadTerrainVertexs(layer);
 			createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
 		}
 
@@ -433,13 +433,11 @@ private:
 
 	void initUniformBuffer() {
 		//设置透视投影，参数依次是视野角度、宽高比、近裁剪面和远裁剪面，以及proj[1][1] *= -1轴向修正
-		glm::mat4 perspProj = glm::perspective(glm::radians(45.0f), (float)InitSwapchain.scExtent.width / (float)InitSwapchain.scExtent.height, 0.1f, plateInfo::cubeSightRange);
+		glm::mat4 perspProj = glm::perspective(glm::radians(45.0f), (float)InitSwapchain.scExtent.width / (float)InitSwapchain.scExtent.height, 0.1f, plateInfo::perspSightRange);
 		perspProj[1][1]		*= -1;
 
 		//设置正交投影
-		float tempHeight	= 64.0f;
-		float tempWidth		= tempHeight * (float)InitSwapchain.scExtent.width / (float)InitSwapchain.scExtent.height;
-		glm::mat4 orthoProj = glm::ortho(-tempWidth, tempWidth, -tempHeight, tempHeight, 0.1f, plateInfo::cubeSightRange);
+		glm::mat4 orthoProj = glm::ortho(-plateInfo::orthoSightRange, plateInfo::orthoSightRange, -plateInfo::orthoSightRange, plateInfo::orthoSightRange, 0.1f, plateInfo::perspSightRange);
 		orthoProj[1][1]		*= -1;
 
 
@@ -1260,13 +1258,27 @@ public:
 
 				//shadow-sNode
 				for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.sShadowNode[nodeId].descriptorSet, procShadow.sShadowNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+					if (glm::distance(procModel.sNode[nodeId].modelWorldPos, procModel.sNode[nodeId].currentWorldPos) < plateInfo::perspSightRange) {
+						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.sShadowNode[nodeId].descriptorSet, procShadow.sShadowNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+
+						procModel.sNode[nodeId].isVisible = true;
+					}
+					else {
+						procModel.sNode[nodeId].isVisible = false;
+					}
 				}
 
 				//shadow-dNode
 				for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
-					for (int subNode = 0; subNode < procShadow.dShadowNode[nodeId].size(); subNode++) {
-						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.dShadowNode[nodeId][subNode].descriptorSet, procShadow.dShadowNode[nodeId][subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+					if (glm::distance(procModel.dNode[nodeId].modelWorldPos, procModel.dNode[nodeId].currentWorldPos) < plateInfo::perspSightRange) {
+						for (int subNode = 0; subNode < procShadow.dShadowNode[nodeId].size(); subNode++) {
+							command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.dShadowNode[nodeId][subNode].descriptorSet, procShadow.dShadowNode[nodeId][subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+						}
+
+						procModel.dNode[nodeId].isVisible = true;
+					}
+					else {
+						procModel.dNode[nodeId].isVisible = false;
 					}
 				}
 
@@ -1286,27 +1298,17 @@ public:
 
 				//model-sNode
 				for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-					if (glm::distance(procModel.sNode[nodeId].modelWorldPos, procModel.sNode[nodeId].currentWorldPos) < plateInfo::cubeSightRange) {
+					if (procModel.sNode[nodeId].isVisible) {
 						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
-				
-						procModel.sNode[nodeId].isVisible = true;
-					}
-					else {
-						procModel.sNode[nodeId].isVisible = false;
 					}
 				}
 				
 				//model-dNode
 				for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
-					if (glm::distance(procModel.dNode[nodeId].modelWorldPos, procModel.dNode[nodeId].currentWorldPos) < plateInfo::cubeSightRange) {
+					if (procModel.dNode[nodeId].isVisible) {
 						for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
 							command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
 						}
-				
-						procModel.dNode[nodeId].isVisible = true;
-					}
-					else {
-						procModel.dNode[nodeId].isVisible = false;
 					}
 				}
 
@@ -1368,6 +1370,7 @@ public:
 		command.free(Device.device, threadId);
 
 		if (isLayer) {
+			//地形管线全部重建
 			int layer = terrainEnum::terrainLayer::Layer_0;		//先重建当前线程网格缓冲区
 			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
@@ -1375,6 +1378,13 @@ public:
 
 				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
 				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
+
+				//重建全部阴影 10ms
+				for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+					vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
+					shadowVertex::loadTerrainVertexs(layer);
+					createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
+				}
 			}
 
 			layer = terrainEnum::terrainLayer::Layer_1;
@@ -1384,6 +1394,7 @@ public:
 			}
 		}
 		else {
+			//只重建Lod_0地形管线
 			int layer = terrainEnum::terrainLayer::Layer_0;
 
 			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
@@ -1392,6 +1403,11 @@ public:
 
 				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
 				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
+
+				//重建Lod_0阴影
+				vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
+				shadowVertex::loadTerrainVertexs(layer);
+				createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
 			}
 		}
 	}
@@ -1401,8 +1417,9 @@ public:
 		static std::chrono::steady_clock::time_point time1;										//游戏当前时刻
 		static float gameTime;																	//游戏运行时长，最多支持连续运行194天（现实时间）
 		static float currentHour;																//当前小时，取值范围[0,24)，含小数部分
-
 		glm::vec3 offsetPos = playerInfo::initSpawnPos - playerInfo::logicOriginPos;
+		glm::vec3 playerPos = camera.pos - playerInfo::logicOriginPos;
+
 		time1 = std::chrono::steady_clock::now();
 		gameTime = std::chrono::duration_cast<std::chrono::milliseconds>(time1 - time0).count() / 1000.0f;
 		currentHour = std::fmod(gameTime, 24.0f);
@@ -1497,11 +1514,10 @@ public:
 
 		//shadow
 		{
-			float	  hourRad = (currentHour / 24.0f) * 2.0f * glm::pi<float>();															//0~2π
-			float	  radius = 32.0f;																										//可视半径
-			glm::vec3 lightPos = glm::vec3(radius * cos(hourRad), 64.0f, radius * sin(hourRad)) - glm::vec3(playerInfo::logicOriginPos);	//光源绕Y轴旋转的位置
-
-			procShadow.shadowVP = procShadow.shadowProj * glm::lookAt(lightPos/*摄像机坐标*/, glm::vec3(procModel.sNode[0].modelWorldPos - playerInfo::logicOriginPos)/*被观测坐标*/, coordsInfo::worldUp);
+			float	   hourRad  = (currentHour / 24.0f) * 2.0f * glm::pi<float>();															//0~2π
+			float	   radius   = 32.0f;																									//旋转半径
+			glm::vec3  lightPos = glm::vec3(radius * cos(hourRad), 64.0f, radius * sin(hourRad));											//光源绕Y轴旋转的坐标，无需减逻辑原点偏移
+			procShadow.shadowVP = procShadow.shadowProj * glm::lookAt(playerPos + lightPos/*摄像机坐标*/, playerPos/*被观测坐标*/, coordsInfo::worldUp);	//为实现阴影跟随玩家故加上玩家坐标
 
 			//shadow-terrain
 			procShadow.tShadowNode.shadowMvpUbo.mvp = procShadow.shadowVP * terrain.ubo.model;
@@ -1509,15 +1525,19 @@ public:
 
 			//shadow-sNode
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				procShadow.sShadowNode[i].shadowMvpUbo.mvp = procShadow.shadowVP * procModel.sNode[i].ubo.model;
-				createMapMemory(procShadow.sShadowNode[i].shadowMvpUniform.bufferMemory, &procShadow.sShadowNode[i].shadowMvpUbo, sizeof(procShadow.sShadowNode[i].shadowMvpUbo));
+				if (procModel.sNode[i].isVisible) {
+					procShadow.sShadowNode[i].shadowMvpUbo.mvp = procShadow.shadowVP * procModel.sNode[i].ubo.model;
+					createMapMemory(procShadow.sShadowNode[i].shadowMvpUniform.bufferMemory, &procShadow.sShadowNode[i].shadowMvpUbo, sizeof(procShadow.sShadowNode[i].shadowMvpUbo));
+				}
 			}
 
 			//shadow-dNode
 			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-				for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
-					procShadow.dShadowNode[i][j].shadowMvpUbo.mvp = procShadow.shadowVP * procModel.dNode[i].node[j].ubo.model;
-					createMapMemory(procShadow.dShadowNode[i][j].shadowMvpUniform.bufferMemory, &procShadow.dShadowNode[i][j].shadowMvpUbo, sizeof(procShadow.dShadowNode[i][j].shadowMvpUbo));
+				if (procModel.dNode[i].isVisible) {
+					for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
+						procShadow.dShadowNode[i][j].shadowMvpUbo.mvp = procShadow.shadowVP * procModel.dNode[i].node[j].ubo.model;
+						createMapMemory(procShadow.dShadowNode[i][j].shadowMvpUniform.bufferMemory, &procShadow.dShadowNode[i][j].shadowMvpUbo, sizeof(procShadow.dShadowNode[i][j].shadowMvpUbo));
+					}
 				}
 			}
 		}
@@ -1545,7 +1565,7 @@ public:
 			dsScence.lightUbo.spotLightList[0].direction = camera.front;											//方向
 
 			dsScence.shadowUbo.shadowMvp    = procShadow.shadowVP;
-			dsScence.shadowUbo.shadowExtent = glm::vec2{ InitSwapchain.scExtent.width,InitSwapchain.scExtent.height };
+			dsScence.shadowUbo.shadowExtent = glm::vec2{ bufferInfo::shadowMapLength, bufferInfo::shadowMapLength };
 
 			createMapMemory(dsScence.lightUniform.bufferMemory,  &dsScence.lightUbo,  sizeof(dsScence.lightUbo));
 			createMapMemory(dsScence.shadowUniform.bufferMemory, &dsScence.shadowUbo, sizeof(dsScence.shadowUbo));

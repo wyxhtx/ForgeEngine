@@ -153,11 +153,17 @@ private:
 
 			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 			depthStencil.depthCompareOp		   = VK_COMPARE_OP_LESS_OR_EQUAL;
+			viewport.width  = (float)bufferInfo::shadowMapLength;
+			viewport.height = (float)bufferInfo::shadowMapLength;
+			scissor.extent  = VkExtent2D{ bufferInfo::shadowMapLength, bufferInfo::shadowMapLength };
 
 			procPipeline.createPipeline<shadowVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::shadow_p, shaderStage, vertexInputInfo, pipelineInfo);
 
 			multisampling.rasterizationSamples = InitBuffer.getMsaaSamples();
 			depthStencil.depthCompareOp		   = VK_COMPARE_OP_LESS;
+			viewport.width  = (float)InitBuffer.getScExtent().width;
+			viewport.height = (float)InitBuffer.getScExtent().height;
+			scissor.extent  = InitBuffer.getScExtent();
 		}
 
 		/*ds_f*/

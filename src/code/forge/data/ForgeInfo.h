@@ -26,10 +26,11 @@ namespace plateInfo {
 	const int cubeArrayLength = chunkLength + 2;										//方块数组边长
 	const int lengthIncrement = plateInfo::chunkLength + 1;								//区块边长增一，用于方块数组边缘检测
 	const int lengthDecrement = plateInfo::chunkLength - 1;								//区块边长减一，用于方块数组边缘检测
-
-	const float cubeSightRange = plateInfo::chunkLength * (plateInfo::sightRange + 2);	//方块视距半径，用于设置远裁剪面半径
 	const int cubeArrayVolume = (int)std::pow(plateInfo::cubeArrayLength, 3);			//方块数组边长立方值
-	
+
+	const float perspSightRange = plateInfo::chunkLength * (plateInfo::sightRange + 2);	//方块透视投影视距半径，用于设置远裁剪面半径
+	const float orthoSightRange = plateInfo::chunkLength * plateInfo::sightRange;		//方块正交投影视距半径，用于设置远裁剪面半径
+
 	const int originShiftThreshold = (int)pow(2, 8);									//测试用256
 	//const int originShiftThreshold = (int)pow(2, 13);									//原点迁移阈值8192，小数点后还有三位能准确表示精度
 }

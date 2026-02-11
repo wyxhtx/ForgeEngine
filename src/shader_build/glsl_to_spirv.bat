@@ -40,4 +40,4 @@ for /r "%SOURCE_DIR%" %%f in (*.vert *.frag *.geom) do (
     "%COMPILER%" -V "%%f" -o "!target_path!" >nul 2>&1
 )
 
-pause
+REM pause

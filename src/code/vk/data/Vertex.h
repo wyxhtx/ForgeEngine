@@ -347,15 +347,16 @@ namespace shadowVertex {
 
 
 
-    void loadTerrainVertexs() {
-        //遍历所有地形层
-        for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
-            const auto& terrainVertices = terrainVertex::vertexs[layer];
+    void loadTerrainVertexs(int layer) {
+        auto& sourceVerts = terrainVertex::vertexs[layer];
+        auto& targetVerts = tVertexs[layer];
 
-            //只保留位置信息
-            for (const auto& terrainVert : terrainVertices) {
-                tVertexs[layer].push_back(vertexNode{terrainVert.position});
-            }
+        const size_t vertCount = sourceVerts.size();
+        targetVerts.clear();
+        targetVerts.reserve(vertCount);
+
+        for (size_t i = 0; i < vertCount; ++i) {
+            targetVerts.push_back(vertexNode{ sourceVerts[i].position });
         }
     }
 }

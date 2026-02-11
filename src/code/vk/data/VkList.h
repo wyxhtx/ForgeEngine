@@ -23,7 +23,12 @@ namespace bufferList {
             }
 
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
+                if (i == bufferEnum::procRenderId::shadow_r) {
+                    node[i].createRenderInfo(VkExtent2D{ bufferInfo::shadowMapLength, bufferInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
+                }
+                else {
+                    node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
+                }
             }
         }
 
@@ -75,7 +80,12 @@ namespace bufferList {
 
         void recreateSwapChain(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& allocator) {
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
+                if (i == bufferEnum::procRenderId::shadow_r) {
+                    node[i].createRenderInfo(VkExtent2D{ bufferInfo::shadowMapLength, bufferInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
+                }
+                else {
+                    node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
+                }
             }
         }
 

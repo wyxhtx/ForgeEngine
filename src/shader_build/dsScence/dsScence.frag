@@ -184,6 +184,11 @@ float getAttenuation(vec3 fragPos, vec3 lightPos) {
     return 1.0 / (constant + linear * dist + quadratic * dist * dist);
 }
 
+//鱼眼变换函数
+vec2 getFishEyeCoord(vec2 positionInNdcCoord) {
+    return positionInNdcCoord / (0.5 + 0.5 * length(positionInNdcCoord.xy));
+}
+
 //PCF阴影采样
 float shadowPCF(vec4 shadowCoord, vec2 offset, float bias) {
     float shadow = 1.0;
@@ -260,9 +265,9 @@ void main() {
 
     
     //-阴影-
-    vec4 shadowCoord = shadow.shadowMvp * vec4(fragPos, 1.0);   //将世界空间位置转换到阴影贴图空间
-    shadowCoord.xyz  /= shadowCoord.w;                          //透视除法，将坐标转换到NDC空间
-    shadowCoord.xy   = shadowCoord.xy * 0.5 + 0.5;              //将NDC坐标转换到纹理坐标[0,1]范围
+    vec4 shadowCoord = shadow.shadowMvp * vec4(fragPos, 1.0);       //将世界空间位置转换到阴影贴图空间
+    shadowCoord.xyz  /= shadowCoord.w;                              //透视除法，将坐标转换到NDC空间
+    shadowCoord.xy   = getFishEyeCoord(shadowCoord.xy) * 0.5 + 0.5; //将NDC坐标转换到纹理坐标[0,1]范围
     
     float shadow = 1.0;
     

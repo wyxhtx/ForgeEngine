@@ -102,7 +102,8 @@ namespace bufferInfo {
     const uint32_t dsScenceCount       = 1;     //dsScence描述符池上限，       dsScence
     const uint32_t shadowCount         = 6;     //shadow描述符池上限，         terrain*2，m_temple，m_droid*3
 
-    VkFormat dsPosFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+    VkFormat dsPosFormat               = VK_FORMAT_R32G32B32A32_SFLOAT;
+    const uint32_t shadowMapLength     = 2048;
 }
 
 namespace fpsInfo {
