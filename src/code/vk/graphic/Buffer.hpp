@@ -1344,6 +1344,7 @@ public:
 			/*scScence_r*/
 			{
 				procRenderPass.node[bufferEnum::procRenderId::scScence_r].setScFramebuffer(frameId);
+				command.createPipelineBarrier(threadId, frameId);	//创建延迟着色管线屏障，用于确保延迟着色管线最后执行
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 				//dsScence

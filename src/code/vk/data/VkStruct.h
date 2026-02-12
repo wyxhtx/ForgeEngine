@@ -341,6 +341,28 @@ namespace bufferStruct {
             }
         }
 
+
+
+        //创建管线屏障
+        void createPipelineBarrier(int threadID, int frameID) {
+            const VkMemoryBarrier barrier = {
+                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                .pNext = nullptr,
+                .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,  //等待颜色写入完成
+                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT              //让着色器能读取
+            };
+
+            vkCmdPipelineBarrier(
+                commandBuffer[threadID][frameID],
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  //前：颜色附件输出阶段
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,          //后：片段着色器阶段
+                0,
+                1, &barrier,
+                0, nullptr,
+                0, nullptr
+            );
+        }
+
         void free(const VkDevice& device, int threadID) {
             vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffer[threadID].size()), commandBuffer[threadID].data());
         }
