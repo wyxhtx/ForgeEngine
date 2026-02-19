@@ -70,7 +70,7 @@ private:
 
 	//∂¡»°µÿ«¯≈‰÷√
 	void readConfig(glm::dvec3 regionOriginPos) {
-		for (glm::dvec3 regionPos : storageList::regionLoop) {
+		for (glm::dvec3 regionPos : loopList::regionLoop) {
 			regionPos += regionOriginPos;
 			std::filesystem::path regionPath = std::filesystem::path{ fileInfo::storage::fullFile } / std::format("{}_{}_{}", regionPos.x, regionPos.y, regionPos.z) / "regionConfig.dat";
 

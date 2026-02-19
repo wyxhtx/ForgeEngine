@@ -15,7 +15,7 @@ public:
 
 		Log::printTitle("板块创建信息");
 		Log::print("创建用时:\t" + time.end());
-		Log::print("优化面数:\t" + std::to_string((terrainVertex::vertexs[terrainEnum::terrainLayer::Layer_0].size() + terrainVertex::vertexs[terrainEnum::terrainLayer::Layer_1].size()) / 4));
+		Log::print("优化面数:\t" + std::to_string((terrainVertex::vertexs[forgeEnum::terrainLayer::Layer_0].size() + terrainVertex::vertexs[forgeEnum::terrainLayer::Layer_1].size()) / 4));
 
 		if (debugInfo::LogSwitch) {
 			Log::delimiter();
@@ -37,12 +37,14 @@ public:
 
 private:
 	Loop InitLoop{};
-	Noise InitNoise{ 0 };
 	Storage InitStorage{};
+
+	noiseList::procNoiseNode	  procNoise{};																	//程序化噪音
+	noiseList::procNoiseParamNode procNoiseParam{};																//程序化噪音参数
 
 	std::unordered_map<glm::dvec3, Chunk> chunkMap;																//区块map，存储区块数据
 	std::unordered_map<glm::dvec3, Chunk> updateChunkMap;														//更新区块map，临时存储区块数据，存储当前视距内未加载区块
-	std::forward_list<plateStruct::terrainMeshSignNode> terrainMeshSignList[terrainEnum::terrainLayer::count];	//标识地形管线各层网格中，区块顶点数组和索引数组的大小，为裁剪区块截层网格服务
+	std::forward_list<plateStruct::terrainMeshSignNode> terrainMeshSignList[forgeEnum::terrainLayer::count];	//标识地形管线各层网格中，区块顶点数组和索引数组的大小，为裁剪区块截层网格服务
 
 	//结构管理器，只管理小于等于32并且无空气的结构，超出32会产生很多问题，比如区块存储加载，方块更新后的网格更新
 	plateStruct::structManagerNode pendingStructManager;														//未加载结构管理器[0,33]，在createChunk中赋值
@@ -64,7 +66,7 @@ private:
 
 
 		//初始化，R(8)N(34)M(60)
-		for (glm::dvec3 updatePos : plateList::chunkMapLoop) {
+		for (glm::dvec3 updatePos : loopList::chunkMapLoop) {
 			updatePos += playerChunkPos;
 
 			updateChunkLoop.push_back(updatePos);
@@ -102,7 +104,7 @@ private:
 							if (cubeId == cubeEnum::cubeId::air) {
 								chunkMap[updatePos].isVisible++;
 							}
-							else if (cubeList::cubeProperty[cubePos.w].coverage <= cubeList::cubeProperty[cubeId].coverage) {
+							else if (cubeList::procCube.node[cubePos.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
 								continue;
 							}
 
@@ -134,7 +136,7 @@ private:
 						if (cubeId == cubeEnum::cubeId::air) {
 							chunkMap[updatePos].isVisible++;
 						}
-						else if (cubeList::cubeProperty[cubePos.w].coverage <= cubeList::cubeProperty[cubeId].coverage) {
+						else if (cubeList::procCube.node[cubePos.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
 							continue;
 						}
 
@@ -193,9 +195,9 @@ private:
 
 		//拼接区块网格，R(8)N(34)M(40)
 		for (const glm::dvec3& updatePos : updateChunkLoop) {
-			int layer = terrainEnum::terrainLayer::Layer_1;
-			if (terrainList::layerLoop.find(updatePos - playerChunkPos) != terrainList::layerLoop.end()) {
-				layer = terrainEnum::terrainLayer::Layer_0;
+			int layer = forgeEnum::terrainLayer::Layer_1;
+			if (loopList::terrainLayerLoop.find(updatePos - playerChunkPos) != loopList::terrainLayerLoop.end()) {
+				layer = forgeEnum::terrainLayer::Layer_0;
 			}
 			chunkMap[updatePos].layerID = layer;			//初始化layerID
 
@@ -214,7 +216,7 @@ private:
 
 		//地形网格非空检测
 		if (debugInfo::LogSwitch) {
-			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+			for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
 				if (terrainVertex::vertexs[layer].size() == 0) {
 					Log::printError(__FILE__, __LINE__, std::format("Layer_{}对应顶点数组为空", layer));
 				}
@@ -243,37 +245,14 @@ private:
 
 			for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
 				tempWorldPos.z = worldPos.z + z;
-				length = std::floor(InitNoise.terrain.GetNoise(tempWorldPos.x + 0.1, tempWorldPos.z + 0.1) * noiseList::terrainProperty[terrainEnum::terrainId::plain].undulation + noiseList::terrainProperty[terrainEnum::terrainId::plain].translation);
+				length = std::floor(procNoise.terrainNode[noiseEnum::terrainId::plain].node.GetNoise(tempWorldPos.x + 0.1, tempWorldPos.z + 0.1) * procNoiseParam.terrainParam[noiseEnum::terrainId::plain].undulation + procNoiseParam.terrainParam[noiseEnum::terrainId::plain].translation);
 
 				for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
 					tempWorldPos.y = worldPos.y + y;
 
 					//高于地平线生成空气
 					if (tempWorldPos.y < plateInfo::groundPlane) {
-						if (tempWorldPos.y > length) {
-							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
-						}
-						else if (tempWorldPos.y < length) {
-							chunk.isVisible++;
-
-							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::stoneSquared;
-						}
-						else {
-							chunk.isVisible++;
-
-							//todo 后续做生态时外面再套一层细胞噪音
-							if (std::floor(InitNoise.tree.GetNoise(tempWorldPos.x, tempWorldPos.z) * noiseList::treeProperty[terrainStructureEnum::treeId::oak].undulation + noiseList::treeProperty[terrainStructureEnum::treeId::oak].translation) > noiseList::treeProperty[terrainStructureEnum::treeId::oak].density) {
-								//只压入1~32内的，避免边缘重复
-								if (x > 0 && x < plateInfo::lengthIncrement && y > 0 && y < plateInfo::lengthIncrement && z > 0 && z < plateInfo::lengthIncrement) {
-									structList.push_back(glm::ivec3{ x,y + 1,z });
-								}
-
-								chunk.cubeArray[x][y][z] = cubeEnum::cubeId::oakTrunk;
-							}
-							else {
-								chunk.cubeArray[x][y][z] = cubeEnum::cubeId::grass;
-							}
-						}
+						getCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, length, structList);
 					}
 					else {
 						chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
@@ -290,7 +269,7 @@ private:
 			glm::ivec4 tempPos;
 
 			for (const glm::ivec3& structPos : structList) {
-				for (const glm::ivec4& pos : terrainStructureList::treeLoop) {
+				for (const glm::ivec4& pos : loopList::treeLoop) {
 					tempPos = glm::ivec4{ structPos,0 } + pos;
 
 					if (tempPos.x > 0 && tempPos.x < plateInfo::lengthIncrement && tempPos.y > 0 && tempPos.y < plateInfo::lengthIncrement && tempPos.z > 0 && tempPos.z < plateInfo::lengthIncrement) {
@@ -300,7 +279,7 @@ private:
 						if (cubeId == cubeEnum::cubeId::air) {
 							chunk.isVisible++;
 						}
-						else if (cubeList::cubeProperty[tempPos.w].coverage <= cubeList::cubeProperty[cubeId].coverage) {
+						else if (cubeList::procCube.node[tempPos.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
 							continue;
 						}
 
@@ -418,6 +397,33 @@ private:
 		}
 	}
 
+	__forceinline void getCube(short& cubeId, int& isVisible, glm::dvec3& tempWorldPos, int& x, int& y, int& z, double& length, std::vector<glm::ivec3>& structList) {
+		if (tempWorldPos.y > length) {
+			cubeId = cubeEnum::cubeId::air;
+		}
+		else if (tempWorldPos.y < length) {
+			isVisible++;
+
+			cubeId = cubeEnum::cubeId::stoneSquared;
+		}
+		else {
+			isVisible++;
+
+			//todo 后续做生态时外面再套一层细胞噪音
+			if (std::floor(procNoise.treeNode[noiseEnum::treeId::oak].node.GetNoise(tempWorldPos.x, tempWorldPos.z) * procNoiseParam.treeParam[noiseEnum::treeId::oak].undulation + procNoiseParam.treeParam[noiseEnum::treeId::oak].translation) > procNoiseParam.treeParam[noiseEnum::treeId::oak].density) {
+				//只压入1~32内的，避免边缘重复
+				if (x > 0 && x < plateInfo::lengthIncrement && y > 0 && y < plateInfo::lengthIncrement && z > 0 && z < plateInfo::lengthIncrement) {
+					structList.push_back(glm::ivec3{ x,y + 1,z });
+				}
+
+				cubeId = cubeEnum::cubeId::oakTrunk;
+			}
+			else {
+				cubeId = cubeEnum::cubeId::grass;
+			}
+		}
+	}
+
 	//拼接地形网格，将区块网格拼成地形网格，自动内存分配时函数耗时1.8ms，平时函数耗时0.18ms
 	void joinTerrainMesh(Chunk& chunk, const glm::dvec3 originOffset, const glm::dvec3 chunkPos, const int layer) {
 		if (chunk.indexOffset) {
@@ -512,7 +518,7 @@ public:
 		}
 
 		//获取existChunkLoop、updateChunkLoop，R(8)N(34)M(7)
-		for (glm::dvec3 updatePos : plateList::chunkMapLoop) {
+		for (glm::dvec3 updatePos : loopList::chunkMapLoop) {
 			updatePos += playerChunkPos;
 
 			if (chunkMap.find(updatePos) != chunkMap.end()) {
@@ -569,7 +575,7 @@ public:
 							if (cubeId == cubeEnum::cubeId::air) {
 								updateChunkMap[updatePos].isVisible++;
 							}
-							else if (cubeList::cubeProperty[cubePos.w].coverage <= cubeList::cubeProperty[cubeId].coverage) {
+							else if (cubeList::procCube.node[cubePos.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
 								continue;
 							}
 
@@ -617,7 +623,7 @@ public:
 						if (cubeId == cubeEnum::cubeId::air) {
 							updateChunkMap[updatePos].isVisible++;
 						}
-						else if (cubeList::cubeProperty[cubePos.w].coverage <= cubeList::cubeProperty[cubeId].coverage) {
+						else if (cubeList::procCube.node[cubePos.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
 							continue;
 						}
 
@@ -671,7 +677,7 @@ public:
 					if (cubeId == cubeEnum::cubeId::air) {
 						updateChunkMap[it->first].isVisible++;
 					}
-					else if (cubeList::cubeProperty[cubePos.w].coverage <= cubeList::cubeProperty[cubeId].coverage) {
+					else if (cubeList::procCube.node[cubePos.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
 						continue;
 					}
 
@@ -710,7 +716,7 @@ public:
 				if (cubeId == cubeEnum::cubeId::air) {
 					updateChunkMap[updatePos].isVisible++;
 				}
-				else if (cubeList::cubeProperty[cubePos.w].coverage <= cubeList::cubeProperty[cubeId].coverage) {
+				else if (cubeList::procCube.node[cubePos.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
 					continue;
 				}
 
@@ -724,7 +730,7 @@ public:
 
 		//清理r+2外的结构，R(8)N(34)M(1)
 		for (auto it = activeStructManager.node.begin(); it != activeStructManager.node.end(); ) {
-			if (plateList::structClearLoop.find(glm::dvec3{ it->first - playerChunkPos }) == plateList::structClearLoop.end()) {
+			if (loopList::structClearLoop.find(glm::dvec3{ it->first - playerChunkPos }) == loopList::structClearLoop.end()) {
 				it = activeStructManager.node.erase(it);
 			}
 			else {
@@ -733,7 +739,7 @@ public:
 		}
 
 		for (auto it = pendingStructManager.node.begin(); it != pendingStructManager.node.end(); ) {
-			if (plateList::structClearLoop.find(glm::dvec3{ it->first - playerChunkPos }) == plateList::structClearLoop.end()) {
+			if (loopList::structClearLoop.find(glm::dvec3{ it->first - playerChunkPos }) == loopList::structClearLoop.end()) {
 				it = pendingStructManager.node.erase(it);
 			}
 			else {
@@ -765,10 +771,10 @@ public:
 				}
 				//迁移existChunkLoop内区块网格到对应地形网格层
 				else {
-					int newLayer = terrainEnum::terrainLayer::Layer_1;
+					int newLayer = forgeEnum::terrainLayer::Layer_1;
 
-					if (terrainList::layerLoop.find(updatePos - playerChunkPos) != terrainList::layerLoop.end()) {
-						newLayer = terrainEnum::terrainLayer::Layer_0;
+					if (loopList::terrainLayerLoop.find(updatePos - playerChunkPos) != loopList::terrainLayerLoop.end()) {
+						newLayer = forgeEnum::terrainLayer::Layer_0;
 					}
 
 					if (oldLayer != newLayer) {
@@ -784,7 +790,7 @@ public:
 		else {
 			//原点已迁移，R(8)N(34)M(12)
 			//清空全部地形网格
-			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+			for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
 				terrainVertex::vertexs[layer].clear();
 				terrainVertex::indexs[layer].clear();
 				terrainMeshSignList[layer].clear();
@@ -805,9 +811,9 @@ public:
 					it = chunkMap.erase(it);
 				}
 				else {
-					int layer = terrainEnum::terrainLayer::Layer_1;
-					if (terrainList::layerLoop.find(updatePos - playerChunkPos) != terrainList::layerLoop.end()) {
-						layer = terrainEnum::terrainLayer::Layer_0;
+					int layer = forgeEnum::terrainLayer::Layer_1;
+					if (loopList::terrainLayerLoop.find(updatePos - playerChunkPos) != loopList::terrainLayerLoop.end()) {
+						layer = forgeEnum::terrainLayer::Layer_0;
 					}
 
 					chunkMap[updatePos].layerID = layer;									//重设layerID
@@ -850,9 +856,9 @@ public:
 		for (const glm::dvec3& updatePos : updateChunkLoop) {
 			chunkMap[updatePos] = updateChunkMap[updatePos];
 
-			int layer = terrainEnum::terrainLayer::Layer_1;
-			if (terrainList::layerLoop.find(updatePos - playerChunkPos) != terrainList::layerLoop.end()) {
-				layer = terrainEnum::terrainLayer::Layer_0;
+			int layer = forgeEnum::terrainLayer::Layer_1;
+			if (loopList::terrainLayerLoop.find(updatePos - playerChunkPos) != loopList::terrainLayerLoop.end()) {
+				layer = forgeEnum::terrainLayer::Layer_0;
 			}
 
 			if (updateStructLoop.find(updatePos) != updateStructLoop.end()) {
@@ -880,7 +886,7 @@ public:
 
 		//地形网格非空检测
 		if (debugInfo::LogSwitch) {
-			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+			for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
 				if (terrainVertex::vertexs[layer].size() == 0) {
 					Log::printWarning(__FILE__, __LINE__, std::format("Layer_{}对应顶点数组为空", layer));
 				}
@@ -1003,7 +1009,7 @@ public:
 			if (chunkMap.find(chunkPos) != chunkMap.end()) {
 				int layer = chunkMap[chunkPos].layerID;
 
-				if (layer != terrainEnum::terrainLayer::Layer_0) {
+				if (layer != forgeEnum::terrainLayer::Layer_0) {
 					isEntireRebuild = true;
 				}
 

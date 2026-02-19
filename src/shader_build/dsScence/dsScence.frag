@@ -189,6 +189,17 @@ vec2 getFishEyeCoord(vec2 positionInNdcCoord) {
     return positionInNdcCoord / (0.5 + 0.5 * length(positionInNdcCoord.xy));
 }
 
+//蓝噪音函数
+vec2 getBlueNoiseJitter(vec2 uv) {
+    vec2 noiseUV = uv * 128.0;
+    vec2 jitter;
+
+    jitter.x = fract(sin(dot(noiseUV, vec2(12.9898, 78.233))) * 43758.5453);
+    jitter.y = fract(sin(dot(noiseUV + 1.5, vec2(12.9898, 78.233))) * 43758.5453);
+
+    return (jitter - 0.5) * 2.0;
+}
+
 //PCF阴影采样
 float shadowPCF(vec4 shadowCoord, vec2 offset, float bias) {
     float shadow = 1.0;
@@ -206,15 +217,20 @@ float shadowPCF(vec4 shadowCoord, vec2 offset, float bias) {
 }
 
 //PCF阴影计算
-float filterPCF(vec4 shadowCoord) {
+float filterPCF(vec4 shadowCoord, vec2 fragUV) {
     float dx           = 1.0 / shadow.shadowExtent.x;
     float dy           = 1.0 / shadow.shadowExtent.y;
     float shadowFactor = 0.0;
     
-    //3x3 PCF滤波
+    //生成蓝噪音抖动
+    vec2 jitter = getBlueNoiseJitter(fragUV) * 0.5; //抖动范围控制
+    
+    //3x3 PCF滤波 + 蓝噪音抖动
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
-            shadowFactor += shadowPCF(shadowCoord, vec2(dx * x, dy * y), shadowBias);
+            //基础偏移量加上抖动
+            vec2 offset = vec2(dx * (float(x) + jitter.x), dy * (float(y) + jitter.y));
+            shadowFactor += shadowPCF(shadowCoord, offset, shadowBias);
         }
     }
     
@@ -273,7 +289,7 @@ void main() {
     
     //检查坐标是否在阴影贴图范围内
     if (shadowCoord.x >= 0.0 && shadowCoord.x <= 1.0 && shadowCoord.y >= 0.0 && shadowCoord.y <= 1.0 &&shadowCoord.z >= 0.0 && shadowCoord.z <= 1.0) {
-        shadow = filterPCF(shadowCoord);
+        shadow = filterPCF(shadowCoord, fragUV); 
     }
     
     outColor = vec4(result * shadow, 1.0);

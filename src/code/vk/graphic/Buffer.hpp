@@ -93,7 +93,7 @@ private:
 	void createMeshBuffer() {
 		//terrain
 		for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
-			for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+			for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
 				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[thread][layer]);
 				createIndexBuffer(terrainVertex::indexs[layer],   terrain.index[thread][layer]);
 			}
@@ -136,7 +136,7 @@ private:
 		createIndexBuffer(osMirrorVertex::indexs,   osMirror.index);
 
 		//shadow-terrain
-		for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+		for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
 			shadowVertex::loadTerrainVertexs(layer);
 			createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
 		}
@@ -1250,7 +1250,7 @@ public:
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::shadow_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 				//shadow-terrain
-				for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+				for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
 					if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
 						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.tShadowNode.descriptorSet, procShadow.tShadowNode.vertex[layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
 					}
@@ -1290,7 +1290,7 @@ public:
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::dsScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 				//terrain
-				for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+				for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
 					if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
 						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(terrain.pipeId), procPipeline.getPipeLayout(terrain.pipeId), terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
 					}
@@ -1372,7 +1372,7 @@ public:
 
 		if (isLayer) {
 			//地形管线全部重建
-			int layer = terrainEnum::terrainLayer::Layer_0;		//先重建当前线程网格缓冲区
+			int layer = forgeEnum::terrainLayer::Layer_0;		//先重建当前线程网格缓冲区
 			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
 				vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
@@ -1381,14 +1381,14 @@ public:
 				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
 
 				//重建全部阴影 10ms
-				for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+				for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
 					vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
 					shadowVertex::loadTerrainVertexs(layer);
 					createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
 				}
 			}
 
-			layer = terrainEnum::terrainLayer::Layer_1;
+			layer = forgeEnum::terrainLayer::Layer_1;
 			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
 				createTerrainVertexBuffer(threadId, layer);
 				createTerrainIndexBuffer(threadId, layer);
@@ -1396,7 +1396,7 @@ public:
 		}
 		else {
 			//只重建Lod_0地形管线
-			int layer = terrainEnum::terrainLayer::Layer_0;
+			int layer = forgeEnum::terrainLayer::Layer_0;
 
 			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);

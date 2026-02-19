@@ -165,9 +165,6 @@
     <ClInclude Include="src\library\vma\vk_mem_alloc.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\forge\base\Noise.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="src\code\forge\base\Loop.hpp">
       <Filter>头文件</Filter>
     </ClInclude>

@@ -10,7 +10,7 @@ public:
 	std::unordered_set<storageStruct::cubeDeltaNode, storageStruct::cubeDeltaNodeHash> cubeDeltaSet;		//方块变更集合，为变存法服务					//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
 
 	int isVisible = 0;												//标识区块是否可见，如果全空或者全满为不可见，但是不能排除1~32全空但边缘非空的情况			//Storage（saveFullChunk、readFullChunk、saveDeltaChunk、readDeltaChunk），Plate（createPlate、createChunk、updatePlate、createUpdateCubeList）
-	int layerID = terrainEnum::terrainLayer::count;					//区块所在地形管线层																	//Plate（createPlate、updatePlate、updatePlatePartMesh）
+	int layerID = forgeEnum::terrainLayer::count;					//区块所在地形管线层																	//Plate（createPlate、updatePlate、updatePlatePartMesh）
 
 	//由InitChunk初始化
 	glm::dvec3 originOffset{};										//区块原点偏移（d世界坐标系），用于plate类里joinChunkMesh方法处理世界原点迁移时的情况		//Plate（joinTerrainMesh），Chunk（InitChunk）
@@ -41,7 +41,7 @@ public:
 
 
 		//获取可见面集合
-		for (const glm::ivec3& pos: plateList::cubekMapLoop) {
+		for (const glm::ivec3& pos: loopList::cubeMapLoop) {
 			short cubeId = cubeArray[pos.x][pos.y][pos.z];	//[1,32]
 
 			if (cubeId != cubeEnum::cubeId::air) {
@@ -75,7 +75,7 @@ public:
 						std::unordered_map<glm::ivec3, short>& node = visibleFaceMap[i][j];
 						glm::ivec3 pos = node.begin()->first;
 						short cubeId = node.begin()->second;
-						int faceId = cubeList::cubeProperty[cubeId].faceId[i].x + cubeList::cubeProperty[cubeId].faceId[i].y * textureInfo::atlasWidth;
+						int faceId = cubeList::procCube.node[cubeId].faceId[i].x + cubeList::procCube.node[cubeId].faceId[i].y * textureInfo::atlasWidth;
 
 						cubeStruct::traversalNode wSet;
 						cubeStruct::traversalNode hSet;
@@ -910,7 +910,7 @@ public:
 						std::unordered_map<glm::ivec3, short>& node = visibleFaceMap[i][j];
 						glm::ivec3 pos = node.begin()->first;
 						short cubeId = node.begin()->second;
-						int faceId = cubeList::cubeProperty[cubeId].faceId[i].x + cubeList::cubeProperty[cubeId].faceId[i].y * textureInfo::atlasWidth;
+						int faceId = cubeList::procCube.node[cubeId].faceId[i].x + cubeList::procCube.node[cubeId].faceId[i].y * textureInfo::atlasWidth;
 
 						cubeStruct::traversalNode wSet;
 						cubeStruct::traversalNode hSet;

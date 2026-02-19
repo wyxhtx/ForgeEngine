@@ -485,8 +485,8 @@ namespace bufferStruct {
     /*管线缓冲区*/
     struct terrainBufferNode {
         //网格缓冲
-        bufferNode vertex[bufferInfo::commandThreadCount][terrainEnum::terrainLayer::count];
-        bufferNode index[bufferInfo::commandThreadCount][terrainEnum::terrainLayer::count];
+        bufferNode vertex[bufferInfo::commandThreadCount][forgeEnum::terrainLayer::count];
+        bufferNode index[bufferInfo::commandThreadCount][forgeEnum::terrainLayer::count];
 
         //纹理缓冲
         const char* textureFile;
@@ -522,7 +522,7 @@ namespace bufferStruct {
         //清理结构体，descriptorSet由描述符池管理，无需手动清理
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
             for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
-                for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+                for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
                     vmaDestroyBuffer(allocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMemory);
                     vmaDestroyBuffer(allocator, index[thread][layer].buffer, index[thread][layer].bufferMemory);
                 }
@@ -932,7 +932,7 @@ namespace bufferStruct {
 
     struct shadowTerrainBufferNode {
         //网格缓冲，索引直接用源网格的
-        bufferNode vertex[terrainEnum::terrainLayer::count];
+        bufferNode vertex[forgeEnum::terrainLayer::count];
 
         //统一缓冲
         bufferNode shadowMvpUniform;
@@ -944,7 +944,7 @@ namespace bufferStruct {
 
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            for (int layer = 0; layer < terrainEnum::terrainLayer::count; layer++) {
+            for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
                 vmaDestroyBuffer(allocator, vertex[layer].buffer, vertex[layer].bufferMemory);
             }
 

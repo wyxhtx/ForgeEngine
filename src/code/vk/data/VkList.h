@@ -4,12 +4,12 @@
 
 namespace bufferList {
     struct procRenderNode {
-        std::array<bufferStruct::renderNode, bufferEnum::frameNodeId::count> nodePass{};
-        std::array<bufferStruct::renderInfoNode, bufferEnum::procRenderId::count> node{};
+        std::vector<bufferStruct::renderNode> nodePass{};
+        std::vector<bufferStruct::renderInfoNode> node{};
 
 
 
-        procRenderNode() {
+        procRenderNode() : nodePass(bufferEnum::frameNodeId::count), node(bufferEnum::procRenderId::count) {
             node[bufferEnum::procRenderId::scScence_r].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::sc_f);
             node[bufferEnum::procRenderId::osScence_r].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os_f);
             node[bufferEnum::procRenderId::osMirror_r].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os_f);
@@ -104,11 +104,11 @@ namespace bufferList {
         VkDescriptorSetAllocateInfo allocInfo{};
         bufferEnum::procDescriptorId::type nodeId;
 
-        std::array<bufferStruct::descriptorNode, bufferEnum::procDescriptorId::count> node{};
+        std::vector<bufferStruct::descriptorNode> node{};
 
 
 
-        procDescriptorNode(const VkDevice& device) {
+        procDescriptorNode(const VkDevice& device) : node(bufferEnum::procDescriptorId::count) {
             //allocInfo
             allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
             allocInfo.pNext = nullptr;
@@ -175,9 +175,11 @@ namespace bufferList {
     };
 
     struct procSamplerNode {
-        VkSampler node[bufferEnum::procSamplerId::count];
+        std::vector<VkSampler> node{};
 
 
+
+        procSamplerNode() : node(bufferEnum::procSamplerId::count) {}
 
         void createTextureSampler(const VkDevice& device, uint32_t terrainMip, uint32_t sModelMip, uint32_t dModelMip) {
             VkSamplerCreateInfo samplerInfo{};
@@ -293,8 +295,8 @@ namespace bufferList {
 
 
     struct procModelNode {
-        std::array<bufferStruct::staticModelNode, bufferEnum::procStaticModelId::count> sNode{};
-        std::array<bufferStruct::dynamicModelNode, bufferEnum::procDynamicModelId::count> dNode{};
+        std::vector<bufferStruct::staticModelNode>  sNode{};
+        std::vector<bufferStruct::dynamicModelNode> dNode{};
 
         uint32_t sModelMip = 0;                  //在创建texture时赋值
         uint32_t dModelMip = 0;                  //在创建texture时赋值
@@ -303,7 +305,7 @@ namespace bufferList {
 
 
 
-        procModelNode(pipelineEnum::procPipelineId::type pId) {
+        procModelNode(pipelineEnum::procPipelineId::type pId) : sNode(bufferEnum::procStaticModelId::count), dNode(bufferEnum::procDynamicModelId::count) {
             sNode[bufferEnum::procStaticModelId::temple_m].create(fileInfo::model::temple, fileInfo::image::temple, /*fileInfo::image::temple,*/ bufferEnum::procSamplerId::staticModel_sn, glm::dvec3(0, 32, 0));
 
             dNode[bufferEnum::procDynamicModelId::droid_m].create(fileInfo::model::droid, { fileInfo::image::droidBodyC,fileInfo::image::droidHeadC,fileInfo::image::droidMiscC }, /*{ fileInfo::image::droidBodyN,fileInfo::image::droidHeadN,fileInfo::image::droidMiscN },*/ bufferEnum::procSamplerId::dynamicModel_sl, glm::dvec3(0, 32, 0));
@@ -346,9 +348,9 @@ namespace bufferList {
     };
 
     struct procShadowNode {
-        bufferStruct::shadowTerrainBufferNode tShadowNode;      //地形阴影
-        std::array<bufferStruct::shadowBufferNode, bufferEnum::procStaticModelId::count>               sShadowNode;     //静态模型阴影
-        std::array<std::vector<bufferStruct::shadowBufferNode>, bufferEnum::procDynamicModelId::count> dShadowNode;     //动态模型阴影
+        bufferStruct::shadowTerrainBufferNode tShadowNode{};                    //地形阴影
+        std::vector<bufferStruct::shadowBufferNode> sShadowNode{};              //静态模型阴影
+        std::vector<std::vector<bufferStruct::shadowBufferNode>> dShadowNode{}; //动态模型阴影
 
         //辅助shadowMvp计算
         glm::mat4 shadowProj;
@@ -360,7 +362,7 @@ namespace bufferList {
 
 
 
-        procShadowNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+        procShadowNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) : sShadowNode(bufferEnum::procStaticModelId::count), dShadowNode(bufferEnum::procDynamicModelId::count) {
             pipeId = pId;
             samplerId = sId;
         }
@@ -385,12 +387,12 @@ namespace bufferList {
 
 namespace pipelineList {
     struct procPipelineNode {
-        std::array<pipelineStruct::pipeLayoutNode, bufferEnum::procDescriptorId::count> nodeLayout{};
-        std::array<pipelineStruct::pipelineNode, pipelineEnum::procPipelineId::count> node{};
+        std::vector<pipelineStruct::pipeLayoutNode> nodeLayout{};
+        std::vector<pipelineStruct::pipelineNode>   node{};
 
 
 
-        procPipelineNode() {
+        procPipelineNode() : nodeLayout(bufferEnum::procDescriptorId::count), node(pipelineEnum::procPipelineId::count) {
             node[pipelineEnum::procPipelineId::terrain_p] .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred_d, fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag);
             node[pipelineEnum::procPipelineId::model_p]   .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred_d, fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag);
             node[pipelineEnum::procPipelineId::skybox_p]  .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag);
@@ -402,7 +404,7 @@ namespace pipelineList {
             node[pipelineEnum::procPipelineId::shadow_p]  .createPipelineNode(bufferEnum::procDescriptorId::shadow_d,         fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag);
         }
 
-        void createPipeLayout(const VkDevice& device, std::array<bufferStruct::descriptorNode, bufferEnum::procDescriptorId::count>& dstNode) {
+        void createPipeLayout(const VkDevice& device, std::vector<bufferStruct::descriptorNode>& dstNode) {
             for (size_t i = 0; i < bufferEnum::procDescriptorId::count; i++) {
                 nodeLayout[i].createPipeLayoutNode(device, dstNode[i].layout);
             }

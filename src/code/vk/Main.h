@@ -87,16 +87,16 @@
 /*内部库文件*/
 #include "../vk/tool/Log.hpp"
 
-#include "../forge/data/ForgeInfo.h"
 #include "../forge/data/ForgeEnum.h"
+#include "../forge/data/ForgeInfo.h"
 #pragma warning(push)
 #pragma warning(disable: 26495)
 #include "../forge/data/ForgeStruct.h"
 #pragma warning(pop)
 #include "../forge/data/ForgeList.h"
 
-#include "data/VkInfo.h"
 #include "data/VkEnum.h"
+#include "data/VkInfo.h"
 #include "data/Vertex.h"
 #pragma warning(push)
 #pragma warning(disable: 26495)
@@ -107,7 +107,6 @@
 #include "../vk/tool/Camera.hpp"
 #include "../vk/tool/Music.hpp"
 
-#include "../forge/base/Noise.hpp"
 #include "../forge/base/Loop.hpp"
 
 #include "../forge/world/Chunk.hpp"

@@ -40,8 +40,8 @@ namespace terrainVertex {
         }
     };
 
-    std::vector<vertexNode> vertexs[terrainEnum::terrainLayer::count];  //顶点数组
-    std::vector<uint32_t> indexs[terrainEnum::terrainLayer::count];     //索引数组
+    std::vector<vertexNode> vertexs[forgeEnum::terrainLayer::count];  //顶点数组
+    std::vector<uint32_t> indexs[forgeEnum::terrainLayer::count];     //索引数组
 }
 
 //model
@@ -337,7 +337,7 @@ namespace shadowVertex {
     };
 
     //地形网格
-    std::vector<vertexNode> tVertexs[terrainEnum::terrainLayer::count];
+    std::vector<vertexNode> tVertexs[forgeEnum::terrainLayer::count];
 
     //静态模型网格
     std::vector<vertexNode> sVertexs[bufferEnum::procStaticModelId::count];

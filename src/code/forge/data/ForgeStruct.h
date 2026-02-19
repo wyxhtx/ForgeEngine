@@ -2,6 +2,7 @@
 
 
 
+//方块结构体
 namespace cubeStruct {
     //贪心算法使用范围（1~32）遍历节点
     struct traversalNode {
@@ -15,13 +16,21 @@ namespace cubeStruct {
         int y;
     };
 
-    //方块属性结点
-    struct propertyNode {
+    //方块结点
+    struct cubeNode {
         std::vector<faceNode> faceId;   //纹理id
         short coverage;                 //方块覆盖顺序
+
+
+
+        void create(const std::vector<faceNode>& tempFaceId, short tempCoverage) {
+            faceId   = tempFaceId;
+            coverage = tempCoverage;
+        }
     };
 }
 
+//板块结构体
 namespace plateStruct {
     //地形网格标识结点
     struct terrainMeshSignNode {
@@ -89,18 +98,25 @@ namespace plateStruct {
     };
 }
 
-//地形结构结构体
-namespace terrainStructureStruct {
-    //树结构结点
-    struct treeStructureNode {
-        int r;          //树冠半径
-        int length;     //树干高度
-        int leaf;       //树叶
-        int trunk;      //树干
-    };
-}
-
+//噪音结构体
 namespace noiseStruct {
+    struct noiseNode {
+        FastNoiseLite node;
+
+
+
+        void create(int seed, FastNoiseLite::NoiseType noiseType, float frequency, FastNoiseLite::FractalType fractalType, int octaves, float lacunarity) {
+            node.SetSeed(seed);				        //种子
+            node.SetNoiseType(noiseType);	        //噪音类型
+            node.SetFrequency(frequency);	        //缩放
+            node.SetFractalType(fractalType);       //分形类型
+            node.SetFractalOctaves(octaves);        //分形次数
+            node.SetFractalLacunarity(lacunarity);  //分形特征尺度
+        }
+    };
+
+
+
     //噪音起伏undulation，噪音平移translation，噪音生成密度density，
     //density，应大于等于translation - undulation，小于等于translation + undulation - 2
     //density，从translation - undulation到translation + undulation - 2递减，中间值位于translation - 1
@@ -110,6 +126,13 @@ namespace noiseStruct {
     struct terrainParamNode {
         int undulation;		    //起伏
         int translation;	    //平移
+
+
+
+        void create(int tempUndulation, int tempTranslation) {
+            undulation  = tempUndulation;
+            translation = tempTranslation;
+        }
     };
 
     //树噪音参数结点
@@ -117,9 +140,37 @@ namespace noiseStruct {
         int undulation;		    //起伏
         int translation;	    //平移
         int density;	        //密度
+
+
+
+        void create(int tempUndulation, int tempTranslation, int tempDensity) {
+            undulation  = tempUndulation;
+            translation = tempTranslation;
+            density     = tempDensity;
+        }
+    };
+
+
+
+    //树结构结点
+    struct treeStructureNode {
+        int r;          //树冠半径
+        int length;     //树干高度
+        int leaf;       //树叶方块id
+        int trunk;      //树干方块id
+
+
+
+        void create(int tempR, int tempLength, int tempLeaf, int tempTrunk) {
+            r      = tempR;
+            length = tempLength;
+            leaf   = tempLeaf;
+            trunk  = tempTrunk;
+        }
     };
 }
 
+//存储结构体
 namespace storageStruct {
     //变存法存储结点，存储玩家变更方块的方块数组坐标和方块id
     struct cubeDeltaNode {
@@ -148,6 +199,7 @@ namespace storageStruct {
     };
 }
 
+//玩家结构体
 namespace playerStruct {
     //摄像机结点
     struct cameraNode {
