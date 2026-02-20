@@ -301,11 +301,12 @@ namespace bufferList {
         uint32_t sModelMip = 0;                  //在创建texture时赋值
         uint32_t dModelMip = 0;                  //在创建texture时赋值
 
+        bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
 
 
 
-        procModelNode(pipelineEnum::procPipelineId::type pId) : sNode(bufferEnum::procStaticModelId::count), dNode(bufferEnum::procDynamicModelId::count) {
+        procModelNode(bool enable, pipelineEnum::procPipelineId::type pId) : sNode(bufferEnum::procStaticModelId::count), dNode(bufferEnum::procDynamicModelId::count) {
             sNode[bufferEnum::procStaticModelId::temple_m].create(fileInfo::model::temple, fileInfo::image::temple, /*fileInfo::image::temple,*/ bufferEnum::procSamplerId::staticModel_sn, glm::dvec3(0, 32, 0));
 
             dNode[bufferEnum::procDynamicModelId::droid_m].create(fileInfo::model::droid, { fileInfo::image::droidBodyC,fileInfo::image::droidHeadC,fileInfo::image::droidMiscC }, /*{ fileInfo::image::droidBodyN,fileInfo::image::droidHeadN,fileInfo::image::droidMiscN },*/ bufferEnum::procSamplerId::dynamicModel_sl, glm::dvec3(0, 32, 0));
@@ -317,7 +318,8 @@ namespace bufferList {
                 modelVertex::dIndexs[i].resize(dNode[i].node.size());
             }
 
-            pipeId = pId;
+            isEnable = enable;
+            pipeId   = pId;
         }
 
         procModelNode() = delete;
@@ -353,17 +355,19 @@ namespace bufferList {
         std::vector<std::vector<bufferStruct::shadowBufferNode>> dShadowNode{}; //动态模型阴影
 
         //辅助shadowMvp计算
-        glm::mat4 shadowProj;
-        glm::mat4 shadowVP;
+        glm::mat4 shadowProj{};
+        glm::mat4 shadowVP{};
 
         //程序化索引
+        bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
         bufferEnum::procSamplerId::type samplerId;
 
 
 
-        procShadowNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) : sShadowNode(bufferEnum::procStaticModelId::count), dShadowNode(bufferEnum::procDynamicModelId::count) {
-            pipeId = pId;
+        procShadowNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) : sShadowNode(bufferEnum::procStaticModelId::count), dShadowNode(bufferEnum::procDynamicModelId::count) {
+            isEnable  = enable;
+            pipeId    = pId;
             samplerId = sId;
         }
 

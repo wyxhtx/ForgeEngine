@@ -504,16 +504,18 @@ namespace bufferStruct {
         VkDescriptorSet descriptorSet;
 
         //程序化索引
+        bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;  //管线索引
         bufferEnum::procSamplerId::type samplerId;  //采样索引
 
 
 
-        terrainBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+        terrainBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
             textureFile = fileInfo::image::cube;
             arrayLayer = textureInfo::arrayLayer;
 
-            pipeId = pId;
+            isEnable  = enable;
+            pipeId    = pId;
             samplerId = sId;
         }
 
@@ -680,12 +682,14 @@ namespace bufferStruct {
         VkDescriptorSet descriptorSet;
 
         //程序化索引
+        bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
 
 
 
-        skyboxBufferNode(pipelineEnum::procPipelineId::type pId) {
-            pipeId = pId;
+        skyboxBufferNode(bool enable, pipelineEnum::procPipelineId::type pId) {
+            isEnable = enable;
+            pipeId   = pId;
         }
 
         skyboxBufferNode() = delete;
@@ -712,12 +716,14 @@ namespace bufferStruct {
         VkDescriptorSet descriptorSet;
 
         //程序化索引
+        bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
 
 
 
-        mineBufferNode(pipelineEnum::procPipelineId::type pId) {
-            pipeId = pId;
+        mineBufferNode(bool enable, pipelineEnum::procPipelineId::type pId) {
+            isEnable = enable;
+            pipeId   = pId;
         }
 
         mineBufferNode() = delete;
@@ -746,13 +752,15 @@ namespace bufferStruct {
         VkDescriptorSet descriptorSet;
 
         //程序化索引
+        bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
         bufferEnum::procSamplerId::type samplerId;
 
 
 
-        uiTextBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
-            pipeId = pId;
+        uiTextBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            isEnable  = enable;
+            pipeId    = pId;
             samplerId = sId;
         }
 
@@ -858,13 +866,15 @@ namespace bufferStruct {
         VkDescriptorSet descriptorSet;
 
         //程序化索引
+        bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
         bufferEnum::procSamplerId::type samplerId;
 
 
 
-        osMirrorBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
-            pipeId = pId;
+        osMirrorBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            isEnable  = enable;
+            pipeId    = pId;
             samplerId = sId;
         }
 
@@ -884,13 +894,15 @@ namespace bufferStruct {
         VkDescriptorSet descriptorSet;
 
         //程序化索引
+        bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
         bufferEnum::procSamplerId::type samplerId;
 
 
 
-        osScenceBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
-            pipeId = pId;
+        osScenceBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            isEnable  = enable;
+            pipeId    = pId;
             samplerId = sId;
         }
 
@@ -912,13 +924,15 @@ namespace bufferStruct {
         VkDescriptorSet descriptorSet;
 
         //程序化索引
+        bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
         bufferEnum::procSamplerId::type samplerId;
 
 
 
-        dsScenceBufferNode(pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
-            pipeId = pId;
+        dsScenceBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            isEnable  = enable;
+            pipeId    = pId;
             samplerId = sId;
         }
 

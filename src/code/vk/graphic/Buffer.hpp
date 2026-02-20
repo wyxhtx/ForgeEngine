@@ -37,16 +37,16 @@ public:
 
 		command.clear(Device.device);
 
-		terrain	  .clear(Device.device, Device.allocator);
-		procModel .clear(Device.device, Device.allocator);
-		skybox	  .clear(Device.device, Device.allocator);
-		mine	  .clear(Device.device, Device.allocator);
-		uiText	  .clear(Device.device, Device.allocator);
-		osMirror  .clear(Device.device, Device.allocator);
-		osScence  .clear(Device.device, Device.allocator);
-		dsScence  .clear(Device.device, Device.allocator);
-		procShadow.clear(Device.device, Device.allocator);
-
+		if (terrain.isEnable)	 { terrain	 .clear(Device.device, Device.allocator); }
+		if (procModel.isEnable)  { procModel .clear(Device.device, Device.allocator); }
+		if (skybox.isEnable)	 { skybox	 .clear(Device.device, Device.allocator); }
+		if (mine.isEnable)		 { mine		 .clear(Device.device, Device.allocator); }
+		if (uiText.isEnable)	 { uiText	 .clear(Device.device, Device.allocator); }
+		if (osMirror.isEnable)	 { osMirror	 .clear(Device.device, Device.allocator); }
+		if (osScence.isEnable)	 { osScence	 .clear(Device.device, Device.allocator); }
+		if (dsScence.isEnable)	 { dsScence	 .clear(Device.device, Device.allocator); }
+		if (procShadow.isEnable) { procShadow.clear(Device.device, Device.allocator); }
+		
 		if (debugInfo::LogSwitch) {
 			Log::print("Buffer已清除");
 		}
@@ -61,15 +61,15 @@ private:
 	bufferList::procDescriptorNode	procDescriptor{ Device.device };
 	bufferList::procSamplerNode		procSampler;
 
-	bufferStruct::terrainBufferNode  terrain	{ pipelineEnum::procPipelineId::terrain_p,  bufferEnum::procSamplerId::terrain_s };
-	bufferList::procModelNode		 procModel	{ pipelineEnum::procPipelineId::model_p		};
-	bufferStruct::skyboxBufferNode	 skybox		{ pipelineEnum::procPipelineId::skybox_p	};
-	bufferStruct::mineBufferNode	 mine		{ pipelineEnum::procPipelineId::mine_p		};
-	bufferStruct::uiTextBufferNode	 uiText		{ pipelineEnum::procPipelineId::uiText_p,   bufferEnum::procSamplerId::uiText_s };
-	bufferStruct::osMirrorBufferNode osMirror	{ pipelineEnum::procPipelineId::osMirror_p, bufferEnum::procSamplerId::offScreen_s };
-	bufferStruct::osScenceBufferNode osScence	{ pipelineEnum::procPipelineId::osScence_p, bufferEnum::procSamplerId::offScreen_s };
-	bufferStruct::dsScenceBufferNode dsScence	{ pipelineEnum::procPipelineId::dsScence_p, bufferEnum::procSamplerId::offScreen_s };
-	bufferList::procShadowNode		 procShadow { pipelineEnum::procPipelineId::shadow_p,	bufferEnum::procSamplerId::shadow_s };
+	bufferStruct::terrainBufferNode  terrain	{ true,	 pipelineEnum::procPipelineId::terrain_p,  bufferEnum::procSamplerId::terrain_s };
+	bufferList::procModelNode		 procModel	{ false, pipelineEnum::procPipelineId::model_p	   };
+	bufferStruct::skyboxBufferNode	 skybox		{ true,	 pipelineEnum::procPipelineId::skybox_p	   };
+	bufferStruct::mineBufferNode	 mine		{ true,  pipelineEnum::procPipelineId::mine_p	   };
+	bufferStruct::uiTextBufferNode	 uiText		{ true,  pipelineEnum::procPipelineId::uiText_p,   bufferEnum::procSamplerId::uiText_s };
+	bufferStruct::osMirrorBufferNode osMirror	{ false, pipelineEnum::procPipelineId::osMirror_p, bufferEnum::procSamplerId::offScreen_s };
+	bufferStruct::osScenceBufferNode osScence	{ false, pipelineEnum::procPipelineId::osScence_p, bufferEnum::procSamplerId::offScreen_s };
+	bufferStruct::dsScenceBufferNode dsScence	{ true,	 pipelineEnum::procPipelineId::dsScence_p, bufferEnum::procSamplerId::offScreen_s };
+	bufferList::procShadowNode		 procShadow { false, pipelineEnum::procPipelineId::shadow_p,   bufferEnum::procSamplerId::shadow_s };
 
 
 
@@ -92,133 +92,174 @@ private:
 
 	void createMeshBuffer() {
 		//terrain
-		for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
-			for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[thread][layer]);
-				createIndexBuffer(terrainVertex::indexs[layer],   terrain.index[thread][layer]);
+		if (terrain.isEnable) {
+			for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
+				for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
+					createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[thread][layer]);
+					createIndexBuffer(terrainVertex::indexs[layer], terrain.index[thread][layer]);
+				}
 			}
 		}
 
-		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			loadStaticModel(procModel.sNode[i].modelFile, modelVertex::sVertexs[i], modelVertex::sIndexs[i], shadowVertex::sVertexs[i]);
+		//model
+		if (procModel.isEnable) {
+			//model-sNode
+			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+				loadStaticModel(procModel.sNode[i].modelFile, modelVertex::sVertexs[i], modelVertex::sIndexs[i], shadowVertex::sVertexs[i]);
 
-			createVertexBuffer(modelVertex::sVertexs[i], procModel.sNode[i].vertex);
-			createIndexBuffer(modelVertex::sIndexs[i],   procModel.sNode[i].index);
-		}
+				createVertexBuffer(modelVertex::sVertexs[i], procModel.sNode[i].vertex);
+				createIndexBuffer(modelVertex::sIndexs[i], procModel.sNode[i].index);
+			}
 
-		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-			shadowVertex::dVertexs[i].resize(modelVertex::dIndexs[i].size());
-			procShadow.dShadowNode[i].resize(modelVertex::dIndexs[i].size());
+			//model-dNode
+			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+				shadowVertex::dVertexs[i].resize(modelVertex::dIndexs[i].size());
+				procShadow.dShadowNode[i].resize(modelVertex::dIndexs[i].size());
 
-			loadDynamicModel(procModel.dNode[i].modelFile, modelVertex::dVertexs[i], modelVertex::dIndexs[i], shadowVertex::dVertexs[i]);
+				loadDynamicModel(procModel.dNode[i].modelFile, modelVertex::dVertexs[i], modelVertex::dIndexs[i], shadowVertex::dVertexs[i]);
 
-			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-				createVertexBuffer(modelVertex::dVertexs[i][j], procModel.dNode[i].node[j].vertex);
-				createIndexBuffer(modelVertex::dIndexs[i][j],   procModel.dNode[i].node[j].index);
+				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+					createVertexBuffer(modelVertex::dVertexs[i][j], procModel.dNode[i].node[j].vertex);
+					createIndexBuffer(modelVertex::dIndexs[i][j], procModel.dNode[i].node[j].index);
+				}
 			}
 		}
 
 		//skybox
-		createVertexBuffer(skyboxVertex::vertexs, skybox.vertex);
-		createIndexBuffer(skyboxVertex::indexs,   skybox.index);
+		if (skybox.isEnable) {
+			createVertexBuffer(skyboxVertex::vertexs, skybox.vertex);
+			createIndexBuffer(skyboxVertex::indexs,   skybox.index);
+		}
 
 		//mine
-		createVertexBuffer(mineVertex::vertexs, mine.vertex);
-		createIndexBuffer(mineVertex::indexs,   mine.index);
+		if (mine.isEnable) {
+			createVertexBuffer(mineVertex::vertexs, mine.vertex);
+			createIndexBuffer(mineVertex::indexs, mine.index);
+		}
 
 		//uiText
-		createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex);
+		if (uiText.isEnable) {
+			createBuffer(2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uiText.vertex);
+		}
 
 		//osMirror
-		createVertexBuffer(osMirrorVertex::vertexs, osMirror.vertex);
-		createIndexBuffer(osMirrorVertex::indexs,   osMirror.index);
-
-		//shadow-terrain
-		for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-			shadowVertex::loadTerrainVertexs(layer);
-			createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
+		if (osMirror.isEnable) {
+			createVertexBuffer(osMirrorVertex::vertexs, osMirror.vertex);
+			createIndexBuffer(osMirrorVertex::indexs,	osMirror.index);
 		}
 
-		//shadow-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			createVertexBuffer(shadowVertex::sVertexs[i], procShadow.sShadowNode[i].vertex);
-		}
+		//shadow
+		if (procShadow.isEnable) {
+			//shadow-terrain
+			for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
+				shadowVertex::loadTerrainVertexs(layer);
+				createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
+			}
 
-		//shadow-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-			for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
-				createVertexBuffer(shadowVertex::dVertexs[i][j], procShadow.dShadowNode[i][j].vertex);
+			//shadow-sNode
+			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+				createVertexBuffer(shadowVertex::sVertexs[i], procShadow.sShadowNode[i].vertex);
+			}
+
+			//shadow-dNode
+			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+				for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
+					createVertexBuffer(shadowVertex::dVertexs[i][j], procShadow.dShadowNode[i][j].vertex);
+				}
 			}
 		}
 	}
 
 	void createUniformBuffer() {
 		//terrain
-		createBuffer(sizeof(terrain.ubo), terrain.uniform);
-
-		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			createBuffer(sizeof(procModel.sNode[i].ubo), procModel.sNode[i].uniform);
+		if (terrain.isEnable) {
+			createBuffer(sizeof(terrain.ubo), terrain.uniform);
 		}
 
-		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-				createBuffer(sizeof(procModel.dNode[i].node[j].ubo), procModel.dNode[i].node[j].uniform);
+		//model
+		if (procModel.isEnable) {
+			//model-sNode
+			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+				createBuffer(sizeof(procModel.sNode[i].ubo), procModel.sNode[i].uniform);
+			}
+
+			//model-dNode
+			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+					createBuffer(sizeof(procModel.dNode[i].node[j].ubo), procModel.dNode[i].node[j].uniform);
+				}
 			}
 		}
 
 		//skybox
-		createBuffer(sizeof(skybox.ubo),	  skybox.uniform);
-		createBuffer(sizeof(skybox.lightUbo), skybox.lightUniform);
-
-		//mine
-		createBuffer(sizeof(mine.ubo), mine.uniform);
-
-		//osMirror
-		createBuffer(sizeof(osMirror.ubo),		osMirror.uniform);
-		createBuffer(sizeof(osMirror.lightUbo), osMirror.lightUniform);
-
-		//dsScence
-		createBuffer(sizeof(dsScence.lightUbo),  dsScence.lightUniform);
-		createBuffer(sizeof(dsScence.shadowUbo), dsScence.shadowUniform);
-
-		//shadow
-		createBuffer(sizeof(procShadow.tShadowNode.shadowMvpUbo), procShadow.tShadowNode.shadowMvpUniform);
-
-		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			createBuffer(sizeof(procShadow.sShadowNode[i].shadowMvpUbo), procShadow.sShadowNode[i].shadowMvpUniform);
+		if (skybox.isEnable) {
+			createBuffer(sizeof(skybox.ubo), skybox.uniform);
+			createBuffer(sizeof(skybox.lightUbo), skybox.lightUniform);
 		}
 
-		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-			for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
-				createBuffer(sizeof(procShadow.dShadowNode[i][j].shadowMvpUbo), procShadow.dShadowNode[i][j].shadowMvpUniform);
+		//mine
+		if (mine.isEnable) {
+			createBuffer(sizeof(mine.ubo), mine.uniform);
+		}
+
+		//osMirror
+		if (osMirror.isEnable) {
+			createBuffer(sizeof(osMirror.ubo),		osMirror.uniform);
+			createBuffer(sizeof(osMirror.lightUbo), osMirror.lightUniform);
+		}
+
+		//dsScence
+		if (dsScence.isEnable) {
+			createBuffer(sizeof(dsScence.lightUbo), dsScence.lightUniform);
+			createBuffer(sizeof(dsScence.shadowUbo), dsScence.shadowUniform);
+		}
+
+		//shadow
+		if (procShadow.isEnable) {
+			//shadow-terrain
+			createBuffer(sizeof(procShadow.tShadowNode.shadowMvpUbo), procShadow.tShadowNode.shadowMvpUniform);
+
+			//shadow-sNode
+			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+				createBuffer(sizeof(procShadow.sShadowNode[i].shadowMvpUbo), procShadow.sShadowNode[i].shadowMvpUniform);
+			}
+
+			//shadow-dNode
+			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+				for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
+					createBuffer(sizeof(procShadow.dShadowNode[i][j].shadowMvpUbo), procShadow.dShadowNode[i][j].shadowMvpUniform);
+				}
 			}
 		}
 	}
 
 	void createTexture() {
 		//terrain
-		createTextureKtxArrayNode(terrain.textureFile, terrain.texture, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8B8A8_UNORM, 4);
-
-		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			createTextureKtxNode(procModel.sNode[i].textureFile, procModel.sNode[i].texture, procModel.sNode[i].mipLevel);
-			//createTextureKtxNode(procModel.sNode[i].normalFile,  procModel.sNode[i].normal,  procModel.sNode[i].mipLevel);
+		if (terrain.isEnable) {
+			createTextureKtxArrayNode(terrain.textureFile, terrain.texture, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8B8A8_UNORM, 4);
 		}
 
-		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-				createTextureKtxNode(procModel.dNode[i].node[j].textureFile, procModel.dNode[i].node[j].texture, procModel.dNode[i].mipLevel);
-				//createTextureKtxNode(procModel.dNode[i].node[j].normalFile,  procModel.dNode[i].node[j].normal,  procModel.dNode[i].mipLevel);
+		//model
+		if (procModel.isEnable) {
+			//model-sNode
+			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+				createTextureKtxNode(procModel.sNode[i].textureFile, procModel.sNode[i].texture, procModel.sNode[i].mipLevel);
+				//createTextureKtxNode(procModel.sNode[i].normalFile,  procModel.sNode[i].normal,  procModel.sNode[i].mipLevel);
+			}
+
+			//model-dNode
+			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+					createTextureKtxNode(procModel.dNode[i].node[j].textureFile, procModel.dNode[i].node[j].texture, procModel.dNode[i].mipLevel);
+					//createTextureKtxNode(procModel.dNode[i].node[j].normalFile,  procModel.dNode[i].node[j].normal,  procModel.dNode[i].mipLevel);
+				}
 			}
 		}
 
 		//uiText
-		createTextNode(uiText.texture);
+		if (uiText.isEnable) {
+			createTextNode(uiText.texture);
+		}
 	}
 
 	void createDescriptorSet() {
@@ -227,60 +268,68 @@ private:
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceForward_d);
 
 			//skybox
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &skybox.descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 2> tempWrite{
-					procDescriptor.getWrite(0, skybox.descriptorSet, skybox.uniform.buffer, sizeof(skybox.ubo)),
-					procDescriptor.getWrite(1, skybox.descriptorSet, skybox.lightUniform.buffer, sizeof(skybox.lightUbo))
-				};
+			if (skybox.isEnable) {
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &skybox.descriptorSet) == VK_SUCCESS) {
+					std::array<VkWriteDescriptorSet, 2> tempWrite{
+						procDescriptor.getWrite(0, skybox.descriptorSet, skybox.uniform.buffer, sizeof(skybox.ubo)),
+						procDescriptor.getWrite(1, skybox.descriptorSet, skybox.lightUniform.buffer, sizeof(skybox.lightUbo))
+					};
 
-				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-			}
-			else {
-				Log::printError(__FILE__, __LINE__, "skybox分配描述符集失败");
-				throw;
+					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "skybox分配描述符集失败");
+					throw;
+				}
 			}
 
 			//mine
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &mine.descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 1> tempWrite{
-					procDescriptor.getWrite(0, mine.descriptorSet, mine.uniform.buffer, sizeof(mine.ubo)),
-				};
+			if (mine.isEnable) {
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &mine.descriptorSet) == VK_SUCCESS) {
+					std::array<VkWriteDescriptorSet, 1> tempWrite{
+						procDescriptor.getWrite(0, mine.descriptorSet, mine.uniform.buffer, sizeof(mine.ubo)),
+					};
 
-				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-			}
-			else {
-				Log::printError(__FILE__, __LINE__, "mine分配描述符集失败");
-				throw;
+					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "mine分配描述符集失败");
+					throw;
+				}
 			}
 
 			//osMirror
-			bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror_r);
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osMirror.descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 3> tempWrite{
-					procDescriptor.getWrite(0, osMirror.descriptorSet, osMirror.uniform.buffer, sizeof(osMirror.ubo)),
-					procDescriptor.getWrite(1, osMirror.descriptorSet, osMirror.lightUniform.buffer, sizeof(osMirror.lightUbo)),
-					procDescriptor.getWrite(2, osMirror.descriptorSet, procSampler.node[osMirror.samplerId], osMirrorFrameNode.osView.view)
-				};
+			if (osMirror.isEnable) {
+				bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror_r);
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osMirror.descriptorSet) == VK_SUCCESS) {
+					std::array<VkWriteDescriptorSet, 3> tempWrite{
+						procDescriptor.getWrite(0, osMirror.descriptorSet, osMirror.uniform.buffer, sizeof(osMirror.ubo)),
+						procDescriptor.getWrite(1, osMirror.descriptorSet, osMirror.lightUniform.buffer, sizeof(osMirror.lightUbo)),
+						procDescriptor.getWrite(2, osMirror.descriptorSet, procSampler.node[osMirror.samplerId], osMirrorFrameNode.osView.view)
+					};
 
-				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-			}
-			else {
-				Log::printError(__FILE__, __LINE__, "osMirror分配描述符集失败");
-				throw;
+					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "osMirror分配描述符集失败");
+					throw;
+				}
 			}
 
 			//osScence
-			bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence_r);
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osScence.descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 1> tempWrite{
-					procDescriptor.getWrite(2, osScence.descriptorSet, procSampler.node[osScence.samplerId], osScenceFrameNode.osView.view)
-				};
+			if (osScence.isEnable) {
+				bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence_r);
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &osScence.descriptorSet) == VK_SUCCESS) {
+					std::array<VkWriteDescriptorSet, 1> tempWrite{
+						procDescriptor.getWrite(2, osScence.descriptorSet, procSampler.node[osScence.samplerId], osScenceFrameNode.osView.view)
+					};
 
-				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-			}
-			else {
-				Log::printError(__FILE__, __LINE__, "osScence分配描述符集失败");
-				throw;
+					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "osScence分配描述符集失败");
+					throw;
+				}
 			}
 		}
 
@@ -289,49 +338,54 @@ private:
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceDeferred_d);
 
 			//terrain
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &terrain.descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 2> tempWrite{
-					procDescriptor.getWrite(0, terrain.descriptorSet, terrain.uniform.buffer, sizeof(terrain.ubo)),
-					procDescriptor.getWrite(1, terrain.descriptorSet, procSampler.node[terrain.samplerId], terrain.texture.view),
-				};
-
-				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-			}
-			else {
-				Log::printError(__FILE__, __LINE__, "terrain分配描述符集失败");
-				throw;
-			}
-
-			//model-sNode
-			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
+			if (terrain.isEnable) {
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &terrain.descriptorSet) == VK_SUCCESS) {
 					std::array<VkWriteDescriptorSet, 2> tempWrite{
-						procDescriptor.getWrite(0, procModel.sNode[i].descriptorSet, procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)),
-						procDescriptor.getWrite(1, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view)
+						procDescriptor.getWrite(0, terrain.descriptorSet, terrain.uniform.buffer, sizeof(terrain.ubo)),
+						procDescriptor.getWrite(1, terrain.descriptorSet, procSampler.node[terrain.samplerId], terrain.texture.view),
 					};
 
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 				}
 				else {
-					Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\t分配描述符集失败");
+					Log::printError(__FILE__, __LINE__, "terrain分配描述符集失败");
 					throw;
 				}
 			}
 
-			//model-dNode
-			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-					if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
+			//model
+			if (procModel.isEnable) {
+				//model-sNode
+				for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+					if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
 						std::array<VkWriteDescriptorSet, 2> tempWrite{
-							procDescriptor.getWrite(0, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)),
-							procDescriptor.getWrite(1, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view)
+							procDescriptor.getWrite(0, procModel.sNode[i].descriptorSet, procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)),
+							procDescriptor.getWrite(1, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view)
 						};
 
 						vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 					}
 					else {
-						Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\t分配描述符集失败");
+						Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\t分配描述符集失败");
 						throw;
+					}
+				}
+
+				//model-dNode
+				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+					for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+						if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
+							std::array<VkWriteDescriptorSet, 2> tempWrite{
+								procDescriptor.getWrite(0, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)),
+								procDescriptor.getWrite(1, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view)
+							};
+
+							vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+						}
+						else {
+							Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\t分配描述符集失败");
+							throw;
+						}
 					}
 				}
 			}
@@ -342,21 +396,23 @@ private:
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::uiText_d);
 
 			//uiText
-			if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &uiText.descriptorSet) == VK_SUCCESS) {
-				std::array<VkWriteDescriptorSet, 1> tempWrite{
-					procDescriptor.getWrite(0, uiText.descriptorSet, procSampler.node[uiText.samplerId], uiText.texture.view)
-				};
+			if (uiText.isEnable) {
+				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &uiText.descriptorSet) == VK_SUCCESS) {
+					std::array<VkWriteDescriptorSet, 1> tempWrite{
+						procDescriptor.getWrite(0, uiText.descriptorSet, procSampler.node[uiText.samplerId], uiText.texture.view)
+					};
 
-				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-			}
-			else {
-				Log::printError(__FILE__, __LINE__, "uiText分配描述符集失败");
-				throw;
+					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
+				}
+				else {
+					Log::printError(__FILE__, __LINE__, "uiText分配描述符集失败");
+					throw;
+				}
 			}
 		}
 
 		/*dsScence_d*/
-		{
+		if (dsScence.isEnable) {
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence_d);
 
 			//dsScence
@@ -381,7 +437,7 @@ private:
 		}
 
 		/*shadow_d*/
-		{
+		if (procShadow.isEnable) {
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::shadow_d);
 
 			//shadow-terrain
@@ -443,42 +499,57 @@ private:
 
 
 		//terrain
-		terrain.ubo.model	= glm::translate(glm::mat4(1), glm::vec3(0));
-		terrain.ubo.modelTI	= glm::transpose(glm::inverse(terrain.ubo.model));
-		terrain.ubo.proj	= perspProj;
-
-		//model-sNode
-		for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-			procModel.sNode[i].ubo.proj = perspProj;
+		if (terrain.isEnable) {
+			terrain.ubo.model	= glm::translate(glm::mat4(1), glm::vec3(0));
+			terrain.ubo.modelTI	= glm::transpose(glm::inverse(terrain.ubo.model));
+			terrain.ubo.proj	= perspProj;
 		}
 
-		//model-dNode
-		for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-			for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-				procModel.dNode[i].node[j].ubo.proj = perspProj;
+		//model
+		if (procModel.isEnable) {
+			//model-sNode
+			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+				procModel.sNode[i].ubo.proj = perspProj;
+			}
+
+			//model-dNode
+			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
+					procModel.dNode[i].node[j].ubo.proj = perspProj;
+				}
 			}
 		}
 
 		//skybox
-		skybox.ubo.proj = perspProj;
-			
+		if (skybox.isEnable) {
+			skybox.ubo.proj = perspProj;
+		}
+
 		//mine
-		mine.ubo.proj = perspProj;
+		if (mine.isEnable) {
+			mine.ubo.proj = perspProj;
+		}
 
 		//osMirror
-		osMirror.ubo.proj = perspProj;
-		osMirror.lightUbo.gLightColor	= lightInfo::sunLightColor;
-		osMirror.lightUbo.diffuseScale  = lightInfo::diffuseScale;
-		osMirror.lightUbo.gLightDir		= lightInfo::sunLightDir;
-		osMirror.lightUbo.specularScale = lightInfo::specularScale;
+		if (osMirror.isEnable) {
+			osMirror.ubo.proj = perspProj;
+			osMirror.lightUbo.gLightColor	= lightInfo::sunLightColor;
+			osMirror.lightUbo.diffuseScale  = lightInfo::diffuseScale;
+			osMirror.lightUbo.gLightDir		= lightInfo::sunLightDir;
+			osMirror.lightUbo.specularScale = lightInfo::specularScale;
+		}
 
 		//dsScence
-		dsScence.lightUbo.ambientScale	= lightInfo::ambientScale;
-		dsScence.lightUbo.diffuseScale	= lightInfo::diffuseScale;
-		dsScence.lightUbo.specularScale = lightInfo::specularScale;
+		if (dsScence.isEnable) {
+			dsScence.lightUbo.ambientScale	= lightInfo::ambientScale;
+			dsScence.lightUbo.diffuseScale	= lightInfo::diffuseScale;
+			dsScence.lightUbo.specularScale = lightInfo::specularScale;
+		}
 
 		//shadow
-		procShadow.shadowProj = orthoProj;
+		if (procShadow.isEnable) {
+			procShadow.shadowProj = orthoProj;
+		}
 	}
 
 
@@ -1209,6 +1280,8 @@ public:
 		float width = 5.0;
 		float height = 5.0;
 
+		if (!uiText.isEnable) { return; }
+
 		uiText.beginTextUpdate(Device.allocator);
 
 		//世界坐标
@@ -1249,36 +1322,34 @@ public:
 			{
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::shadow_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-				//shadow-terrain
-				for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-					if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.tShadowNode.descriptorSet, procShadow.tShadowNode.vertex[layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
+				if (procShadow.isEnable) {
+					//terrain
+					if (terrain.isEnable) {
+						//shadow-terrain
+						for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
+							if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+								command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.tShadowNode.descriptorSet, procShadow.tShadowNode.vertex[layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
+							}
+						}
 					}
-				}
 
-				//shadow-sNode
-				for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-					if (glm::distance(procModel.sNode[nodeId].modelWorldPos, procModel.sNode[nodeId].currentWorldPos) < plateInfo::perspSightRange) {
-						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.sShadowNode[nodeId].descriptorSet, procShadow.sShadowNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
-
-						procModel.sNode[nodeId].isVisible = true;
-					}
-					else {
-						procModel.sNode[nodeId].isVisible = false;
-					}
-				}
-
-				//shadow-dNode
-				for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
-					if (glm::distance(procModel.dNode[nodeId].modelWorldPos, procModel.dNode[nodeId].currentWorldPos) < plateInfo::perspSightRange) {
-						for (int subNode = 0; subNode < procShadow.dShadowNode[nodeId].size(); subNode++) {
-							command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.dShadowNode[nodeId][subNode].descriptorSet, procShadow.dShadowNode[nodeId][subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+					//model
+					if (procModel.isEnable) {
+						//shadow-sNode
+						for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+							if (procModel.sNode[nodeId].isVisible) {
+								command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.sShadowNode[nodeId].descriptorSet, procShadow.sShadowNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+							}
 						}
 
-						procModel.dNode[nodeId].isVisible = true;
-					}
-					else {
-						procModel.dNode[nodeId].isVisible = false;
+						//shadow-dNode
+						for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
+							if (procModel.dNode[nodeId].isVisible) {
+								for (int subNode = 0; subNode < procShadow.dShadowNode[nodeId].size(); subNode++) {
+									command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.dShadowNode[nodeId][subNode].descriptorSet, procShadow.dShadowNode[nodeId][subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+								}
+							}
+						}
 					}
 				}
 
@@ -1290,55 +1361,68 @@ public:
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::dsScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 				//terrain
-				for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-					if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(terrain.pipeId), procPipeline.getPipeLayout(terrain.pipeId), terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
+				if (terrain.isEnable) {
+					for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
+						if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+							command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(terrain.pipeId), procPipeline.getPipeLayout(terrain.pipeId), terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
+						}
 					}
 				}
 
-				//model-sNode
-				for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
-					if (procModel.sNode[nodeId].isVisible) {
-						command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+				//model
+				if (procModel.isEnable) {
+					//model-sNode
+					for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+						if (procModel.sNode[nodeId].isVisible) {
+							command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.sNode[nodeId].descriptorSet, procModel.sNode[nodeId].vertex.buffer, procModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+						}
 					}
-				}
-				
-				//model-dNode
-				for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
-					if (procModel.dNode[nodeId].isVisible) {
-						for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
-							command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+
+					//model-dNode
+					for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
+						if (procModel.dNode[nodeId].isVisible) {
+							for (int subNode = 0; subNode < procModel.dNode[nodeId].node.size(); subNode++) {
+								command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procModel.pipeId), procPipeline.getPipeLayout(procModel.pipeId), procModel.dNode[nodeId].node[subNode].descriptorSet, procModel.dNode[nodeId].node[subNode].vertex.buffer, procModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+							}
 						}
 					}
 				}
 
 				//skybox
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
+				if (skybox.isEnable) {
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(skybox.pipeId), procPipeline.getPipeLayout(skybox.pipeId), skybox.descriptorSet, skybox.vertex.buffer, skybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
+				}
 
 				//mine
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(mine.pipeId), procPipeline.getPipeLayout(mine.pipeId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
+				if (mine.isEnable) {
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(mine.pipeId), procPipeline.getPipeLayout(mine.pipeId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
+				}
 
 				//uiText
-				command.createUITextCommandBuffer(threadId, frameId, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
+				if (uiText.isEnable) {
+					command.createUITextCommandBuffer(threadId, frameId, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, uiText.numLetters);
+				}
 
 				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
 
 			/*osMirror_r*/
-			{
-				//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osMirror].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-				//
-				//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+			if (osMirror.isEnable) {
+				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osMirror_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+				
+				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
 
 			/*osScence_r*/
-			{
-				//vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-				//
-				////osMirror
-				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
-				//
-				//vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
+			if (osScence.isEnable) {
+				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::osScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+				//osMirror
+				if (osMirror.isEnable) {
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osMirror.pipeId), procPipeline.getPipeLayout(osMirror.pipeId), osMirror.descriptorSet, osMirror.vertex.buffer, osMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
+				}
+
+				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
 
 			/*scScence_r*/
@@ -1347,11 +1431,15 @@ public:
 				command.createPipelineBarrier(threadId, frameId);	//创建延迟着色管线屏障，用于确保延迟着色管线最后执行
 				vkCmdBeginRenderPass(command.commandBuffer[threadId][frameId], &procRenderPass.node[bufferEnum::procRenderId::scScence_r].renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-				//dsScence
-				command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
-
 				//osScence
-				//command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, InitSwapchain.scExtent);
+				if (osScence.isEnable) {
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(osScence.pipeId), procPipeline.getPipeLayout(osScence.pipeId), osScence.descriptorSet, InitSwapchain.scExtent);
+				}
+
+				//dsScence
+				if (dsScence.isEnable) {
+					command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, InitSwapchain.scExtent);
+				}
 
 				vkCmdEndRenderPass(command.commandBuffer[threadId][frameId]);
 			}
@@ -1370,6 +1458,8 @@ public:
 	void recreateBuffer(int threadId, bool isLayer) {
 		command.free(Device.device, threadId);
 
+		if (!terrain.isEnable) { return; }
+
 		if (isLayer) {
 			//地形管线全部重建
 			int layer = forgeEnum::terrainLayer::Layer_0;		//先重建当前线程网格缓冲区
@@ -1381,10 +1471,12 @@ public:
 				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
 
 				//重建全部阴影 10ms
-				for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-					vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
-					shadowVertex::loadTerrainVertexs(layer);
-					createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
+				if (procShadow.isEnable) {
+					for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
+						vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
+						shadowVertex::loadTerrainVertexs(layer);
+						createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
+					}
 				}
 			}
 
@@ -1405,10 +1497,12 @@ public:
 				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
 				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
 
-				//重建Lod_0阴影
-				vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
-				shadowVertex::loadTerrainVertexs(layer);
-				createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
+				if (procShadow.isEnable) {
+					//重建Lod_0阴影
+					vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
+					shadowVertex::loadTerrainVertexs(layer);
+					createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
+				}
 			}
 		}
 	}
@@ -1428,58 +1522,67 @@ public:
 
 
 		//terrain
-		{
+		if (terrain.isEnable) {
 			terrain.ubo.view = camera.view;
 
 			createMapMemory(terrain.uniform.bufferMemory, &terrain.ubo, sizeof(terrain.ubo));
 		}
 
-		//model-sNode
-		{
+		//model
+		if (procModel.isEnable) {
+			//model-sNode
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				if (procModel.sNode[i].isVisible) {
-					procModel.sNode[i].ubo.model	= glm::translate(glm::mat4(1), glm::vec3(procModel.sNode[i].modelWorldPos - playerInfo::logicOriginPos));	//位移
-					procModel.sNode[i].ubo.model	*= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
+				procModel.sNode[i].currentWorldPos = camera.pos;
+
+				if (glm::distance(procModel.sNode[i].modelWorldPos, procModel.sNode[i].currentWorldPos) < plateInfo::perspSightRange) {
+					procModel.sNode[i].ubo.model = glm::translate(glm::mat4(1), glm::vec3(procModel.sNode[i].modelWorldPos - playerInfo::logicOriginPos));	//位移
+					procModel.sNode[i].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
 					//procModel.sNode[i].ubo.model	*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);							//旋转
-					procModel.sNode[i].ubo.modelTI	= glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
-					procModel.sNode[i].ubo.view		= camera.view;
+					procModel.sNode[i].ubo.modelTI = glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
+					procModel.sNode[i].ubo.view = camera.view;
 
 					createMapMemory(procModel.sNode[i].uniform.bufferMemory, &procModel.sNode[i].ubo, sizeof(procModel.sNode[i].ubo));
+
+					procModel.sNode[i].isVisible = true;
 				}
-
-				procModel.sNode[i].currentWorldPos = camera.pos;
+				else {
+					procModel.sNode[i].isVisible = false;
+				}
 			}
-		}
 
-		//model-dNode
-		{
+			//model-dNode
 			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-				if (procModel.dNode[i].isVisible) {
+				procModel.dNode[i].currentWorldPos = camera.pos;
+
+				if (glm::distance(procModel.dNode[i].modelWorldPos, procModel.dNode[i].currentWorldPos) < plateInfo::perspSightRange) {
 					for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-						procModel.dNode[i].node[j].ubo.model	= glm::translate(glm::mat4(1), glm::vec3(procModel.dNode[i].modelWorldPos - playerInfo::logicOriginPos));	//位移
-						procModel.dNode[i].node[j].ubo.model	*= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
-						procModel.dNode[i].node[j].ubo.modelTI	= glm::transpose(glm::inverse(procModel.dNode[i].node[j].ubo.model));
-						procModel.dNode[i].node[j].ubo.view		= camera.view;
+						procModel.dNode[i].node[j].ubo.model = glm::translate(glm::mat4(1), glm::vec3(procModel.dNode[i].modelWorldPos - playerInfo::logicOriginPos));	//位移
+						procModel.dNode[i].node[j].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
+						procModel.dNode[i].node[j].ubo.modelTI = glm::transpose(glm::inverse(procModel.dNode[i].node[j].ubo.model));
+						procModel.dNode[i].node[j].ubo.view = camera.view;
 
 						createMapMemory(procModel.dNode[i].node[j].uniform.bufferMemory, &procModel.dNode[i].node[j].ubo, sizeof(procModel.dNode[i].node[j].ubo));
 					}
-				}
 
-				procModel.dNode[i].currentWorldPos = camera.pos;
+					procModel.dNode[i].isVisible = true;
+				}
+				else {
+					procModel.dNode[i].isVisible = false;
+				}
 			}
 		}
 
 		//skybox
-		{
+		if (skybox.isEnable) {
 			skybox.ubo.view				= camera.view;
 			skybox.lightUbo.currentHour = currentHour;
 
-			createMapMemory(skybox.uniform.bufferMemory, &skybox.ubo, sizeof(skybox.ubo));
+			createMapMemory(skybox.uniform.bufferMemory,	  &skybox.ubo,		sizeof(skybox.ubo));
 			createMapMemory(skybox.lightUniform.bufferMemory, &skybox.lightUbo, sizeof(skybox.lightUbo));
 		}
 
 		//mine
-		{
+		if (mine.isEnable) {
 			mine.ubo.model = glm::translate(glm::mat4(1), box.minepos);
 			mine.ubo.model *= glm::scale(glm::mat4(1), glm::vec3(1) * box.isVisible);
 			mine.ubo.view  = camera.view;
@@ -1488,14 +1591,14 @@ public:
 		}
 
 		//showUIText
-		{
+		if (uiText.isEnable) {
 			showUIText.pos = glm::floor(camera.pos);
 			showUIText.chunkPos = glm::floor(camera.pos / (double)plateInfo::chunkLength);
 			showUIText.minepos = box.minepos;
 		}
 
 		//osMirror
-		{
+		if (osMirror.isEnable) {
 			osMirror.ubo.model				= glm::translate(glm::mat4(1), glm::vec3(-16.0f, 24.0f, -16.0f));
 			osMirror.ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(32.0f));
 			osMirror.ubo.modelTI			= glm::transpose(glm::inverse(osMirror.ubo.model));
@@ -1514,37 +1617,43 @@ public:
 		}
 
 		//shadow
-		{
-			float	   hourRad  = (currentHour / 24.0f) * 2.0f * glm::pi<float>();															//0~2π
-			float	   radius   = 32.0f;																									//旋转半径
+		if (procShadow.isEnable) {
+			float	   hourRad = (currentHour / 24.0f) * 2.0f * glm::pi<float>();															//0~2π
+			float	   radius = 32.0f;																										//旋转半径
 			glm::vec3  lightPos = glm::vec3(radius * cos(hourRad), 64.0f, radius * sin(hourRad));											//光源绕Y轴旋转的坐标，无需减逻辑原点偏移
 			procShadow.shadowVP = procShadow.shadowProj * glm::lookAt(playerPos + lightPos/*摄像机坐标*/, playerPos/*被观测坐标*/, coordsInfo::worldUp);	//为实现阴影跟随玩家故加上玩家坐标
 
-			//shadow-terrain
-			procShadow.tShadowNode.shadowMvpUbo.mvp = procShadow.shadowVP * terrain.ubo.model;
-			createMapMemory(procShadow.tShadowNode.shadowMvpUniform.bufferMemory, &procShadow.tShadowNode.shadowMvpUbo, sizeof(procShadow.tShadowNode.shadowMvpUbo));
-
-			//shadow-sNode
-			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				if (procModel.sNode[i].isVisible) {
-					procShadow.sShadowNode[i].shadowMvpUbo.mvp = procShadow.shadowVP * procModel.sNode[i].ubo.model;
-					createMapMemory(procShadow.sShadowNode[i].shadowMvpUniform.bufferMemory, &procShadow.sShadowNode[i].shadowMvpUbo, sizeof(procShadow.sShadowNode[i].shadowMvpUbo));
-				}
+			//terrain
+			if (terrain.isEnable) {
+				//shadow-terrain
+				procShadow.tShadowNode.shadowMvpUbo.mvp = procShadow.shadowVP * terrain.ubo.model;
+				createMapMemory(procShadow.tShadowNode.shadowMvpUniform.bufferMemory, &procShadow.tShadowNode.shadowMvpUbo, sizeof(procShadow.tShadowNode.shadowMvpUbo));
 			}
 
-			//shadow-dNode
-			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-				if (procModel.dNode[i].isVisible) {
-					for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
-						procShadow.dShadowNode[i][j].shadowMvpUbo.mvp = procShadow.shadowVP * procModel.dNode[i].node[j].ubo.model;
-						createMapMemory(procShadow.dShadowNode[i][j].shadowMvpUniform.bufferMemory, &procShadow.dShadowNode[i][j].shadowMvpUbo, sizeof(procShadow.dShadowNode[i][j].shadowMvpUbo));
+			//model
+			if (procModel.isEnable) {
+				//shadow-sNode
+				for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+					if (procModel.sNode[i].isVisible) {
+						procShadow.sShadowNode[i].shadowMvpUbo.mvp = procShadow.shadowVP * procModel.sNode[i].ubo.model;
+						createMapMemory(procShadow.sShadowNode[i].shadowMvpUniform.bufferMemory, &procShadow.sShadowNode[i].shadowMvpUbo, sizeof(procShadow.sShadowNode[i].shadowMvpUbo));
+					}
+				}
+
+				//shadow-dNode
+				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+					if (procModel.dNode[i].isVisible) {
+						for (int j = 0; j < procShadow.dShadowNode[i].size(); j++) {
+							procShadow.dShadowNode[i][j].shadowMvpUbo.mvp = procShadow.shadowVP * procModel.dNode[i].node[j].ubo.model;
+							createMapMemory(procShadow.dShadowNode[i][j].shadowMvpUniform.bufferMemory, &procShadow.dShadowNode[i][j].shadowMvpUbo, sizeof(procShadow.dShadowNode[i][j].shadowMvpUbo));
+						}
 					}
 				}
 			}
 		}
 
 		//dsScence
-		{
+		if (dsScence.isEnable) {
 			dsScence.lightUbo.viewPos	  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };	//位置
 			dsScence.lightUbo.currentHour = currentHour;											//时间
 			
@@ -1589,7 +1698,7 @@ public:
 		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceForward_d);
 
 		//osMirror
-		{
+		if (osMirror.isEnable) {
 			bufferStruct::osFramebufferNode& osMirrorFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osMirror_r);
 			std::array<VkWriteDescriptorSet, 3> osMirrorWrite{
 				procDescriptor.getWrite(0, osMirror.descriptorSet, osMirror.uniform.buffer, sizeof(osMirror.ubo)),
@@ -1600,7 +1709,7 @@ public:
 		}
 
 		//osScence
-		{
+		if (osScence.isEnable) {
 			bufferStruct::osFramebufferNode& osScenceFrameNode = procRenderPass.getOsFramebufferNode(bufferEnum::procRenderId::osScence_r);
 			std::array<VkWriteDescriptorSet, 1> osScenceWrite{
 				procDescriptor.getWrite(2, osScence.descriptorSet, procSampler.node[osScence.samplerId], osScenceFrameNode.osView.view)
@@ -1611,7 +1720,7 @@ public:
 		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::dsScence_d);
 
 		//dsScence
-		{
+		if (dsScence.isEnable) {
 			bufferStruct::dsFramebufferNode& dsScenceFrameNode = procRenderPass.getDsFramebufferNode(bufferEnum::procRenderId::dsScence_r);
 			bufferStruct::shFramebufferNode& shadowFrameNode   = procRenderPass.getShFramebufferNode(bufferEnum::procRenderId::shadow_r);
 			std::array<VkWriteDescriptorSet, 6> tempWrite{
