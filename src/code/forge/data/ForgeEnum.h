@@ -12,6 +12,7 @@ namespace cubeEnum {
 			dirt,				//泥土
 			oakTrunk,			//橡树树干
 			oakLeaf,			//橡树树叶
+			stone,				//石头
 			stoneSquared,		//石料
 
 			count				//枚举长度
@@ -25,21 +26,37 @@ namespace cubeEnum {
 			dirt,				//泥土
 			grass,				//草方块
 			oakTrunk,			//橡树树干
-			stoneSquared		//石料
+			stone,				//石头
+			stoneSquared,		//石料
+
+			count				//枚举长度
 		};
 	}
 }
 
 //噪音枚举
 namespace noiseEnum {
-	//地形索引
-	namespace terrainId {
+	//噪音索引
+	namespace noiseId {
 		enum type {
-			plain,		//平原
+			biome,		//群系
+			terrain,	//地形
 
 			count
 		};
 	}
+
+	/*
+	//群系索引
+	namespace biomeId {
+		enum type {
+			plain,		//平原
+			mountain,	//山脉
+
+			count
+		};
+	}
+	*/
 
 	//树索引
 	namespace treeId {

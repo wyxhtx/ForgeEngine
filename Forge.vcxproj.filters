@@ -106,6 +106,7 @@
     <None Include="src\shader\shadow\shadowVert.spv" />
     <None Include="src\shader_build\shadow\shadow.frag" />
     <None Include="src\shader\shadow\shadowFrag.spv" />
+    <None Include="src\library\dll\FastNoise.dll" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">
@@ -157,9 +158,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\code\vk\Main.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\library\noise\FastNoiseLite.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\library\vma\vk_mem_alloc.h">

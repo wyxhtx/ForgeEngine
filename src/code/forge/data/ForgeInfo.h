@@ -26,6 +26,7 @@ namespace plateInfo {
 	const int cubeArrayLength = chunkLength + 2;										//方块数组边长
 	const int lengthIncrement = plateInfo::chunkLength + 1;								//区块边长增一，用于方块数组边缘检测
 	const int lengthDecrement = plateInfo::chunkLength - 1;								//区块边长减一，用于方块数组边缘检测
+	const int cubeArraySquare = (int)std::pow(plateInfo::cubeArrayLength, 2);			//方块数组边长平方值
 	const int cubeArrayVolume = (int)std::pow(plateInfo::cubeArrayLength, 3);			//方块数组边长立方值
 
 	const float perspSightRange = plateInfo::chunkLength * (plateInfo::sightRange + 2);	//方块透视投影视距半径，用于设置远裁剪面半径

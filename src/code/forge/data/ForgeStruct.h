@@ -100,57 +100,31 @@ namespace plateStruct {
 
 //噪音结构体
 namespace noiseStruct {
+    //噪音结点
     struct noiseNode {
-        FastNoiseLite node;
+        FastNoise::SmartNode<> noise{};
+        int seed = 0;
 
 
 
-        void create(int seed, FastNoiseLite::NoiseType noiseType, float frequency, FastNoiseLite::FractalType fractalType, int octaves, float lacunarity) {
-            node.SetSeed(seed);				        //种子
-            node.SetNoiseType(noiseType);	        //噪音类型
-            node.SetFrequency(frequency);	        //缩放
-            node.SetFractalType(fractalType);       //分形类型
-            node.SetFractalOctaves(octaves);        //分形次数
-            node.SetFractalLacunarity(lacunarity);  //分形特征尺度
+        void create(const char* noiseTree, int tempSeed) {
+            noise = FastNoise::NewFromEncodedNodeTree(noiseTree);
+            seed  = getSeed(tempSeed);
+        }
+
+    private:
+        int getSeed(int seed) {
+            static unsigned int salt = 0;
+
+            //转为unsigned进行位运算，避免溢出UB
+            unsigned int x = static_cast<unsigned int>(seed) + static_cast<unsigned int>(salt) * 0x9E3779B9U;
+            x = (x ^ (x >> 16)) * 0x85ebca6bU;
+            salt++;
+
+            //转回int
+            return static_cast<int>(x);
         }
     };
-
-
-
-    //噪音起伏undulation，噪音平移translation，噪音生成密度density，
-    //density，应大于等于translation - undulation，小于等于translation + undulation - 2
-    //density，从translation - undulation到translation + undulation - 2递减，中间值位于translation - 1
-    //density，满足上述条件，改变u的值对结果没有影响，如1u，16t，15d和2u，16t，15d和4u，16t，15d的结果都是一样的
-
-    //地形噪音参数结点
-    struct terrainParamNode {
-        int undulation;		    //起伏
-        int translation;	    //平移
-
-
-
-        void create(int tempUndulation, int tempTranslation) {
-            undulation  = tempUndulation;
-            translation = tempTranslation;
-        }
-    };
-
-    //树噪音参数结点
-    struct treeParamNode {
-        int undulation;		    //起伏
-        int translation;	    //平移
-        int density;	        //密度
-
-
-
-        void create(int tempUndulation, int tempTranslation, int tempDensity) {
-            undulation  = tempUndulation;
-            translation = tempTranslation;
-            density     = tempDensity;
-        }
-    };
-
-
 
     //树结构结点
     struct treeStructureNode {

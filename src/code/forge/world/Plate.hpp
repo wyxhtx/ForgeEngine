@@ -11,6 +11,12 @@ public:
 	Plate() {
 		timeStruct::timeNode time{};
 
+		if (debugInfo::LogSwitch) {
+			if (cubeEnum::cubeId::count != cubeEnum::coverageId::count) {
+				Log::printError(__FILE__, __LINE__, "方块索引与覆盖索引数量不一致");
+			}
+		}
+
 		createPlate();
 
 		Log::printTitle("板块创建信息");
@@ -40,7 +46,6 @@ private:
 	Storage InitStorage{};
 
 	noiseList::procNoiseNode	  procNoise{};																	//程序化噪音
-	noiseList::procNoiseParamNode procNoiseParam{};																//程序化噪音参数
 
 	std::unordered_map<glm::dvec3, Chunk> chunkMap;																//区块map，存储区块数据
 	std::unordered_map<glm::dvec3, Chunk> updateChunkMap;														//更新区块map，临时存储区块数据，存储当前视距内未加载区块
@@ -232,27 +237,39 @@ private:
 	
 	//创建区块，生成方块数组数据
 	void createChunk(Chunk& chunk, std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec4>>& linkStructSet) {
-		std::vector<glm::ivec3> structList;								//结构列表
-		glm::dvec3 worldPos = chunk.logicalWorldPos - glm::dvec3{ 1 };	//区块数组实际范围在0~33，显示范围在1~32，所以地形生成时需要偏移到0~31
-		glm::dvec3 tempWorldPos;
-		double length;
+		std::vector<glm::ivec3> structList{};								//结构列表
+		glm::dvec3 worldPos = chunk.logicalWorldPos - glm::dvec3{ 1 };		//区块数组实际范围在0~33，显示范围在1~32，所以地形生成时需要偏移到0~31
+		glm::dvec3 tempWorldPos{};
+
+		//2d噪音数据，因为并行化所以写在createChunk内部
+		std::vector<float> biomeNoiseData(plateInfo::cubeArraySquare);		//群系噪音数据
+		std::vector<float> terrainNoiseData(plateInfo::cubeArraySquare);	//地形噪音数据
+		int	valueId = 0;
+		double biomeValue = 0;
+		double terrainValue = 0;
+
+		procNoise.getNoiseData(noiseEnum::noiseId::biome,	biomeNoiseData,   worldPos);
+		procNoise.getNoiseData(noiseEnum::noiseId::terrain, terrainNoiseData, worldPos);
 
 
 
 		//生成区块地形，获取结构队列，[0,33]
-		for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
+		for (int x = 0; x < plateInfo::cubeArrayLength; x++) {			
 			tempWorldPos.x = worldPos.x + x;
 
-			for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
+			for (int z = 0; z < plateInfo::cubeArrayLength; z++) {		
 				tempWorldPos.z = worldPos.z + z;
-				length = std::floor(procNoise.terrainNode[noiseEnum::terrainId::plain].node.GetNoise(tempWorldPos.x + 0.1, tempWorldPos.z + 0.1) * procNoiseParam.terrainParam[noiseEnum::terrainId::plain].undulation + procNoiseParam.terrainParam[noiseEnum::terrainId::plain].translation);
+				valueId = x + z * plateInfo::cubeArrayLength;
 
-				for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
+				biomeValue	 = std::floor(biomeNoiseData[valueId]);
+				terrainValue = std::floor(terrainNoiseData[valueId]);
+
+				for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	
 					tempWorldPos.y = worldPos.y + y;
 
 					//高于地平线生成空气
 					if (tempWorldPos.y < plateInfo::groundPlane) {
-						getCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, length, structList);
+						setCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, terrainValue, structList);
 					}
 					else {
 						chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
@@ -397,18 +414,27 @@ private:
 		}
 	}
 
-	__forceinline void getCube(short& cubeId, int& isVisible, glm::dvec3& tempWorldPos, int& x, int& y, int& z, double& length, std::vector<glm::ivec3>& structList) {
+	__forceinline void setCube(short& cubeId, int& isVisible, const glm::dvec3& tempWorldPos, const int& x, const int& y, const int& z, const double& length, std::vector<glm::ivec3>& structList) {
 		if (tempWorldPos.y > length) {
 			cubeId = cubeEnum::cubeId::air;
+
+			//if (tempWorldPos.y <= 4) {
+			//	isVisible++;
+			//
+			//	cubeId = cubeEnum::cubeId::grass;
+			//}
 		}
 		else if (tempWorldPos.y < length) {
 			isVisible++;
 
-			cubeId = cubeEnum::cubeId::stoneSquared;
+			cubeId = cubeEnum::cubeId::stone;
 		}
 		else {
 			isVisible++;
 
+			cubeId = cubeEnum::cubeId::stone;
+
+			/*
 			//todo 后续做生态时外面再套一层细胞噪音
 			if (std::floor(procNoise.treeNode[noiseEnum::treeId::oak].node.GetNoise(tempWorldPos.x, tempWorldPos.z) * procNoiseParam.treeParam[noiseEnum::treeId::oak].undulation + procNoiseParam.treeParam[noiseEnum::treeId::oak].translation) > procNoiseParam.treeParam[noiseEnum::treeId::oak].density) {
 				//只压入1~32内的，避免边缘重复
@@ -421,6 +447,7 @@ private:
 			else {
 				cubeId = cubeEnum::cubeId::grass;
 			}
+			*/
 		}
 	}
 

@@ -14,6 +14,7 @@ namespace cubeList {
 			node[cubeEnum::cubeId::dirt]		.create({ { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2} }, cubeEnum::coverageId::dirt);
 			node[cubeEnum::cubeId::oakTrunk]	.create({ {32,  0}, {32,  0}, {32,  1}, {32,  1}, {32,  1}, {32,  1} }, cubeEnum::coverageId::oakTrunk);
 			node[cubeEnum::cubeId::oakLeaf]		.create({ {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2} }, cubeEnum::coverageId::oakLeaf);
+			node[cubeEnum::cubeId::stone]		.create({ {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0} }, cubeEnum::coverageId::stone);
 			node[cubeEnum::cubeId::stoneSquared].create({ { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16} }, cubeEnum::coverageId::stoneSquared);
 		}
 	};
@@ -24,42 +25,29 @@ namespace cubeList {
 //噪音列表
 namespace noiseList {
 	struct procNoiseNode {
-		std::vector<noiseStruct::noiseNode> terrainNode{};
-		std::vector<noiseStruct::noiseNode> treeNode{};
+		std::vector<noiseStruct::noiseNode> node{};
 
-		int seed = noiseInfo::worldSeed;
+		std::vector<float> xPosArray;			//2d x轴坐标数组，在线程间是只读的
+		std::vector<float> zPosArray;			//2d z轴坐标数组，在线程间是只读的
+
+		int worldSeed = noiseInfo::worldSeed;	//地形种子
+		
 
 
-
-		procNoiseNode() : terrainNode(noiseEnum::terrainId::count), treeNode(noiseEnum::treeId::count) {
-			terrainNode[noiseEnum::terrainId::plain].create(getSeed(seed), FastNoiseLite::NoiseType_OpenSimplex2, 0.01f, FastNoiseLite::FractalType_FBm, 2, 3);
-
-			treeNode[noiseEnum::treeId::oak].create(getSeed(seed), FastNoiseLite::NoiseType_OpenSimplex2S, 0.5f, FastNoiseLite::FractalType_FBm, 2, 3);
+		procNoiseNode() : node(noiseEnum::noiseId::count), xPosArray(plateInfo::cubeArraySquare), zPosArray(plateInfo::cubeArraySquare) {
+			node[noiseEnum::noiseId::biome]	 .create("KQkuCQ0ABw@BkGAABAHEYIAQ@BQDAACAPwsAAIA/DBMAAMjCGwAAyEIE", worldSeed);
+			node[noiseEnum::noiseId::terrain].create("KQkuCSgAAQ@ABENAAc@BJBg@AEhDE@DYzcxMvgQDmpkZPwszMzM/BBUJDQAH@BC@AIEAJBg@ABZEBAOamRk/CwAAgD8EAgAMAikJDQAH@BCQYAAEAcRggB@BBAMAAIA/CwAAgD8EEwAAgMAbAACAQBQTAADIwhsAAMhCBA==", worldSeed);
+			
+			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
+				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
+					xPosArray[x + z * plateInfo::cubeArrayLength] = static_cast<float>(x);
+					zPosArray[x + z * plateInfo::cubeArrayLength] = static_cast<float>(z);
+				}
+			}
 		}
 
-		int getSeed(int seed) {
-			static unsigned int salt = 0;
-
-			//转为unsigned进行位运算，避免溢出UB
-			unsigned int x = static_cast<unsigned int>(seed) + static_cast<unsigned int>(salt) * 0x9E3779B9U;
-			x = (x ^ (x >> 16)) * 0x85ebca6bU;
-			salt++;
-
-			//转回int
-			return static_cast<int>(x);
-		}
-	};
-
-	struct procNoiseParamNode {
-		std::vector<noiseStruct::terrainParamNode> terrainParam{};
-		std::vector<noiseStruct::treeParamNode>    treeParam{};
-
-
-
-		procNoiseParamNode() : terrainParam(noiseEnum::terrainId::count), treeParam(noiseEnum::treeId::count) {
-			terrainParam[noiseEnum::terrainId::plain].create(8, 16);
-
-			treeParam[noiseEnum::treeId::oak].create(16, 34, 44);
+		void getNoiseData(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
+			node[terrainType].noise->GenPositionArray2D(noiseData.data(), (int)xPosArray.size(), xPosArray.data(), zPosArray.data(), (float)worldPos.x, (float)worldPos.z, node[terrainType].seed);
 		}
 	};
 

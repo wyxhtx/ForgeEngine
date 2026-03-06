@@ -58,7 +58,8 @@
 #pragma warning(pop)
 
 //ÔëÒô¿â
-#include "../../library/noise/FastNoiseLite.h"
+#include <FastNoise/FastNoise.h>
+#include <FastNoise/Metadata.h>
 
 //Ä£ÐÍ¿â
 #define TINYGLTF_IMPLEMENTATION
