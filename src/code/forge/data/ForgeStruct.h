@@ -109,15 +109,14 @@ namespace noiseStruct {
 
         void create(const char* noiseTree, int tempSeed) {
             noise = FastNoise::NewFromEncodedNodeTree(noiseTree);
-            seed  = getSeed(tempSeed);
+            seed  = tempSeed;
         }
 
-    private:
-        int getSeed(int seed) {
+        int randomSeed(int tempSeed) {
             static unsigned int salt = 0;
 
             //转为unsigned进行位运算，避免溢出UB
-            unsigned int x = static_cast<unsigned int>(seed) + static_cast<unsigned int>(salt) * 0x9E3779B9U;
+            unsigned int x = static_cast<unsigned int>(tempSeed) + static_cast<unsigned int>(salt) * 0x9E3779B9U;
             x = (x ^ (x >> 16)) * 0x85ebca6bU;
             salt++;
 

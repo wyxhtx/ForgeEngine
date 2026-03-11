@@ -10,11 +10,15 @@ namespace cubeList {
 
 
 		procCubeNode() : node(cubeEnum::cubeId::count) {
-			node[cubeEnum::cubeId::grass]		.create({ { 0,  0}, { 0,  2}, { 0,  1}, { 0,  1}, { 0,  1}, { 0,  1} }, cubeEnum::coverageId::grass);
 			node[cubeEnum::cubeId::dirt]		.create({ { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2} }, cubeEnum::coverageId::dirt);
+			node[cubeEnum::cubeId::grass]		.create({ { 0,  0}, { 0,  2}, { 0,  1}, { 0,  1}, { 0,  1}, { 0,  1} }, cubeEnum::coverageId::grass);
+			node[cubeEnum::cubeId::stone]		.create({ {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0} }, cubeEnum::coverageId::stone);
+			node[cubeEnum::cubeId::gravel]		.create({ {16,  1}, {16,  1}, {16,  1}, {16,  1}, {16,  1}, {16,  1} }, cubeEnum::coverageId::gravel);
+			node[cubeEnum::cubeId::sand]		.create({ {16,  2}, {16,  2}, {16,  2}, {16,  2}, {16,  2}, {16,  2} }, cubeEnum::coverageId::sand);
+
 			node[cubeEnum::cubeId::oakTrunk]	.create({ {32,  0}, {32,  0}, {32,  1}, {32,  1}, {32,  1}, {32,  1} }, cubeEnum::coverageId::oakTrunk);
 			node[cubeEnum::cubeId::oakLeaf]		.create({ {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2} }, cubeEnum::coverageId::oakLeaf);
-			node[cubeEnum::cubeId::stone]		.create({ {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0} }, cubeEnum::coverageId::stone);
+
 			node[cubeEnum::cubeId::stoneSquared].create({ { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16} }, cubeEnum::coverageId::stoneSquared);
 		}
 	};
@@ -35,19 +39,29 @@ namespace noiseList {
 
 
 		procNoiseNode() : node(noiseEnum::noiseId::count), xPosArray(plateInfo::cubeArraySquare), zPosArray(plateInfo::cubeArraySquare) {
-			node[noiseEnum::noiseId::biome]	 .create("KQkuCQ0ABw@BkGAABAHEYIAQ@BQDAACAPwsAAIA/DBMAAMjCGwAAyEIE", worldSeed);
-			node[noiseEnum::noiseId::terrain].create("KQkuCSgAAQ@ABENAAc@BJBg@AEhDE@DYzcxMvgQDmpkZPwszMzM/BBUJDQAH@BC@AIEAJBg@ABZEBAOamRk/CwAAgD8EAgAMAikJDQAH@BCQYAAEAcRggB@BBAMAAIA/CwAAgD8EEwAAgMAbAACAQBQTAADIwhsAAMhCBA==", worldSeed);
+			node[noiseEnum::noiseId::elevation].create("D@BCBBCS4JDQAH@BCQYAAEAcRgQDAACAPwsAAIA/DAMAAIA/BA==", worldSeed);	//elevation根据海拔划分群系，所以种子必须和ground一样
+			node[noiseEnum::noiseId::ground]   .create("KQkuCSgAAQ@ABEVCScJDQAH@BC@AQEAJBg@AMhDCAM@BQmpkZvxg@CBAOamRk/CwAAgD8MAg@BCAwAwoAAE@BRFQn/AgAC@DDADCgAAQ@ABEVCScJDQAH@BCQY@ABIQwgC@BE@DYzcxMPgQDmpkZPwszMzM/DAI@FMKAAB@BERUJ/wkAAg@DQAwVCQ0ABw@BgAACBACQY@BWRAgB@BBAOamRk/CwAAgD8EAg@BCAQAwCKQkVCScJDQAH@BCQYAAEAcRgQDAACAPwsAAIA/DAI@CgL8MEwAAwL8bAADAPwwCKQkVCf8UAAIAAM3MTD4MEwAAwL8bAADAPwwCKQkVCf8UAAIAAM3MzD4MEwAAwL8bAADAPwwCKQkVCf8UAAIAAJqZGT8MEwAAwL8bAADAPxQTAADIwhsAAMhCBA==", worldSeed);
 			
+
+
+			int	valueId = 0;
+
 			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
 				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
-					xPosArray[x + z * plateInfo::cubeArrayLength] = static_cast<float>(x);
-					zPosArray[x + z * plateInfo::cubeArrayLength] = static_cast<float>(z);
+					valueId = x + z * plateInfo::cubeArrayLength;
+
+					xPosArray[valueId] = (float)x;
+					zPosArray[valueId] = (float)z;
 				}
 			}
 		}
 
-		void getNoiseData(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
+		void getNoiseArrayData(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
 			node[terrainType].noise->GenPositionArray2D(noiseData.data(), (int)xPosArray.size(), xPosArray.data(), zPosArray.data(), (float)worldPos.x, (float)worldPos.z, node[terrainType].seed);
+		}
+
+		double getNoiseSingleData(noiseEnum::noiseId::type terrainType, const glm::dvec3& cubePos) {
+			return node[terrainType].noise->GenSingle2D((float)cubePos.x, (float)cubePos.z, node[terrainType].seed);
 		}
 	};
 

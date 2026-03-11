@@ -45,7 +45,7 @@ private:
 	Loop InitLoop{};
 	Storage InitStorage{};
 
-	noiseList::procNoiseNode	  procNoise{};																	//程序化噪音
+	noiseList::procNoiseNode procNoise{};																		//程序化噪音
 
 	std::unordered_map<glm::dvec3, Chunk> chunkMap;																//区块map，存储区块数据
 	std::unordered_map<glm::dvec3, Chunk> updateChunkMap;														//更新区块map，临时存储区块数据，存储当前视距内未加载区块
@@ -239,40 +239,70 @@ private:
 	void createChunk(Chunk& chunk, std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec4>>& linkStructSet) {
 		std::vector<glm::ivec3> structList{};								//结构列表
 		glm::dvec3 worldPos = chunk.logicalWorldPos - glm::dvec3{ 1 };		//区块数组实际范围在0~33，显示范围在1~32，所以地形生成时需要偏移到0~31
-		glm::dvec3 tempWorldPos{};
+		glm::dvec3 cubePos{};
 
-		//2d噪音数据，因为并行化所以写在createChunk内部
-		std::vector<float> biomeNoiseData(plateInfo::cubeArraySquare);		//群系噪音数据
-		std::vector<float> terrainNoiseData(plateInfo::cubeArraySquare);	//地形噪音数据
-		int	valueId = 0;
-		double biomeValue = 0;
-		double terrainValue = 0;
-
-		procNoise.getNoiseData(noiseEnum::noiseId::biome,	biomeNoiseData,   worldPos);
-		procNoise.getNoiseData(noiseEnum::noiseId::terrain, terrainNoiseData, worldPos);
+		double elevationValue = 0;
+		double groundValue	  = 0;
 
 
 
-		//生成区块地形，获取结构队列，[0,33]
-		for (int x = 0; x < plateInfo::cubeArrayLength; x++) {			
-			tempWorldPos.x = worldPos.x + x;
+		//如果三轴任意轴 <= noiseInfo::noiseExtreme 则使用 GenPositionArray2D，反之 > 则使用 GenSingle2D
+		if (!isNoiseExtreme(chunk.logicalWorldPos)) {
+			//2d噪音数据，因为并行化所以写在createChunk内部
+			std::vector<float> elevationNoiseData(plateInfo::cubeArraySquare);	//海拔噪音数据
+			std::vector<float> groundNoiseData(plateInfo::cubeArraySquare);		//地表噪音数据
+			int	valueId = 0;
 
-			for (int z = 0; z < plateInfo::cubeArrayLength; z++) {		
-				tempWorldPos.z = worldPos.z + z;
-				valueId = x + z * plateInfo::cubeArrayLength;
 
-				biomeValue	 = std::floor(biomeNoiseData[valueId]);
-				terrainValue = std::floor(terrainNoiseData[valueId]);
 
-				for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	
-					tempWorldPos.y = worldPos.y + y;
+			procNoise.getNoiseArrayData(noiseEnum::noiseId::elevation, elevationNoiseData, worldPos);
+			procNoise.getNoiseArrayData(noiseEnum::noiseId::ground,    groundNoiseData,    worldPos);
 
-					//高于地平线生成空气
-					if (tempWorldPos.y < plateInfo::groundPlane) {
-						setCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, terrainValue, structList);
+			//生成区块地形，获取结构队列，[0,33]
+			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
+				cubePos.x = worldPos.x + x;
+
+				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
+					cubePos.z = worldPos.z + z;
+					valueId = x + z * plateInfo::cubeArrayLength;
+
+					elevationValue = elevationNoiseData[valueId];
+					groundValue    = std::floor(groundNoiseData[valueId]);
+
+					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
+						cubePos.y = worldPos.y + y;
+
+						//高于地平线生成空气
+						if (cubePos.y < plateInfo::groundPlane) {
+							setCube(chunk.cubeArray[x][y][z], chunk.isVisible, cubePos, x, y, z, elevationValue, groundValue, structList);
+						}
+						else {
+							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
+						}
 					}
-					else {
-						chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
+				}
+			}
+		}
+		else {
+			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
+				cubePos.x = worldPos.x + x;
+
+				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
+					cubePos.z = worldPos.z + z;
+
+					elevationValue = procNoise.getNoiseSingleData(noiseEnum::noiseId::elevation, cubePos);
+					groundValue    = std::floor(procNoise.getNoiseSingleData(noiseEnum::noiseId::ground, cubePos));
+
+					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
+						cubePos.y = worldPos.y + y;
+
+						//高于地平线生成空气
+						if (cubePos.y < plateInfo::groundPlane) {
+							setCube(chunk.cubeArray[x][y][z], chunk.isVisible, cubePos, x, y, z, elevationValue, groundValue, structList);
+						}
+						else {
+							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
+						}
 					}
 				}
 			}
@@ -414,17 +444,15 @@ private:
 		}
 	}
 
-	__forceinline void setCube(short& cubeId, int& isVisible, const glm::dvec3& tempWorldPos, const int& x, const int& y, const int& z, const double& length, std::vector<glm::ivec3>& structList) {
-		if (tempWorldPos.y > length) {
-			cubeId = cubeEnum::cubeId::air;
+	bool isNoiseExtreme(const glm::dvec3& logicalWorldPos) {
+		return std::abs(logicalWorldPos.x) > noiseInfo::noiseExtreme || std::abs(logicalWorldPos.y) > noiseInfo::noiseExtreme || std::abs(logicalWorldPos.z) > noiseInfo::noiseExtreme;
+	}
 
-			//if (tempWorldPos.y <= 4) {
-			//	isVisible++;
-			//
-			//	cubeId = cubeEnum::cubeId::grass;
-			//}
+	__forceinline void setCube(short& cubeId, int& isVisible, const glm::dvec3& tempWorldPos, const int& x, const int& y, const int& z, const double& elevationValue, const double& groundValue, std::vector<glm::ivec3>& structList) {
+		if (tempWorldPos.y > groundValue) {
+			cubeId = cubeEnum::cubeId::air;
 		}
-		else if (tempWorldPos.y < length) {
+		else if (tempWorldPos.y < groundValue) {
 			isVisible++;
 
 			cubeId = cubeEnum::cubeId::stone;
@@ -432,22 +460,18 @@ private:
 		else {
 			isVisible++;
 
-			cubeId = cubeEnum::cubeId::stone;
-
-			/*
-			//todo 后续做生态时外面再套一层细胞噪音
-			if (std::floor(procNoise.treeNode[noiseEnum::treeId::oak].node.GetNoise(tempWorldPos.x, tempWorldPos.z) * procNoiseParam.treeParam[noiseEnum::treeId::oak].undulation + procNoiseParam.treeParam[noiseEnum::treeId::oak].translation) > procNoiseParam.treeParam[noiseEnum::treeId::oak].density) {
-				//只压入1~32内的，避免边缘重复
-				if (x > 0 && x < plateInfo::lengthIncrement && y > 0 && y < plateInfo::lengthIncrement && z > 0 && z < plateInfo::lengthIncrement) {
-					structList.push_back(glm::ivec3{ x,y + 1,z });
-				}
-
-				cubeId = cubeEnum::cubeId::oakTrunk;
+			if (elevationValue > 0.5) {
+				cubeId = cubeEnum::cubeId::stone;
 			}
-			else {
+			else if (elevationValue > -0.2) {
 				cubeId = cubeEnum::cubeId::grass;
 			}
-			*/
+			else if (elevationValue > -0.5) {
+				cubeId = cubeEnum::cubeId::sand;
+			}
+			else {
+				cubeId = cubeEnum::cubeId::gravel;
+			}
 		}
 	}
 

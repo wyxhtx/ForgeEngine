@@ -1592,9 +1592,14 @@ public:
 
 		//showUIText
 		if (uiText.isEnable) {
-			showUIText.pos = glm::floor(camera.pos);
+			showUIText.pos		= glm::floor(camera.pos);
 			showUIText.chunkPos = glm::floor(camera.pos / (double)plateInfo::chunkLength);
-			showUIText.minepos = box.minepos;
+			showUIText.minepos  = box.minepos;
+
+			//方块数组真实坐标
+			//showUIText.minepos.x = static_cast<int>(fmod(box.minepos.x, plateInfo::chunkLength));
+			//showUIText.minepos.y = static_cast<int>(fmod(box.minepos.y, plateInfo::chunkLength));
+			//showUIText.minepos.z = static_cast<int>(fmod(box.minepos.z, plateInfo::chunkLength));
 		}
 
 		//osMirror

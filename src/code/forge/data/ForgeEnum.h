@@ -8,11 +8,15 @@ namespace cubeEnum {
 	namespace cubeId {
 		enum type : short {
 			air = -1,			//空气
-			grass,				//草方块
 			dirt,				//泥土
+			grass,				//草方块
+			stone,				//石头
+			gravel,				//沙砾
+			sand,				//沙子
+
 			oakTrunk,			//橡树树干
 			oakLeaf,			//橡树树叶
-			stone,				//石头
+
 			stoneSquared,		//石料
 
 			count				//枚举长度
@@ -23,6 +27,8 @@ namespace cubeEnum {
 	namespace coverageId {
 		enum type : short {
 			oakLeaf,			//橡树树叶
+			sand,				//沙子
+			gravel,				//沙砾
 			dirt,				//泥土
 			grass,				//草方块
 			oakTrunk,			//橡树树干
@@ -39,24 +45,12 @@ namespace noiseEnum {
 	//噪音索引
 	namespace noiseId {
 		enum type {
-			biome,		//群系
-			terrain,	//地形
+			elevation,	//海拔，划分群系，地皮过渡
+			ground,		//地表
 
 			count
 		};
 	}
-
-	/*
-	//群系索引
-	namespace biomeId {
-		enum type {
-			plain,		//平原
-			mountain,	//山脉
-
-			count
-		};
-	}
-	*/
 
 	//树索引
 	namespace treeId {
