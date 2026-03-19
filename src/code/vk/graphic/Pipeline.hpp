@@ -294,8 +294,8 @@ public:
 			InitBuffer.drawUIText((int)(uiDeltaFrame / uiTextTick.dt));
 			uiDeltaFrame = 0;
 
-			//地形线程数为1且命令缓冲区未变更时更新板块
-			if (InitBuffer.command.processingThreadSize == 1 && tempId == InitBuffer.command.currentThreadId) {
+			//地形线程数为1 & 命令缓冲区线程未变
+			if (InitBuffer.command.processingThreadSize == 1 && !InitBuffer.command.isUpdate()) {
 				static glm::dvec3 pos0 = glm::floor(playerInfo::initSpawnPos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
 				glm::dvec3 pos1 = glm::floor(Camera.node.pos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
 				
@@ -313,9 +313,10 @@ public:
 		if (cubeTick.isUpdate(fpsInfo::cubeFPS)) {
 			InitPlate.externalUpdateLock = true;
 			
-			if (!InitPlate.internalUpdateLock && tempId == InitBuffer.command.currentThreadId && !InitPlate.cubeChangeList.empty()) {
+			//板块未锁 & 命令缓冲区线程未变 & 方块变更列表非空
+			if (!InitPlate.internalUpdateLock && !InitBuffer.command.isUpdate() && !InitPlate.cubeChangeList.empty()) {
 				InitPlate.updateDeltaCube();
-				tempId = (InitBuffer.command.currentThreadId + 1) % 2;
+				InitBuffer.command.setNextThreadId();
 			}
 
 			InitPlate.externalUpdateLock = false;
@@ -356,7 +357,7 @@ public:
 			InitBuffer.command.currentThreadId = tempId;
 		}
 		InitPlate.externalUpdateLock = false;
-
+		
 		selectBox = InitPlate.getSelectBox(Camera.node);	//当前帧获取的方块更新列表在下一帧更新
 		InitBuffer.updateUniformBuffer(Camera.node, selectBox);
 
@@ -367,16 +368,12 @@ public:
 	}
 
 private:
-	int tempId = InitBuffer.command.currentThreadId;		//命令缓冲区id标识，用于解决线程冲突
-
-
-
 	void updatePlateThread(glm::dvec3 playerPos) {
 		InitBuffer.command.processingThreadSize++;
 		timeStruct::timeNode time{};
 
 		InitPlate.updatePlate(playerPos);
-		tempId = (InitBuffer.command.currentThreadId + 1) % 2;
+		InitBuffer.command.setNextThreadId();
 
 		Log::print("板块刷新用时:\t" + time.end());
 		InitBuffer.command.processingThreadSize--;

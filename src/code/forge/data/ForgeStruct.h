@@ -111,18 +111,12 @@ namespace noiseStruct {
             noise = FastNoise::NewFromEncodedNodeTree(noiseTree);
             seed  = tempSeed;
         }
+    };
 
-        int randomSeed(int tempSeed) {
-            static unsigned int salt = 0;
-
-            //转为unsigned进行位运算，避免溢出UB
-            unsigned int x = static_cast<unsigned int>(tempSeed) + static_cast<unsigned int>(salt) * 0x9E3779B9U;
-            x = (x ^ (x >> 16)) * 0x85ebca6bU;
-            salt++;
-
-            //转回int
-            return static_cast<int>(x);
-        }
+    //噪音数据结点
+    struct noiseDataNode {
+        std::vector<float> data{};
+        double value = 0;
     };
 
     //树结构结点

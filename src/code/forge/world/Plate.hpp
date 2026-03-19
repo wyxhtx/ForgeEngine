@@ -239,66 +239,79 @@ private:
 	void createChunk(Chunk& chunk, std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec4>>& linkStructSet) {
 		std::vector<glm::ivec3> structList{};								//结构列表
 		glm::dvec3 worldPos = chunk.logicalWorldPos - glm::dvec3{ 1 };		//区块数组实际范围在0~33，显示范围在1~32，所以地形生成时需要偏移到0~31
-		glm::dvec3 cubePos{};
+		glm::dvec3 tempWorldPos{};
 
-		double elevationValue = 0;
-		double groundValue	  = 0;
+		//噪音数据，因为并行化所以写在createChunk内部
+		noiseStruct::noiseDataNode elevation{};
+		noiseStruct::noiseDataNode ground{};
+		noiseStruct::noiseDataNode cave{};
 
 
 
-		//如果三轴任意轴 <= noiseInfo::noiseExtreme 则使用 GenPositionArray2D，反之 > 则使用 GenSingle2D
 		if (!isNoiseExtreme(chunk.logicalWorldPos)) {
-			//2d噪音数据，因为并行化所以写在createChunk内部
-			std::vector<float> elevationNoiseData(plateInfo::cubeArraySquare);	//海拔噪音数据
-			std::vector<float> groundNoiseData(plateInfo::cubeArraySquare);		//地表噪音数据
-			int	valueId = 0;
+			int	noiseId2D = 0;
 
+			elevation.data.resize(plateInfo::cubeArraySquare);
+			ground.data.resize(plateInfo::cubeArraySquare);
 
+			procNoise.getNoiseArray2D(noiseEnum::noiseId::elevation, elevation.data, worldPos);
+			procNoise.getNoiseArray2D(noiseEnum::noiseId::ground,	 ground.data,	 worldPos);
 
-			procNoise.getNoiseArrayData(noiseEnum::noiseId::elevation, elevationNoiseData, worldPos);
-			procNoise.getNoiseArrayData(noiseEnum::noiseId::ground,    groundNoiseData,    worldPos);
+			//地表生成
+			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {			tempWorldPos.x = worldPos.x + x;
+				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {		tempWorldPos.z = worldPos.z + z;
+					elevation.value = elevation.data[noiseId2D];
+					ground.value	= std::floor(ground.data[noiseId2D]);
+					noiseId2D++;
 
-			//生成区块地形，获取结构队列，[0,33]
-			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
-				cubePos.x = worldPos.x + x;
-
-				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
-					cubePos.z = worldPos.z + z;
-					valueId = x + z * plateInfo::cubeArrayLength;
-
-					elevationValue = elevationNoiseData[valueId];
-					groundValue    = std::floor(groundNoiseData[valueId]);
-
-					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
-						cubePos.y = worldPos.y + y;
-
+					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	tempWorldPos.y = worldPos.y + y;
 						//高于地平线生成空气
-						if (cubePos.y < plateInfo::groundPlane) {
-							setCube(chunk.cubeArray[x][y][z], chunk.isVisible, cubePos, x, y, z, elevationValue, groundValue, structList);
+						if (tempWorldPos.y < plateInfo::groundPlane) {
+							setCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, elevation.value, ground.value, structList);
 						}
 						else {
 							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
+						}
+					}
+				}
+			}
+
+			//洞穴生成，只处理非空区块
+			if (chunk.isVisible != 0) {
+				int	noiseId3D = 0;
+
+				cave.data.resize(plateInfo::cubeArrayVolume);
+				procNoise.getNoiseArray3D(noiseEnum::noiseId::cave, cave.data, worldPos);
+
+				for (int x = 0; x < plateInfo::cubeArrayLength; x++) {			tempWorldPos.x = worldPos.x + x;
+					for (int z = 0; z < plateInfo::cubeArrayLength; z++) {		tempWorldPos.z = worldPos.z + z;
+						for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	tempWorldPos.y = worldPos.y + y;
+							short& cubeId = chunk.cubeArray[x][y][z];
+
+							//只处理非空方块
+							if ((cubeId != cubeEnum::cubeId::air) && (cave.data[noiseId3D] > 0)) {
+								chunk.isVisible--;
+
+								cubeId = cubeEnum::cubeId::air;
+							}
+
+							noiseId3D++;
 						}
 					}
 				}
 			}
 		}
 		else {
-			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
-				cubePos.x = worldPos.x + x;
+			//地表生成
+			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {			tempWorldPos.x = worldPos.x + x;
+				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {		tempWorldPos.z = worldPos.z + z;
+					elevation.value = procNoise.getNoiseSingle2D(noiseEnum::noiseId::elevation, tempWorldPos);
+					ground.value    = std::floor(procNoise.getNoiseSingle2D(noiseEnum::noiseId::ground, tempWorldPos));
 
-				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
-					cubePos.z = worldPos.z + z;
-
-					elevationValue = procNoise.getNoiseSingleData(noiseEnum::noiseId::elevation, cubePos);
-					groundValue    = std::floor(procNoise.getNoiseSingleData(noiseEnum::noiseId::ground, cubePos));
-
-					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
-						cubePos.y = worldPos.y + y;
-
+					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	tempWorldPos.y = worldPos.y + y;
 						//高于地平线生成空气
-						if (cubePos.y < plateInfo::groundPlane) {
-							setCube(chunk.cubeArray[x][y][z], chunk.isVisible, cubePos, x, y, z, elevationValue, groundValue, structList);
+						if (tempWorldPos.y < plateInfo::groundPlane) {
+							setCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, elevation.value, ground.value, structList);
 						}
 						else {
 							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
@@ -306,7 +319,27 @@ private:
 					}
 				}
 			}
+
+			//洞穴生成，只处理非空区块
+			if (chunk.isVisible != 0) {
+				for (int x = 0; x < plateInfo::cubeArrayLength; x++) {			tempWorldPos.x = worldPos.x + x;
+					for (int z = 0; z < plateInfo::cubeArrayLength; z++) {		tempWorldPos.z = worldPos.z + z;
+						for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	tempWorldPos.y = worldPos.y + y;
+							short& cubeId = chunk.cubeArray[x][y][z];
+
+							//只处理非空方块
+							if ((cubeId != cubeEnum::cubeId::air) && (procNoise.getNoiseSingle3D(noiseEnum::noiseId::cave, tempWorldPos) > 0)) {
+								chunk.isVisible--;
+
+								cubeId = cubeEnum::cubeId::air;
+							}
+						}
+					}
+				}
+			}
 		}
+
+
 
 		//生成地形结构管理器
 		if (!structList.empty()) {

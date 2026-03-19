@@ -251,7 +251,8 @@ namespace bufferStruct {
         VkCommandPool commandPool;
         std::vector<VkCommandBuffer> commandBuffer[bufferInfo::commandThreadCount];     //使用双重命令缓冲防止更新区块卡顿
 
-        int currentThreadId = 0;						                                //当前地形线程命令缓冲区id
+        int currentThreadId = 0;						                                //当前帧命令缓冲区线程id
+        int nextThreadId = 0;						                                    //下一帧命令缓冲区线程id
         uint32_t processingThreadSize = 1;                                              //背后线程数量,避免上个线程没结束就开启新线程
 
         VkCommandBufferAllocateInfo allocInfo{};
@@ -260,6 +261,16 @@ namespace bufferStruct {
         std::vector<VkDeviceSize> vertexOffset{ 0 };	//绑定管线过程中指定各顶点缓冲区的偏移量
 
 
+
+        //判断命令缓冲区线程是否需要更新
+        bool isUpdate() {
+            return nextThreadId != currentThreadId;
+        }
+
+        //设置下一帧命令缓冲区线程id
+        void setNextThreadId() {
+            nextThreadId = (currentThreadId + 1) % 2;
+        }
 
         void createCommandPool(const VkDevice& device, uint32_t queueFamilyIndex) {
             VkCommandPoolCreateInfo poolInfo{};

@@ -180,6 +180,6 @@ namespace fileInfo {
 }
 
 namespace threadCommInfo {
-    bool plateLock = false;        //板块线程锁
-    bool musicLock = false;        //音乐线程锁
+    bool plateLock = false;        //板块线程锁，用于 Window 同步操作系统api的调用
+    bool musicLock = false;        //音乐线程锁，用于 Music  同步音乐线程的开关
 }

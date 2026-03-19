@@ -22,7 +22,7 @@ namespace plateInfo {
 	//const int sightRange = 8;															//视距
 	const int sightRange = 8;															//视距
 
-	const int chunkLength = 64;															//区块边长
+	const int chunkLength = 32;															//区块边长
 	const int cubeArrayLength = chunkLength + 2;										//方块数组边长
 	const int lengthIncrement = plateInfo::chunkLength + 1;								//区块边长增一，用于方块数组边缘检测
 	const int lengthDecrement = plateInfo::chunkLength - 1;								//区块边长减一，用于方块数组边缘检测

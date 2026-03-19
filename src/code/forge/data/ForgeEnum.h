@@ -47,6 +47,7 @@ namespace noiseEnum {
 		enum type {
 			elevation,	//海拔，划分群系，地皮过渡
 			ground,		//地表
+			cave,		//洞穴
 
 			count
 		};

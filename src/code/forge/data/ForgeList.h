@@ -31,37 +31,78 @@ namespace noiseList {
 	struct procNoiseNode {
 		std::vector<noiseStruct::noiseNode> node{};
 
-		std::vector<float> xPosArray;			//2d x轴坐标数组，在线程间是只读的
-		std::vector<float> zPosArray;			//2d z轴坐标数组，在线程间是只读的
+		std::vector<float> xPosArray2D{};		//2d x轴坐标数组，在线程间是只读的
+		std::vector<float> zPosArray2D{};		//2d z轴坐标数组，在线程间是只读的
+
+		std::vector<float> xPosArray3D{};		//3d x轴坐标数组，在线程间是只读的
+		std::vector<float> yPosArray3D{};		//3d y轴坐标数组，在线程间是只读的
+		std::vector<float> zPosArray3D{};		//3d z轴坐标数组，在线程间是只读的
 
 		int worldSeed = noiseInfo::worldSeed;	//地形种子
 		
 
 
-		procNoiseNode() : node(noiseEnum::noiseId::count), xPosArray(plateInfo::cubeArraySquare), zPosArray(plateInfo::cubeArraySquare) {
+		procNoiseNode() : node(noiseEnum::noiseId::count), xPosArray2D(plateInfo::cubeArraySquare), zPosArray2D(plateInfo::cubeArraySquare), xPosArray3D(plateInfo::cubeArrayVolume), yPosArray3D(plateInfo::cubeArrayVolume), zPosArray3D(plateInfo::cubeArrayVolume) {
 			node[noiseEnum::noiseId::elevation].create("D@BCBBCS4JDQAH@BCQYAAEAcRgQDAACAPwsAAIA/DAMAAIA/BA==", worldSeed);	//elevation根据海拔划分群系，所以种子必须和ground一样
 			node[noiseEnum::noiseId::ground]   .create("KQkuCSgAAQ@ABEVCScJDQAH@BC@AQEAJBg@AMhDCAM@BQmpkZvxg@CBAOamRk/CwAAgD8MAg@BCAwAwoAAE@BRFQn/AgAC@DDADCgAAQ@ABEVCScJDQAH@BCQY@ABIQwgC@BE@DYzcxMPgQDmpkZPwszMzM/DAI@FMKAAB@BERUJ/wkAAg@DQAwVCQ0ABw@BgAACBACQY@BWRAgB@BBAOamRk/CwAAgD8EAg@BCAQAwCKQkVCScJDQAH@BCQYAAEAcRgQDAACAPwsAAIA/DAI@CgL8MEwAAwL8bAADAPwwCKQkVCf8UAAIAAM3MTD4MEwAAwL8bAADAPwwCKQkVCf8UAAIAAM3MzD4MEwAAwL8bAADAPwwCKQkVCf8UAAIAAJqZGT8MEwAAwL8bAADAPxQTAADIwhsAAMhCBA==", worldSeed);
-			
+			node[noiseEnum::noiseId::cave]	   .create("KAAB@BESQI@BQAkuAAE@BJFQkeCQ0AB@CkIBAs@B/DAM@AC/FBYCHAklAAI@BJCw@AEhDCAE@BQzczMPRg@ADAIAM@B4Ag@BMAAIA/C83MTD8TzcxMPgwCLgAB@BCf8GAAQLzcxMPgQKFwkNCQg@BgQQgD@BBAs@B/BAMK1yM9DAIoAAE@BRBAgK16M9CwAAyEMEBggE@BG@AoEEU", randomSeed(worldSeed));
 
 
-			int	valueId = 0;
 
+			int	noiseId2D = 0;
+			int	noiseId3D = 0;
+
+			//2D
 			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
 				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
-					valueId = x + z * plateInfo::cubeArrayLength;
+					xPosArray2D[noiseId2D] = (float)x;
+					zPosArray2D[noiseId2D] = (float)z;
 
-					xPosArray[valueId] = (float)x;
-					zPosArray[valueId] = (float)z;
+					noiseId2D++;
+				}
+			}
+
+			//3D
+			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
+				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
+					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
+						xPosArray3D[noiseId3D] = (float)x;
+						zPosArray3D[noiseId3D] = (float)z;
+						yPosArray3D[noiseId3D] = (float)y;
+
+						noiseId3D++;
+					}
 				}
 			}
 		}
 
-		void getNoiseArrayData(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
-			node[terrainType].noise->GenPositionArray2D(noiseData.data(), (int)xPosArray.size(), xPosArray.data(), zPosArray.data(), (float)worldPos.x, (float)worldPos.z, node[terrainType].seed);
+		void getNoiseArray2D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
+			node[terrainType].noise->GenPositionArray2D(noiseData.data(), (int)xPosArray2D.size(), xPosArray2D.data(), zPosArray2D.data(), (float)worldPos.x, (float)worldPos.z, node[terrainType].seed);
 		}
 
-		double getNoiseSingleData(noiseEnum::noiseId::type terrainType, const glm::dvec3& cubePos) {
-			return node[terrainType].noise->GenSingle2D((float)cubePos.x, (float)cubePos.z, node[terrainType].seed);
+		double getNoiseSingle2D(noiseEnum::noiseId::type terrainType, const glm::dvec3& worldPos) {
+			return node[terrainType].noise->GenSingle2D((float)worldPos.x, (float)worldPos.z, node[terrainType].seed);
+		}
+
+		void getNoiseArray3D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
+			node[terrainType].noise->GenPositionArray3D(noiseData.data(), (int)xPosArray3D.size(), xPosArray3D.data(), yPosArray3D.data(), zPosArray3D.data(), (float)worldPos.x, (float)worldPos.y, (float)worldPos.z, node[terrainType].seed);
+		}
+
+		double getNoiseSingle3D(noiseEnum::noiseId::type terrainType, const glm::dvec3& worldPos) {
+			return node[terrainType].noise->GenSingle3D((float)worldPos.x, (float)worldPos.y, (float)worldPos.z, node[terrainType].seed);
+		}
+
+	private:
+		int randomSeed(int tempSeed) {
+			static unsigned int salt = 0;
+
+			//转为unsigned进行位运算，避免溢出UB
+			unsigned int x = static_cast<unsigned int>(tempSeed) + static_cast<unsigned int>(salt) * 0x9E3779B9U;
+			x = (x ^ (x >> 16)) * 0x85ebca6bU;
+			salt++;
+
+			//转回int
+			return static_cast<int>(x);
 		}
 	};
 
