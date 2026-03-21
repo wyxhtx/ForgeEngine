@@ -1032,38 +1032,29 @@ private:
 	}
 
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandPool = command.commandPool;
+		while (lockInfo::queueLock.exchange(true)) { std::this_thread::yield(); }
+		VkCommandBufferAllocateInfo allocInfo{};
+		allocInfo.sType				 = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.level				 = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandPool		 = command.commandPool;
 		allocInfo.commandBufferCount = 1;
 
 		VkCommandBuffer commandBuffer;
 		vkAllocateCommandBuffers(Device.device, &allocInfo, &commandBuffer);
 
-		VkCommandBufferBeginInfo beginInfo = {};
+		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
 		vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-		VkBufferCopy copyRegion = {};
-		copyRegion.srcOffset = 0; // Optional
-		copyRegion.dstOffset = 0; // Optional
-		copyRegion.size = size;
+		VkBufferCopy copyRegion{};
+		copyRegion.srcOffset = 0;
+		copyRegion.dstOffset = 0;
+		copyRegion.size		 = size;
 		vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+		lockInfo::queueLock.store(false);
 
-		vkEndCommandBuffer(commandBuffer);
-
-		VkSubmitInfo submitInfo = {};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffer;
-
-		vkQueueSubmit(Device.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-		vkQueueWaitIdle(Device.graphicsQueue);
-
-		vkFreeCommandBuffers(Device.device, command.commandPool, 1, &commandBuffer);
+		command.queueCommandSubmit(Device.device, Device.graphicsQueue, commandBuffer);
 	}
 
 	void createImage(uint32_t width, uint32_t height, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format, VkSampleCountFlagBits numSamples, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VmaAllocation& allocation) {
@@ -1164,7 +1155,7 @@ private:
 		vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
 		// 结束单次命令缓冲区，提交并执行命令
-		endSingleTimeCommands(commandBuffer);
+		command.queueCommandSubmit(Device.device, Device.graphicsQueue, commandBuffer);
 	}
 
 	void copyBufferToImageArray(uint32_t pixel, uint32_t tileWidth, uint32_t tileHeight, uint32_t atlasWidth, uint32_t atlasHeight, uint32_t texWidth, uint32_t texHeight, uint32_t arrayLayer, VkBuffer buffer, VkImage image) {
@@ -1191,7 +1182,7 @@ private:
 		}
 
 		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, arrayLayer, regions.data());
-		endSingleTimeCommands(commandBuffer);
+		command.queueCommandSubmit(Device.device, Device.graphicsQueue, commandBuffer);
 	}
 
 	void copyBufferToImageKtx(uint32_t width, uint32_t height, uint32_t mipLevels, ktxTexture2* ktxTexture, VkBuffer buffer, VkImage image) {
@@ -1214,7 +1205,7 @@ private:
 		}
 
 		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(regions.size()), regions.data());
-		endSingleTimeCommands(commandBuffer);
+		command.queueCommandSubmit(Device.device, Device.graphicsQueue, commandBuffer);
 	}
 
 	void copyBufferToImage(uint32_t width, uint32_t height, VkBuffer buffer, VkImage image) {
@@ -1232,12 +1223,13 @@ private:
 		region.imageExtent = { width, height, 1 };
 
 		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-		endSingleTimeCommands(commandBuffer);
+		command.queueCommandSubmit(Device.device, Device.graphicsQueue, commandBuffer);
 	}
 
 
 
 	VkCommandBuffer beginSingleTimeCommands() {
+		while (lockInfo::queueLock.exchange(true)) { std::this_thread::yield(); }
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -1252,22 +1244,9 @@ private:
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		lockInfo::queueLock.store(false);
 
 		return commandBuffer;
-	}
-
-	void endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-		vkEndCommandBuffer(commandBuffer);
-
-		VkSubmitInfo submitInfo = {};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffer;
-
-		vkQueueSubmit(Device.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-		vkQueueWaitIdle(Device.graphicsQueue);
-
-		vkFreeCommandBuffers(Device.device, command.commandPool, 1, &commandBuffer);
 	}
 
 	bool hasStencilComponent(VkFormat format) {

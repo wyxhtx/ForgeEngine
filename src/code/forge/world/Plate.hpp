@@ -573,8 +573,6 @@ private:
 
 public:
 	std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec3>> cubeChangeList;		//方块变更列表，存储变更方块坐标与对应区块坐标，[0,31]
-	bool internalUpdateLock = false;													//板块更新内部锁
-	bool externalUpdateLock = false;													//板块更新外部锁
 	bool isEntireRebuild = false;														//用于判断InitBuffer.recreateBuffer是完全重建还是部分重建
 
 
@@ -784,8 +782,7 @@ public:
 
 
 
-		while (externalUpdateLock);
-		internalUpdateLock = true;
+		while (lockInfo::plateMeshLock.exchange(true)) { std::this_thread::yield(); }
 
 		//处理updateStructLoop，复制chunkMap数据到updateChunkMap后加载链结构，R(8)N(34)M(4)
 		for (const glm::dvec3& updatePos : updateStructLoop) {
@@ -914,7 +911,7 @@ public:
 		}
 
 		isEntireRebuild = true;
-		internalUpdateLock = false;
+		lockInfo::plateMeshLock.store(false);
 
 
 
@@ -933,8 +930,7 @@ public:
 
 
 
-		while (externalUpdateLock);
-		internalUpdateLock = true;
+		while (lockInfo::plateMeshLock.exchange(true)) { std::this_thread::yield(); }
 
 		//拼接区块网格到对应地形网格层，R(8)N(34)M(45)
 		for (const glm::dvec3& updatePos : updateChunkLoop) {
@@ -966,7 +962,7 @@ public:
 		updateChunkMap.clear();
 
 		isEntireRebuild = true;
-		internalUpdateLock = false;
+		lockInfo::plateMeshLock.store(false);
 
 		//地形网格非空检测
 		if (debugInfo::LogSwitch) {

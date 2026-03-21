@@ -127,6 +127,7 @@ public:
         submitInfo.commandBufferCount   = 1;
         submitInfo.pCommandBuffers      = &commandBuffer[imageIndex];
 
+        while (lockInfo::queueLock.exchange(true)) { std::this_thread::yield(); }
         if (vkQueueSubmit(Device.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "Ã·ΩªªÊ÷∆√¸¡Óª∫≥Â«¯ ß∞‹");
             throw;
@@ -144,6 +145,7 @@ public:
         presentInfo.pResults        = nullptr;
 
         result = vkQueuePresentKHR(Device.presentQueue, &presentInfo);
+        lockInfo::queueLock.store(false);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
             return true;

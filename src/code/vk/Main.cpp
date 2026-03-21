@@ -5,7 +5,6 @@
 int main() {
     //防止同一时间启用多个游戏进程
     HANDLE hMutex = CreateMutexA(nullptr, TRUE, windowInfo::gameName);
-
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         Log::printError(__FILE__, __LINE__, "同一时间只能启用一个游戏进程");
         return 0;
@@ -15,7 +14,6 @@ int main() {
     SetDllDirectoryA(fileInfo::dll);
 
     //system("cd src\\image_build && png_to_ktx2.bat");   //编译纹理
-    
     //system("cd src\\shader_build && glsl_to_spirv.bat"); //编译着色器
     //system("cd src\\shader_build && dsScence_gts.bat"); //编译延迟着色器
     //system("cd src\\shader_build && terrain_gts.bat");  //编译地形着色器
@@ -23,23 +21,24 @@ int main() {
 
 
 
-    //加载音乐线程耗时长，所以先声明
-    //Music InitMusic{};
-    Window InitWindow{};
-    Device InitDevice{ InitWindow.window };
+    //Music InitMusic{};            //加载音乐线程耗时长，所以先声明
+    Window   InitWindow{};
+    Device   InitDevice{ InitWindow.window };
     Pipeline InitPipeline{ InitDevice };
 
     fpsStruct::tickNode deltaTime{};
-    threadCommInfo::musicLock = true;
 
 
+
+    //锁定音乐队列
+    while (lockInfo::musicLock.exchange(true)) { std::this_thread::yield(); }       
 
     //vulkan主循环
     while (!glfwWindowShouldClose(InitWindow.window)) {
         glfwPollEvents(); 
 
         if (InitWindow.isMin) {
-            if (deltaTime.isUpdate(fpsInfo::getKeyFPS)) {
+            if (deltaTime.isUpdate(fpsInfo::keyFPS)) {
                 InitWindow.getKey((float)deltaTime.dt);
             }
 
@@ -49,7 +48,13 @@ int main() {
 
 
 
-    threadCommInfo::musicLock = false;
-    vkDeviceWaitIdle(InitDevice.device);
+    //释放锁定音乐队列
+    lockInfo::musicLock.store(false);
+
+    //等待asyncUpdateCommandBuffer执行完
+    while (lockInfo::queueLock.exchange(true)) { std::this_thread::yield(); }
+    vkDeviceWaitIdle(InitDevice.device);    //等待所有GPU工作完成
+    lockInfo::queueLock.store(false);
+
     return 0;
 }

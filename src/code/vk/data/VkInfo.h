@@ -107,9 +107,10 @@ namespace bufferInfo {
 }
 
 namespace fpsInfo {
-    const double getKeyFPS = 1024;	//获取按键刷新率
-    const double cubeFPS = 128;	    //方块刷新率,用于限制由放置破坏方块导致的重建命令缓冲区
-    const double uiTextFPS = 2;		//UIText刷新率
+    const double keyFPS     = 1024;	    //获取按键刷新率
+    const double uiTextFPS  = 4;		//UIText刷新率
+    const double plateFPS   = 4;	    //板块刷新率
+    const double cubeFPS    = 128;	    //方块刷新率，用于限制因放置/破坏方块导致的命令缓冲区重建
 }
 
 namespace fileInfo {
@@ -179,7 +180,12 @@ namespace fileInfo {
     const char* dll = ".\\src\\library\\dll";
 }
 
-namespace threadCommInfo {
-    bool plateLock = false;        //板块线程锁，用于 Window 同步操作系统api的调用
-    bool musicLock = false;        //音乐线程锁，用于 Music  同步音乐线程的开关
+namespace lockInfo {
+    //类锁
+    std::atomic<bool> queueLock = false;        //队列线程锁，用于原子同步graphicsQueue队列操作
+    std::atomic<bool> musicLock = false;        //音乐线程锁，用于 Music 同步音乐线程的开关
+    std::atomic<bool> plateMeshLock = false;    //板块网格线程锁，用于原子同步对板块网格的修改操作
+
+    //函数锁
+    std::atomic<bool> updatePlateLock = false;  //asyncUpdatePlate函数线程锁，用于 Window 同步操作系统api的调用
 }

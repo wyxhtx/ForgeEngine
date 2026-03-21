@@ -4,9 +4,6 @@
 
 class Music {
 public:
-    //todo主进程循环再开始播放
-    //todo退出时释放资源
-
     Music() {
         std::thread(&Music::createBackgroundMusic, this).detach();
 
@@ -44,12 +41,12 @@ private:
         //播放音频
         alSourcePlay(source);
 
-        //等待主线程初始化完成
-        while (!threadCommInfo::musicLock);
+        //确保主线程初始化完成后播放音乐
+        while (!lockInfo::musicLock.load()) { std::this_thread::yield(); }
 
         //等待音频播放完成并继续循环
         ALint source_state;
-        while (threadCommInfo::musicLock) {
+        while (lockInfo::musicLock.load()) {
             alGetSourcei(source, AL_SOURCE_STATE, &source_state);
             if (source_state != AL_PLAYING) {
                 alSourcePlay(source);   //如果音频停止，重新播放

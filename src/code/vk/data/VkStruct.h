@@ -252,19 +252,23 @@ namespace bufferStruct {
         std::vector<VkCommandBuffer> commandBuffer[bufferInfo::commandThreadCount];     //使用双重命令缓冲防止更新区块卡顿
 
         int currentThreadId = 0;						                                //当前帧命令缓冲区线程id
-        int nextThreadId = 0;						                                    //下一帧命令缓冲区线程id
-        uint32_t processingThreadSize = 1;                                              //背后线程数量,避免上个线程没结束就开启新线程
+        int nextThreadId = currentThreadId;						                        //下一帧命令缓冲区线程id
 
         VkCommandBufferAllocateInfo allocInfo{};
         VkCommandBufferBeginInfo beginInfo{};
 
-        std::vector<VkDeviceSize> vertexOffset{ 0 };	//绑定管线过程中指定各顶点缓冲区的偏移量
+        std::vector<VkDeviceSize> vertexOffset{ 0 };	                                //绑定管线过程中指定各顶点缓冲区的偏移量
 
 
 
         //判断命令缓冲区线程是否需要更新
         bool isUpdate() {
             return nextThreadId != currentThreadId;
+        }
+
+        //设置当前帧命令缓冲区线程id
+        void setCurrentThreadId() {
+            currentThreadId = nextThreadId;
         }
 
         //设置下一帧命令缓冲区线程id
@@ -353,6 +357,23 @@ namespace bufferStruct {
         }
 
 
+
+        //队列命令提交
+        void queueCommandSubmit(VkDevice& device, VkQueue& graphicsQueue, VkCommandBuffer& tempCommandBuffer) {
+            VkSubmitInfo submitInfo{};
+            submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submitInfo.commandBufferCount = 1;
+            submitInfo.pCommandBuffers    = &tempCommandBuffer;
+
+            while (lockInfo::queueLock.exchange(true)) { std::this_thread::yield(); }
+            vkEndCommandBuffer(tempCommandBuffer);
+
+            vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+            vkQueueWaitIdle(graphicsQueue);
+
+            vkFreeCommandBuffers(device, commandPool, 1, &tempCommandBuffer);
+            lockInfo::queueLock.store(false);
+        }
 
         //创建管线屏障
         void createPipelineBarrier(int threadID, int frameID) {
