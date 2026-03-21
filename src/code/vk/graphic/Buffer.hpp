@@ -1032,7 +1032,7 @@ private:
 	}
 
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-		while (lockInfo::queueLock.exchange(true)) { std::this_thread::yield(); }
+		while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType				 = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.level				 = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -1052,7 +1052,7 @@ private:
 		copyRegion.dstOffset = 0;
 		copyRegion.size		 = size;
 		vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-		lockInfo::queueLock.store(false);
+		lockInfo::queueThreadLock.store(false);
 
 		command.queueCommandSubmit(Device.device, Device.graphicsQueue, commandBuffer);
 	}
@@ -1229,7 +1229,7 @@ private:
 
 
 	VkCommandBuffer beginSingleTimeCommands() {
-		while (lockInfo::queueLock.exchange(true)) { std::this_thread::yield(); }
+		while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -1244,7 +1244,7 @@ private:
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 		vkBeginCommandBuffer(commandBuffer, &beginInfo);
-		lockInfo::queueLock.store(false);
+		lockInfo::queueThreadLock.store(false);
 
 		return commandBuffer;
 	}

@@ -2,6 +2,19 @@
 
 
 
+namespace engineEnum {
+    namespace tickEnum {
+        enum type {
+            key,        //按键获取刷新率
+            uiText,     //文本UI刷新率
+            plate,      //板块更新刷新率
+            cube,       //方块更新刷新率
+
+            count
+        };
+    }
+}
+
 namespace bufferEnum {
     namespace textAlignId {
         enum type {

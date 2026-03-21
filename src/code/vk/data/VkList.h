@@ -2,6 +2,23 @@
 
 
 
+namespace engineList {
+    struct procTickNode {
+        std::vector<engineStruct::tickNode> node{};
+
+
+
+        procTickNode() : node(engineEnum::tickEnum::count) {
+            node[engineEnum::tickEnum::key]   .createTickNode(1024);
+            node[engineEnum::tickEnum::uiText].createTickNode(4);
+            node[engineEnum::tickEnum::plate] .createTickNode(4);
+            node[engineEnum::tickEnum::cube]  .createTickNode(128);
+        }
+    };
+
+    procTickNode procTick{};
+}
+
 namespace bufferList {
     struct procRenderNode {
         std::vector<bufferStruct::renderNode> nodePass{};

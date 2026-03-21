@@ -42,11 +42,11 @@ private:
         alSourcePlay(source);
 
         //确保主线程初始化完成后播放音乐
-        while (!lockInfo::musicLock.load()) { std::this_thread::yield(); }
+        while (!lockInfo::musicThreadLock.load()) { std::this_thread::yield(); }
 
         //等待音频播放完成并继续循环
         ALint source_state;
-        while (lockInfo::musicLock.load()) {
+        while (lockInfo::musicThreadLock.load()) {
             alGetSourcei(source, AL_SOURCE_STATE, &source_state);
             if (source_state != AL_PLAYING) {
                 alSourcePlay(source);   //如果音频停止，重新播放

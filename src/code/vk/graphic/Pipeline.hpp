@@ -19,10 +19,7 @@ public:
 	}
 
 	~Pipeline() {
-		//等待地形线程结束，防止小窗点x退出时线程冲突
-		//while (lockInfo::updateCmdLock.load())	 { std::this_thread::yield(); }
-		while (lockInfo::updatePlateLock.load()) { std::this_thread::yield(); }
-
+		while (lockInfo::windowThreadLock.load()) { std::this_thread::yield(); }
 		procPipeline.clear(Device.device);
 
 		if (debugInfo::LogSwitch) {
@@ -281,9 +278,6 @@ private:
 
 public:
 	void drawFrame(Camera& Camera) {
-		static fpsStruct::tickNode uiTextTick;
-		static fpsStruct::tickNode plateTick;
-		static fpsStruct::tickNode cubeTick;
 		static playerStruct::selectBoxNode selectBox = InitPlate.getSelectBox(Camera.node);
 		static int uiDeltaFrame = 0;                 //UI帧增量
 
@@ -291,34 +285,34 @@ public:
 
 		//更新uiText
 		uiDeltaFrame++;
-		if (uiTextTick.isUpdate(fpsInfo::uiTextFPS)) {
-			InitBuffer.drawUIText((int)(uiDeltaFrame / uiTextTick.dt));
+		if (engineList::procTick.node[engineEnum::tickEnum::uiText].isUpdate()) {
+			InitBuffer.drawUIText((int)(uiDeltaFrame / engineList::procTick.node[engineEnum::tickEnum::uiText].dt));
 			uiDeltaFrame = 0;
 		}
 
 		//更新板块，因玩家移动后更新板块网格
-		if (plateTick.isUpdate(fpsInfo::plateFPS) && !InitBuffer.command.isUpdate()) {
+		if (engineList::procTick.node[engineEnum::tickEnum::plate].isUpdate() && !InitBuffer.command.isUpdate()) {
 			static glm::dvec3 pos0 = glm::floor(playerInfo::initSpawnPos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
 			glm::dvec3 pos1		   = glm::floor(Camera.node.pos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
 
-			if (pos0 != pos1 && !lockInfo::updatePlateLock.exchange(true)) {
-				std::thread(&Pipeline::asyncUpdatePlate, this, Camera.node.pos).detach();
+			if (pos0 != pos1 && !lockInfo::plateFuncLock.exchange(true)) {
+				std::thread(&Pipeline::atomicUpdatePlate, this, Camera.node.pos).detach();
 
 				pos0 = pos1;
 			}
 		}
 
 		//更新方块，因放置/破坏方块后更新板块网格，命令缓冲区线程未变 & 方块变更列表非空 & 板块未锁
-		if (cubeTick.isUpdate(fpsInfo::cubeFPS) && !InitBuffer.command.isUpdate() && !InitPlate.cubeChangeList.empty() && !lockInfo::plateMeshLock.exchange(true)) {
+		if (engineList::procTick.node[engineEnum::tickEnum::cube].isUpdate() && !InitBuffer.command.isUpdate() && !InitPlate.cubeChangeList.empty() && !lockInfo::plateMeshDataLock.exchange(true)) {
 			InitPlate.updateDeltaCube();
 			InitBuffer.command.setNextThreadId();
-			lockInfo::plateMeshLock.store(false);
+			lockInfo::plateMeshDataLock.store(false);
 		}
 
 
 
 		//更换命令缓冲区后重建命令缓冲区（5~9ms），r=1时，更新板块会把网格数组清空
-		if (InitBuffer.command.isUpdate() && !lockInfo::plateMeshLock.exchange(true)) {
+		if (InitBuffer.command.isUpdate() && !lockInfo::plateMeshDataLock.exchange(true)) {
 			//原点迁移会导致板块网格重写，所以尽可能避免频繁迁移
 			if (playerInfo::logicOriginPos != InitPlate.originPos) {
 				playerInfo::logicOriginPos = InitPlate.originPos;
@@ -347,7 +341,7 @@ public:
 
 			InitBuffer.createCommandBuffer(InitBuffer.command.nextThreadId, procPipeline);
 			InitBuffer.command.setCurrentThreadId();
-			lockInfo::plateMeshLock.store(false);
+			lockInfo::plateMeshDataLock.store(false);
 		}
 
 
@@ -362,22 +356,30 @@ public:
 	}
 
 private:
-	void asyncUpdatePlate(glm::dvec3 playerPos) {
-		timeStruct::timeNode time{};
+	//原子线程更新板块
+	void atomicUpdatePlate(glm::dvec3 playerPos) {
+		lockInfo::windowThreadLock.store(true);
+		engineStruct::timeNode time{};
 
 		InitPlate.updatePlate(playerPos);
 		InitBuffer.command.setNextThreadId();
 
 		Log::print("板块刷新用时:\t" + time.end());
-		lockInfo::updatePlateLock.store(false);
+		lockInfo::plateFuncLock.store(false);
+		lockInfo::windowThreadLock.store(false);
 	}
 
-	void asyncUpdateCommandBuffer() {
-
+	//原子线程更新命令缓冲区
+	void atomicUpdateCommandBuffer() {
+		lockInfo::windowThreadLock.store(true);
+		//!lockInfo::cmdFuncLock.exchange(true)
+		
+		lockInfo::cmdFuncLock.store(false);
+		lockInfo::windowThreadLock.store(false);
 	}
 
 	void recreateSwapChain() {
-		while (lockInfo::queueLock.exchange(true)) { std::this_thread::yield(); }		//recreateSwapChain里队列命令操作太多了挨个隔离太麻烦，干脆全部隔离
+		while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }		//recreateSwapChain里队列命令操作太多了挨个隔离太麻烦，干脆全部隔离
 		vkDeviceWaitIdle(Device.device);
 
 		InitBuffer.cleanupSwapChain(InitBuffer.command.currentThreadId);
@@ -387,6 +389,6 @@ private:
 		createPipeline();
 		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadId, procPipeline);
 
-		lockInfo::queueLock.store(false);
+		lockInfo::queueThreadLock.store(false);
 	}
 };

@@ -2,6 +2,46 @@
 
 
 
+namespace engineStruct {
+    struct tickNode {
+        double time0 = glfwGetTime();
+        double time1 = 0.0;
+        double dt    = 0.0;
+        double fps   = 0.0;
+
+        void createTickNode(double tempFps) {
+            fps = tempFps;
+        }
+
+        //是否更新
+        bool isUpdate() {
+            time1 = glfwGetTime();
+
+            if ((dt = time1 - time0) > 1.0 / fps) {
+                time0 = time1;
+
+                return true;
+            }
+
+            return false;
+        }
+    };
+
+    struct timeNode {
+        std::chrono::high_resolution_clock::time_point start{};
+        std::chrono::duration<double, std::milli> duration{};
+
+        timeNode() {
+            start = std::chrono::high_resolution_clock::now();
+        }
+
+        std::string end() {
+            duration = std::chrono::high_resolution_clock::now() - start;
+            return std::to_string(duration.count());
+        }
+    };
+}
+
 namespace deviceStruct {
     struct queueIndiceNode {
         //四大操作支持索引
@@ -365,14 +405,14 @@ namespace bufferStruct {
             submitInfo.commandBufferCount = 1;
             submitInfo.pCommandBuffers    = &tempCommandBuffer;
 
-            while (lockInfo::queueLock.exchange(true)) { std::this_thread::yield(); }
+            while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
             vkEndCommandBuffer(tempCommandBuffer);
 
             vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
             vkQueueWaitIdle(graphicsQueue);
 
             vkFreeCommandBuffers(device, commandPool, 1, &tempCommandBuffer);
-            lockInfo::queueLock.store(false);
+            lockInfo::queueThreadLock.store(false);
         }
 
         //创建管线屏障
@@ -1874,43 +1914,6 @@ namespace pipelineStruct {
 
         void clear(const VkDevice& device) {
             vkDestroyPipeline(device, pipeline, nullptr);
-        }
-    };
-}
-
-namespace fpsStruct {
-    struct tickNode {
-        double time0 = glfwGetTime();
-        double time1 = 0.0;
-        double dt = 0.0;
-
-        //是否更新
-        bool isUpdate(double fps) {
-            time1 = glfwGetTime();
-
-            if ((dt = time1 - time0) > 1.0 / fps) {
-                time0 = time1;
-
-                return true;
-            }
-
-            return false;
-        }
-    };
-}
-
-namespace timeStruct {
-    struct timeNode {
-        std::chrono::high_resolution_clock::time_point start{};
-        std::chrono::duration<double, std::milli> duration{};
-
-        timeNode() {
-            start = std::chrono::high_resolution_clock::now();
-        }
-
-        std::string end() {
-            duration = std::chrono::high_resolution_clock::now() - start;
-            return std::to_string(duration.count());
         }
     };
 }

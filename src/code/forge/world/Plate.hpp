@@ -9,7 +9,7 @@ public:
 
 
 	Plate() {
-		timeStruct::timeNode time{};
+		engineStruct::timeNode time{};
 
 		if (debugInfo::LogSwitch) {
 			if (cubeEnum::cubeId::count != cubeEnum::coverageId::count) {
@@ -782,7 +782,7 @@ public:
 
 
 
-		while (lockInfo::plateMeshLock.exchange(true)) { std::this_thread::yield(); }
+		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
 
 		//处理updateStructLoop，复制chunkMap数据到updateChunkMap后加载链结构，R(8)N(34)M(4)
 		for (const glm::dvec3& updatePos : updateStructLoop) {
@@ -911,7 +911,7 @@ public:
 		}
 
 		isEntireRebuild = true;
-		lockInfo::plateMeshLock.store(false);
+		lockInfo::plateMeshDataLock.store(false);
 
 
 
@@ -930,7 +930,7 @@ public:
 
 
 
-		while (lockInfo::plateMeshLock.exchange(true)) { std::this_thread::yield(); }
+		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
 
 		//拼接区块网格到对应地形网格层，R(8)N(34)M(45)
 		for (const glm::dvec3& updatePos : updateChunkLoop) {
@@ -962,7 +962,7 @@ public:
 		updateChunkMap.clear();
 
 		isEntireRebuild = true;
-		lockInfo::plateMeshLock.store(false);
+		lockInfo::plateMeshDataLock.store(false);
 
 		//地形网格非空检测
 		if (debugInfo::LogSwitch) {

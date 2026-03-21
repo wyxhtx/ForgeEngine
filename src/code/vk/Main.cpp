@@ -26,20 +26,18 @@ int main() {
     Device   InitDevice{ InitWindow.window };
     Pipeline InitPipeline{ InitDevice };
 
-    fpsStruct::tickNode deltaTime{};
-
 
 
     //锁定音乐队列
-    while (lockInfo::musicLock.exchange(true)) { std::this_thread::yield(); }       
+    while (lockInfo::musicThreadLock.exchange(true)) { std::this_thread::yield(); }       
 
     //vulkan主循环
     while (!glfwWindowShouldClose(InitWindow.window)) {
         glfwPollEvents(); 
 
         if (InitWindow.isMin) {
-            if (deltaTime.isUpdate(fpsInfo::keyFPS)) {
-                InitWindow.getKey((float)deltaTime.dt);
+            if (engineList::procTick.node[engineEnum::tickEnum::key].isUpdate()) {
+                InitWindow.getKey((float)engineList::procTick.node[engineEnum::tickEnum::key].dt);
             }
 
             InitPipeline.drawFrame(InitWindow.InitCamera);
@@ -49,12 +47,12 @@ int main() {
 
 
     //释放锁定音乐队列
-    lockInfo::musicLock.store(false);
+    lockInfo::musicThreadLock.store(false);
 
     //等待asyncUpdateCommandBuffer执行完
-    while (lockInfo::queueLock.exchange(true)) { std::this_thread::yield(); }
+    while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
     vkDeviceWaitIdle(InitDevice.device);    //等待所有GPU工作完成
-    lockInfo::queueLock.store(false);
+    lockInfo::queueThreadLock.store(false);
 
     return 0;
 }

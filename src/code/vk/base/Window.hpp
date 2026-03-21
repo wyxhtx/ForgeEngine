@@ -115,15 +115,15 @@ private:
 		if (action == GLFW_PRESS) {
 			switch (key) {
 			case GLFW_KEY_F11:									//全屏
-				while (lockInfo::updatePlateLock.load());		//等待地形线程结束
+				while (lockInfo::windowThreadLock.load());		//等待地形线程结束
 				glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
 				break;
 			case GLFW_KEY_ESCAPE:								//退出全屏
-				while (lockInfo::updatePlateLock.load());		//等待地形线程结束
+				while (lockInfo::windowThreadLock.load());		//等待地形线程结束
 				glfwSetWindowMonitor(window, nullptr, windowX, windowY, windowInfo::width, windowInfo::height, mode->refreshRate);
 				break;
 			case GLFW_KEY_END:									//结束游戏，使用笔记本时得和fn组合使用
-				while (lockInfo::updatePlateLock.load());		//等待地形线程结束
+				while (lockInfo::windowThreadLock.load());		//等待地形线程结束
 				glfwSetWindowShouldClose(window, GLFW_TRUE);
 				break;
 			}
