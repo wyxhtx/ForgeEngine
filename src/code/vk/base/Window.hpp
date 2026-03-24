@@ -113,20 +113,23 @@ private:
 	//处理按键回调，只适用于不需要长按的按钮
 	void KeyCallBack(GLFWwindow* window, int key, int scancode, int action, int mods) {
 		if (action == GLFW_PRESS) {
+			while (lockInfo::plateFuncLock.exchange(true)) { std::this_thread::yield(); }
+			while (lockInfo::cmdFuncLock.exchange(true)) { std::this_thread::yield(); }
+
 			switch (key) {
-			case GLFW_KEY_F11:									//全屏
-				while (lockInfo::windowThreadLock.load());		//等待地形线程结束
+			case GLFW_KEY_F11:																			//全屏
 				glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
 				break;
-			case GLFW_KEY_ESCAPE:								//退出全屏
-				while (lockInfo::windowThreadLock.load());		//等待地形线程结束
+			case GLFW_KEY_ESCAPE:																		//退出全屏
 				glfwSetWindowMonitor(window, nullptr, windowX, windowY, windowInfo::width, windowInfo::height, mode->refreshRate);
 				break;
-			case GLFW_KEY_END:									//结束游戏，使用笔记本时得和fn组合使用
-				while (lockInfo::windowThreadLock.load());		//等待地形线程结束
+			case GLFW_KEY_END:																			//结束游戏，使用笔记本时得和fn组合使用
 				glfwSetWindowShouldClose(window, GLFW_TRUE);
 				break;
 			}
+
+			lockInfo::cmdFuncLock.store(false);
+			lockInfo::plateFuncLock.store(false);
 		}
 	}
 

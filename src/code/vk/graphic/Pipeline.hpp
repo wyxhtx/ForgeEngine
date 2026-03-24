@@ -19,7 +19,8 @@ public:
 	}
 
 	~Pipeline() {
-		while (lockInfo::windowThreadLock.load()) { std::this_thread::yield(); }
+		while (lockInfo::plateFuncLock.load()) { std::this_thread::yield(); }
+		while (lockInfo::cmdFuncLock.load()) { std::this_thread::yield(); }
 		procPipeline.clear(Device.device);
 
 		if (debugInfo::LogSwitch) {
@@ -278,7 +279,7 @@ private:
 
 public:
 	void drawFrame(Camera& Camera) {
-		static playerStruct::selectBoxNode selectBox = InitPlate.getSelectBox(Camera.node);
+		static playerStruct::selectBoxNode selectBox = InitPlate.getSelectBox(playerInfo::logicOriginPos, Camera.node);
 		static int uiDeltaFrame = 0;                 //UI帧增量
 
 
@@ -302,80 +303,71 @@ public:
 			}
 		}
 
-		//更新方块，因放置/破坏方块后更新板块网格，命令缓冲区线程未变 & 方块变更列表非空 & 板块未锁
+		//更新方块，因放置/破坏方块后更新板块网格，命令缓冲区线程未变 & 方块变更列表非空 & 板块网格未锁
 		if (engineList::procTick.node[engineEnum::tickEnum::cube].isUpdate() && !InitBuffer.command.isUpdate() && !InitPlate.cubeChangeList.empty() && !lockInfo::plateMeshDataLock.exchange(true)) {
 			InitPlate.updateDeltaCube();
 			InitBuffer.command.setNextThreadId();
 			lockInfo::plateMeshDataLock.store(false);
 		}
 
-
-
 		//更换命令缓冲区后重建命令缓冲区（5~9ms），r=1时，更新板块会把网格数组清空
-		if (InitBuffer.command.isUpdate() && !lockInfo::plateMeshDataLock.exchange(true)) {
-			//原点迁移会导致板块网格重写，所以尽可能避免频繁迁移
-			if (playerInfo::logicOriginPos != InitPlate.originPos) {
-				playerInfo::logicOriginPos = InitPlate.originPos;
-				Camera.updateView();
-
-				if (debugInfo::LogSwitch) {
-					Log::print("原点迁移");
-
-					if (!InitPlate.isEntireRebuild) {
-						Log::printError(__FILE__, __LINE__, "原点迁移时InitPlate.isEntireRebuild为假");
-					}
-				}
-			}
-
-			//目前重建命令缓冲区必定是updatePlate或updatePlatePartMesh触发的，通过二者真值表得出此处判断逻辑
-			if (InitPlate.isEntireRebuild) {
-				InitPlate.isEntireRebuild = false;
-
-				//地形管线全部重建，R(8)N(34)M(15)
-				InitBuffer.recreateBuffer(InitBuffer.command.nextThreadId, true);
-			}
-			else {
-				//只重建Lod_0地形管线，R(8)N(34)M(4)
-				InitBuffer.recreateBuffer(InitBuffer.command.nextThreadId, false);
-			}
-
-			InitBuffer.createCommandBuffer(InitBuffer.command.nextThreadId, procPipeline);
-			InitBuffer.command.setCurrentThreadId();
-			lockInfo::plateMeshDataLock.store(false);
+		if (InitBuffer.command.isUpdate() && !lockInfo::cmdFuncLock.exchange(true)) {
+			std::thread(&Pipeline::atomicUpdateCommandBuffer, this, std::ref(Camera)).detach();
 		}
 
 
 
-		selectBox = InitPlate.getSelectBox(Camera.node);	//当前帧获取的方块更新列表在下一帧更新
-		InitBuffer.updateUniformBuffer(Camera.node, selectBox);
+		while (lockInfo::cameraViewDataLock.exchange(true)) { std::this_thread::yield(); }
+		selectBox = InitPlate.getSelectBox(playerInfo::logicOriginPos, Camera.node);	//当前帧获取的方块更新列表在下一帧更新
+		InitBuffer.updateUniformBuffer(playerInfo::logicOriginPos, Camera.node, selectBox);
 
+		while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
 		if (InitBuffer.drawFrame()) {
 			recreateSwapChain(); 
 			Log::print("重建交换链");
 		}
+		lockInfo::drawFuncLock.store(false);
+		lockInfo::cameraViewDataLock.store(false);
 	}
 
 private:
 	//原子线程更新板块
 	void atomicUpdatePlate(glm::dvec3 playerPos) {
-		lockInfo::windowThreadLock.store(true);
 		engineStruct::timeNode time{};
 
-		InitPlate.updatePlate(playerPos);
+		InitPlate.updatePlate(playerInfo::logicOriginPos, playerPos);
 		InitBuffer.command.setNextThreadId();
 
 		Log::print("板块刷新用时:\t" + time.end());
 		lockInfo::plateFuncLock.store(false);
-		lockInfo::windowThreadLock.store(false);
 	}
 
 	//原子线程更新命令缓冲区
-	void atomicUpdateCommandBuffer() {
-		lockInfo::windowThreadLock.store(true);
-		//!lockInfo::cmdFuncLock.exchange(true)
-		
+	void atomicUpdateCommandBuffer(Camera& Camera) {
+		//engineStruct::timeNode time{};
+		while (lockInfo::cameraViewDataLock.exchange(true)) { std::this_thread::yield(); }
+		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
+
+		//原点迁移会导致板块网格重写，所以尽可能避免频繁迁移
+		if (playerInfo::logicOriginPos != InitPlate.originPos) {
+			playerInfo::logicOriginPos = InitPlate.originPos;
+			Camera.updateView();
+
+			if (debugInfo::LogSwitch) {
+				Log::print("原点迁移");
+
+				if (!InitPlate.isEntireRebuild) {
+					Log::printWarning(__FILE__, __LINE__, "原点迁移时InitPlate.isEntireRebuild为假");
+				}
+			}
+		}
+
+		InitBuffer.recreatePlateBuffer(InitBuffer.command.nextThreadId, InitPlate.isEntireRebuild, procPipeline);
+
+		lockInfo::plateMeshDataLock.store(false);
+		lockInfo::cameraViewDataLock.store(false);
 		lockInfo::cmdFuncLock.store(false);
-		lockInfo::windowThreadLock.store(false);
+		//Log::print("用时:\t" + time.end());
 	}
 
 	void recreateSwapChain() {

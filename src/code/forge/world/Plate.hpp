@@ -573,12 +573,12 @@ private:
 
 public:
 	std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec3>> cubeChangeList;		//方块变更列表，存储变更方块坐标与对应区块坐标，[0,31]
-	bool isEntireRebuild = false;														//用于判断InitBuffer.recreateBuffer是完全重建还是部分重建
+	std::atomic<bool> isEntireRebuild = false;											//用于判断InitBuffer.recreateBuffer是完全重建还是部分重建
 
 
 
 	//更新板块，R(8)N(34)M(100~160)(原点迁移时删除网格更快)
-	void updatePlate(glm::dvec3 playerPos) {
+	void updatePlate(const glm::dvec3 logicOriginPos, const glm::dvec3 playerPos) {
 		std::unordered_set<glm::dvec3> existChunkLoop;										//当前视距内已加载区块列表 
 		std::vector<glm::dvec3> updateChunkLoop;											//当前视距内未加载区块列表
 		plateStruct::kMeansNode partChunkLoop;												//分区区块循环，用于并行生成地形
@@ -586,11 +586,12 @@ public:
 		std::unordered_set<glm::dvec3> updateStructLoop;									//更新结构循环，已加载区块被压入新链结构时，为避免线程冲突将对应区块延到锁域处理
 
 		glm::dvec3 playerChunkPos = glm::floor(playerPos / (double)plateInfo::chunkLength);
-		glm::dvec3 originShiftPos = glm::abs(playerInfo::logicOriginPos - playerPos);
-		glm::dvec3 tempOriginPos = originPos;
+		glm::dvec3 originShiftPos = glm::abs(logicOriginPos - playerPos);
+		glm::dvec3 tempOriginPos  = originPos;												//临时原点坐标
 
 
 
+		//---1、板块数据处理阶段---
 		//重设地区原点
 		InitStorage.updateConfig(playerChunkPos);
 
@@ -788,7 +789,7 @@ public:
 		for (const glm::dvec3& updatePos : updateStructLoop) {
 			updateChunkMap[updatePos].InitChunk(tempOriginPos, updatePos);
 			updateChunkMap[updatePos].isVisible = chunkMap[updatePos].isVisible;
-			updateChunkMap[updatePos].layerID = chunkMap[updatePos].layerID;
+			updateChunkMap[updatePos].layerID	= chunkMap[updatePos].layerID;
 			std::memcpy(updateChunkMap[updatePos].cubeArray, chunkMap[updatePos].cubeArray, sizeof(chunkMap[updatePos].cubeArray));
 
 			for (const glm::ivec4& cubePos : pendingStructManager.node[updatePos]) {
@@ -828,9 +829,7 @@ public:
 			}
 		}
 
-
-		//卸载视距外地形网格，因为原点未迁移处理耗时太高，所以全采用原点迁移处理
-		//if (tempOriginPos == playerInfo::logicOriginPos)
+		//卸载视距外地形网格，因为原点未迁移处理耗时太高，所以全采用原点迁移处理，if (tempOriginPos == playerInfo::logicOriginPos)
 		if (false) {
 			//原点未迁移，R(8)N(34)M(90)
 			for (std::unordered_map<glm::dvec3, Chunk>::iterator it = chunkMap.begin(); it != chunkMap.end(); ) {
@@ -910,11 +909,12 @@ public:
 			originPos = tempOriginPos;
 		}
 
-		isEntireRebuild = true;
+		isEntireRebuild.store(true);
 		lockInfo::plateMeshDataLock.store(false);
 
 
 
+		//---2、板块网格处理阶段---
 		//生成区块网格，R(8)N(34)M(10)
 		std::for_each(std::execution::par, updateChunkLoop.begin(), updateChunkLoop.end(),
 			[this, updateStructLoop](const glm::dvec3& updatePos) {
@@ -961,8 +961,10 @@ public:
 
 		updateChunkMap.clear();
 
-		isEntireRebuild = true;
+		isEntireRebuild.store(true);
 		lockInfo::plateMeshDataLock.store(false);
+
+
 
 		//地形网格非空检测
 		if (debugInfo::LogSwitch) {
@@ -981,7 +983,7 @@ public:
 	//todo 选择框有误差，等写完十字标时修正
 	//todo 优化算法
 	//选择框算法，参考Bresenham算法
-	playerStruct::selectBoxNode getSelectBox(const playerStruct::cameraNode& camera) {
+	playerStruct::selectBoxNode getSelectBox(const glm::dvec3 logicOriginPos, const playerStruct::cameraNode& camera) {
 		static glm::dvec3 displacement;			//坐标变化量
 		static int remainingSteps;				//剩余步骤数量
 		glm::dvec3 offsetPos{ 0 };				//坐标偏移量
@@ -1016,8 +1018,8 @@ public:
 					createUpdateCubeList(chunkPos, cubePos);
 				}
 
-				return playerStruct::selectBoxNode{ initialPos - playerInfo::logicOriginPos, 1 };	//返回i世界坐标系，如果起始坐标非空，则直接返回起始坐标
-				//return playerStruct::selectBoxNode{ cubePos, 1 };									//返回玩家所在区块数组真实坐标
+				return playerStruct::selectBoxNode{ initialPos - logicOriginPos, 1 };	//返回i世界坐标系，如果起始坐标非空，则直接返回起始坐标
+				//return playerStruct::selectBoxNode{ cubePos, 1 };						//返回玩家所在区块数组真实坐标
 			}
 		}
 
@@ -1069,8 +1071,8 @@ public:
 						createUpdateCubeList(chunkPos, cubePos);
 					}
 
-					return playerStruct::selectBoxNode{ initialPos - playerInfo::logicOriginPos, 1 };	//返回i世界坐标系
-					//return playerStruct::selectBoxNode{ cubePos, 1 };									//返回玩家所在区块数组真实坐标
+					return playerStruct::selectBoxNode{ initialPos - logicOriginPos, 1 };	//返回i世界坐标系
+					//return playerStruct::selectBoxNode{ cubePos, 1 };						//返回玩家所在区块数组真实坐标
 				}
 			}
 
@@ -1090,7 +1092,7 @@ public:
 				int layer = chunkMap[chunkPos].layerID;
 
 				if (layer != forgeEnum::terrainLayer::Layer_0) {
-					isEntireRebuild = true;
+					isEntireRebuild.store(true);
 				}
 
 				delTerrainMesh(chunkPos, layer);																//从地形网格中删除旧区块网格

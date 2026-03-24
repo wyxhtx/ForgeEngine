@@ -1434,68 +1434,111 @@ public:
 
 
 
-	void recreateBuffer(int threadId, bool isLayer) {
+	void recreatePlateBuffer(int threadId, std::atomic<bool>& isEntireRebuild, pipelineList::procPipelineNode& procPipeline) {
 		command.free(Device.device, threadId);
 
 		if (!terrain.isEnable) { return; }
+		int layer = forgeEnum::terrainLayer::Layer_0;
 
-		if (isLayer) {
-			//地形管线全部重建
-			int layer = forgeEnum::terrainLayer::Layer_0;		//先重建当前线程网格缓冲区
-			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
-				vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
+		//只重建Lod_0地形管线，R(8)N(34)M(4)
+		if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+			while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+			vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
+			vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
+			lockInfo::queueThreadLock.store(false);
 
-				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
-				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
+			createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
+			createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
 
-				//重建全部阴影 10ms
-				if (procShadow.isEnable) {
-					for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-						vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
-						shadowVertex::loadTerrainVertexs(layer);
-						createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
-					}
-				}
-			}
+			if (procShadow.isEnable) {
+				//重建Lod_0阴影
+				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+				vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
+				lockInfo::queueThreadLock.store(false);
 
-			layer = forgeEnum::terrainLayer::Layer_1;
-			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
-				createTerrainVertexBuffer(threadId, layer);
-				createTerrainIndexBuffer(threadId, layer);
+				shadowVertex::loadTerrainVertexs(layer);
+				createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
 			}
 		}
-		else {
-			//只重建Lod_0地形管线
-			int layer = forgeEnum::terrainLayer::Layer_0;
+
+		//地形管线全部重建，R(8)N(34)M(15)
+		if (isEntireRebuild.load()) {
+			layer = forgeEnum::terrainLayer::Layer_1;
 
 			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
 				vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
+				lockInfo::queueThreadLock.store(false);
 
 				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
 				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
 
 				if (procShadow.isEnable) {
-					//重建Lod_0阴影
+					//重建Lod_1阴影
+					while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
 					vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
+					lockInfo::queueThreadLock.store(false);
+
 					shadowVertex::loadTerrainVertexs(layer);
 					createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
 				}
 			}
+
+			while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
+			vkQueueWaitIdle(Device.graphicsQueue);
+			threadId = (threadId + 1) % 2;
+			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
+				vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
+				lockInfo::queueThreadLock.store(false);
+
+				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
+				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
+
+				if (procShadow.isEnable) {
+					//重建Lod_1阴影
+					while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+					vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
+					lockInfo::queueThreadLock.store(false);
+
+					shadowVertex::loadTerrainVertexs(layer);
+					createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
+				}
+			}
+
+			while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+			createCommandBuffer(command.nextThreadId, procPipeline);
+			command.setCurrentThreadId();
+			lockInfo::queueThreadLock.store(false);
+
+			lockInfo::drawFuncLock.store(false);
+			isEntireRebuild.store(false);
+		}
+		else {
+			while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
+			vkQueueWaitIdle(Device.graphicsQueue);
+			
+			while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+			createCommandBuffer(command.nextThreadId, procPipeline);
+			command.setCurrentThreadId();
+			lockInfo::queueThreadLock.store(false);
+
+			lockInfo::drawFuncLock.store(false);
 		}
 	}
 
-	void updateUniformBuffer(const playerStruct::cameraNode& camera, const playerStruct::selectBoxNode& box) {
+	void updateUniformBuffer(const glm::dvec3 logicOriginPos, const playerStruct::cameraNode& camera, const playerStruct::selectBoxNode& box) {
 		static std::chrono::steady_clock::time_point time0 = std::chrono::steady_clock::now();	//游戏起始时刻
 		static std::chrono::steady_clock::time_point time1;										//游戏当前时刻
 		static float gameTime;																	//游戏运行时长，最多支持连续运行194天（现实时间）
 		static float currentHour;																//当前小时，取值范围[0,24)，含小数部分
-		glm::vec3 offsetPos = playerInfo::initSpawnPos - playerInfo::logicOriginPos;
-		glm::vec3 playerPos = camera.pos - playerInfo::logicOriginPos;
+		glm::vec3 offsetPos = playerInfo::initSpawnPos - logicOriginPos;
+		glm::vec3 playerPos = camera.pos - logicOriginPos;
 
-		time1 = std::chrono::steady_clock::now();
-		gameTime = std::chrono::duration_cast<std::chrono::milliseconds>(time1 - time0).count() / 1000.0f;
+		time1		= std::chrono::steady_clock::now();
+		gameTime	= std::chrono::duration_cast<std::chrono::milliseconds>(time1 - time0).count() / 1000.0f;
 		currentHour = std::fmod(gameTime, 24.0f);
 
 
@@ -1514,8 +1557,8 @@ public:
 				procModel.sNode[i].currentWorldPos = camera.pos;
 
 				if (glm::distance(procModel.sNode[i].modelWorldPos, procModel.sNode[i].currentWorldPos) < plateInfo::perspSightRange) {
-					procModel.sNode[i].ubo.model = glm::translate(glm::mat4(1), glm::vec3(procModel.sNode[i].modelWorldPos - playerInfo::logicOriginPos));	//位移
-					procModel.sNode[i].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
+					procModel.sNode[i].ubo.model = glm::translate(glm::mat4(1), glm::vec3(procModel.sNode[i].modelWorldPos - logicOriginPos));	//位移
+					procModel.sNode[i].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));												//缩放
 					//procModel.sNode[i].ubo.model	*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), coordsInfo::worldUp);							//旋转
 					procModel.sNode[i].ubo.modelTI = glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
 					procModel.sNode[i].ubo.view = camera.view;
@@ -1535,8 +1578,8 @@ public:
 
 				if (glm::distance(procModel.dNode[i].modelWorldPos, procModel.dNode[i].currentWorldPos) < plateInfo::perspSightRange) {
 					for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-						procModel.dNode[i].node[j].ubo.model = glm::translate(glm::mat4(1), glm::vec3(procModel.dNode[i].modelWorldPos - playerInfo::logicOriginPos));	//位移
-						procModel.dNode[i].node[j].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));																//缩放
+						procModel.dNode[i].node[j].ubo.model = glm::translate(glm::mat4(1), glm::vec3(procModel.dNode[i].modelWorldPos - logicOriginPos));	//位移
+						procModel.dNode[i].node[j].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));												//缩放
 						procModel.dNode[i].node[j].ubo.modelTI = glm::transpose(glm::inverse(procModel.dNode[i].node[j].ubo.model));
 						procModel.dNode[i].node[j].ubo.view = camera.view;
 
@@ -1587,11 +1630,11 @@ public:
 			osMirror.ubo.model				*= glm::scale(glm::mat4(1), glm::vec3(32.0f));
 			osMirror.ubo.modelTI			= glm::transpose(glm::inverse(osMirror.ubo.model));
 			osMirror.ubo.view				= camera.view;
-			osMirror.lightUbo.viewPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			osMirror.lightUbo.viewPos		= glm::vec3{ camera.pos - logicOriginPos };
 			osMirror.lightUbo.currentHour	= currentHour;
 			osMirror.lightUbo.ambientScale	= lightInfo::ambientScale;
 			osMirror.lightUbo.gLightPos		= offsetPos;
-			osMirror.lightUbo.flashPos		= glm::vec3{ camera.pos - playerInfo::logicOriginPos };
+			osMirror.lightUbo.flashPos		= glm::vec3{ camera.pos - logicOriginPos };
 			osMirror.lightUbo.flashDir		= camera.front;
 			osMirror.lightUbo.flashCutOff	= glm::cos(glm::radians(12.5f));
 			osMirror.lightUbo.outerCutOff	= glm::cos(glm::radians(14.5f));
@@ -1638,25 +1681,25 @@ public:
 
 		//dsScence
 		if (dsScence.isEnable) {
-			dsScence.lightUbo.viewPos	  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };	//位置
-			dsScence.lightUbo.currentHour = currentHour;											//时间
+			dsScence.lightUbo.viewPos	  = glm::vec3{ camera.pos - logicOriginPos };		//位置
+			dsScence.lightUbo.currentHour = currentHour;								//时间
 			
 			//点光源
-			dsScence.lightUbo.pointLightList[0].position = offsetPos;								//位置
-			dsScence.lightUbo.pointLightList[0].radius	 = 16.0f;									//半径
-			dsScence.lightUbo.pointLightList[0].color	 = glm::vec3(1.0f);							//颜色
+			dsScence.lightUbo.pointLightList[0].position = offsetPos;					//位置
+			dsScence.lightUbo.pointLightList[0].radius	 = 16.0f;						//半径
+			dsScence.lightUbo.pointLightList[0].color	 = glm::vec3(1.0f);				//颜色
 		
 			//平行光
-			dsScence.lightUbo.dirLightList[0].direction = lightInfo::sunLightDir;					//方向
-			dsScence.lightUbo.dirLightList[0].scale		= 0.5f;										//强度
-			dsScence.lightUbo.dirLightList[0].color		= lightInfo::sunLightColor;					//颜色
+			dsScence.lightUbo.dirLightList[0].direction = lightInfo::sunLightDir;		//方向
+			dsScence.lightUbo.dirLightList[0].scale		= 0.5f;							//强度
+			dsScence.lightUbo.dirLightList[0].color		= lightInfo::sunLightColor;		//颜色
 		
 			//聚光灯
-			dsScence.lightUbo.spotLightList[0].position  = glm::vec3{ camera.pos - playerInfo::logicOriginPos };	//位置
-			dsScence.lightUbo.spotLightList[0].inner	 = glm::cos(glm::radians(12.5f));							//内圆锥
-			dsScence.lightUbo.spotLightList[0].color	 = glm::vec3(1.0f);											//颜色
-			dsScence.lightUbo.spotLightList[0].outer	 = glm::cos(glm::radians(14.5f));							//外圆锥
-			dsScence.lightUbo.spotLightList[0].direction = camera.front;											//方向
+			dsScence.lightUbo.spotLightList[0].position  = glm::vec3{ camera.pos - logicOriginPos };		//位置
+			dsScence.lightUbo.spotLightList[0].inner	 = glm::cos(glm::radians(12.5f));			//内圆锥
+			dsScence.lightUbo.spotLightList[0].color	 = glm::vec3(1.0f);							//颜色
+			dsScence.lightUbo.spotLightList[0].outer	 = glm::cos(glm::radians(14.5f));			//外圆锥
+			dsScence.lightUbo.spotLightList[0].direction = camera.front;							//方向
 
 			dsScence.shadowUbo.shadowMvp    = procShadow.shadowVP;
 			dsScence.shadowUbo.shadowExtent = glm::vec2{ bufferInfo::shadowMapLength, bufferInfo::shadowMapLength };
@@ -1722,46 +1765,6 @@ public:
 
 private:
 	bufferStruct::showUITextNode showUIText{};
-
-
-
-	//创建地形顶点缓冲
-	void createTerrainVertexBuffer(int threadId, int layer) {
-		VkDeviceSize bufferSize = sizeof(terrainVertex::vertexs[layer][0]) * terrainVertex::vertexs[layer].size();
-		bufferStruct::bufferNode tempBuffer;
-
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer);
-		createMapMemory(tempBuffer.bufferMemory, terrainVertex::vertexs[layer].data(), (size_t)bufferSize);
-
-		for (int i = 0; i < bufferInfo::commandThreadCount; i++) {
-			int thread = (threadId + i) % 2;
-
-			vmaDestroyBuffer(Device.allocator, terrain.vertex[thread][layer].buffer, terrain.vertex[thread][layer].bufferMemory);
-			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[thread][layer]);
-			copyBuffer(tempBuffer.buffer, terrain.vertex[thread][layer].buffer, bufferSize);
-		}
-
-		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
-	}
-
-	//创建地形索引缓冲
-	void createTerrainIndexBuffer(int threadId, int layer) {
-		VkDeviceSize bufferSize = sizeof(terrainVertex::indexs[layer][0]) * terrainVertex::indexs[layer].size();
-		bufferStruct::bufferNode tempBuffer;
-
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tempBuffer);
-		createMapMemory(tempBuffer.bufferMemory, terrainVertex::indexs[layer].data(), (size_t)bufferSize);
-
-		for (int i = 0; i < bufferInfo::commandThreadCount; i++) {
-			int thread = (threadId + i) % 2;
-
-			vmaDestroyBuffer(Device.allocator, terrain.index[thread][layer].buffer, terrain.index[thread][layer].bufferMemory);
-			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.index[thread][layer]);
-			copyBuffer(tempBuffer.buffer, terrain.index[thread][layer].buffer, bufferSize);
-		}
-
-		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
-	}
 
 public:
 	bufferList::procDescriptorNode& getDst() {

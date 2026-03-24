@@ -176,13 +176,14 @@ namespace fileInfo {
 namespace lockInfo {
     //原子线程锁
     std::atomic<bool> queueThreadLock  = false;     //队列线程锁，用于原子同步graphicsQueue队列操作
-    std::atomic<bool> windowThreadLock = false;     //窗口线程锁，用于原子同步窗口操作与原子线程的冲突
     std::atomic<bool> musicThreadLock  = false;     //音乐线程锁，用于原子同步音乐线程
 
     //原子函数锁
     std::atomic<bool> plateFuncLock = false;        //用于实现asyncUpdatePlate函数原子线程化
     std::atomic<bool> cmdFuncLock   = false;        //用于实现asyncUpdateCommandBuffer函数原子线程化
+    std::atomic<bool> drawFuncLock  = false;        //用于避免InitSwapchain.drawFrame()和InitBuffer.recreatePlateBuffer()的threadId = (threadId + 1) % 2重建同时执行
 
     //原子数据锁
     std::atomic<bool> plateMeshDataLock = false;    //板块网格数据锁，用于原子同步对板块网格的修改操作
+    std::atomic<bool> cameraViewDataLock = false;   //视图矩阵数据锁，用于原点迁移后原子同步对视图矩阵数的修改
 }
