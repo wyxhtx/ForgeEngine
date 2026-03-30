@@ -591,7 +591,7 @@ public:
 
 
 
-		//---1、板块数据处理阶段---
+		//---1、划分循环---
 		//重设地区原点
 		InitStorage.updateConfig(playerChunkPos);
 
@@ -630,6 +630,7 @@ public:
 
 
 
+		//---2、生成板块数据---
 		//创建当前视距内未加载的区块，R(8)N(34)M(14)
 		std::transform(std::execution::par, partChunkLoop.node.begin(), partChunkLoop.node.end(), linkStructManager.begin(),
 			[this](const std::vector<glm::dvec3>& chunkLoop) {
@@ -783,6 +784,7 @@ public:
 
 
 
+		//---3、处理结构、删除视距外板块网格---
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
 
 		//处理updateStructLoop，复制chunkMap数据到updateChunkMap后加载链结构，R(8)N(34)M(4)
@@ -914,7 +916,7 @@ public:
 
 
 
-		//---2、板块网格处理阶段---
+		//---4、生成板块网格---
 		//生成区块网格，R(8)N(34)M(10)
 		std::for_each(std::execution::par, updateChunkLoop.begin(), updateChunkLoop.end(),
 			[this, updateStructLoop](const glm::dvec3& updatePos) {
@@ -930,6 +932,7 @@ public:
 
 
 
+		//---5、拼接板块网格---
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
 
 		//拼接区块网格到对应地形网格层，R(8)N(34)M(45)

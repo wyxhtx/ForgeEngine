@@ -216,6 +216,12 @@ private:
     //处理回调
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
         std::cerr << "校验层: " << pCallbackData->pMessage << std::endl << "------" << std::endl;
+
+        //Pipeline生命周期中，校验层报错时暂停
+        while (lockInfo::logPauseEnableLock.load()) { 
+            std::this_thread::yield();
+        }; 
+
         return VK_FALSE;
     }
 

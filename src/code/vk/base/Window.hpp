@@ -7,7 +7,7 @@ public:
 	Camera InitCamera{};
 
 	GLFWwindow* window;
-	bool isMin = true;
+	bool isMin = true;			//是否最小化
 
 
 
@@ -113,8 +113,8 @@ private:
 	//处理按键回调，只适用于不需要长按的按钮
 	void KeyCallBack(GLFWwindow* window, int key, int scancode, int action, int mods) {
 		if (action == GLFW_PRESS) {
-			while (lockInfo::plateFuncLock.exchange(true)) { std::this_thread::yield(); }
-			while (lockInfo::cmdFuncLock.exchange(true)) { std::this_thread::yield(); }
+			while (lockInfo::updatePlateFuncLock.exchange(true)) { std::this_thread::yield(); }
+			while (lockInfo::recreateCmdFuncLock.exchange(true)) { std::this_thread::yield(); }
 
 			switch (key) {
 			case GLFW_KEY_F11:																			//全屏
@@ -128,8 +128,8 @@ private:
 				break;
 			}
 
-			lockInfo::cmdFuncLock.store(false);
-			lockInfo::plateFuncLock.store(false);
+			lockInfo::recreateCmdFuncLock.store(false);
+			lockInfo::updatePlateFuncLock.store(false);
 		}
 	}
 

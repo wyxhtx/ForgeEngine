@@ -11,6 +11,8 @@ public:
 		InitBuffer.drawUIText(0);	//不在createCommandBuffers前初始化就不能显示UIText
 		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadId, procPipeline);
 
+		lockInfo::logPauseEnableLock.store(true);
+
 		if (debugInfo::LogSwitch) {
 			Log::printTitle("————————Pipeline已创建");
 
@@ -19,9 +21,11 @@ public:
 	}
 
 	~Pipeline() {
-		while (lockInfo::plateFuncLock.load()) { std::this_thread::yield(); }
-		while (lockInfo::cmdFuncLock.load()) { std::this_thread::yield(); }
+		while (lockInfo::updatePlateFuncLock.load()) { std::this_thread::yield(); }
+		while (lockInfo::recreateCmdFuncLock.load()) { std::this_thread::yield(); }
 		procPipeline.clear(Device.device);
+
+		lockInfo::logPauseEnableLock.store(false);
 
 		if (debugInfo::LogSwitch) {
 			Log::print("Pipeline已清除");
@@ -296,7 +300,7 @@ public:
 			static glm::dvec3 pos0 = glm::floor(playerInfo::initSpawnPos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
 			glm::dvec3 pos1		   = glm::floor(Camera.node.pos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
 
-			if (pos0 != pos1 && !lockInfo::plateFuncLock.exchange(true)) {
+			if (pos0 != pos1 && !lockInfo::updatePlateFuncLock.exchange(true)) {
 				std::thread(&Pipeline::atomicUpdatePlate, this, Camera.node.pos).detach();
 
 				pos0 = pos1;
@@ -310,24 +314,29 @@ public:
 			lockInfo::plateMeshDataLock.store(false);
 		}
 
-		//更换命令缓冲区后重建命令缓冲区（5~9ms），r=1时，更新板块会把网格数组清空
-		if (InitBuffer.command.isUpdate() && !lockInfo::cmdFuncLock.exchange(true)) {
-			std::thread(&Pipeline::atomicUpdateCommandBuffer, this, std::ref(Camera)).detach();
+		//更换命令缓冲区后重建命令缓冲区，r=1时更新板块会把网格数组清空
+		if (InitBuffer.command.isUpdate() && !lockInfo::plateMeshDataLock.load()/*防止过度等待*/ && !lockInfo::recreateCmdFuncLock.exchange(true)) {
+			std::thread(&Pipeline::atomicRecreateCommandBuffer, this, std::ref(Camera)).detach();
 		}
 
 
-
-		while (lockInfo::cameraViewDataLock.exchange(true)) { std::this_thread::yield(); }
-		selectBox = InitPlate.getSelectBox(playerInfo::logicOriginPos, Camera.node);	//当前帧获取的方块更新列表在下一帧更新
-		InitBuffer.updateUniformBuffer(playerInfo::logicOriginPos, Camera.node, selectBox);
 
 		while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
+		selectBox = InitPlate.getSelectBox(playerInfo::logicOriginPos, Camera.node);		//当前帧获取的方块更新列表在下一帧更新
+		InitBuffer.updateUniformBuffer(playerInfo::logicOriginPos, Camera.node, selectBox);
+
 		if (InitBuffer.drawFrame()) {
-			recreateSwapChain(); 
-			Log::print("重建交换链");
+			lockInfo::drawFuncLock.store(false);
+
+			while (lockInfo::updatePlateFuncLock.load()) { std::this_thread::yield(); }
+			while (lockInfo::recreateCmdFuncLock.load()) { std::this_thread::yield(); }
+			recreateSwapChain();
+			lockInfo::recreateCmdFuncLock.store(false);
+			lockInfo::updatePlateFuncLock.store(false);
+
+			while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
 		}
 		lockInfo::drawFuncLock.store(false);
-		lockInfo::cameraViewDataLock.store(false);
 	}
 
 private:
@@ -339,35 +348,15 @@ private:
 		InitBuffer.command.setNextThreadId();
 
 		Log::print("板块刷新用时:\t" + time.end());
-		lockInfo::plateFuncLock.store(false);
+		lockInfo::updatePlateFuncLock.store(false);
 	}
 
 	//原子线程更新命令缓冲区
-	void atomicUpdateCommandBuffer(Camera& Camera) {
-		//engineStruct::timeNode time{};
-		while (lockInfo::cameraViewDataLock.exchange(true)) { std::this_thread::yield(); }
+	void atomicRecreateCommandBuffer(Camera& Camera) {
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
-
-		//原点迁移会导致板块网格重写，所以尽可能避免频繁迁移
-		if (playerInfo::logicOriginPos != InitPlate.originPos) {
-			playerInfo::logicOriginPos = InitPlate.originPos;
-			Camera.updateView();
-
-			if (debugInfo::LogSwitch) {
-				Log::print("原点迁移");
-
-				if (!InitPlate.isEntireRebuild) {
-					Log::printWarning(__FILE__, __LINE__, "原点迁移时InitPlate.isEntireRebuild为假");
-				}
-			}
-		}
-
-		InitBuffer.recreatePlateBuffer(InitBuffer.command.nextThreadId, InitPlate.isEntireRebuild, procPipeline);
-
+		InitBuffer.recreateCommandBuffer(InitBuffer.command.nextThreadId, InitPlate.isEntireRebuild, InitPlate.originPos, Camera, procPipeline);
 		lockInfo::plateMeshDataLock.store(false);
-		lockInfo::cameraViewDataLock.store(false);
-		lockInfo::cmdFuncLock.store(false);
-		//Log::print("用时:\t" + time.end());
+		lockInfo::recreateCmdFuncLock.store(false);
 	}
 
 	void recreateSwapChain() {
@@ -379,8 +368,9 @@ private:
 
 		InitBuffer.recreateSwapChain();
 		createPipeline();
-		InitBuffer.createCommandBuffer(InitBuffer.command.currentThreadId, procPipeline);
-
 		lockInfo::queueThreadLock.store(false);
+
+		InitBuffer.recreateCurrentThreadCommandBuffer(procPipeline);
+		Log::print("重建交换链");
 	}
 };

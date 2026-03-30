@@ -1306,7 +1306,7 @@ public:
 					if (terrain.isEnable) {
 						//shadow-terrain
 						for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-							if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+							if (isNullPlateMesh(layer)) {
 								command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(procShadow.pipeId), procPipeline.getPipeLayout(procShadow.pipeId), procShadow.tShadowNode.descriptorSet, procShadow.tShadowNode.vertex[layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
 							}
 						}
@@ -1342,7 +1342,7 @@ public:
 				//terrain
 				if (terrain.isEnable) {
 					for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-						if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+						if (isNullPlateMesh(layer)) {
 							command.createScenceCommandBuffer(threadId, frameId, procPipeline.getPipeline(terrain.pipeId), procPipeline.getPipeLayout(terrain.pipeId), terrain.descriptorSet, terrain.vertex[threadId][layer].buffer, terrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
 						}
 					}
@@ -1434,14 +1434,15 @@ public:
 
 
 
-	void recreatePlateBuffer(int threadId, std::atomic<bool>& isEntireRebuild, pipelineList::procPipelineNode& procPipeline) {
+	//重建命令缓冲区
+	void recreateCommandBuffer(int threadId, std::atomic<bool>& isEntireRebuild, const glm::dvec3& plateOriginPos, Camera& Camera, pipelineList::procPipelineNode& procPipeline) {
 		command.free(Device.device, threadId);
 
 		if (!terrain.isEnable) { return; }
 		int layer = forgeEnum::terrainLayer::Layer_0;
 
-		//只重建Lod_0地形管线，R(8)N(34)M(4)
-		if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+		//重建当前线程Lod_0地形管线，R(8)N(34)M(4)
+		if (isNullPlateMesh(layer)) {
 			while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
 			vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
 			vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
@@ -1450,8 +1451,8 @@ public:
 			createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
 			createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
 
+			//重建Lod_0阴影
 			if (procShadow.isEnable) {
-				//重建Lod_0阴影
 				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
 				vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
 				lockInfo::queueThreadLock.store(false);
@@ -1461,11 +1462,12 @@ public:
 			}
 		}
 
-		//地形管线全部重建，R(8)N(34)M(15)
+		//重建Lod_1地形管线，R(8)N(34)M(15)
 		if (isEntireRebuild.load()) {
 			layer = forgeEnum::terrainLayer::Layer_1;
 
-			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+			if (isNullPlateMesh(layer)) {
+				//重建下一线程Lod_1地形管线
 				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
 				vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
@@ -1474,21 +1476,24 @@ public:
 				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
 				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
 
-				if (procShadow.isEnable) {
-					//重建Lod_1阴影
-					while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
-					vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
-					lockInfo::queueThreadLock.store(false);
+				//重建下一线程命令缓冲区，并切换线程
+				while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
+				vkQueueWaitIdle(Device.graphicsQueue);
 
-					shadowVertex::loadTerrainVertexs(layer);
-					createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
+				//原点迁移会导致板块网格重写，所以尽可能避免频繁迁移
+				if (playerInfo::logicOriginPos != plateOriginPos) {
+					playerInfo::logicOriginPos = plateOriginPos;
+					Camera.updateView();
 				}
-			}
 
-			while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
-			vkQueueWaitIdle(Device.graphicsQueue);
-			threadId = (threadId + 1) % 2;
-			if (terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size()) {
+				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+				createCommandBuffer(command.nextThreadId, procPipeline);
+				command.setCurrentThreadId();
+				lockInfo::queueThreadLock.store(false);
+				lockInfo::drawFuncLock.store(false);
+
+				//重建上轮当前线程Lod_1地形管线
+				threadId = (threadId + 1) % 2;
 				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
 				vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
@@ -1497,8 +1502,8 @@ public:
 				createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
 				createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
 
+				//重建Lod_1阴影
 				if (procShadow.isEnable) {
-					//重建Lod_1阴影
 					while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
 					vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
 					lockInfo::queueThreadLock.store(false);
@@ -1506,27 +1511,60 @@ public:
 					shadowVertex::loadTerrainVertexs(layer);
 					createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
 				}
+
+				isEntireRebuild.store(false);
+				return;
 			}
 
-			while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
-			createCommandBuffer(command.nextThreadId, procPipeline);
-			command.setCurrentThreadId();
-			lockInfo::queueThreadLock.store(false);
-
-			lockInfo::drawFuncLock.store(false);
 			isEntireRebuild.store(false);
 		}
-		else {
-			while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
-			vkQueueWaitIdle(Device.graphicsQueue);
-			
+
+		//重建下一线程命令缓冲区，并切换线程
+		while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
+		vkQueueWaitIdle(Device.graphicsQueue);
+
+		//原点迁移会导致板块网格重写，所以尽可能避免频繁迁移
+		if (playerInfo::logicOriginPos != plateOriginPos) {
+			playerInfo::logicOriginPos = plateOriginPos;
+			Camera.updateView();
+		}
+
+		while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+		createCommandBuffer(command.nextThreadId, procPipeline);
+		command.setCurrentThreadId();
+		lockInfo::queueThreadLock.store(false);
+		lockInfo::drawFuncLock.store(false);
+	}
+
+	//重建当前线程命令缓冲区
+	void recreateCurrentThreadCommandBuffer(pipelineList::procPipelineNode& procPipeline) {
+		if (!terrain.isEnable) { return; }
+
+		int threadId = command.currentThreadId;
+		int layer	 = forgeEnum::terrainLayer::Layer_0;
+
+		//重建当前线程Lod_0地形管线，R(8)N(34)M(4)
+		if (isNullPlateMesh(layer)) {
 			while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
-			createCommandBuffer(command.nextThreadId, procPipeline);
-			command.setCurrentThreadId();
+			vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
+			vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
 			lockInfo::queueThreadLock.store(false);
 
-			lockInfo::drawFuncLock.store(false);
+			createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
+			createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
+
+			//重建Lod_0阴影
+			if (procShadow.isEnable) {
+				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+				vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[layer].buffer, procShadow.tShadowNode.vertex[layer].bufferMemory);
+				lockInfo::queueThreadLock.store(false);
+
+				shadowVertex::loadTerrainVertexs(layer);
+				createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[layer]);
+			}
 		}
+
+		createCommandBuffer(threadId, procPipeline);
 	}
 
 	void updateUniformBuffer(const glm::dvec3 logicOriginPos, const playerStruct::cameraNode& camera, const playerStruct::selectBoxNode& box) {
@@ -1766,6 +1804,13 @@ public:
 private:
 	bufferStruct::showUITextNode showUIText{};
 
+
+
+	//板块网格是否为空
+	bool isNullPlateMesh(int layer) {
+		return terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size();
+	}
+	
 public:
 	bufferList::procDescriptorNode& getDst() {
 		return procDescriptor;
