@@ -175,8 +175,9 @@ namespace fileInfo {
 
 namespace lockInfo {
     //原子线程锁
-    std::atomic<bool> queueThreadLock  = false;         //队列线程锁，用于原子同步graphicsQueue队列操作
-    std::atomic<bool> musicThreadLock  = false;         //音乐线程锁，用于原子同步音乐线程
+    std::atomic<bool> queueThreadLock = false;          //队列线程锁，用于原子同步graphicsQueue队列操作
+    std::atomic<bool> musicThreadLock = false;          //音乐线程锁，用于原子同步音乐线程
+    std::atomic<bool> logThreadLock   = false;          //日志线程锁，用于原子同步各线程调用日志
 
     //原子函数锁
     std::atomic<bool> updatePlateFuncLock = false;      //用于实现atomicUpdatePlate函数原子线程化

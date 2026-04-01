@@ -1018,7 +1018,7 @@ namespace bufferStruct {
 
     struct shadowTerrainBufferNode {
         //网格缓冲，索引直接用源网格的
-        bufferNode vertex[forgeEnum::terrainLayer::count];
+        bufferNode vertex[bufferInfo::commandThreadCount][forgeEnum::terrainLayer::count];
 
         //统一缓冲
         bufferNode shadowMvpUniform;
@@ -1030,8 +1030,10 @@ namespace bufferStruct {
 
 
         void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-                vmaDestroyBuffer(allocator, vertex[layer].buffer, vertex[layer].bufferMemory);
+            for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
+                for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
+                    vmaDestroyBuffer(allocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMemory);
+                }
             }
 
             vmaDestroyBuffer(allocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMemory);

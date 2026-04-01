@@ -327,13 +327,7 @@ public:
 
 		if (InitBuffer.drawFrame()) {
 			lockInfo::drawFuncLock.store(false);
-
-			while (lockInfo::updatePlateFuncLock.load()) { std::this_thread::yield(); }
-			while (lockInfo::recreateCmdFuncLock.load()) { std::this_thread::yield(); }
-			recreateSwapChain();
-			lockInfo::recreateCmdFuncLock.store(false);
-			lockInfo::updatePlateFuncLock.store(false);
-
+			recreateSwapChain(Camera);
 			while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
 		}
 		lockInfo::drawFuncLock.store(false);
@@ -359,18 +353,25 @@ private:
 		lockInfo::recreateCmdFuncLock.store(false);
 	}
 
-	void recreateSwapChain() {
+	void recreateSwapChain(Camera& Camera) {
+		while (lockInfo::updatePlateFuncLock.load()) { std::this_thread::yield(); }
+		while (lockInfo::recreateCmdFuncLock.load()) { std::this_thread::yield(); }
+
 		while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }		//recreateSwapChain里队列命令操作太多了挨个隔离太麻烦，干脆全部隔离
 		vkDeviceWaitIdle(Device.device);
 
-		InitBuffer.cleanupSwapChain(InitBuffer.command.currentThreadId);
+		InitBuffer.cleanupSwapChain();
 		procPipeline.cleanupSwapChain(Device.device);
 
 		InitBuffer.recreateSwapChain();
 		createPipeline();
 		lockInfo::queueThreadLock.store(false);
 
-		InitBuffer.recreateCurrentThreadCommandBuffer(procPipeline);
+		InitBuffer.command.setNextThreadId();
+		InitBuffer.recreateCommandBuffer(InitBuffer.command.nextThreadId, InitPlate.isEntireRebuild, InitPlate.originPos, Camera, procPipeline);
 		Log::print("重建交换链");
+
+		lockInfo::recreateCmdFuncLock.store(false);
+		lockInfo::updatePlateFuncLock.store(false);
 	}
 };

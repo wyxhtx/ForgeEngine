@@ -267,7 +267,7 @@ private:
 					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	tempWorldPos.y = worldPos.y + y;
 						//高于地平线生成空气
 						if (tempWorldPos.y < plateInfo::groundPlane) {
-							setCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, elevation.value, ground.value, structList);
+							generateCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, elevation.value, ground.value, structList);
 						}
 						else {
 							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
@@ -311,7 +311,7 @@ private:
 					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	tempWorldPos.y = worldPos.y + y;
 						//高于地平线生成空气
 						if (tempWorldPos.y < plateInfo::groundPlane) {
-							setCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, elevation.value, ground.value, structList);
+							generateCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, elevation.value, ground.value, structList);
 						}
 						else {
 							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
@@ -477,11 +477,13 @@ private:
 		}
 	}
 
+	//判断是否切换噪音算法
 	bool isNoiseExtreme(const glm::dvec3& logicalWorldPos) {
 		return std::abs(logicalWorldPos.x) > noiseInfo::noiseExtreme || std::abs(logicalWorldPos.y) > noiseInfo::noiseExtreme || std::abs(logicalWorldPos.z) > noiseInfo::noiseExtreme;
 	}
 
-	__forceinline void setCube(short& cubeId, int& isVisible, const glm::dvec3& tempWorldPos, const int& x, const int& y, const int& z, const double& elevationValue, const double& groundValue, std::vector<glm::ivec3>& structList) {
+	//生成方块
+	__forceinline void generateCube(short& cubeId, int& isVisible, const glm::dvec3& tempWorldPos, const int& x, const int& y, const int& z, const double& elevationValue, const double& groundValue, std::vector<glm::ivec3>& structList) {
 		if (tempWorldPos.y > groundValue) {
 			cubeId = cubeEnum::cubeId::air;
 		}
@@ -497,7 +499,13 @@ private:
 				cubeId = cubeEnum::cubeId::stone;
 			}
 			else if (elevationValue > -0.2) {
-				cubeId = cubeEnum::cubeId::grass;
+				if (procNoise.getNoiseSingle2D(noiseEnum::noiseId::tree, tempWorldPos) > 0 && x > 0 && x < plateInfo::lengthIncrement && y > 0 && y < plateInfo::lengthIncrement && z > 0 && z < plateInfo::lengthIncrement) {
+					structList.push_back(glm::ivec3{ x,y + 1,z });
+					cubeId = cubeEnum::cubeId::oakTrunk;
+				}
+				else {
+					cubeId = cubeEnum::cubeId::grass;
+				}
 			}
 			else if (elevationValue > -0.5) {
 				cubeId = cubeEnum::cubeId::sand;
@@ -577,7 +585,7 @@ public:
 
 
 
-	//更新板块，R(8)N(34)M(100~160)(原点迁移时删除网格更快)
+	//更新板块，R(8)N(34)M(100~160)
 	void updatePlate(const glm::dvec3 logicOriginPos, const glm::dvec3 playerPos) {
 		std::unordered_set<glm::dvec3> existChunkLoop;										//当前视距内已加载区块列表 
 		std::vector<glm::dvec3> updateChunkLoop;											//当前视距内未加载区块列表
@@ -587,7 +595,7 @@ public:
 
 		glm::dvec3 playerChunkPos = glm::floor(playerPos / (double)plateInfo::chunkLength);
 		glm::dvec3 originShiftPos = glm::abs(logicOriginPos - playerPos);
-		glm::dvec3 tempOriginPos  = originPos;												//临时原点坐标
+		glm::dvec3 tempOriginPos  = originPos;												//临时原点坐标，确保originPos在第三阶段结束后再变更
 
 
 
@@ -630,7 +638,7 @@ public:
 
 
 
-		//---2、生成板块数据---
+		//---2、生成区块数据---
 		//创建当前视距内未加载的区块，R(8)N(34)M(14)
 		std::transform(std::execution::par, partChunkLoop.node.begin(), partChunkLoop.node.end(), linkStructManager.begin(),
 			[this](const std::vector<glm::dvec3>& chunkLoop) {
@@ -784,7 +792,7 @@ public:
 
 
 
-		//---3、处理结构、删除视距外板块网格---
+		//---3、处理结构、删除视距外区块网格---
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
 
 		//处理updateStructLoop，复制chunkMap数据到updateChunkMap后加载链结构，R(8)N(34)M(4)
@@ -831,78 +839,39 @@ public:
 			}
 		}
 
-		//卸载视距外地形网格，因为原点未迁移处理耗时太高，所以全采用原点迁移处理，if (tempOriginPos == playerInfo::logicOriginPos)
-		if (false) {
-			//原点未迁移，R(8)N(34)M(90)
-			for (std::unordered_map<glm::dvec3, Chunk>::iterator it = chunkMap.begin(); it != chunkMap.end(); ) {
-				const glm::dvec3& updatePos = it->first;
-				int oldLayer = chunkMap[updatePos].layerID;
-
-				//删除existChunkLoop外区块及对应地形层区块网格
-				if (existChunkLoop.find(updatePos) == existChunkLoop.end()) {
-					delTerrainMesh(updatePos, oldLayer);											//删除oldLayer中区块网格
-
-					//保存区块文件
-					if (InitStorage.waitChunkList.find(updatePos) != InitStorage.waitChunkList.end()) {
-						InitStorage.waitChunkList.erase(updatePos);
-						InitStorage.saveChunk(chunkMap[updatePos]);
-					}
-
-					//删除区块
-					it = chunkMap.erase(it);
-				}
-				//迁移existChunkLoop内区块网格到对应地形网格层
-				else {
-					int newLayer = forgeEnum::terrainLayer::Layer_1;
-
-					if (loopList::terrainLayerLoop.find(updatePos - playerChunkPos) != loopList::terrainLayerLoop.end()) {
-						newLayer = forgeEnum::terrainLayer::Layer_0;
-					}
-
-					if (oldLayer != newLayer) {
-						delTerrainMesh(updatePos, oldLayer);										//删除oldLayer中区块网格
-						chunkMap[updatePos].layerID = newLayer;										//重设layerID
-						joinTerrainMesh(chunkMap[updatePos], tempOriginPos, updatePos, newLayer);	//重拼区块网格到newLayer
-					}
-
-					++it;
-				}
-			}
+		//卸载视距外区块网格，因为原点未迁移处理耗时太高，所以全采用原点迁移处理，R(8)N(34)M(12)
+		for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
+			//清空全部区块网格
+			terrainVertex::vertexs[layer].clear();
+			terrainVertex::indexs[layer].clear();
+			terrainMeshSignList[layer].clear();
 		}
-		else {
-			//原点已迁移，R(8)N(34)M(12)
-			//清空全部地形网格
-			for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-				terrainVertex::vertexs[layer].clear();
-				terrainVertex::indexs[layer].clear();
-				terrainMeshSignList[layer].clear();
+
+		for (std::unordered_map<glm::dvec3, Chunk>::iterator it = chunkMap.begin(); it != chunkMap.end(); ) {
+			const glm::dvec3& updatePos = it->first;
+
+			//删除existChunkLoop外区块
+			if (existChunkLoop.find(updatePos) == existChunkLoop.end()) {
+				//保存区块文件
+				if (InitStorage.waitChunkList.find(updatePos) != InitStorage.waitChunkList.end()) {
+					InitStorage.waitChunkList.erase(updatePos);
+					InitStorage.saveChunk(chunkMap[updatePos]);
+				}
+
+				//删除区块
+				it = chunkMap.erase(it);
 			}
-
-			for (std::unordered_map<glm::dvec3, Chunk>::iterator it = chunkMap.begin(); it != chunkMap.end(); ) {
-				const glm::dvec3& updatePos = it->first;
-
-				//删除existChunkLoop外区块
-				if (existChunkLoop.find(updatePos) == existChunkLoop.end()) {
-					//保存区块文件
-					if (InitStorage.waitChunkList.find(updatePos) != InitStorage.waitChunkList.end()) {
-						InitStorage.waitChunkList.erase(updatePos);
-						InitStorage.saveChunk(chunkMap[updatePos]);
-					}
-
-					//删除区块
-					it = chunkMap.erase(it);
+			//拼接existChunkLoop内区块网格
+			else {
+				int layer = forgeEnum::terrainLayer::Layer_1;
+				if (loopList::terrainLayerLoop.find(updatePos - playerChunkPos) != loopList::terrainLayerLoop.end()) {
+					layer = forgeEnum::terrainLayer::Layer_0;
 				}
-				else {
-					int layer = forgeEnum::terrainLayer::Layer_1;
-					if (loopList::terrainLayerLoop.find(updatePos - playerChunkPos) != loopList::terrainLayerLoop.end()) {
-						layer = forgeEnum::terrainLayer::Layer_0;
-					}
 
-					chunkMap[updatePos].layerID = layer;									//重设layerID
-					joinTerrainMesh(chunkMap[updatePos], tempOriginPos, updatePos, layer);	//重拼区块网格到对应地形网格层
+				chunkMap[updatePos].layerID = layer;									//重设layerID
+				joinTerrainMesh(chunkMap[updatePos], tempOriginPos, updatePos, layer);	//重拼区块网格到对应地形网格层
 
-					++it;
-				}
+				++it;
 			}
 		}
 
@@ -916,8 +885,7 @@ public:
 
 
 
-		//---4、生成板块网格---
-		//生成区块网格，R(8)N(34)M(10)
+		//---4、生成区块网格--- R(8)N(34)M(10)
 		std::for_each(std::execution::par, updateChunkLoop.begin(), updateChunkLoop.end(),
 			[this, updateStructLoop](const glm::dvec3& updatePos) {
 				if (updateStructLoop.find(updatePos) == updateStructLoop.end()) {		//updateStructLoop由视距内已加载区块得到，故不用文件加载
@@ -932,7 +900,7 @@ public:
 
 
 
-		//---5、拼接板块网格---
+		//---5、拼接区块网格---
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
 
 		//拼接区块网格到对应地形网格层，R(8)N(34)M(45)
