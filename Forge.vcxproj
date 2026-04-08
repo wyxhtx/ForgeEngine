@@ -185,6 +185,7 @@
     <Text Include="src\shader_build\bat注释.txt" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".gitignore" />
     <None Include="src\image\model\droid\Body_normal.ktx2" />
     <None Include="src\image\model\droid\Head_normal.ktx2" />
     <None Include="src\image\model\droid\Misc_normal.ktx2" />

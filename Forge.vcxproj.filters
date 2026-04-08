@@ -103,6 +103,7 @@
     <None Include="src\shader_build\shadow\shadow.frag" />
     <None Include="src\shader\shadow\shadowFrag.spv" />
     <None Include="src\library\dll\FastNoise.dll" />
+    <None Include=".gitignore" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\forge\data\ForgeInfo.h">
