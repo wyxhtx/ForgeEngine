@@ -272,12 +272,13 @@ void main() {
     }
     
     //¾Û¹âµÆ
+    /*
     for (int i = 0; i < spotLightCount; i++) {
         LightResult spotLight = getSpotLight(light.spotLightList[i], fragPos, normal, viewDir, texColor, specularIntensity);
         float attenuation = getAttenuation(fragPos, light.spotLightList[i].position);
         result += spotLight.ambient + (spotLight.diffuse + spotLight.specular) * attenuation;
     }
-
+    */
 
     
     //-ÒõÓ°-

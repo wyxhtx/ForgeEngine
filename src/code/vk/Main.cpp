@@ -21,7 +21,7 @@ int main() {
 
 
 
-    //Music InitMusic{};            //加载音乐线程耗时长，所以先声明
+    Music    InitMusic{};            //加载音乐线程耗时长，所以先声明
     Window   InitWindow{};
     Device   InitDevice{ InitWindow.window };
     Pipeline InitPipeline{ InitDevice };
