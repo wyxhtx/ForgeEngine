@@ -33,7 +33,6 @@ namespace debugInfo {
 }
 
 namespace windowInfo {
-    //Window:
     const uint32_t  width = 800;
     const uint32_t  height = 450;
 
