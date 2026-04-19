@@ -308,7 +308,8 @@ public:
 		}
 
 		//更新方块，因放置/破坏方块后更新板块网格，命令缓冲区线程未变 & 方块变更列表非空 & 板块网格未锁
-		if (engineList::procTick.node[engineEnum::tickEnum::cube].isUpdate() && !InitBuffer.command.isUpdate() && !InitPlate.cubeChangeList.empty() && !lockInfo::plateMeshDataLock.exchange(true)) {
+		if (engineList::procTick.node[engineEnum::tickEnum::cube].isUpdate() && !InitBuffer.command.isUpdate() && InitPlate.isUpdateDeltaCube() && !lockInfo::plateMeshDataLock.load()) {
+			while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
 			InitPlate.updateDeltaCube();
 			InitBuffer.command.setNextThreadId();
 			lockInfo::plateMeshDataLock.store(false);

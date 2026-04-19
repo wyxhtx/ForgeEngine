@@ -26,6 +26,20 @@ namespace cubeList {
 	procCubeNode procCube{};
 }
 
+//循环列表
+namespace loopList {
+	std::vector<glm::ivec3> cubeMapLoop;					//方块Map循环列表，用于遍历方块数组，[1,32]
+	std::vector<glm::ivec3> cubeXZLoop;						//方块XZ数组循环列表，[0,33]
+	std::vector<glm::dvec3> chunkMapLoop;					//区块Map循环列表，用于遍历区块数组
+	std::vector<glm::dvec3> regionLoop;						//地区循环列表
+
+	std::unordered_set<glm::dvec3> structClearLoop;			//结构管理器清理循环列表
+
+	std::vector<glm::ivec4> treeLoop;						//树循环列表
+
+	std::unordered_set<glm::dvec3> terrainLayerLoop;		//地形管线0层循环列表，用于判断区块坐标是否在terrainEnum::terrainLayer::Layer_0中
+}
+
 //噪音列表
 namespace noiseList {
 	struct procNoiseNode {
@@ -77,21 +91,48 @@ namespace noiseList {
 			}
 		}
 
+		//2D噪音数组
 		void getNoiseArray2D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
 			node[terrainType].noise->GenPositionArray2D(noiseData.data(), (int)xPosArray2D.size(), xPosArray2D.data(), zPosArray2D.data(), (float)worldPos.x, (float)worldPos.z, node[terrainType].seed);
 		}
 
+		//2D噪音点
 		double getNoiseSingle2D(noiseEnum::noiseId::type terrainType, const glm::dvec3& worldPos) {
 			return node[terrainType].noise->GenSingle2D((float)worldPos.x, (float)worldPos.z, node[terrainType].seed);
 		}
 
+		//2D噪音点数组
+		void getNoiseSingleArray2D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& chunkWorldPos) {
+			int	noiseId2D = 0;
+
+			for (const glm::ivec3& arrayPos : loopList::cubeXZLoop) {
+				noiseData[noiseId2D] = node[terrainType].noise->GenSingle2D((float)(chunkWorldPos.x + arrayPos.x), (float)(chunkWorldPos.z + arrayPos.z), node[terrainType].seed);
+				noiseId2D++;
+			}
+		}
+
+		//3D噪音数组
 		void getNoiseArray3D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
 			node[terrainType].noise->GenPositionArray3D(noiseData.data(), (int)xPosArray3D.size(), xPosArray3D.data(), yPosArray3D.data(), zPosArray3D.data(), (float)worldPos.x, (float)worldPos.y, (float)worldPos.z, node[terrainType].seed);
 		}
 
+		//3D噪音点
 		double getNoiseSingle3D(noiseEnum::noiseId::type terrainType, const glm::dvec3& worldPos) {
 			return node[terrainType].noise->GenSingle3D((float)worldPos.x, (float)worldPos.y, (float)worldPos.z, node[terrainType].seed);
 		}
+
+		//3D噪音点数组
+		void getNoiseSingleArray3D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& chunkWorldPos) {
+			int	noiseId3D = 0;
+
+			for (const glm::ivec3& arrayPos : loopList::cubeXZLoop) {
+				for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
+					noiseData[noiseId3D] = node[terrainType].noise->GenSingle3D((float)(chunkWorldPos.x + arrayPos.x), (float)(chunkWorldPos.y + y), (float)(chunkWorldPos.z + arrayPos.z), node[terrainType].seed);
+					noiseId3D++;
+				}
+			}
+		}
+
 
 	private:
 		int randomSeed(int tempSeed) {
@@ -116,17 +157,4 @@ namespace noiseList {
 			treeNode[noiseEnum::treeId::oak].create(5, 10, cubeEnum::cubeId::oakLeaf, cubeEnum::cubeId::oakTrunk);
 		}
 	};
-}
-
-//循环列表
-namespace loopList {
-	std::vector<glm::ivec3> cubeMapLoop;					//方块Map循环列表，用于遍历方块数组，[1,32]
-	std::vector<glm::dvec3> chunkMapLoop;					//区块Map循环列表，用于遍历区块数组
-	std::vector<glm::dvec3> regionLoop;						//地区循环列表
-
-	std::unordered_set<glm::dvec3> structClearLoop;			//结构管理器清理循环列表
-
-	std::vector<glm::ivec4> treeLoop;						//树循环列表
-
-	std::unordered_set<glm::dvec3> terrainLayerLoop;		//地形管线0层循环列表，用于判断区块坐标是否在terrainEnum::terrainLayer::Layer_0中
 }

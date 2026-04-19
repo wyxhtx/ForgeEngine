@@ -37,6 +37,15 @@ private:
 			}
 		}
 
+		//cubeXZLoop
+		range = plateInfo::cubeArrayLength;
+
+		for (int x = 0; x < range; x++) {
+			for (int z = 0; z < range; z++) {
+				loopList::cubeXZLoop.push_back(glm::ivec3{ x,0,z });
+			}
+		}
+
 		//chunkMapLoop
 		range = plateInfo::sightRange;
 		int rangeSquare = range * range;

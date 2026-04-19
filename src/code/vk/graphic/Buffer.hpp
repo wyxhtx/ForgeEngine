@@ -1468,7 +1468,7 @@ public:
 			Log::printError(__FILE__, __LINE__, "原点迁移时isEntireRebuild为假");
 		}
 
-		//重建下一线程Lod_0地形管线，R(8)N(34)M(4)
+		//重建下一线程Lod_0地形管线，RM_0.4.6（8_32：10）
 		if (isNullTerrainMesh(layer)) {
 			while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
 			vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
@@ -1489,7 +1489,7 @@ public:
 			}
 		}
 
-		//重建全部线程Lod_1地形管线，R(8)N(34)M(15)
+		//重建全部线程Lod_1地形管线，RM_0.4.6（8_32：20~50）
 		if (isEntireRebuild.load()) {
 			layer = forgeEnum::terrainLayer::Layer_1;
 

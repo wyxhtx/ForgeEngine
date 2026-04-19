@@ -59,7 +59,7 @@ private:
 
 
 
-	//创建板块，R(8)N(34)M(350)
+	//创建板块，RM_0.4.6（8_32：1300）
 	void createPlate() {
 		std::vector<glm::dvec3> updateChunkLoop;											//更新区块循环
 		plateStruct::kMeansNode partChunkLoop;												//分区区块循环，用于并行生成地形
@@ -70,7 +70,7 @@ private:
 
 
 
-		//初始化，R(8)N(34)M(60)
+		//初始化，RM_0.4.6（8_32：60）
 		for (glm::dvec3 updatePos : loopList::chunkMapLoop) {
 			updatePos += playerChunkPos;
 
@@ -80,7 +80,7 @@ private:
 
 		partChunkLoop.kMeans(updateChunkLoop, maxThreadCount);
 
-		//创建区块，R(8)N(34)M(130)
+		//创建区块，RM_0.4.6（8_32：900）
 		std::transform(std::execution::par, partChunkLoop.node.begin(), partChunkLoop.node.end(), linkStructManager.begin(),
 			[this](const std::vector<glm::dvec3>& chunkLoop) {
 				plateStruct::structPartManagerNode linkStructSet;									//链结构集合[0,33]，由createChunk赋值，用于pendingStructManager适配多线程
@@ -129,7 +129,7 @@ private:
 			}
 		);
 
-		//压入分区外链结构，R(8)N(34)M(50)
+		//压入分区外链结构，RM_0.4.6（8_32：120）
 		for (plateStruct::structPartManagerNode& node : linkStructManager) {
 			for (auto it = node.pending.begin(); it != node.pending.end(); ) {
 				const glm::dvec3& updatePos = it->first;
@@ -187,7 +187,7 @@ private:
 
 
 
-		//生成区块网格，直接遍历updateChunkLoop因为少了遍历分区所以性能更高，R(8)N(34)M(60)
+		//生成区块网格，直接遍历updateChunkLoop因为少了遍历分区所以性能更高，RM_0.4.6（8_32：160）
 		std::for_each(std::execution::par, updateChunkLoop.begin(), updateChunkLoop.end(),
 			[this](const glm::dvec3& updatePos) {
 				InitStorage.readChunk(chunkMap[updatePos]);		//读取区块文件
@@ -198,7 +198,7 @@ private:
 			}
 		);
 
-		//拼接区块网格，R(8)N(34)M(40)
+		//拼接区块网格，RM_0.4.6（8_32：100）
 		for (const glm::dvec3& updatePos : updateChunkLoop) {
 			int layer = forgeEnum::terrainLayer::Layer_1;
 			if (loopList::terrainLayerLoop.find(updatePos - playerChunkPos) != loopList::terrainLayerLoop.end()) {
@@ -237,105 +237,61 @@ private:
 	
 	//创建区块，生成方块数组数据
 	void createChunk(Chunk& chunk, std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec4>>& linkStructSet) {
-		std::vector<glm::ivec3> structList{};								//结构列表
-		glm::dvec3 worldPos = chunk.logicalWorldPos - glm::dvec3{ 1 };		//区块数组实际范围在0~33，显示范围在1~32，所以地形生成时需要偏移到0~31
-		glm::dvec3 tempWorldPos{};
+		std::vector<glm::ivec3> structList{};									//结构列表
+		glm::dvec3 chunkWorldPos = chunk.logicalWorldPos - glm::dvec3{ 1 };		//区块世界坐标，区块数组实际范围在0~33，显示范围在1~32，所以地形生成时需要偏移到0~31
+		glm::ivec3 tempArrayPos{};
 
 		//噪音数据，因为并行化所以写在createChunk内部
 		noiseStruct::noiseDataNode elevation{};
 		noiseStruct::noiseDataNode ground{};
 		noiseStruct::noiseDataNode cave{};
 
+		bool isExtreme = !isNoiseExtreme(chunk.logicalWorldPos);
+		bool isCave    = false;
+		int	noiseId2D = 0;
+		int	noiseId3D = 0;
 
 
-		if (!isNoiseExtreme(chunk.logicalWorldPos)) {
-			int	noiseId2D = 0;
 
-			elevation.data.resize(plateInfo::cubeArraySquare);
-			ground.data.resize(plateInfo::cubeArraySquare);
-
-			procNoise.getNoiseArray2D(noiseEnum::noiseId::elevation, elevation.data, worldPos);
-			procNoise.getNoiseArray2D(noiseEnum::noiseId::ground,	 ground.data,	 worldPos);
-
-			//地表生成
-			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {			tempWorldPos.x = worldPos.x + x;
-				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {		tempWorldPos.z = worldPos.z + z;
-					elevation.value = elevation.data[noiseId2D];
-					ground.value	= std::floor(ground.data[noiseId2D]);
-					noiseId2D++;
-
-					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	tempWorldPos.y = worldPos.y + y;
-						//高于地平线生成空气
-						if (tempWorldPos.y < plateInfo::groundPlane) {
-							generateCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, elevation.value, ground.value, structList);
-						}
-						else {
-							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
-						}
-					}
-				}
-			}
-
-			//洞穴生成，只处理非空区块
-			if (chunk.isVisible != 0) {
-				int	noiseId3D = 0;
-
-				cave.data.resize(plateInfo::cubeArrayVolume);
-				procNoise.getNoiseArray3D(noiseEnum::noiseId::cave, cave.data, worldPos);
-
-				for (int x = 0; x < plateInfo::cubeArrayLength; x++) {			tempWorldPos.x = worldPos.x + x;
-					for (int z = 0; z < plateInfo::cubeArrayLength; z++) {		tempWorldPos.z = worldPos.z + z;
-						for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	tempWorldPos.y = worldPos.y + y;
-							short& cubeId = chunk.cubeArray[x][y][z];
-
-							//只处理非空方块
-							if ((cubeId != cubeEnum::cubeId::air) && (cave.data[noiseId3D] > 0)) {
-								chunk.isVisible--;
-
-								cubeId = cubeEnum::cubeId::air;
-							}
-
-							noiseId3D++;
-						}
-					}
-				}
-			}
+		elevation.data.resize(plateInfo::cubeArraySquare);
+		ground.data.resize(plateInfo::cubeArraySquare);
+		if (isExtreme) {
+			procNoise.getNoiseArray2D(noiseEnum::noiseId::elevation, elevation.data, chunkWorldPos);
+			procNoise.getNoiseArray2D(noiseEnum::noiseId::ground,	 ground.data,	 chunkWorldPos);
 		}
 		else {
-			//地表生成
-			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {			tempWorldPos.x = worldPos.x + x;
-				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {		tempWorldPos.z = worldPos.z + z;
-					elevation.value = procNoise.getNoiseSingle2D(noiseEnum::noiseId::elevation, tempWorldPos);
-					ground.value    = std::floor(procNoise.getNoiseSingle2D(noiseEnum::noiseId::ground, tempWorldPos));
+			procNoise.getNoiseSingleArray2D(noiseEnum::noiseId::elevation, elevation.data, chunkWorldPos);
+			procNoise.getNoiseSingleArray2D(noiseEnum::noiseId::ground,    ground.data,    chunkWorldPos);
+		}
 
-					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	tempWorldPos.y = worldPos.y + y;
-						//高于地平线生成空气
-						if (tempWorldPos.y < plateInfo::groundPlane) {
-							generateCube(chunk.cubeArray[x][y][z], chunk.isVisible, tempWorldPos, x, y, z, elevation.value, ground.value, structList);
-						}
-						else {
-							chunk.cubeArray[x][y][z] = cubeEnum::cubeId::air;
-						}
-					}
-				}
+		//获取ground噪音最大值，如果区块高度最小值<=ground最大值，则非全空，即需要调用cave噪音
+		isCave = (chunkWorldPos.y <= std::reduce(std::execution::par, ground.data.begin(), ground.data.end(), ground.data[0], [](float a, float b) { return std::max(a, b); }));
+		if (isCave) {
+			cave.data.resize(plateInfo::cubeArrayVolume);
+
+			if (isExtreme) {
+				procNoise.getNoiseArray3D(noiseEnum::noiseId::cave, cave.data, chunkWorldPos);
 			}
+			else {
+				procNoise.getNoiseSingleArray3D(noiseEnum::noiseId::cave, cave.data, chunkWorldPos);
+			}
+		}
 
-			//洞穴生成，只处理非空区块
-			if (chunk.isVisible != 0) {
-				for (int x = 0; x < plateInfo::cubeArrayLength; x++) {			tempWorldPos.x = worldPos.x + x;
-					for (int z = 0; z < plateInfo::cubeArrayLength; z++) {		tempWorldPos.z = worldPos.z + z;
-						for (int y = 0; y < plateInfo::cubeArrayLength; y++) {	tempWorldPos.y = worldPos.y + y;
-							short& cubeId = chunk.cubeArray[x][y][z];
+		for (const glm::ivec3& arrayPos : loopList::cubeXZLoop) {
+			elevation.value = elevation.data[noiseId2D];
+			ground.value	= std::floor(ground.data[noiseId2D]);
+			noiseId2D++;
 
-							//只处理非空方块
-							if ((cubeId != cubeEnum::cubeId::air) && (procNoise.getNoiseSingle3D(noiseEnum::noiseId::cave, tempWorldPos) > 0)) {
-								chunk.isVisible--;
+			tempArrayPos = arrayPos;
 
-								cubeId = cubeEnum::cubeId::air;
-							}
-						}
-					}
+			for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
+				if (isCave) {
+					cave.value = cave.data[noiseId3D];
+					noiseId3D++;
 				}
+
+				tempArrayPos.y = y;
+				generateCube(chunk.cubeArray[arrayPos.x][y][arrayPos.z], chunk.isVisible, chunkWorldPos + glm::dvec3{ tempArrayPos }, tempArrayPos, elevation.value, ground.value, cave.value, isCave, structList);
 			}
 		}
 
@@ -483,36 +439,41 @@ private:
 	}
 
 	//生成方块
-	__forceinline void generateCube(short& cubeId, int& isVisible, const glm::dvec3& tempWorldPos, const int& x, const int& y, const int& z, const double& elevationValue, const double& groundValue, std::vector<glm::ivec3>& structList) {
-		if (tempWorldPos.y > groundValue) {
-			cubeId = cubeEnum::cubeId::air;
-		}
-		else if (tempWorldPos.y < groundValue) {
-			isVisible++;
+	__forceinline void generateCube(short& cubeId, int& isVisible, const glm::dvec3& cubeWorldPos, const glm::ivec3& arrayPos, const double& elevationValue, const double& groundValue, const double& caveValue, const bool& isCave, std::vector<glm::ivec3>& structList) {
+		if (cubeWorldPos.y < plateInfo::groundPlane) {
+			if (cubeWorldPos.y > groundValue || (isCave && caveValue > 0)) {
+				cubeId = cubeEnum::cubeId::air;
+			}
+			else if (cubeWorldPos.y < groundValue) {
+				isVisible++;
 
-			cubeId = cubeEnum::cubeId::stone;
-		}
-		else {
-			isVisible++;
-
-			if (elevationValue > 0.5) {
 				cubeId = cubeEnum::cubeId::stone;
 			}
-			else if (elevationValue > -0.2) {
-				if (procNoise.getNoiseSingle2D(noiseEnum::noiseId::tree, tempWorldPos) > 0 && x > 0 && x < plateInfo::lengthIncrement && y > 0 && y < plateInfo::lengthIncrement && z > 0 && z < plateInfo::lengthIncrement) {
-					structList.push_back(glm::ivec3{ x,y + 1,z });
-					cubeId = cubeEnum::cubeId::oakTrunk;
+			else {
+				isVisible++;
+
+				if (elevationValue > 0.5) {
+					cubeId = cubeEnum::cubeId::stone;
+				}
+				else if (elevationValue > -0.2) {
+					if (procNoise.getNoiseSingle2D(noiseEnum::noiseId::tree, cubeWorldPos) > 0 && arrayPos.x > 0 && arrayPos.x < plateInfo::lengthIncrement && arrayPos.y > 0 && arrayPos.y < plateInfo::lengthIncrement && arrayPos.z > 0 && arrayPos.z < plateInfo::lengthIncrement) {
+						structList.push_back(glm::ivec3{ arrayPos.x, arrayPos.y + 1, arrayPos.z });
+						cubeId = cubeEnum::cubeId::oakTrunk;
+					}
+					else {
+						cubeId = cubeEnum::cubeId::grass;
+					}
+				}
+				else if (elevationValue > -0.5) {
+					cubeId = cubeEnum::cubeId::sand;
 				}
 				else {
-					cubeId = cubeEnum::cubeId::grass;
+					cubeId = cubeEnum::cubeId::gravel;
 				}
 			}
-			else if (elevationValue > -0.5) {
-				cubeId = cubeEnum::cubeId::sand;
-			}
-			else {
-				cubeId = cubeEnum::cubeId::gravel;
-			}
+		}
+		else {
+			cubeId = cubeEnum::cubeId::air;
 		}
 	}
 
@@ -580,12 +541,11 @@ private:
 	}
 
 public:
-	std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec3>> cubeChangeList;		//方块变更列表，存储变更方块坐标与对应区块坐标，[0,31]
 	std::atomic<bool> isEntireRebuild = false;											//用于判断InitBuffer.recreateBuffer是完全重建还是部分重建
 
 
 
-	//更新板块，R(8)N(34)M(100~160)
+	//更新板块，RM_0.4.6（8_32：200~300）
 	void updatePlate(const glm::dvec3 logicOriginPos, const glm::dvec3 playerPos) {
 		std::unordered_set<glm::dvec3> existChunkLoop;										//当前视距内已加载区块列表 
 		std::vector<glm::dvec3> updateChunkLoop;											//当前视距内未加载区块列表
@@ -608,7 +568,7 @@ public:
 			tempOriginPos = glm::floor(playerPos / (double)plateInfo::originShiftThreshold) * (double)plateInfo::originShiftThreshold;
 		}
 
-		//获取existChunkLoop、updateChunkLoop，R(8)N(34)M(7)
+		//获取existChunkLoop、updateChunkLoop，RM_0.4.6（8_32：5~10）
 		for (glm::dvec3 updatePos : loopList::chunkMapLoop) {
 			updatePos += playerChunkPos;
 
@@ -639,7 +599,7 @@ public:
 
 
 		//---2、生成区块数据---
-		//创建当前视距内未加载的区块，R(8)N(34)M(14)
+		//创建当前视距内未加载的区块，RM_0.4.6（8_32：100~120）
 		std::transform(std::execution::par, partChunkLoop.node.begin(), partChunkLoop.node.end(), linkStructManager.begin(),
 			[this](const std::vector<glm::dvec3>& chunkLoop) {
 				plateStruct::structPartManagerNode linkStructSet;									//链结构集合[0,33]
@@ -687,7 +647,7 @@ public:
 			}
 		);
 
-		//为避免卸载后又加载的链结构被遗漏，在updateChunkMap和activeStructManager的交集中，将activeStructManager中链结构压入对应pendingStructManager，R(8)N(34)M(0.05)
+		//为避免卸载后又加载的链结构被遗漏，在updateChunkMap和activeStructManager的交集中，将activeStructManager中链结构压入对应pendingStructManager，RM_0.4.6（8_32：0.1~8）
 		for (const auto& [chunkPos, cubeSet] : activeStructManager.node) {
 			if (updateChunkMap.find(chunkPos) != updateChunkMap.end()) {
 				//直接压入
@@ -703,7 +663,7 @@ public:
 			}
 		}
 		
-		//压入分区外链结构，R(8)N(34)M(5)
+		//压入分区外链结构，RM_0.4.6（8_32：10~25）
 		for (plateStruct::structPartManagerNode& node : linkStructManager) {
 			for (auto it = node.pending.begin(); it != node.pending.end(); ) {
 				const glm::dvec3& updatePos = it->first;
@@ -759,7 +719,7 @@ public:
 			}
 		}
 
-		//加载链结构，[0,33]，R(8)N(34)M(2)
+		//加载链结构，[0,33]，RM_0.4.6（8_32：1~25）
 		for (auto it = pendingStructManager.node.begin(); it != pendingStructManager.node.end(); ) {
 			//如果pendingStructManager在updateChunkLoop中，则直接加载链结构
 			if (updateChunkMap.find(it->first) != updateChunkMap.end()) {
@@ -795,7 +755,7 @@ public:
 		//---3、处理结构、删除视距外区块网格---
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
 
-		//处理updateStructLoop，复制chunkMap数据到updateChunkMap后加载链结构，R(8)N(34)M(4)
+		//处理updateStructLoop，复制chunkMap数据到updateChunkMap后加载链结构，RM_0.4.6（8_32：3）
 		for (const glm::dvec3& updatePos : updateStructLoop) {
 			updateChunkMap[updatePos].InitChunk(tempOriginPos, updatePos);
 			updateChunkMap[updatePos].isVisible = chunkMap[updatePos].isVisible;
@@ -820,7 +780,7 @@ public:
 			pendingStructManager.node.erase(updatePos);
 		}
 
-		//清理r+2外的结构，R(8)N(34)M(1)
+		//清理r+2外的结构，RM_0.4.6（8_32：2）
 		for (auto it = activeStructManager.node.begin(); it != activeStructManager.node.end(); ) {
 			if (loopList::structClearLoop.find(glm::dvec3{ it->first - playerChunkPos }) == loopList::structClearLoop.end()) {
 				it = activeStructManager.node.erase(it);
@@ -839,7 +799,7 @@ public:
 			}
 		}
 
-		//卸载视距外区块网格，因为原点未迁移处理耗时太高，所以全采用原点迁移处理，R(8)N(34)M(12)
+		//卸载视距外区块网格，因为原点未迁移处理耗时太高，所以全采用原点迁移处理，RM_0.4.6（8_32：20）
 		for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
 			//清空全部区块网格
 			terrainVertex::vertexs[layer].clear();
@@ -885,7 +845,7 @@ public:
 
 
 
-		//---4、生成区块网格--- R(8)N(34)M(10)
+		//---4、生成区块网格--- RM_0.4.6（8_32：30）
 		std::for_each(std::execution::par, updateChunkLoop.begin(), updateChunkLoop.end(),
 			[this, updateStructLoop](const glm::dvec3& updatePos) {
 				if (updateStructLoop.find(updatePos) == updateStructLoop.end()) {		//updateStructLoop由视距内已加载区块得到，故不用文件加载
@@ -903,7 +863,7 @@ public:
 		//---5、拼接区块网格---
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
 
-		//拼接区块网格到对应地形网格层，R(8)N(34)M(45)
+		//拼接区块网格到对应地形网格层，RM_0.4.6（8_32：60）
 		for (const glm::dvec3& updatePos : updateChunkLoop) {
 			chunkMap[updatePos] = updateChunkMap[updatePos];
 
@@ -1053,6 +1013,11 @@ public:
 		return playerStruct::selectBoxNode{ glm::vec3{0}, 0 };
 	}
 
+	//判断是否调用updateDeltaCube
+	bool isUpdateDeltaCube() {
+		return !cubeChangeList.empty();
+	}
+
 	//更新变更方块，放置或破坏方块后更新地形网格
 	void updateDeltaCube() {
 		//因为forward_list的性质，处理近期处理过的区块更快，平均首次处理0.22，平均近期处理0.06
@@ -1081,18 +1046,20 @@ public:
 	}
 
 private:
+	std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec3>> cubeChangeList;		//方块变更列表，存储变更方块坐标与对应区块坐标，[0,31]
 	std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec2>> cubeAbutChangeList;	//方块相邻变更列表，边缘方块变更后，存储相邻区块需要变更的层，glm::ivec2存朝向和朝向对应的层，[0,31]
 
 
 
-	//todo createUpdateCubeList使用chunkMap[chunkPos]与updatePlate竞争资源，当前区块被卸载就会出问题
 	//todo 破坏方块也能用下述思想优化
 	//todo 等到写放置方块时，会涉及边缘0与33的放置，写一个全局变量存储，此时对应区块未加载则保留对应元素，已加载则删除对应元素
 	//todo 增加按压时长检测
-	//todo chunkMap[chunkPos].cubeArray[cubePos.x][cubePos.y][cubePos.z].id = cubeList::air;只适用于挖掘
 	//todo 速度过快时（128），相邻区块没加载出来时边缘数据不能正常更新
-	//创建方块变更列表，供updatePlatePartMesh修改网格
-	//chunkPos区块坐标系，cubePos方块坐标系（内部范围[1,32]）
+
+	//todo bug
+	//竞争chunkMap资源：createUpdateCubeList使用chunkMap[chunkPos]与updatePlate竞争资源，当前区块被卸载就会出问题
+
+	//创建方块变更列表，用于updateDeltaCube修改网格，chunkPos：非空方块所处区块坐标、区块坐标系，cubePos：非空方块坐标、方块坐标系（内部范围[1,32]）
 	void createUpdateCubeList(const glm::dvec3& chunkPos, const glm::ivec3& cubePos) {
 		static glm::dvec3 tempChunkPos;
 		static const short cubeId = cubeEnum::cubeId::air;
@@ -1105,13 +1072,19 @@ private:
 			}
 		}
 
+		//处理区块内 1~32 部分
 		chunkMap[chunkPos].cubeArray[cubePos.x][cubePos.y][cubePos.z] = cubeId;		//[1,32]
-		chunkMap[chunkPos].isVisible--;
+		if (cubeId == cubeEnum::cubeId::air) {
+			chunkMap[chunkPos].isVisible--;
+		}
+
 		cubeChangeList[chunkPos].insert(cubePos - glm::ivec3{ 1 });					//从[1,32]偏移到[0,31]，方便遍历32层
-
-		InitStorage.waitChunkList.insert(chunkPos);
 		chunkMap[chunkPos].cubeDeltaSet.emplace((short)cubePos.x, (short)cubePos.y, (short)cubePos.z, cubeId);
+		InitStorage.waitChunkList.insert(chunkPos);
 
+
+
+		//处理区块内 0，33 部分
 		if (cubePos.x == 1) {
 			//[0,33]
 			if (chunkMap[chunkPos].cubeArray[0][cubePos.y][cubePos.z] != cubeId) {
