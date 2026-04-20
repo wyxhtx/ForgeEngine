@@ -181,10 +181,18 @@ public:
 
 		//×ó¼ü¼ì²â
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-			playerInfo::mouseButtonLeft = true;
+			playerInfo::mouseButtonLeft.store(true);
 		}
 		else{
-			playerInfo::mouseButtonLeft = false;
+			playerInfo::mouseButtonLeft.store(false);
+		}
+
+		//ÓÒ¼ü¼ì²â
+		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
+			playerInfo::mouseButtonRight.store(true);
+		}
+		else {
+			playerInfo::mouseButtonRight.store(false);
 		}
 	}
 };

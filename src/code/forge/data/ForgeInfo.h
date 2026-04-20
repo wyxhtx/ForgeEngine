@@ -78,5 +78,6 @@ namespace playerInfo {
 	const float cubeInteractionRange = 16;				//方块交互半径
 
 	//鼠标按键状态
-	bool mouseButtonLeft = false;
+	std::atomic<bool> mouseButtonLeft  = false;			//鼠标左键
+	std::atomic<bool> mouseButtonRight = false;			//鼠标右键
 }

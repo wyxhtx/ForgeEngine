@@ -945,8 +945,11 @@ public:
 			}
 
 			if (chunkMap[chunkPos].cubeArray[cubePos.x][cubePos.y][cubePos.z] != cubeEnum::cubeId::air) {
-				if (playerInfo::mouseButtonLeft) {
-					createUpdateCubeList(chunkPos, cubePos);
+				if (playerInfo::mouseButtonLeft.load()) {
+					getChangeCubeList(chunkPos, cubePos, cubeEnum::cubeId::air);
+				}
+				else if (playerInfo::mouseButtonRight.load()) {
+					getChangeCubeList(chunkPos, cubePos, cubeEnum::cubeId::stoneSquared);
 				}
 
 				return playerStruct::selectBoxNode{ initialPos - logicOriginPos, 1 };	//返回i世界坐标系，如果起始坐标非空，则直接返回起始坐标
@@ -998,8 +1001,11 @@ public:
 				}
 
 				if (chunkMap[chunkPos].cubeArray[cubePos.x][cubePos.y][cubePos.z] != cubeEnum::cubeId::air) {
-					if (playerInfo::mouseButtonLeft) {
-						createUpdateCubeList(chunkPos, cubePos);
+					if (playerInfo::mouseButtonLeft.load()) {
+						getChangeCubeList(chunkPos, cubePos, cubeEnum::cubeId::air);
+					}
+					else if (playerInfo::mouseButtonRight.load()) {
+						getChangeCubeList(chunkPos, cubePos, cubeEnum::cubeId::stoneSquared);
 					}
 
 					return playerStruct::selectBoxNode{ initialPos - logicOriginPos, 1 };	//返回i世界坐标系
@@ -1013,15 +1019,15 @@ public:
 		return playerStruct::selectBoxNode{ glm::vec3{0}, 0 };
 	}
 
-	//判断是否调用updateDeltaCube
-	bool isUpdateDeltaCube() {
-		return !cubeChangeList.empty();
+	//判断是否调用handleChangeCubeList
+	bool isHandleChangeCubeList() {
+		return !changeCubeList.empty();
 	}
 
-	//更新变更方块，放置或破坏方块后更新地形网格
-	void updateDeltaCube() {
+	//处理变更方块列表，放置或破坏方块后更新地形网格
+	void handleChangeCubeList() {
 		//因为forward_list的性质，处理近期处理过的区块更快，平均首次处理0.22，平均近期处理0.06
-		for (const auto& updateCubeNode : cubeChangeList) {
+		for (const auto& updateCubeNode : changeCubeList) {
 			glm::dvec3 chunkPos = updateCubeNode.first;
 
 			if (chunkMap.find(chunkPos) != chunkMap.end()) {
@@ -1032,7 +1038,7 @@ public:
 				}
 
 				delTerrainMesh(chunkPos, layer);																//从地形网格中删除旧区块网格
-				chunkMap[chunkPos].updateChunkMeshData(updateCubeNode.second, cubeAbutChangeList[chunkPos]);	//生成方块变更后的新区块网格
+				chunkMap[chunkPos].updateChunkMeshData(updateCubeNode.second, changeAbutCubeList[chunkPos]);	//生成方块变更后的新区块网格
 				joinTerrainMesh(chunkMap[chunkPos], originPos, chunkPos, layer);								//重拼新区块网格到地形网格中
 			}
 			//已证实存在下述情况，变更板块边缘区块导致的
@@ -1041,30 +1047,20 @@ public:
 			//}
 		}
 
-		cubeChangeList.clear();
-		cubeAbutChangeList.clear();
+		changeCubeList.clear();
+		changeAbutCubeList.clear();
 	}
 
 private:
-	std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec3>> cubeChangeList;		//方块变更列表，存储变更方块坐标与对应区块坐标，[0,31]
-	std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec2>> cubeAbutChangeList;	//方块相邻变更列表，边缘方块变更后，存储相邻区块需要变更的层，glm::ivec2存朝向和朝向对应的层，[0,31]
+	std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec3>> changeCubeList;		//变更方块列表，存储变更方块坐标与对应区块坐标，[0,31]
+	std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec2>> changeAbutCubeList;	//变更相邻方块列表，位于边缘的方块变更后，存储相邻区块需要变更的层，glm::ivec2存朝向和朝向对应的层，[0,31]
 
 
 
-	//todo 破坏方块也能用下述思想优化
-	//todo 等到写放置方块时，会涉及边缘0与33的放置，写一个全局变量存储，此时对应区块未加载则保留对应元素，已加载则删除对应元素
-	//todo 增加按压时长检测
-	//todo 速度过快时（128），相邻区块没加载出来时边缘数据不能正常更新
-
-	//todo bug
-	//竞争chunkMap资源：createUpdateCubeList使用chunkMap[chunkPos]与updatePlate竞争资源，当前区块被卸载就会出问题
-
-	//创建方块变更列表，用于updateDeltaCube修改网格，chunkPos：非空方块所处区块坐标、区块坐标系，cubePos：非空方块坐标、方块坐标系（内部范围[1,32]）
-	void createUpdateCubeList(const glm::dvec3& chunkPos, const glm::ivec3& cubePos) {
-		static glm::dvec3 tempChunkPos;
-		static const short cubeId = cubeEnum::cubeId::air;
-
-
+	//获取变更方块列表，用于updateDeltaCube修改网格，plateMeshDataLock也能屏蔽chunkMap[chunkPos]资源竞争，chunkPos：非空方块所处区块坐标、区块坐标系，cubePos：非空方块坐标、方块坐标系（内部范围[1,32]）
+	void getChangeCubeList(const glm::dvec3& chunkPos, const glm::ivec3& cubePos, const short& newCubeId) {
+		short& oldCubeId = chunkMap[chunkPos].cubeArray[cubePos.x][cubePos.y][cubePos.z];		//[1,32]
+		bool isReturn = false;
 
 		if (debugInfo::LogSwitch) {
 			if (chunkMap.find(chunkPos) == chunkMap.end()) {
@@ -1072,154 +1068,63 @@ private:
 			}
 		}
 
-		//处理区块内 1~32 部分
-		chunkMap[chunkPos].cubeArray[cubePos.x][cubePos.y][cubePos.z] = cubeId;		//[1,32]
-		if (cubeId == cubeEnum::cubeId::air) {
-			chunkMap[chunkPos].isVisible--;
-		}
-
-		cubeChangeList[chunkPos].insert(cubePos - glm::ivec3{ 1 });					//从[1,32]偏移到[0,31]，方便遍历32层
-		chunkMap[chunkPos].cubeDeltaSet.emplace((short)cubePos.x, (short)cubePos.y, (short)cubePos.z, cubeId);
-		InitStorage.waitChunkList.insert(chunkPos);
 
 
-
-		//处理区块内 0，33 部分
+		//---0、33---
 		if (cubePos.x == 1) {
-			//[0,33]
-			if (chunkMap[chunkPos].cubeArray[0][cubePos.y][cubePos.z] != cubeId) {
-				//因为本区块x1非空，所以邻区块x33非空，因为本区块x0非空，所以邻区块x32非空，所以省略一层检测
-				tempChunkPos = chunkPos - glm::dvec3(1, 0, 0);
-
-				if (chunkMap.find(tempChunkPos) != chunkMap.end()) {
-					if (debugInfo::LogSwitch) {
-						if (chunkMap[tempChunkPos].cubeArray[plateInfo::lengthIncrement][cubePos.y][cubePos.z] == cubeId) {
-							Log::printError(__FILE__, __LINE__, "x33为空");
-						}
-					}
-
-					chunkMap[tempChunkPos].cubeArray[plateInfo::lengthIncrement][cubePos.y][cubePos.z] = cubeId;
-					chunkMap[tempChunkPos].isVisible--;
-
-					cubeChangeList[tempChunkPos];		//压入一个空元素，让updatePlatePartMesh遍历时处理cubeAbutChangeList所在区块，在Chunk.updateChunkMeshData中遍历updateCubeNode.second时如果为空则直接跳过
-					cubeAbutChangeList[tempChunkPos].insert(glm::ivec2{ 2,plateInfo::lengthDecrement });
-
-					InitStorage.waitChunkList.insert(tempChunkPos);
-					chunkMap[tempChunkPos].cubeDeltaSet.emplace((short)plateInfo::lengthIncrement, (short)cubePos.y, (short)cubePos.z, cubeId);
-				}
-			}
+			getExtremeChangeCubeList(chunkPos - glm::dvec3{ 1, 0, 0 }, glm::dvec3{ plateInfo::lengthIncrement, cubePos.y, cubePos.z }, glm::ivec2{ 2,plateInfo::lengthDecrement }, newCubeId, isReturn);
+			if (isReturn) { return; }
 		}
 		else if (cubePos.x == plateInfo::chunkLength) {
-			if (chunkMap[chunkPos].cubeArray[plateInfo::lengthIncrement][cubePos.y][cubePos.z] != cubeId) {
-				tempChunkPos = chunkPos + glm::dvec3(1, 0, 0);
-
-				if (chunkMap.find(tempChunkPos) != chunkMap.end()) {
-					if (debugInfo::LogSwitch) {
-						if (chunkMap[tempChunkPos].cubeArray[0][cubePos.y][cubePos.z] == cubeId) {
-							Log::printError(__FILE__, __LINE__, "x0为空");
-						}
-					}
-
-					chunkMap[tempChunkPos].cubeArray[0][cubePos.y][cubePos.z] = cubeId;
-					chunkMap[tempChunkPos].isVisible--;
-
-					cubeChangeList[tempChunkPos];
-					cubeAbutChangeList[tempChunkPos].insert(glm::ivec2{ 3,0 });
-
-					InitStorage.waitChunkList.insert(tempChunkPos);
-					chunkMap[tempChunkPos].cubeDeltaSet.emplace((short)0, (short)cubePos.y, (short)cubePos.z, cubeId);
-				}
-			}
+			getExtremeChangeCubeList(chunkPos + glm::dvec3{ 1, 0, 0 }, glm::dvec3{ 0, cubePos.y, cubePos.z },							 glm::ivec2{ 3,0 },							 newCubeId, isReturn);
+			if (isReturn) { return; }
 		}
 
 		if (cubePos.y == 1) {
-			if (chunkMap[chunkPos].cubeArray[cubePos.x][0][cubePos.z] != cubeId) {
-				tempChunkPos = chunkPos - glm::dvec3(0, 1, 0);
-
-				if (chunkMap.find(tempChunkPos) != chunkMap.end()) {
-					if (debugInfo::LogSwitch) {
-						if (chunkMap[tempChunkPos].cubeArray[cubePos.x][plateInfo::lengthIncrement][cubePos.z] == cubeId) {
-							Log::printError(__FILE__, __LINE__, "y33为空");
-						}
-					}
-
-					chunkMap[tempChunkPos].cubeArray[cubePos.x][plateInfo::lengthIncrement][cubePos.z] = cubeId;
-					chunkMap[tempChunkPos].isVisible--;
-
-					cubeChangeList[tempChunkPos];
-					cubeAbutChangeList[tempChunkPos].insert(glm::ivec2{ 0,plateInfo::lengthDecrement });
-
-					InitStorage.waitChunkList.insert(tempChunkPos);
-					chunkMap[tempChunkPos].cubeDeltaSet.emplace((short)cubePos.x, (short)plateInfo::lengthIncrement, (short)cubePos.z, cubeId);
-				}
-			}
+			getExtremeChangeCubeList(chunkPos - glm::dvec3{ 0, 1, 0 }, glm::dvec3{ cubePos.x, plateInfo::lengthIncrement, cubePos.z }, glm::ivec2{ 0,plateInfo::lengthDecrement }, newCubeId, isReturn);
+			if (isReturn) { return; }
 		}
 		else if (cubePos.y == plateInfo::chunkLength) {
-			if (chunkMap[chunkPos].cubeArray[cubePos.x][plateInfo::lengthIncrement][cubePos.z] != cubeId) {
-				tempChunkPos = chunkPos + glm::dvec3(0, 1, 0);
-
-				if (chunkMap.find(tempChunkPos) != chunkMap.end()) {
-					if (debugInfo::LogSwitch) {
-						if (chunkMap[tempChunkPos].cubeArray[cubePos.x][0][cubePos.z] == cubeId) {
-							Log::printError(__FILE__, __LINE__, "y0为空");
-						}
-					}
-
-					chunkMap[tempChunkPos].cubeArray[cubePos.x][0][cubePos.z] = cubeId;
-					chunkMap[tempChunkPos].isVisible--;
-
-					cubeChangeList[tempChunkPos];
-					cubeAbutChangeList[tempChunkPos].insert(glm::ivec2{ 1,0 });
-
-					InitStorage.waitChunkList.insert(tempChunkPos);
-					chunkMap[tempChunkPos].cubeDeltaSet.emplace((short)cubePos.x, (short)0, (short)cubePos.z, cubeId);
-				}
-			}
+			getExtremeChangeCubeList(chunkPos + glm::dvec3{ 0, 1, 0 }, glm::dvec3{ cubePos.x, 0, cubePos.z },							 glm::ivec2{ 1,0 },							 newCubeId, isReturn);
+			if (isReturn) { return; }
 		}
 
 		if (cubePos.z == 1) {
-			if (chunkMap[chunkPos].cubeArray[cubePos.x][cubePos.y][0] != cubeId) {
-				tempChunkPos = chunkPos - glm::dvec3(0, 0, 1);
-
-				if (chunkMap.find(tempChunkPos) != chunkMap.end()) {
-					if (debugInfo::LogSwitch) {
-						if (chunkMap[tempChunkPos].cubeArray[cubePos.x][cubePos.y][plateInfo::lengthIncrement] == cubeId) {
-							Log::printError(__FILE__, __LINE__, "z33为空");
-						}
-					}
-
-					chunkMap[tempChunkPos].cubeArray[cubePos.x][cubePos.y][plateInfo::lengthIncrement] = cubeId;
-					chunkMap[tempChunkPos].isVisible--;
-
-					cubeChangeList[tempChunkPos];
-					cubeAbutChangeList[tempChunkPos].insert(glm::ivec2{ 4,plateInfo::lengthDecrement });
-
-					InitStorage.waitChunkList.insert(tempChunkPos);
-					chunkMap[tempChunkPos].cubeDeltaSet.emplace((short)cubePos.x, (short)cubePos.y, (short)plateInfo::lengthIncrement, cubeId);
-				}
-			}
+			getExtremeChangeCubeList(chunkPos - glm::dvec3{ 0, 0, 1 }, glm::dvec3{ cubePos.x, cubePos.y, plateInfo::lengthIncrement }, glm::ivec2{ 4,plateInfo::lengthDecrement }, newCubeId, isReturn);
+			if (isReturn) { return; }
 		}
 		else if (cubePos.z == plateInfo::chunkLength) {
-			if (chunkMap[chunkPos].cubeArray[cubePos.x][cubePos.y][plateInfo::lengthIncrement] != cubeId) {
-				tempChunkPos = chunkPos + glm::dvec3(0, 0, 1);
+			getExtremeChangeCubeList(chunkPos + glm::dvec3{ 0, 0, 1 }, glm::dvec3{ cubePos.x, cubePos.y, 0 },							 glm::ivec2{ 5,0 },							 newCubeId, isReturn);
+			if (isReturn) { return; }
+		}
 
-				if (chunkMap.find(tempChunkPos) != chunkMap.end()) {
-					if (debugInfo::LogSwitch) {
-						if (chunkMap[tempChunkPos].cubeArray[cubePos.x][cubePos.y][0] == cubeId) {
-							Log::printError(__FILE__, __LINE__, "z0为空");
-						}
-					}
 
-					chunkMap[tempChunkPos].cubeArray[cubePos.x][cubePos.y][0] = cubeId;
-					chunkMap[tempChunkPos].isVisible--;
 
-					cubeChangeList[tempChunkPos];
-					cubeAbutChangeList[tempChunkPos].insert(glm::ivec2{ 5,0 });
+		//---1~32---
+		if ((oldCubeId != cubeEnum::cubeId::air) && (newCubeId == cubeEnum::cubeId::air)) { chunkMap[chunkPos].isVisible--; }
+		oldCubeId = newCubeId;
 
-					InitStorage.waitChunkList.insert(tempChunkPos);
-					chunkMap[tempChunkPos].cubeDeltaSet.emplace((short)cubePos.x, (short)cubePos.y, (short)0, cubeId);
-				}
-			}
+		changeCubeList[chunkPos].insert(cubePos - glm::ivec3{ 1 });					//从[1,32]偏移到[0,31]，方便遍历32层
+		chunkMap[chunkPos].cubeDeltaSet.emplace((short)cubePos.x, (short)cubePos.y, (short)cubePos.z, newCubeId);
+		InitStorage.waitChunkList.insert(chunkPos);
+	}
+
+	//获取边界变更方块列表
+	void getExtremeChangeCubeList(const glm::dvec3& extremeChunkPos, const glm::ivec3& extremeArrayPos, const glm::ivec2& abutCubePos, const short& newCubeId, bool& isReturn) {
+		if (chunkMap.find(extremeChunkPos) != chunkMap.end()) {
+			short& oldCubeId = chunkMap[extremeChunkPos].cubeArray[extremeArrayPos.x][extremeArrayPos.y][extremeArrayPos.z];
+
+			if ((oldCubeId != cubeEnum::cubeId::air) && (newCubeId == cubeEnum::cubeId::air)) { chunkMap[extremeChunkPos].isVisible--; }
+			oldCubeId = newCubeId;
+
+			changeCubeList[extremeChunkPos];		//压入一个空元素，让updateDeltaCube遍历时处理cubeAbutChangeList所在区块，在Chunk.updateChunkMeshData中遍历updateCubeNode.second时如果为空则直接跳过
+			changeAbutCubeList[extremeChunkPos].insert(abutCubePos);
+
+			chunkMap[extremeChunkPos].cubeDeltaSet.emplace((short)extremeArrayPos.x, (short)extremeArrayPos.y, (short)extremeArrayPos.z, newCubeId);
+			InitStorage.waitChunkList.insert(extremeChunkPos);
+		}
+		else {
+			isReturn = true;
 		}
 	}
 };
