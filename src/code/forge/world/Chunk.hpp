@@ -640,7 +640,6 @@ private:
 	}
 
 public:
-	//todo 不适用于放置方块
 	//更新区块网格数据
 	void updateChunkMeshData(const std::unordered_set<glm::ivec3>& cubePosSet, const std::unordered_set<glm::ivec2>& abutCubePosSet) {
 		std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];						//区块截层可见面集合，[0,31]

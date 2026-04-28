@@ -34,9 +34,10 @@ public:
 		GetKeyboardLayoutName(keyboardLayout);												//获取原始键盘布局
 		LoadKeyboardLayout(L"00000409", KLF_ACTIVATE);										//设置美式键盘布局
 
-		glfwSetKeyCallback(window, KeyCallbackStatic);										//键盘回调函数
-		glfwSetCursorPosCallback(window, mouse_callback);									//鼠标回调函数
-		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);					//窗口回调函数
+		glfwSetKeyCallback(window, keyCallback);											//键盘回调
+		glfwSetCursorPosCallback(window, mouseCallback);									//鼠标回调
+		glfwSetScrollCallback(window, scrollCallback);										//滚轮回调
+		glfwSetFramebufferSizeCallback(window, windowCallback);								//窗口回调
 
 		if (debugInfo::LogSwitch) {
 			std::cout << "\t当前键盘布局" << ":";
@@ -77,25 +78,31 @@ private:
 
 
 	//按键回调
-	static void KeyCallbackStatic(GLFWwindow* window, int key, int scancode, int action, int mods) {
-		// 从Window指针中获取实例指针
-		Window* instance = static_cast<Window*>(glfwGetWindowUserPointer(window));
+	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+		Window* instance = static_cast<Window*>(glfwGetWindowUserPointer(window));		//从Window指针中获取实例指针
 		if (instance) {
-			// 调用实例的成员函数处理键盘事件
-			instance->KeyCallBack(window, key, scancode, action, mods);
+			instance->keyHandle(window, key, scancode, action, mods);					//调用实例的成员函数处理键盘事件
 		}
 	}
 
 	//鼠标回调
-	static void mouse_callback(GLFWwindow* window, double xPos, double yPos) {
+	static void mouseCallback(GLFWwindow* window, double xPos, double yPos) {
 		Window* instance = static_cast<Window*>(glfwGetWindowUserPointer(window));
 		if (instance) {
-			instance->MouseCallBack(window, (float)xPos, (float)yPos);
+			instance->mouseHandle(window, (float)xPos, (float)yPos);
 		}
 	}
 
-	//窗口大小变化回调
-	static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+	//滚轮回调
+	static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset) {
+		Window* instance = static_cast<Window*>(glfwGetWindowUserPointer(window));
+		if (instance) {
+			instance->InitCamera.scrollHandle((float)yOffset);
+		}
+	}
+
+	//窗口大小回调
+	static void windowCallback(GLFWwindow* window, int width, int height) {
 		Window* instance = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 
 		if (width == 0 || height == 0) {
@@ -110,8 +117,8 @@ private:
 
 
 
-	//处理按键回调，只适用于不需要长按的按钮
-	void KeyCallBack(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	//按键回调处理，只适用于不需要长按的按钮
+	void keyHandle(GLFWwindow* window, int key, int scancode, int action, int mods) {
 		if (action == GLFW_PRESS) {
 			switch (key) {
 			case GLFW_KEY_F11:																			//全屏
@@ -127,8 +134,8 @@ private:
 		}
 	}
 
-	//处理鼠标位移回调
-	void MouseCallBack(GLFWwindow* window, float xPos, float yPos) {
+	//鼠标回调处理
+	void mouseHandle(GLFWwindow* window, float xPos, float yPos) {
 		//鼠标移动位置
 		static float lastX = windowInfo::width / 2;
 		static float lastY = windowInfo::height / 2;
@@ -144,7 +151,7 @@ private:
 		lastY = yPos;
 
 		if (deltaX != 0 || deltaY != 0) {
-			InitCamera.mouseMovement(deltaX, deltaY);
+			InitCamera.mouseHandle(deltaX, deltaY);
 		}
 	}
 
@@ -176,7 +183,7 @@ public:
 
 		if (glm::length(velocity) != 0.f) {
 			//参考公式：deltaX = V * deltaTime
-			InitCamera.keyMovement(velocity * deltaTime);
+			InitCamera.keyHandle(velocity * deltaTime);
 		}
 
 		//左键检测
@@ -189,6 +196,10 @@ public:
 
 		//右键检测
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
+			if (!playerInfo::mouseButtonRight.load()) {
+				playerInfo::mouseButtonRightJust.store(true);
+			}
+
 			playerInfo::mouseButtonRight.store(true);
 		}
 		else {

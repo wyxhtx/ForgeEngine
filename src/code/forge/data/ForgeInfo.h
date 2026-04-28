@@ -80,4 +80,5 @@ namespace playerInfo {
 	//鼠标按键状态
 	std::atomic<bool> mouseButtonLeft  = false;			//鼠标左键
 	std::atomic<bool> mouseButtonRight = false;			//鼠标右键
+	std::atomic<bool> mouseButtonRightJust = false;		//鼠标右键刚按下
 }

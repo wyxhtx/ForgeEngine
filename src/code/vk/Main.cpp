@@ -44,12 +44,13 @@ int main() {
         }
     }
 
-
-
     //释放锁定音乐队列
     lockInfo::musicThreadLock.store(false);
 
-    //等待asyncUpdateCommandBuffer执行完
+
+
+    while (lockInfo::updatePlateFuncLock.load()) { std::this_thread::yield(); }
+    while (lockInfo::recreateCmdFuncLock.load()) { std::this_thread::yield(); }
     while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
     vkDeviceWaitIdle(InitDevice.device);    //等待所有GPU工作完成
     lockInfo::queueThreadLock.store(false);

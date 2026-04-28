@@ -181,4 +181,11 @@ namespace playerStruct {
         glm::vec3 minepos;                     //挖掘坐标
         float isVisible = 0;                   //挖掘框是否可见
     };
+
+    //方块选择框踪迹结点
+    struct selectBoxTraceNode {
+        glm::dvec3 initPos;	        //起始坐标（d世界坐标系）
+        glm::dvec3 chunkPos;        //区块坐标（区块坐标系）
+        glm::ivec3 cubePos;         //方块坐标（方块坐标系）
+    };
 }
