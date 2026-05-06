@@ -152,8 +152,6 @@ private:
 			oChunkFile.write(reinterpret_cast<char*>(&node), sizeof(storageStruct::cubeDeltaNode));
 		}
 
-		oChunkFile.write(reinterpret_cast<char*>(&chunk.isVisible), sizeof(int));
-
 		oChunkFile.close();
 	}
 
@@ -171,11 +169,23 @@ private:
 		for (size_t i = 0; i < size; i++) {
 			iChunkFile.read(reinterpret_cast<char*>(&node), sizeof(storageStruct::cubeDeltaNode));
 
-			chunk.cubeArray[node.data[0]][node.data[1]][node.data[2]] = node.data[3];
+			short& oldCubeId = chunk.cubeArray[node.data[0]][node.data[1]][node.data[2]];		//[0,33]
+			short& newCubeId = node.data[3];
+
+			if (oldCubeId == cubeEnum::cubeId::air) {
+				if (newCubeId != cubeEnum::cubeId::air) {
+					chunk.isVisible++;
+				}
+			}
+			else {
+				if (newCubeId == cubeEnum::cubeId::air) {
+					chunk.isVisible--;
+				}
+			}
+
+			oldCubeId = newCubeId;
 			chunk.cubeDeltaSet.emplace(node);
 		}
-
-		iChunkFile.read(reinterpret_cast<char*>(&chunk.isVisible), sizeof(int));
 
 		iChunkFile.close();
 	}

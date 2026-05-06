@@ -189,3 +189,26 @@ namespace playerStruct {
         glm::ivec3 cubePos;         //方块坐标（方块坐标系）
     };
 }
+
+//游戏层debug结构体
+namespace forgeDebugStruct {
+    //临界方块检测结构体
+    struct extremeCubeNode {
+        glm::dvec3 pos;     //方块坐标
+        short oldId;        //本方块id
+        short newId;        //临方块id
+
+        bool operator==(const extremeCubeNode& other) const {
+            return pos == other.pos && oldId == other.oldId && newId == other.newId;
+        }
+
+        struct Hash {
+            size_t operator()(const extremeCubeNode& node) const {
+                size_t h = std::hash<glm::dvec3>()(node.pos);
+                h ^= std::hash<short>()(node.oldId) + 0x9e3779b9 + (h << 6) + (h >> 2);
+                h ^= std::hash<short>()(node.newId) + 0x9e3779b9 + (h << 6) + (h >> 2);
+                return h;
+            }
+        };
+    }; 
+}

@@ -42,7 +42,8 @@ public:
 	}
 
 private:
-	Loop InitLoop{};
+	Loop	InitLoop{};
+	Debug	InitDebug{};
 	Storage InitStorage{};
 
 	noiseList::procNoiseNode procNoise{};																		//程序化噪音
@@ -221,15 +222,7 @@ private:
 
 		//地形网格非空检测
 		if (debugInfo::LogSwitch) {
-			for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-				if (terrainVertex::vertexs[layer].size() == 0) {
-					Log::printError(__FILE__, __LINE__, std::format("Layer_{}对应顶点数组为空", layer));
-				}
-
-				if (terrainVertex::indexs[layer].size() == 0) {
-					Log::printError(__FILE__, __LINE__, std::format("Layer_{}对应索引数组为空", layer));
-				}
-			}
+			InitDebug.validateTerrainLayerEmpty();
 		}
 	}
 
@@ -456,8 +449,11 @@ private:
 					cubeId = cubeEnum::cubeId::stone;
 				}
 				else if (elevationValue > -0.2) {
-					if (procNoise.getNoiseSingle2D(noiseEnum::noiseId::tree, cubeWorldPos) > 0 && arrayPos.x > 0 && arrayPos.x < plateInfo::lengthIncrement && arrayPos.y > 0 && arrayPos.y < plateInfo::lengthIncrement && arrayPos.z > 0 && arrayPos.z < plateInfo::lengthIncrement) {
-						structList.push_back(glm::ivec3{ arrayPos.x, arrayPos.y + 1, arrayPos.z });
+					if (procNoise.getNoiseSingle2D(noiseEnum::noiseId::tree, cubeWorldPos) > 0) {
+						if (arrayPos.x > 0 && arrayPos.x < plateInfo::lengthIncrement && arrayPos.y > 0 && arrayPos.y < plateInfo::lengthIncrement && arrayPos.z > 0 && arrayPos.z < plateInfo::lengthIncrement) {
+							structList.push_back(glm::ivec3{ arrayPos.x, arrayPos.y + 1, arrayPos.z });
+						}
+
 						cubeId = cubeEnum::cubeId::oakTrunk;
 					}
 					else {
@@ -551,7 +547,7 @@ public:
 		std::vector<glm::dvec3> updateChunkLoop;											//存储当前视距内未加载区块列表，和需重载网格的区块（updateStructLoop）
 		plateStruct::kMeansNode partChunkLoop;												//分区区块循环，用于并行生成地形
 		std::vector<plateStruct::structPartManagerNode> linkStructManager(maxThreadCount);	//链结构管理器
-		std::unordered_set<glm::dvec3> updateStructLoop;									//更新结构循环，已加载区块被压入新链结构时，为避免线程冲突将对应区块延到锁域处理
+		std::unordered_set<glm::dvec3> updateStructLoop;									//更新结构循环，新生成区块->生成链结构->压入已加载区块，存储此情况下已加载区块坐标
 
 		glm::dvec3 playerChunkPos = glm::floor(playerPos / (double)plateInfo::chunkLength);
 		glm::dvec3 originShiftPos = glm::abs(logicOriginPos - playerPos);
@@ -755,18 +751,22 @@ public:
 		//---3、处理结构、删除视距外区块网格---
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
 
-		//处理updateStructLoop，复制chunkMap数据到updateChunkMap后加载链结构，RM_0.4.6（8_32：3）
+		//处理updateStructLoop，复制chunkMap数据到updateChunkMap后加载链结构，RM_0.4.6（8_32：1~10）
 		for (const glm::dvec3& updatePos : updateStructLoop) {
-			updateChunkMap[updatePos].InitChunk(tempOriginPos, updatePos);
-			updateChunkMap[updatePos].isVisible = chunkMap[updatePos].isVisible;
-			updateChunkMap[updatePos].layerID	= chunkMap[updatePos].layerID;
-			std::memcpy(updateChunkMap[updatePos].cubeArray, chunkMap[updatePos].cubeArray, sizeof(chunkMap[updatePos].cubeArray));
+			auto& updateChunk = updateChunkMap[updatePos];
+			updateChunk.copyCoreData(chunkMap[updatePos]);
+			bool isNotEmpty = !updateChunk.cubeDeltaSet.empty();
 
 			for (const glm::ivec4& cubePos : pendingStructManager.node[updatePos]) {
-				short& cubeId = updateChunkMap[updatePos].cubeArray[cubePos.x][cubePos.y][cubePos.z];
+				//如果cubeDeltaSet非空，且当前方块坐标进行过方块变更，则直接跳过压入链结构方块
+				if (isNotEmpty && std::find_if(updateChunk.cubeDeltaSet.begin(), updateChunk.cubeDeltaSet.end(), [&](const storageStruct::cubeDeltaNode& n) {return n.data[0] == (short)cubePos.x && n.data[1] == (short)cubePos.y && n.data[2] == (short)cubePos.z; }) != updateChunk.cubeDeltaSet.end()) {
+					continue;
+				}
+
+				short& cubeId = updateChunk.cubeArray[cubePos.x][cubePos.y][cubePos.z];
 
 				if (cubeId == cubeEnum::cubeId::air) {
-					updateChunkMap[updatePos].isVisible++;
+					updateChunk.isVisible++;
 				}
 				else if (cubeList::procCube.node[cubePos.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
 					continue;
@@ -865,13 +865,14 @@ public:
 
 		//拼接区块网格到对应地形网格层，RM_0.4.6（8_32：60）
 		for (const glm::dvec3& updatePos : updateChunkLoop) {
-			chunkMap[updatePos] = updateChunkMap[updatePos];
+			chunkMap[updatePos] = std::move(updateChunkMap[updatePos]);		//此处使用移动语义，updateChunkMap后续就不能再使用了
 
 			int layer = forgeEnum::terrainLayer::Layer_1;
 			if (loopList::terrainLayerLoop.find(updatePos - playerChunkPos) != loopList::terrainLayerLoop.end()) {
 				layer = forgeEnum::terrainLayer::Layer_0;
 			}
 
+			//删除旧区块网格后重拼
 			if (updateStructLoop.find(updatePos) != updateStructLoop.end()) {
 				delTerrainMesh(updatePos, chunkMap[updatePos].layerID);
 			}
@@ -899,38 +900,17 @@ public:
 
 		//地形网格非空检测
 		if (debugInfo::LogSwitch && false) {
-			for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-				if (terrainVertex::vertexs[layer].size() == 0) {
-					Log::printWarning(__FILE__, __LINE__, std::format("Layer_{}对应顶点数组为空", layer));
-				}
-
-				if (terrainVertex::indexs[layer].size() == 0) {
-					Log::printWarning(__FILE__, __LINE__, std::format("Layer_{}对应索引数组为空", layer));
-				}
-			}
+			InitDebug.validateTerrainLayerEmpty();
 		}
 
-		//isVisible校验
+		//校验isVisible数量
 		if (debugInfo::LogSwitch && true && !isHandleChangeCubeList()) {
-			for (auto& node : chunkMap) {
-				int tempId = 0;
+			InitDebug.validateIsVisible(chunkMap);
+		}
 
-				for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
-					for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
-						for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
-							if (node.second.cubeArray[x][y][z] != cubeEnum::cubeId::air) {
-								tempId++;
-							}
-						}
-					}
-				}
-
-				if (tempId != node.second.isVisible) {
-					Log::printPos(node.first);
-					std::cout << "实际：" << "\t" << tempId << "记录：" << "\t" << node.second.isVisible << std::endl;
-					Log::print("---");
-				}
-			}
+		//校验本区块与邻区块，0或33处的方块是否对应
+		if (debugInfo::LogSwitch && true) {
+			InitDebug.validateExtremeCube(chunkMap);
 		}
 	}
 
@@ -1042,9 +1022,9 @@ public:
 				joinTerrainMesh(chunkMap[chunkPos], originPos, chunkPos, layer);								//重拼新区块网格到地形网格中
 			}
 			//已证实存在下述情况，变更板块边缘区块导致的
-			//else if (debugInfo::LogSwitch) {
-			//	Log::printError(__FILE__, __LINE__, "变更方块所处区块为空");
-			//}
+			else if (debugInfo::LogSwitch) {
+				Log::printError(__FILE__, __LINE__, "变更方块所处区块为空");
+			}
 		}
 
 		changeCubeList.clear();
@@ -1130,7 +1110,7 @@ private:
 	//获取边界变更方块列表
 	void getExtremeChangeCubeList(const glm::dvec3& extremeChunkPos, const glm::ivec3& extremeCubePos, const glm::ivec2& abutCubePos, const short& newCubeId) {
 		if (chunkMap.find(extremeChunkPos) != chunkMap.end()) {
-			short& oldCubeId = chunkMap[extremeChunkPos].cubeArray[extremeCubePos.x][extremeCubePos.y][extremeCubePos.z];
+			short& oldCubeId = chunkMap[extremeChunkPos].cubeArray[extremeCubePos.x][extremeCubePos.y][extremeCubePos.z];		//[0,33]
 
 			if (oldCubeId == cubeEnum::cubeId::air) {
 				if (newCubeId != cubeEnum::cubeId::air) {

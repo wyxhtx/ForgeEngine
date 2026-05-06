@@ -2,7 +2,7 @@
 
 
 
-//前置声明logThreadLock
+//前向声明logThreadLock
 namespace lockInfo {
     extern std::atomic<bool> logThreadLock;
 }

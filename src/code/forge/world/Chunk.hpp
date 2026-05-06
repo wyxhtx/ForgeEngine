@@ -7,7 +7,7 @@ class Chunk {
 public:
 	//Storage（saveFullChunk、readFullChunk、readDeltaChunk），Plate（createPlate、updatePlate、getSelectBox、createUpdateCubeList），Chunk（createChunkMeshData、updateChunkMeshData）
 	short cubeArray[plateInfo::cubeArrayLength][plateInfo::cubeArrayLength][plateInfo::cubeArrayLength]{};	//方块数组，最外一圈存储相邻区块边缘方块数据，方便区块间面检测，使用范围[1,32]，边缘方块数据0和33
-	std::unordered_set<storageStruct::cubeDeltaNode, storageStruct::cubeDeltaNodeHash> cubeDeltaSet;		//方块变更集合，为变存法服务					//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
+	std::unordered_set<storageStruct::cubeDeltaNode, storageStruct::cubeDeltaNodeHash> cubeDeltaSet;		//方块变更集合，为变存法服务，[0,33]			//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
 
 	int isVisible = 0;												//标识区块是否可见，如果全空或者全满为不可见，但是不能排除1~32全空但边缘非空的情况			//Storage（saveFullChunk、readFullChunk、saveDeltaChunk、readDeltaChunk），Plate（createPlate、createChunk、updatePlate、createUpdateCubeList）
 	int layerID = forgeEnum::terrainLayer::count;					//区块所在地形管线层																	//Plate（createPlate、updatePlate、updatePlatePartMesh）
@@ -26,10 +26,10 @@ public:
 
 
 	void InitChunk(const glm::dvec3 origin, const glm::dvec3 chunkPos0) {
-		originOffset = origin;
-		chunkPos = chunkPos0;
+		originOffset	= origin;
+		chunkPos		= chunkPos0;
 		logicalWorldPos = chunkPos * (double)plateInfo::chunkLength;
-		actualWorldPos = glm::ivec3(logicalWorldPos - origin);
+		actualWorldPos  = glm::ivec3(logicalWorldPos - origin);
 	}
 
 	//创建区块网格数据
@@ -640,6 +640,17 @@ private:
 	}
 
 public:
+	//拷贝核心数据
+	void copyCoreData(const Chunk& chunk) {
+		InitChunk(chunk.originOffset, chunk.chunkPos);
+
+		std::memcpy(cubeArray, chunk.cubeArray, sizeof(chunk.cubeArray));
+		cubeDeltaSet = chunk.cubeDeltaSet;
+
+		isVisible = chunk.isVisible;
+		layerID	  = chunk.layerID;
+	}
+
 	//更新区块网格数据
 	void updateChunkMeshData(const std::unordered_set<glm::ivec3>& cubePosSet, const std::unordered_set<glm::ivec2>& abutCubePosSet) {
 		std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];						//区块截层可见面集合，[0,31]
