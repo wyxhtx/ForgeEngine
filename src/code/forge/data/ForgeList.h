@@ -102,11 +102,11 @@ namespace noiseList {
 		}
 
 		//2D噪音点数组
-		void getNoiseSingleArray2D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& chunkWorldPos) {
+		void getNoiseSingleArray2D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
 			int	noiseId2D = 0;
 
 			for (const glm::ivec3& arrayPos : loopList::cubeXZLoop) {
-				noiseData[noiseId2D] = node[terrainType].noise->GenSingle2D((float)(chunkWorldPos.x + arrayPos.x), (float)(chunkWorldPos.z + arrayPos.z), node[terrainType].seed);
+				noiseData[noiseId2D] = node[terrainType].noise->GenSingle2D((float)(worldPos.x + arrayPos.x), (float)(worldPos.z + arrayPos.z), node[terrainType].seed);
 				noiseId2D++;
 			}
 		}
@@ -122,12 +122,12 @@ namespace noiseList {
 		}
 
 		//3D噪音点数组
-		void getNoiseSingleArray3D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& chunkWorldPos) {
+		void getNoiseSingleArray3D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
 			int	noiseId3D = 0;
 
 			for (const glm::ivec3& arrayPos : loopList::cubeXZLoop) {
 				for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
-					noiseData[noiseId3D] = node[terrainType].noise->GenSingle3D((float)(chunkWorldPos.x + arrayPos.x), (float)(chunkWorldPos.y + y), (float)(chunkWorldPos.z + arrayPos.z), node[terrainType].seed);
+					noiseData[noiseId3D] = node[terrainType].noise->GenSingle3D((float)(worldPos.x + arrayPos.x), (float)(worldPos.y + y), (float)(worldPos.z + arrayPos.z), node[terrainType].seed);
 					noiseId3D++;
 				}
 			}

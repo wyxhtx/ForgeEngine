@@ -19,6 +19,17 @@ public:
 	}
 
 public:
+	//isVisible和indexOffset越界检测
+	void validateIsVisibleAndIndexOffsetInRange(const Chunk& chunk) {
+		if (chunk.isVisible < 0 || chunk.isVisible > plateInfo::cubeArrayVolume) {
+			Log::printError(__FILE__, __LINE__, "isVisible超限：\t" + std::to_string(chunk.isVisible));
+		}
+
+		if (chunk.indexOffset < 0) {
+			Log::printError(__FILE__, __LINE__, "indexOffset超限：\t" + std::to_string(chunk.indexOffset));
+		}
+	}
+
 	//校验地形层非空
 	void validateTerrainLayerEmpty() {
 		for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
@@ -64,7 +75,7 @@ public:
 	}
 
 	//校验本区块与邻区块，0或33处的方块是否对应
-	void validateExtremeCube(std::unordered_map<glm::dvec3, Chunk>& chunkMap) {
+	void validateExtremeCube(const std::unordered_map<glm::dvec3, Chunk>& chunkMap) {
 		std::mutex posMutex;
 		std::unordered_map<glm::dvec3, std::unordered_set<forgeDebugStruct::extremeCubeNode, forgeDebugStruct::extremeCubeNode::Hash>> posList{};
 
@@ -142,13 +153,13 @@ public:
 
 			for (auto& node : posList) {
 				if (node.second.size() != 0) {
+					Log::print("");
+
 					std::cout << "\t" << "chunk:" << "\t" << node.first.x << "\t" << node.first.y << "\t" << node.first.z << "\t" << "count:" << "\t" << node.second.size() << std::endl;
 
 					for (auto& set : node.second) {
 						std::cout << "\t" << "cube:" << "\t" << set.pos.x << "\t" << set.pos.y << "\t" << set.pos.z << "\t" << "oldId:" << "\t" << set.oldId << "\t" << "newId:" << "\t" << set.newId << std::endl;
 					}
-
-					Log::print("---");
 				}
 			}
 
