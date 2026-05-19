@@ -52,15 +52,15 @@ namespace plateStruct {
         int vertexsSentinel = 0;                                        //标识区块各朝向顶点列表长度
     };
 
-    //结构管理器结点
-    struct structManagerNode {
-        std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec4>> node;
+    //链结构区块结点
+    struct linkStructChunkNode {
+        std::unordered_set<glm::ivec4> cubeSet;     //链结构方块数据
+        bool isComplete = false;                    //标识链结构是否加载，全部压入即为加载
     };
 
-    //结构分区管理器结点
-    struct structPartManagerNode {
-        std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec4>> pending;     //未加载
-        std::unordered_map<glm::dvec3, std::unordered_set<glm::ivec4>> active;      //已加载
+    //链结构管理器结点，structPos->chunkPos->cubeData
+    struct linkStructManagerNode {
+        std::unordered_map<glm::dvec3, std::unordered_map<glm::dvec3, plateStruct::linkStructChunkNode>> node;
     };
 
     //聚类分区结点

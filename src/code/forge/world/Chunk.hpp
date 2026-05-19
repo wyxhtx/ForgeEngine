@@ -2,7 +2,6 @@
 
 
 
-//Plate.updatePlate执行的chunkMap[updatePos] = tempChunkMap[updatePos]相当于给区块所有变量赋值，容易导致资源冲突
 class Chunk {
 public:
 	//Storage（saveFullChunk、readFullChunk、readDeltaChunk），Plate（createPlate、updatePlate、getSelectBox、createUpdateCubeList），Chunk（createChunkMeshData、updateChunkMeshData）
