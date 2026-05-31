@@ -92,7 +92,7 @@ private:
 		}
 		linkStructPartManager.resize(partChunkLoop.node.size());
 
-		//创建区块，RM_0.4.6（8_32：900）
+		//创建区块，RM_0.4.7（8_32：900）
 		std::transform(std::execution::par, partChunkLoop.node.begin(), partChunkLoop.node.end(), linkStructPartManager.begin(),
 			[this](const std::vector<glm::dvec3>& chunkLoop) {
 				plateStruct::linkStructManagerNode linkStructSet;										//链结构集合[0,33]，由createChunk赋值
@@ -103,7 +103,7 @@ private:
 					this->createChunk(chunkMap[chunkPos], linkStructSet.node);
 				}
 
-				//压入分区内链结构，RM_0.4.6（8_32：5）
+				//压入分区内链结构，RM_0.4.7（8_32：1~4）
 				for (auto& [structPos, chunkSet] : linkStructSet.node) {
 					for (auto& [chunkPos, cubeNode] : chunkSet) {
 						if (chunkPosSet.find(chunkPos) != chunkPosSet.end()) {
@@ -138,7 +138,7 @@ private:
 			}
 		);
 
-		//压入分区间链结构，处理链结构分区管理器linkStructPartManager，RM_0.4.6（8_32：100）
+		//压入分区间链结构，处理链结构分区管理器linkStructPartManager，RM_0.4.7（8_32：10）
 		for (auto& linkStructSet : linkStructPartManager) {
 			for (auto& [structPos, chunkSet] : linkStructSet.node) {
 				for (auto& [chunkPos, cubeNode] : chunkSet) {
@@ -170,7 +170,7 @@ private:
 
 
 
-		//生成区块网格，直接遍历updateChunkLoop因为少了遍历分区所以性能更高，RM_0.4.6（8_32：170）
+		//生成区块网格，直接遍历updateChunkLoop因为少了遍历分区所以性能更高，RM_0.4.7（8_32：170）
 		std::for_each(std::execution::par, updateChunkLoop.begin(), updateChunkLoop.end(),
 			[this](const glm::dvec3& chunkPos) {
 				Chunk& chunkNode = chunkMap[chunkPos];
@@ -182,7 +182,7 @@ private:
 			}
 		);
 
-		//拼接区块网格，RM_0.4.6（8_32：100）
+		//拼接区块网格，RM_0.4.7（8_32：100）
 		for (const glm::dvec3& chunkPos : updateChunkLoop) {
 			int layer = forgeEnum::terrainLayer::Layer_1;
 			Chunk& chunkNode = chunkMap[chunkPos];
@@ -200,6 +200,7 @@ private:
 
 
 
+		//RM_0.4.7（8_32：20）
 		//校验chunkMap长度
 		if (debugInfo::LogSwitch) {
 			InitDebug.validateChunkMapSize(chunkMap.size());
@@ -546,7 +547,7 @@ public:
 
 
 		//---2、生成区块数据---
-		//创建当前视距内未加载的区块，RM_0.4.6（8_32：100~120）
+		//创建当前视距内未加载的区块，RM_0.4.7（8_32：100~120）
 		std::transform(std::execution::par, partChunkLoop.node.begin(), partChunkLoop.node.end(), linkStructPartManager.begin(),
 			[this](const std::vector<glm::dvec3>& chunkLoop) {
 				plateStruct::linkStructManagerNode linkStructSet;										//链结构集合[0,33]，由createChunk赋值
@@ -557,7 +558,7 @@ public:
 					this->createChunk(updateChunkMap[chunkPos], linkStructSet.node);
 				}
 
-				//压入分区内链结构，RM_0.4.6（8_32：5）
+				//压入分区内链结构，RM_0.4.7（8_32：1~4）
 				for (auto& [structPos, chunkSet] : linkStructSet.node) {
 					for (auto& [chunkPos, cubeNode] : chunkSet) {
 						if (chunkPosSet.find(chunkPos) != chunkPosSet.end()) {
@@ -592,7 +593,7 @@ public:
 			}
 		);
 
-		//已载过旧向新压入
+		//已载过旧向新压入，RM_0.4.7（8_32：2）
 		for (auto& [structPos, chunkSet] : linkStructManager.node) {
 			for (auto& [chunkPos, cubeNode] : chunkSet) {
 				//将active转为pending
@@ -602,7 +603,7 @@ public:
 			}
 		}
 
-		//压入分区间链结构，处理链结构分区管理器linkStructPartManager，RM_0.4.6（8_32：10~25）
+		//压入分区间链结构，处理链结构分区管理器linkStructPartManager，RM_0.4.7（8_32：1~4）
 		for (auto& linkStructSet : linkStructPartManager) {
 			for (auto& [structPos, chunkSet] : linkStructSet.node) {
 				for (auto& [chunkPos, cubeNode] : chunkSet) {
@@ -643,7 +644,7 @@ public:
 			}
 		}
 
-		//新旧板块间压入，处理链结构管理器linkStructManager
+		//新旧板块间压入，处理链结构管理器linkStructManager，RM_0.4.7（8_32：2）
 		for (auto& [structPos, chunkSet] : linkStructManager.node) {
 			for (auto& [chunkPos, cubeNode] : chunkSet) {
 				if (!cubeNode.isComplete) {
@@ -676,10 +677,11 @@ public:
 
 
 
-		//---3、处理结构、删除视距外区块网格---
+		//---3、处理链结构、删除视距外区块网格---
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
+		while (lockInfo::chunkMapDataLock.exchange(true)) { std::this_thread::yield(); }
 
-		//处理updateStructLoop，复制chunkMap数据到updateChunkMap后加载链结构，RM_0.4.6（8_32：1~10）
+		//处理updateStructSet，复制chunkMap数据到updateChunkMap后加载链结构，RM_0.4.7（8_32：1）
 		for (const auto& [structPos, chunkSet] : updateStructSet) {
 			auto& linkStructNode = linkStructManager.node[structPos];
 
@@ -720,7 +722,9 @@ public:
 			}
 		}
 
-		//清理r+2外的链结构，RM_0.4.6（8_32：2）
+		lockInfo::chunkMapDataLock.store(false);
+
+		//清理r+2外的链结构，RM_0.4.7（8_32：1~10）
 		for (auto structIt = linkStructManager.node.begin(); structIt != linkStructManager.node.end();) {
 			bool isKeep = false;
 
@@ -738,7 +742,7 @@ public:
 				structIt = linkStructManager.node.erase(structIt);
 			}
 		}
-		
+
 
 
 		//卸载视距外区块网格，因为原点未迁移处理耗时太高，所以全采用原点迁移处理，RM_0.4.6（8_32：20）
@@ -792,6 +796,7 @@ public:
 		std::for_each(std::execution::par, updateChunkLoop.begin(), updateChunkLoop.end(),
 			[this, updateStructLoop](const glm::dvec3& chunkPos) {
 				Chunk& chunkNode = updateChunkMap[chunkPos];
+
 				if (updateStructLoop.find(chunkPos) == updateStructLoop.end()) {	//updateStructLoop由视距内已加载区块得到，故不用文件加载
 					InitStorage.readChunk(chunkNode);								//读取区块文件，在加载链结构后执行，避免压入链结构后被覆盖
 				}
@@ -806,6 +811,7 @@ public:
 
 		//---5、拼接区块网格---
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
+		while (lockInfo::chunkMapDataLock.exchange(true)) { std::this_thread::yield(); }
 
 		//拼接区块网格到对应地形网格层，RM_0.4.6（8_32：60）
 		for (const glm::dvec3& chunkPos : updateChunkLoop) {
@@ -832,6 +838,7 @@ public:
 		updateChunkMap.clear();
 
 		isEntireRebuild.store(true);
+		lockInfo::chunkMapDataLock.store(false);
 		lockInfo::plateMeshDataLock.store(false);
 
 
@@ -964,10 +971,10 @@ public:
 				chunkMap[chunkPos].updateChunkMeshData(updateCubeNode.second, changeAbutCubeList[chunkPos]);	//生成方块变更后的新区块网格
 				joinTerrainMesh(chunkMap[chunkPos], originPos, chunkPos, layer);								//重拼新区块网格到地形网格中
 			}
-			//已证实存在下述情况，变更板块边缘区块导致的
-			else if (debugInfo::LogSwitch) {
+			//已证实存在下述情况，变更板块边缘区块导致的，不影响运行，所以不处理
+			/*else if (debugInfo::LogSwitch) {
 				Log::printError(__FILE__, __LINE__, "变更方块所处区块为空");
-			}
+			}*/
 		}
 
 		changeCubeList.clear();

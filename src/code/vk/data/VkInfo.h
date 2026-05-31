@@ -184,8 +184,19 @@ namespace lockInfo {
     std::atomic<bool> drawFuncLock        = false;      //用于避免InitSwapchain.drawFrame()和InitBuffer.recreateCommandBuffer()的threadId = (threadId + 1) % 2重建同时执行
 
     //原子数据锁
-    std::atomic<bool> plateMeshDataLock  = false;       //板块网格数据锁，用于原子同步对板块网格的修改操作
+    std::atomic<bool> plateMeshDataLock = false;        //板块网格数据锁，用于原子同步对板块网格的修改操作
+    std::atomic<bool> chunkMapDataLock  = false;        //区块映射数据锁，用于原子同步对区块映射的修改操作
 
     //原子启用锁
     std::atomic<bool> logPauseEnableLock = false;       //日志暂停启用锁，用于校验层报错时暂停
+
+
+
+    //获取锁值
+    //如果 lock == false，设置 lock = true，返回 true
+    //如果 lock == true， 返回 false
+    bool getLock(std::atomic<bool>& lock) {
+        bool isLock = false;
+        return lock.compare_exchange_strong(isLock, true);
+    }
 }

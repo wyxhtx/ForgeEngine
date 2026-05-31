@@ -55,6 +55,8 @@ public:
 
 	//校验isVisible一致性
 	void validateIsVisibleConsistency(const std::unordered_map<glm::dvec3, Chunk>& chunkMap) {
+		while (lockInfo::chunkMapDataLock.exchange(true)) { std::this_thread::yield(); }
+
 		std::mutex logMutex;		//确保输出不冲突
 
 		std::for_each(std::execution::par, chunkMap.begin(), chunkMap.end(),
@@ -82,6 +84,8 @@ public:
 				}
 			}
 		);
+
+		lockInfo::chunkMapDataLock.store(false);
 	}
 
 	//校验本区块与邻区块，0或33处的方块是否对应

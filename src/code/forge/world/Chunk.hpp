@@ -18,7 +18,7 @@ public:
 	glm::ivec3 actualWorldPos{};									//区块实际世界坐标（i世界坐标系）（对应cubeArray[0][0][0]处），用于构建网格				//Chunk（InitChunk、createChunkMeshData、updateChunkMeshData）
 
 	//由createChunkMeshData初始化,chunkVertexs,chunkIndexs,IndexOffset都能判断区块是否应该加载网格，34立方区块全空或全实不加载网格
-	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组																	//Plate（createPlate、joinTerrainMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMesh、updateChunkMesh）
+	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组																	//Plate（createPlate、joinTerrainMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMeshData、createChunkMesh、updateChunkMesh）
 	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinTerrainMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMesh、updateChunkMesh）
 	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、updatePlate），Chunk（createChunkMesh、updateChunkMesh、updateChunkMeshData）
 

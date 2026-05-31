@@ -181,6 +181,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="src\code\文档\多线程冲突\1-更新板块.txt" />
+    <Text Include="src\code\文档\多线程冲突\2-重建命令缓冲区.txt" />
     <Text Include="src\image_build\bat注释.txt" />
     <Text Include="src\shader_build\bat注释.txt" />
   </ItemGroup>
@@ -326,6 +328,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\code\vk\Main.cpp" />
+    <ClCompile Include="src\code\文档\多线程冲突\3-主线程.txt" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="src\image_build\model\droid\Body_baseColor.jpeg" />

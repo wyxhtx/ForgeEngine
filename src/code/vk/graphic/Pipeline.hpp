@@ -302,30 +302,36 @@ public:
 
 			if (pos0 != pos1 && !lockInfo::updatePlateFuncLock.exchange(true)) {
 				std::thread(&Pipeline::atomicUpdatePlate, this, Camera.node.pos).detach();
-
 				pos0 = pos1;
 			}
 		}
 
 		//更新方块，因放置/破坏方块后更新板块网格，命令缓冲区线程未变 & 方块变更列表非空 & 板块网格未锁
-		if (engineList::procTick.node[engineEnum::tickEnum::cube].isUpdate() && !InitBuffer.command.isUpdate() && InitPlate.isHandleChangeCubeList() && !lockInfo::plateMeshDataLock.load()) {
-			while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
-			InitPlate.handleChangeCubeList();
-			InitBuffer.command.setNextThreadId();
-			lockInfo::plateMeshDataLock.store(false);
+		if (engineList::procTick.node[engineEnum::tickEnum::cube].isUpdate() && !InitBuffer.command.isUpdate() && InitPlate.isHandleChangeCubeList()) {
+			if (lockInfo::getLock(lockInfo::plateMeshDataLock)) {
+				if (lockInfo::getLock(lockInfo::chunkMapDataLock)) {
+					InitPlate.handleChangeCubeList();
+					InitBuffer.command.setNextThreadId();
+					lockInfo::chunkMapDataLock.store(false);
+				}
+				lockInfo::plateMeshDataLock.store(false);
+			}
 		}
 
 		//更换命令缓冲区后重建命令缓冲区，r=1时更新板块会把网格数组清空
-		if (InitBuffer.command.isUpdate() && !lockInfo::plateMeshDataLock.load()/*防止过度等待*/ && !lockInfo::recreateCmdFuncLock.exchange(true)) {
+		if (InitBuffer.command.isUpdate() && !lockInfo::recreateCmdFuncLock.exchange(true)) {
 			std::thread(&Pipeline::atomicRecreateCommandBuffer, this, std::ref(Camera)).detach();
 		}
 
 
 
 		while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
-		selectBox = InitPlate.getSelectBox(playerInfo::logicOriginPos, Camera.node);		//当前帧获取的方块更新列表在下一帧更新
-		InitBuffer.updateUniformBuffer(playerInfo::logicOriginPos, Camera.node, selectBox);
+		if (lockInfo::getLock(lockInfo::chunkMapDataLock)) {
+			selectBox = InitPlate.getSelectBox(playerInfo::logicOriginPos, Camera.node);		//当前帧获取的方块更新列表在下一帧更新
+			lockInfo::chunkMapDataLock.store(false);
+		}
 
+		InitBuffer.updateUniformBuffer(playerInfo::logicOriginPos, Camera.node, selectBox);
 		if (InitBuffer.drawFrame()) {
 			lockInfo::drawFuncLock.store(false);
 			recreateSwapChain(Camera);
@@ -348,9 +354,11 @@ private:
 
 	//原子线程更新命令缓冲区
 	void atomicRecreateCommandBuffer(Camera& Camera) {
-		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
-		InitBuffer.recreateCommandBuffer(InitBuffer.command.nextThreadId, InitPlate.isEntireRebuild, InitPlate.originPos, Camera, procPipeline);
-		lockInfo::plateMeshDataLock.store(false);
+		if (lockInfo::getLock(lockInfo::plateMeshDataLock)) {
+			InitBuffer.recreateCommandBuffer(InitBuffer.command.nextThreadId, InitPlate.isEntireRebuild, InitPlate.originPos, Camera, procPipeline);
+			lockInfo::plateMeshDataLock.store(false);
+		}
+
 		lockInfo::recreateCmdFuncLock.store(false);
 	}
 
