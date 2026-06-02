@@ -120,7 +120,10 @@ private:
 		std::filesystem::create_directories(chunkPath.parent_path());	//如果当前文件父路径不存在则创建，如果存在则不操作
 		std::ofstream oChunkFile{ chunkPath, std::ios::binary };
 		
+		chunk.cubeArrayDataLock->lock();
 		oChunkFile.write(reinterpret_cast<char*>(chunk.cubeArray), storageInfo::cubeArraySize);
+		chunk.cubeArrayDataLock->unlock();
+
 		chunk.isVisibleDataLock->lock();
 		oChunkFile.write(reinterpret_cast<char*>(&chunk.isVisible), sizeof(int));
 		chunk.isVisibleDataLock->unlock();
@@ -133,7 +136,10 @@ private:
 		std::filesystem::path chunkPath = std::filesystem::path{ fileInfo::storage::fullFile } / std::format("{}_{}_{}", regionPos.x, regionPos.y, regionPos.z) / std::format("{}_{}_{}.dat", chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z);
 		std::ifstream iChunkFile{ chunkPath, std::ios::binary };
 
+		chunk.cubeArrayDataLock->lock();
 		iChunkFile.read(reinterpret_cast<char*>(chunk.cubeArray), storageInfo::cubeArraySize);
+		chunk.cubeArrayDataLock->unlock();
+
 		chunk.isVisibleDataLock->lock();
 		iChunkFile.read(reinterpret_cast<char*>(&chunk.isVisible), sizeof(int));
 		chunk.isVisibleDataLock->unlock();
@@ -170,13 +176,15 @@ private:
 		iChunkFile.read(reinterpret_cast<char*>(&size), sizeof(size_t));
 
 		//读取区块变存集合
+		chunk.cubeArrayDataLock->lock();
+		chunk.cubeDeltaSetDataLock->lock();
+		chunk.isVisibleDataLock->lock();
 		for (size_t i = 0; i < size; i++) {
 			iChunkFile.read(reinterpret_cast<char*>(&node), sizeof(storageStruct::cubeDeltaNode));
 
 			short& oldCubeId = chunk.cubeArray[node.data[0]][node.data[1]][node.data[2]];		//[0,33]
 			short& newCubeId = node.data[3];
 
-			chunk.isVisibleDataLock->lock();
 			if (oldCubeId == cubeEnum::cubeId::air) {
 				if (newCubeId != cubeEnum::cubeId::air) {
 					chunk.isVisible++;
@@ -187,11 +195,13 @@ private:
 					chunk.isVisible--;
 				}
 			}
-			chunk.isVisibleDataLock->unlock();
 
 			oldCubeId = newCubeId;
 			chunk.cubeDeltaSet.emplace(node);
 		}
+		chunk.isVisibleDataLock->unlock();
+		chunk.cubeDeltaSetDataLock->unlock();
+		chunk.cubeArrayDataLock->unlock();
 
 		iChunkFile.close();
 	}
@@ -212,6 +222,7 @@ public:
 	void saveChunk(Chunk& chunk) {
 		glm::dvec3 regionPos = glm::floor(chunk.chunkPos / (double)storageInfo::regionLength);
 
+		chunk.cubeDeltaSetDataLock->lock();
 		if (chunk.cubeDeltaSet.size() < storageInfo::thresholdSize) {
 			deltaChunkList[regionPos].insert(chunk.chunkPos);
 			saveDeltaChunk(regionPos, chunk);
@@ -230,6 +241,7 @@ public:
 				std::filesystem::remove(std::filesystem::path{ fileInfo::storage::deltaFile } / std::format("{}_{}_{}", regionPos.x, regionPos.y, regionPos.z) / std::format("{}_{}_{}.dat", chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z));
 			}
 		}
+		chunk.cubeDeltaSetDataLock->unlock();
 	}
 
 	//读取区块文件

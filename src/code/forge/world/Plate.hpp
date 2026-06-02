@@ -115,6 +115,7 @@ private:
 
 							Chunk& chunkNode = chunkMap[chunkPos];
 
+							chunkNode.cubeArrayDataLock->lock();
 							chunkNode.isVisibleDataLock->lock();
 							for (const glm::ivec4& cubeData : cubeNode.cubeSet) {
 								short& cubeId = chunkNode.cubeArray[cubeData.x][cubeData.y][cubeData.z];
@@ -129,6 +130,7 @@ private:
 								cubeId = cubeData.w;
 							}
 							chunkNode.isVisibleDataLock->unlock();
+							chunkNode.cubeArrayDataLock->unlock();
 
 							//标识active状态
 							cubeNode.isComplete = true;
@@ -148,6 +150,7 @@ private:
 					if (!cubeNode.isComplete && chunkMap.find(chunkPos) != chunkMap.end()) {
 						Chunk& chunkNode = chunkMap[chunkPos];
 
+						chunkNode.cubeArrayDataLock->lock();
 						chunkNode.isVisibleDataLock->lock();
 						for (const glm::ivec4& cubeData : cubeNode.cubeSet) {
 							short& cubeId = chunkNode.cubeArray[cubeData.x][cubeData.y][cubeData.z];
@@ -162,6 +165,7 @@ private:
 							cubeId = cubeData.w;
 						}
 						chunkNode.isVisibleDataLock->unlock();
+						chunkNode.cubeArrayDataLock->unlock();
 
 						//标识active状态
 						cubeNode.isComplete = true;
@@ -274,6 +278,9 @@ private:
 			}
 		}
 
+		chunk.cubeArrayDataLock->lock();
+		chunk.isVisibleDataLock->lock();
+		//生成地形数据
 		for (const glm::ivec3& cubePos : loopList::cubeXZLoop) {
 			elevation.value = elevation.data[noiseId2D];
 			ground.value	= std::floor(ground.data[noiseId2D]);
@@ -281,7 +288,6 @@ private:
 
 			tempCubePos = cubePos;
 
-			chunk.isVisibleDataLock->lock();
 			for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
 				if (isCave) {
 					cave.value = cave.data[noiseId3D];
@@ -291,10 +297,7 @@ private:
 				tempCubePos.y = y;
 				generateCube(chunk.cubeArray[cubePos.x][y][cubePos.z], chunk.isVisible, glm::dvec3{ tempCubePos } + cubeWorldPos, tempCubePos, elevation.value, ground.value, cave.value, isCave, structPosList);
 			}
-			chunk.isVisibleDataLock->unlock();
 		}
-
-
 
 		//生成地形结构管理器
 		if (!structPosList.empty()) {
@@ -306,7 +309,6 @@ private:
 			for (const glm::ivec3& structPos : structPosList) {
 				strucWorldPos = glm::dvec3{ structPos } + cubeWorldPos;
 
-				chunk.isVisibleDataLock->lock();
 				for (const glm::ivec4& nodePos : loopList::treeLoop) {
 					structCubeData = glm::ivec4{ structPos,0 } + nodePos;
 
@@ -383,9 +385,10 @@ private:
 						}
 					}
 				}
-				chunk.isVisibleDataLock->unlock();
 			}
 		}
+		chunk.isVisibleDataLock->unlock();
+		chunk.cubeArrayDataLock->unlock();
 	}
 
 	//判断是否切换噪音算法
@@ -582,6 +585,7 @@ public:
 
 							Chunk& chunkNode = updateChunkMap[chunkPos];
 
+							chunkNode.cubeArrayDataLock->lock();
 							chunkNode.isVisibleDataLock->lock();
 							for (const glm::ivec4& cubeData : cubeNode.cubeSet) {
 								short& cubeId = chunkNode.cubeArray[cubeData.x][cubeData.y][cubeData.z];
@@ -596,6 +600,7 @@ public:
 								cubeId = cubeData.w;
 							}
 							chunkNode.isVisibleDataLock->unlock();
+							chunkNode.cubeArrayDataLock->unlock();
 
 							//标识active状态
 							cubeNode.isComplete = true;
@@ -635,6 +640,7 @@ public:
 						if (!cubeNode.isComplete && updateChunkMap.find(chunkPos) != updateChunkMap.end()) {
 							Chunk& chunkNode = updateChunkMap[chunkPos];
 
+							chunkNode.cubeArrayDataLock->lock();
 							chunkNode.isVisibleDataLock->lock();
 							for (const glm::ivec4& cubeData : cubeNode.cubeSet) {
 								short& cubeId = chunkNode.cubeArray[cubeData.x][cubeData.y][cubeData.z];
@@ -649,6 +655,7 @@ public:
 								cubeId = cubeData.w;
 							}
 							chunkNode.isVisibleDataLock->unlock();
+							chunkNode.cubeArrayDataLock->unlock();
 
 							//标识active状态
 							cubeNode.isComplete = true;
@@ -667,6 +674,7 @@ public:
 					if (updateChunkMap.find(chunkPos) != updateChunkMap.end()) {
 						Chunk& chunkNode = updateChunkMap[chunkPos];
 
+						chunkNode.cubeArrayDataLock->lock();
 						chunkNode.isVisibleDataLock->lock();
 						for (const glm::ivec4& cubeData : cubeNode.cubeSet) {
 							short& cubeId = chunkNode.cubeArray[cubeData.x][cubeData.y][cubeData.z];
@@ -681,6 +689,7 @@ public:
 							cubeId = cubeData.w;
 						}
 						chunkNode.isVisibleDataLock->unlock();
+						chunkNode.cubeArrayDataLock->unlock();
 
 						//标识active状态
 						cubeNode.isComplete = true;
@@ -715,6 +724,8 @@ public:
 					existChunkLoop.erase(chunkPos);
 				}
 
+				chunkNode.cubeArrayDataLock->lock();
+				chunkNode.cubeDeltaSetDataLock->lock();
 				bool isNotEmpty = !chunkNode.cubeDeltaSet.empty();
 
 				chunkNode.isVisibleDataLock->lock();
@@ -736,6 +747,8 @@ public:
 					cubeId = cubeData.w;
 				}
 				chunkNode.isVisibleDataLock->unlock();
+				chunkNode.cubeDeltaSetDataLock->unlock();
+				chunkNode.cubeArrayDataLock->unlock();
 
 				//标识active状态
 				linkStructNode[chunkPos].isComplete = true;
@@ -926,7 +939,9 @@ public:
 					}
 				}
 
-				if (chunkMap[cube.chunkPos].cubeArray[cube.cubePos.x][cube.cubePos.y][cube.cubePos.z] != cubeEnum::cubeId::air) {
+				Chunk& chunkNode = chunkMap[cube.chunkPos];
+				chunkNode.cubeArrayDataLock->lock();
+				if (chunkNode.cubeArray[cube.cubePos.x][cube.cubePos.y][cube.cubePos.z] != cubeEnum::cubeId::air) {
 					if (playerInfo::mouseButtonLeft.load()) {
 						getChangeCubeList(cube.chunkPos, cube.cubePos, cubeEnum::cubeId::air);
 					}
@@ -935,9 +950,11 @@ public:
 						getChangeCubeList(cubeList.back().chunkPos, cubeList.back().cubePos, cubeEnum::cubeId::stoneSquared);
 					}
 
+					chunkNode.cubeArrayDataLock->unlock();
 					return playerStruct::selectBoxNode{ cube.initPos - logicOriginPos, 1 };			//返回i世界坐标系，如果起始坐标非空，则直接返回起始坐标
 					//return playerStruct::selectBoxNode{ cubeBreakPos, 1 };						//返回玩家所在区块数组真实坐标
 				}
+				chunkNode.cubeArrayDataLock->unlock();
 
 				cubeList.push_back(cube);
 			}
@@ -1052,11 +1069,13 @@ private:
 		changeCubeList[chunkPos].insert(cubePos - glm::ivec3{ 1 });					//从[1,32]偏移到[0,31]，方便遍历32层
 
 		//删除cubeDeltaSet中首位相同方块坐标的数据再插入，每次插入都删除首位相同方块坐标数据就能维持不重复
+		chunkNode.cubeDeltaSetDataLock->lock();
 		auto& deltaSet = chunkNode.cubeDeltaSet;
 		auto it = std::find_if(deltaSet.begin(), deltaSet.end(), [&](const storageStruct::cubeDeltaNode& n) {return n.data[0] == (short)cubePos.x && n.data[1] == (short)cubePos.y && n.data[2] == (short)cubePos.z; });
 		if (it != deltaSet.end()) { deltaSet.erase(it); }
 
 		chunkNode.cubeDeltaSet.emplace((short)cubePos.x, (short)cubePos.y, (short)cubePos.z, newCubeId);
+		chunkNode.cubeDeltaSetDataLock->unlock();
 		InitStorage.waitChunkList.insert(chunkPos);
 
 
@@ -1119,11 +1138,13 @@ private:
 		changeAbutCubeList[extremeChunkPos].insert(abutCubePos);
 
 		//删除cubeDeltaSet中首位相同方块坐标的数据再插入，每次插入都删除首位相同方块坐标数据就能维持不重复
+		chunkNode.cubeDeltaSetDataLock->lock();
 		auto& deltaSet = chunkNode.cubeDeltaSet;
 		auto it = std::find_if(deltaSet.begin(), deltaSet.end(), [&](const storageStruct::cubeDeltaNode& n) {return n.data[0] == (short)extremeCubePos.x && n.data[1] == (short)extremeCubePos.y && n.data[2] == (short)extremeCubePos.z; });
 		if (it != deltaSet.end()) { deltaSet.erase(it); }
 
 		chunkNode.cubeDeltaSet.emplace((short)extremeCubePos.x, (short)extremeCubePos.y, (short)extremeCubePos.z, newCubeId);
+		chunkNode.cubeDeltaSetDataLock->unlock();
 		InitStorage.waitChunkList.insert(extremeChunkPos);
 
 		if (debugInfo::LogSwitch) {

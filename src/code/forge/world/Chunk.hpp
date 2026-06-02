@@ -22,9 +22,10 @@ public:
 	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMesh、updateChunkMesh）
 	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMesh、updateChunkMesh、updateChunkMeshData）
 								
-	std::unique_ptr<std::mutex> cubeDeltaSetDataLock = std::make_unique<std::mutex>();	//cubeDeltaSet数据锁
-	std::unique_ptr<std::mutex> isVisibleDataLock = std::make_unique<std::mutex>();		//isVisible数据锁
-	std::unique_ptr<std::mutex> layerIdDataLock = std::make_unique<std::mutex>();		//layerId数据锁
+	std::unique_ptr<std::mutex> cubeArrayDataLock	 = std::make_unique<std::mutex>();		//cubeArray数据锁
+	std::unique_ptr<std::mutex> cubeDeltaSetDataLock = std::make_unique<std::mutex>();		//cubeDeltaSet数据锁
+	std::unique_ptr<std::mutex> isVisibleDataLock	 = std::make_unique<std::mutex>();		//isVisible数据锁
+	std::unique_ptr<std::mutex> layerIdDataLock		 = std::make_unique<std::mutex>();		//layerId数据锁
 
 
 
@@ -44,6 +45,7 @@ public:
 
 
 		//获取可见面集合
+		cubeArrayDataLock->lock();
 		for (const glm::ivec3& pos: loopList::cubeMapLoop) {
 			short cubeId = cubeArray[pos.x][pos.y][pos.z];	//[1,32]
 
@@ -66,6 +68,7 @@ public:
 				}
 			}
 		}
+		cubeArrayDataLock->unlock();
 
 		//贪心算法优化可见面集合,宽高都是逻辑概念,不存在空间上的对应关系
 		//区块网格由0~5六个朝向组成，每个朝向由0~31三十二层组成
@@ -647,8 +650,13 @@ public:
 	void copyCoreData(const Chunk& chunk) {
 		InitChunk(chunk.originOffset, chunk.chunkPos);
 
+		cubeArrayDataLock->lock();
 		std::memcpy(cubeArray, chunk.cubeArray, sizeof(chunk.cubeArray));
+		cubeArrayDataLock->unlock();
+
+		cubeDeltaSetDataLock->lock();
 		cubeDeltaSet = chunk.cubeDeltaSet;
+		cubeDeltaSetDataLock->unlock();
 
 		isVisibleDataLock->lock();
 		isVisible = chunk.isVisible;
@@ -668,6 +676,7 @@ public:
 		int layerMax[6]{ 0,0,0,0,0,0 };
 		int layerMin[6]{ plateInfo::lengthDecrement,plateInfo::lengthDecrement,plateInfo::lengthDecrement,plateInfo::lengthDecrement,plateInfo::lengthDecrement,plateInfo::lengthDecrement };
 
+		cubeArrayDataLock->lock();
 		//根据cubePosSet，获取faceSet和visibleFaceMap
 		for (const auto& node : cubePosSet) {
 			for (int i = 0; i < 6; i++) {
@@ -856,6 +865,7 @@ public:
 				faceSet[node.x].insert(node.y);
 			}
 		}
+		cubeArrayDataLock->unlock();
 
 		//根据faceSet，清空区块截层网格
 		for (int i = 0; i < 6; i++) {

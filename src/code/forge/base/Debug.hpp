@@ -122,6 +122,7 @@ public:
 				const bool zB = itZB != chunkMap.end();		//ºó
 
 				//33´æÁÙ½ç1£¬0´æÁÙ½ç32
+				node.second.cubeArrayDataLock->lock();
 				for (int a = 1; a <= plateInfo::chunkLength; a++) {
 					for (int b = 1; b <= plateInfo::chunkLength; b++) {
 						//×ó
@@ -161,6 +162,7 @@ public:
 						}
 					}
 				}
+				node.second.cubeArrayDataLock->unlock();
 			}
 		);
 
