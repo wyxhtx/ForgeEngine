@@ -28,9 +28,11 @@ public:
 
 	//校验isVisible越界
 	void validateIsVisibleRange(const Chunk& chunk) {
+		chunk.isVisibleDataLock->lock();
 		if (chunk.isVisible < 0 || chunk.isVisible > plateInfo::cubeArrayVolume) {
 			Log::printError(__FILE__, __LINE__, "isVisible超限：\t" + std::to_string(chunk.isVisible));
 		}
+		chunk.isVisibleDataLock->unlock();
 	}
 
 	//校验indexOffset越界

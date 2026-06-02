@@ -9,7 +9,7 @@ public:
 	std::unordered_set<storageStruct::cubeDeltaNode, storageStruct::cubeDeltaNodeHash> cubeDeltaSet;		//方块变更集合，为变存法服务，[0,33]			//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
 
 	int isVisible = 0;												//标识区块是否可见，如果全空或者全满为不可见，但是不能排除1~32全空但边缘非空的情况			//Storage（saveFullChunk、readFullChunk、saveDeltaChunk、readDeltaChunk），Plate（createPlate、createChunk、updatePlate、createUpdateCubeList）
-	int layerID = forgeEnum::terrainLayer::count;					//区块所在地形管线层																	//Plate（createPlate、updatePlate、updatePlatePartMesh）
+	int layerId = forgeEnum::terrainLayer::count;					//区块所在地形管线层																	//Plate（createPlate、updatePlate）
 
 	//由InitChunk初始化
 	glm::dvec3 originOffset{};										//区块原点偏移（d世界坐标系），用于plate类里joinChunkMesh方法处理世界原点迁移时的情况		//Plate（joinTerrainMesh），Chunk（InitChunk）
@@ -18,9 +18,13 @@ public:
 	glm::ivec3 actualWorldPos{};									//区块实际世界坐标（i世界坐标系）（对应cubeArray[0][0][0]处），用于构建网格				//Chunk（InitChunk、createChunkMeshData、updateChunkMeshData）
 
 	//由createChunkMeshData初始化,chunkVertexs,chunkIndexs,IndexOffset都能判断区块是否应该加载网格，34立方区块全空或全实不加载网格
-	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组																	//Plate（createPlate、joinTerrainMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMeshData、createChunkMesh、updateChunkMesh）
-	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinTerrainMesh、updatePlate、updatePlatePartMesh），Chunk（createChunkMesh、updateChunkMesh）
-	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、updatePlate），Chunk（createChunkMesh、updateChunkMesh、updateChunkMeshData）
+	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组																	//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMeshData、createChunkMesh、updateChunkMesh）
+	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMesh、updateChunkMesh）
+	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMesh、updateChunkMesh、updateChunkMeshData）
+								
+	std::unique_ptr<std::mutex> cubeDeltaSetDataLock = std::make_unique<std::mutex>();	//cubeDeltaSet数据锁
+	std::unique_ptr<std::mutex> isVisibleDataLock = std::make_unique<std::mutex>();		//isVisible数据锁
+	std::unique_ptr<std::mutex> layerIdDataLock = std::make_unique<std::mutex>();		//layerId数据锁
 
 
 
@@ -646,8 +650,13 @@ public:
 		std::memcpy(cubeArray, chunk.cubeArray, sizeof(chunk.cubeArray));
 		cubeDeltaSet = chunk.cubeDeltaSet;
 
+		isVisibleDataLock->lock();
 		isVisible = chunk.isVisible;
-		layerID	  = chunk.layerID;
+		isVisibleDataLock->unlock();
+
+		layerIdDataLock->lock();
+		layerId = chunk.layerId;
+		layerIdDataLock->unlock();
 	}
 
 	//更新区块网格数据

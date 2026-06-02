@@ -1053,7 +1053,7 @@ private:
 	}
 
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-		while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+		lockInfo::queueThreadLock.lock();
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType				 = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.level				 = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -1073,7 +1073,7 @@ private:
 		copyRegion.dstOffset = 0;
 		copyRegion.size		 = size;
 		vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-		lockInfo::queueThreadLock.store(false);
+		lockInfo::queueThreadLock.unlock();
 
 		command.queueCommandSubmit(Device.device, Device.graphicsQueue, commandBuffer);
 	}
@@ -1250,7 +1250,7 @@ private:
 
 
 	VkCommandBuffer beginSingleTimeCommands() {
-		while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+		std::lock_guard<std::mutex> lock(lockInfo::queueThreadLock);
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -1265,7 +1265,6 @@ private:
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 		vkBeginCommandBuffer(commandBuffer, &beginInfo);
-		lockInfo::queueThreadLock.store(false);
 
 		return commandBuffer;
 	}
@@ -1470,19 +1469,19 @@ public:
 
 		//重建下一线程Lod_0地形管线，RM_0.4.6（8_32：10）
 		if (isNullTerrainMesh(layer)) {
-			while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+			lockInfo::queueThreadLock.lock();
 			vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
 			vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
-			lockInfo::queueThreadLock.store(false);
+			lockInfo::queueThreadLock.unlock();
 
 			createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
 			createIndexBuffer(terrainVertex::indexs[layer], terrain.index[threadId][layer]);
 
 			//重建下一线程Lod_0地形阴影
 			if (procShadow.isEnable) {
-				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+				lockInfo::queueThreadLock.lock();
 				vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[threadId][layer].buffer, procShadow.tShadowNode.vertex[threadId][layer].bufferMemory);
-				lockInfo::queueThreadLock.store(false);
+				lockInfo::queueThreadLock.unlock();
 
 				shadowVertex::loadTerrainVertexs(layer);
 				createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[threadId][layer]);
@@ -1507,10 +1506,10 @@ public:
 				createMapMemory(indexBuffer.bufferMemory,  index.data(),  (size_t)indexSize);
 
 				//重建下一线程Lod_1地形管线
-				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+				lockInfo::queueThreadLock.lock();
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
 				vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer,  terrain.index[threadId][layer].bufferMemory);
-				lockInfo::queueThreadLock.store(false);
+				lockInfo::queueThreadLock.unlock();
 				createBuffer(vertexSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[threadId][layer]);
 				createBuffer(indexSize,  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.index[threadId][layer]);
 				copyBuffer(vertexBuffer.buffer, terrain.vertex[threadId][layer].buffer, vertexSize);
@@ -1518,16 +1517,16 @@ public:
 
 				//重建下一线程Lod_1地形阴影
 				if (procShadow.isEnable) {
-					while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+					lockInfo::queueThreadLock.lock();
 					vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[threadId][layer].buffer, procShadow.tShadowNode.vertex[threadId][layer].bufferMemory);
-					lockInfo::queueThreadLock.store(false);
+					lockInfo::queueThreadLock.unlock();
 
 					shadowVertex::loadTerrainVertexs(layer);
 					createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[threadId][layer]);
 				}
 
 				//重建下一线程命令缓冲区，并切换线程
-				while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
+				lockInfo::drawFuncLock.lock();
 				vkQueueWaitIdle(Device.graphicsQueue);
 
 				if (playerInfo::logicOriginPos != plateOriginPos) {
@@ -1537,18 +1536,18 @@ public:
 					Log::print("原点迁移");
 				}
 
-				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+				lockInfo::queueThreadLock.lock();
 				createCommandBuffer(threadId, procPipeline);
 				command.setCurrentThreadId();
-				lockInfo::queueThreadLock.store(false);
-				lockInfo::drawFuncLock.store(false);
+				lockInfo::queueThreadLock.unlock();
+				lockInfo::drawFuncLock.unlock();
 
 				//重建上轮当前线程Lod_1地形管线
 				int tempThreadId = (threadId + 1) % 2;
-				while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+				lockInfo::queueThreadLock.lock();
 				vmaDestroyBuffer(Device.allocator, terrain.vertex[tempThreadId][layer].buffer, terrain.vertex[tempThreadId][layer].bufferMemory);
 				vmaDestroyBuffer(Device.allocator, terrain.index[tempThreadId][layer].buffer,  terrain.index[tempThreadId][layer].bufferMemory);
-				lockInfo::queueThreadLock.store(false);
+				lockInfo::queueThreadLock.unlock();
 				createBuffer(vertexSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[tempThreadId][layer]);
 				createBuffer(indexSize,  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.index[tempThreadId][layer]);
 				copyBuffer(vertexBuffer.buffer, terrain.vertex[tempThreadId][layer].buffer, vertexSize);
@@ -1565,7 +1564,7 @@ public:
 		}
 
 		//重建下一线程命令缓冲区，并切换线程
-		while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
+		lockInfo::drawFuncLock.lock();
 		vkQueueWaitIdle(Device.graphicsQueue);
 
 		if (playerInfo::logicOriginPos != plateOriginPos) {
@@ -1575,11 +1574,11 @@ public:
 			Log::print("原点迁移");
 		}
 
-		while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+		lockInfo::queueThreadLock.lock();
 		createCommandBuffer(threadId, procPipeline);
 		command.setCurrentThreadId();
-		lockInfo::queueThreadLock.store(false);
-		lockInfo::drawFuncLock.store(false);
+		lockInfo::queueThreadLock.unlock();
+		lockInfo::drawFuncLock.unlock();
 	}
 
 	void updateUniformBuffer(const glm::dvec3 logicOriginPos, const playerStruct::cameraNode& camera, const playerStruct::selectBoxNode& box) {

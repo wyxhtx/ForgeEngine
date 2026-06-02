@@ -405,14 +405,13 @@ namespace bufferStruct {
             submitInfo.commandBufferCount = 1;
             submitInfo.pCommandBuffers    = &tempCommandBuffer;
 
-            while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }
+            std::lock_guard<std::mutex> lock(lockInfo::queueThreadLock);
             vkEndCommandBuffer(tempCommandBuffer);
 
             vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
             vkQueueWaitIdle(graphicsQueue);
 
             vkFreeCommandBuffers(device, commandPool, 1, &tempCommandBuffer);
-            lockInfo::queueThreadLock.store(false);
         }
 
         //创建管线屏障

@@ -17,8 +17,6 @@
   <ItemGroup>
     <Text Include="src\shader_build\bat注释.txt" />
     <Text Include="src\image_build\bat注释.txt" />
-    <Text Include="src\code\文档\多线程冲突\1-更新板块.txt" />
-    <Text Include="src\code\文档\多线程冲突\2-重建命令缓冲区.txt" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\library\stb\stb_font_consolas_24_latin1.inl">
@@ -312,9 +310,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\code\vk\Main.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="src\code\文档\多线程冲突\3-主线程.txt">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

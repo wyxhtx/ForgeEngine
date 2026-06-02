@@ -325,7 +325,7 @@ public:
 
 
 
-		while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
+		lockInfo::drawFuncLock.lock();
 		if (lockInfo::getLock(lockInfo::chunkMapDataLock)) {
 			selectBox = InitPlate.getSelectBox(playerInfo::logicOriginPos, Camera.node);		//当前帧获取的方块更新列表在下一帧更新
 			lockInfo::chunkMapDataLock.store(false);
@@ -333,11 +333,11 @@ public:
 
 		InitBuffer.updateUniformBuffer(playerInfo::logicOriginPos, Camera.node, selectBox);
 		if (InitBuffer.drawFrame()) {
-			lockInfo::drawFuncLock.store(false);
+			lockInfo::drawFuncLock.unlock();
 			recreateSwapChain(Camera);
-			while (lockInfo::drawFuncLock.exchange(true)) { std::this_thread::yield(); }
+			lockInfo::drawFuncLock.lock();
 		}
-		lockInfo::drawFuncLock.store(false);
+		lockInfo::drawFuncLock.unlock();
 	}
 
 private:
@@ -366,7 +366,7 @@ private:
 		while (lockInfo::updatePlateFuncLock.load()) { std::this_thread::yield(); }
 		while (lockInfo::recreateCmdFuncLock.load()) { std::this_thread::yield(); }
 
-		while (lockInfo::queueThreadLock.exchange(true)) { std::this_thread::yield(); }		//recreateSwapChain里队列命令操作太多了挨个隔离太麻烦，干脆全部隔离
+		lockInfo::queueThreadLock.lock();		//recreateSwapChain里队列命令操作太多了挨个隔离太麻烦，干脆全部隔离
 		vkDeviceWaitIdle(Device.device);
 
 		InitBuffer.cleanupSwapChain();
@@ -374,7 +374,7 @@ private:
 
 		InitBuffer.recreateSwapChain();
 		createPipeline();
-		lockInfo::queueThreadLock.store(false);
+		lockInfo::queueThreadLock.unlock();
 
 		InitBuffer.command.setNextThreadId();
 		InitBuffer.recreateCommandBuffer(InitBuffer.command.nextThreadId, InitPlate.isEntireRebuild, InitPlate.originPos, Camera, procPipeline);

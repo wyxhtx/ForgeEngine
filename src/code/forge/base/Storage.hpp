@@ -121,7 +121,9 @@ private:
 		std::ofstream oChunkFile{ chunkPath, std::ios::binary };
 		
 		oChunkFile.write(reinterpret_cast<char*>(chunk.cubeArray), storageInfo::cubeArraySize);
+		chunk.isVisibleDataLock->lock();
 		oChunkFile.write(reinterpret_cast<char*>(&chunk.isVisible), sizeof(int));
+		chunk.isVisibleDataLock->unlock();
 		
 		oChunkFile.close();
 	}
@@ -132,7 +134,9 @@ private:
 		std::ifstream iChunkFile{ chunkPath, std::ios::binary };
 
 		iChunkFile.read(reinterpret_cast<char*>(chunk.cubeArray), storageInfo::cubeArraySize);
+		chunk.isVisibleDataLock->lock();
 		iChunkFile.read(reinterpret_cast<char*>(&chunk.isVisible), sizeof(int));
+		chunk.isVisibleDataLock->unlock();
 
 		iChunkFile.close();
 	}
@@ -172,6 +176,7 @@ private:
 			short& oldCubeId = chunk.cubeArray[node.data[0]][node.data[1]][node.data[2]];		//[0,33]
 			short& newCubeId = node.data[3];
 
+			chunk.isVisibleDataLock->lock();
 			if (oldCubeId == cubeEnum::cubeId::air) {
 				if (newCubeId != cubeEnum::cubeId::air) {
 					chunk.isVisible++;
@@ -182,6 +187,7 @@ private:
 					chunk.isVisible--;
 				}
 			}
+			chunk.isVisibleDataLock->unlock();
 
 			oldCubeId = newCubeId;
 			chunk.cubeDeltaSet.emplace(node);
