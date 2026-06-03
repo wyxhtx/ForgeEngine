@@ -21,7 +21,7 @@ public:
 	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组																	//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMeshData、createChunkMesh、updateChunkMesh）
 	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMesh、updateChunkMesh）
 	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMesh、updateChunkMesh、updateChunkMeshData）
-								
+
 	std::unique_ptr<std::mutex> cubeArrayDataLock	 = std::make_unique<std::mutex>();		//cubeArray数据锁
 	std::unique_ptr<std::mutex> cubeDeltaSetDataLock = std::make_unique<std::mutex>();		//cubeDeltaSet数据锁
 	std::unique_ptr<std::mutex> isVisibleDataLock	 = std::make_unique<std::mutex>();		//isVisible数据锁

@@ -163,7 +163,7 @@
     <ClInclude Include="src\code\forge\base\Loop.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\forge\base\Storage.hpp">
+    <ClInclude Include="src\code\forge\world\Storage.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\code\forge\data\ForgeEnum.h">

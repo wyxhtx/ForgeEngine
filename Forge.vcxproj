@@ -258,7 +258,7 @@
   <ItemGroup>
     <ClInclude Include="src\code\forge\base\Debug.hpp" />
     <ClInclude Include="src\code\forge\base\Loop.hpp" />
-    <ClInclude Include="src\code\forge\base\Storage.hpp" />
+    <ClInclude Include="src\code\forge\world\Storage.hpp" />
     <ClInclude Include="src\code\forge\data\ForgeEnum.h" />
     <ClInclude Include="src\code\forge\data\ForgeInfo.h" />
     <ClInclude Include="src\code\forge\data\ForgeList.h" />

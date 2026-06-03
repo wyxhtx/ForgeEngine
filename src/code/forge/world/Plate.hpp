@@ -4,7 +4,7 @@
 
 class Plate {
 public:
-	glm::dvec3 originPos;																						//板块原点
+	glm::dvec3 originPos;																						//板块原点，只在createPlate、updatePlate修改
 
 
 
@@ -53,7 +53,7 @@ private:
 	std::forward_list<plateStruct::terrainMeshSignNode> terrainMeshSignList[forgeEnum::terrainLayer::count];	//标识地形管线各层网格中，区块顶点数组和索引数组的大小，为裁剪区块截层网格服务
 
 	const int maxThreadCount = std::thread::hardware_concurrency();												//设备最大核心数量，用于板块多线程创建，在Plate赋值
-	plateStruct::linkStructManagerNode linkStructManager;															//链结构管理器[0,33]，只管理小于等于32并且无空气的结构，超出32会产生很多问题，比如区块存储加载，方块更新后的网格更新
+	plateStruct::linkStructManagerNode linkStructManager;														//链结构管理器[0,33]，只管理小于等于32并且无空气的结构，超出32会产生很多问题，比如区块存储加载，方块更新后的网格更新
 
 
 
@@ -706,9 +706,9 @@ public:
 
 		//---3、处理链结构、删除视距外区块网格---
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
-		while (lockInfo::chunkMapDataLock.exchange(true)) { std::this_thread::yield(); }
 
 		//处理updateStructSet，复制chunkMap数据到updateChunkMap后加载链结构，RM_0.4.7（8_32：1）
+		while (lockInfo::chunkMapDataLock.exchange(true)) { std::this_thread::yield(); }
 		for (const auto& [structPos, chunkSet] : updateStructSet) {
 			auto& linkStructNode = linkStructManager.node[structPos];
 
@@ -754,7 +754,6 @@ public:
 				linkStructNode[chunkPos].isComplete = true;
 			}
 		}
-
 		lockInfo::chunkMapDataLock.store(false);
 
 		//清理r+2外的链结构，RM_0.4.7（8_32：1~10）
@@ -786,16 +785,19 @@ public:
 			terrainMeshSignList[layer].clear();
 		}
 
+		while (lockInfo::chunkMapDataLock.exchange(true)) { std::this_thread::yield(); }
 		for (auto chunkIt = chunkMap.begin(); chunkIt != chunkMap.end(); ) {
 			const glm::dvec3& chunkPos = chunkIt->first;
 
 			//删除existChunkLoop外区块
 			if (existChunkLoop.find(chunkPos) == existChunkLoop.end()) {
 				//保存区块文件
+				InitStorage.waitChunkListDataLock->lock();
 				if (InitStorage.waitChunkList.find(chunkPos) != InitStorage.waitChunkList.end()) {
 					InitStorage.waitChunkList.erase(chunkPos);
 					InitStorage.saveChunk(chunkIt->second);
 				}
+				InitStorage.waitChunkListDataLock->unlock();
 
 				//删除区块
 				chunkIt = chunkMap.erase(chunkIt);
@@ -814,6 +816,7 @@ public:
 				chunkIt++;
 			}
 		}
+		lockInfo::chunkMapDataLock.store(false);
 
 		//变更板块原点
 		if (tempOriginPos != originPos) {
@@ -846,9 +849,9 @@ public:
 
 		//---5、拼接区块网格---
 		while (lockInfo::plateMeshDataLock.exchange(true)) { std::this_thread::yield(); }
-		while (lockInfo::chunkMapDataLock.exchange(true)) { std::this_thread::yield(); }
 
 		//拼接区块网格到对应地形网格层，RM_0.4.6（8_32：60）
+		while (lockInfo::chunkMapDataLock.exchange(true)) { std::this_thread::yield(); }
 		for (const glm::dvec3& chunkPos : updateChunkLoop) {
 			Chunk& chunkNode = chunkMap[chunkPos];
 			chunkNode = std::move(updateChunkMap[chunkPos]);		//此处使用move后，updateChunkMap就不能再使用了
@@ -870,11 +873,10 @@ public:
 				InitDebug.validateIndexOffsetRange(chunkNode);
 			}
 		}
+		lockInfo::chunkMapDataLock.store(false);
 
 		updateChunkMap.clear();
-
 		isEntireRebuild.store(true);
-		lockInfo::chunkMapDataLock.store(false);
 		lockInfo::plateMeshDataLock.store(false);
 
 
@@ -1076,7 +1078,9 @@ private:
 
 		chunkNode.cubeDeltaSet.emplace((short)cubePos.x, (short)cubePos.y, (short)cubePos.z, newCubeId);
 		chunkNode.cubeDeltaSetDataLock->unlock();
+		InitStorage.waitChunkListDataLock->lock();
 		InitStorage.waitChunkList.insert(chunkPos);
+		InitStorage.waitChunkListDataLock->unlock();
 
 
 
@@ -1145,7 +1149,9 @@ private:
 
 		chunkNode.cubeDeltaSet.emplace((short)extremeCubePos.x, (short)extremeCubePos.y, (short)extremeCubePos.z, newCubeId);
 		chunkNode.cubeDeltaSetDataLock->unlock();
+		InitStorage.waitChunkListDataLock->lock();
 		InitStorage.waitChunkList.insert(extremeChunkPos);
+		InitStorage.waitChunkListDataLock->unlock();
 
 		if (debugInfo::LogSwitch) {
 			if (chunkMap.find(extremeChunkPos) == chunkMap.end()) {

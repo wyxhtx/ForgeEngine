@@ -289,15 +289,16 @@ namespace swapStruct {
 namespace bufferStruct {
     struct commandNode {
         VkCommandPool commandPool;
-        std::vector<VkCommandBuffer> commandBuffer[bufferInfo::commandThreadCount];     //使用双重命令缓冲防止更新区块卡顿
+        std::vector<VkCommandBuffer> commandBuffer[bufferInfo::commandThreadCount];         //使用双重命令缓冲防止更新区块卡顿
 
-        int currentThreadId = 0;						                                //当前帧命令缓冲区线程id
-        int nextThreadId = currentThreadId;						                        //下一帧命令缓冲区线程id
+        int currentThreadId = 0;						                                    //当前帧命令缓冲区线程id
+        int nextThreadId = currentThreadId;						                            //下一帧命令缓冲区线程id
+        std::unique_ptr<std::mutex> nextThreadIdDataLock = std::make_unique<std::mutex>();  //nextThreadId数据锁
 
         VkCommandBufferAllocateInfo allocInfo{};
         VkCommandBufferBeginInfo beginInfo{};
 
-        std::vector<VkDeviceSize> vertexOffset{ 0 };	                                //绑定管线过程中指定各顶点缓冲区的偏移量
+        std::vector<VkDeviceSize> vertexOffset{ 0 };	                                    //绑定管线过程中指定各顶点缓冲区的偏移量
 
 
 
@@ -308,12 +309,16 @@ namespace bufferStruct {
 
         //设置当前帧命令缓冲区线程id
         void setCurrentThreadId() {
+            nextThreadIdDataLock->lock();
             currentThreadId = nextThreadId;
+            nextThreadIdDataLock->unlock();
         }
 
         //设置下一帧命令缓冲区线程id
         void setNextThreadId() {
+            nextThreadIdDataLock->lock();
             nextThreadId = (currentThreadId + 1) % 2;
+            nextThreadIdDataLock->unlock();
         }
 
         void createCommandPool(const VkDevice& device, uint32_t queueFamilyIndex) {

@@ -110,7 +110,7 @@
 
 #include "../forge/base/Loop.hpp"
 #include "../forge/world/Chunk.hpp"
-#include "../forge/base/Storage.hpp"
+#include "../forge/world/Storage.hpp"
 #include "../forge/base/Debug.hpp"
 #include "../forge/world/Plate.hpp"
 

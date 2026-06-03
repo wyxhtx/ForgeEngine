@@ -4,10 +4,12 @@
 
 class Storage {
 public:
-	std::unordered_set<glm::dvec3> waitChunkList;									//待存储区块集合，暂存需要存储的区块坐标，在区块卸载时保存
+	std::unordered_set<glm::dvec3> waitChunkList;										//待存储区块集合，暂存需要存储的区块坐标，在区块卸载时保存
+	std::unique_ptr<std::mutex> waitChunkListDataLock = std::make_unique<std::mutex>();	//waitChunkList数据锁
+
 	//无论全存还是变存，方块数组使用范围都是[0,33]
-	std::unordered_map<glm::dvec3, std::unordered_set<glm::dvec3>> fullChunkList;	//全存法区块存储集合，存储整个区块
-	std::unordered_map<glm::dvec3, std::unordered_set<glm::dvec3>> deltaChunkList;	//变存法区块存储集合，存储玩家变更方块的数组坐标与id
+	std::unordered_map<glm::dvec3, std::unordered_set<glm::dvec3>> fullChunkList;		//全存法区块存储集合，存储整个区块
+	std::unordered_map<glm::dvec3, std::unordered_set<glm::dvec3>> deltaChunkList;		//变存法区块存储集合，存储玩家变更方块的数组坐标与id
 
 
 
