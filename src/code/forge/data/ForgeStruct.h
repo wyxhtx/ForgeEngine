@@ -139,28 +139,13 @@ namespace noiseStruct {
 
 //存储结构体
 namespace storageStruct {
-    //变存法存储结点，存储玩家变更方块的方块数组坐标和方块id
-    struct cubeDeltaNode {
-        short data[4];
-
-        cubeDeltaNode(short x = 0, short y = 0, short z = 0, short id = cubeEnum::cubeId::air) {
-            data[0] = x; data[1] = y; data[2] = z; data[3] = id;
-        }
-
-        bool operator==(const cubeDeltaNode& node) const {
-            return data[0] == node.data[0] && data[1] == node.data[1] && data[2] == node.data[2] && data[3] == node.data[3];
-        }
-    };
-
-    struct cubeDeltaNodeHash {
-        std::size_t operator()(const cubeDeltaNode& node) const {
+    //变存法存储结点Hash
+    struct arrayHash {
+        std::size_t operator()(const std::array<short, 3>& arr) const noexcept {
             std::size_t seed = 0;
-
-            seed ^= std::hash<short>{}(node.data[0]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            seed ^= std::hash<short>{}(node.data[1]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            seed ^= std::hash<short>{}(node.data[2]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            seed ^= std::hash<short>{}(node.data[3]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-
+            seed ^= std::hash<short>{}(arr[0]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= std::hash<short>{}(arr[1]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= std::hash<short>{}(arr[2]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             return seed;
         }
     };

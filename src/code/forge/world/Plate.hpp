@@ -106,9 +106,9 @@ private:
 				//压入分区内链结构，RM_0.4.7（8_32：1~4）
 				for (auto& [structPos, chunkSet] : linkStructSet.node) {
 					for (auto& [chunkPos, cubeNode] : chunkSet) {
-						if (chunkPosSet.find(chunkPos) != chunkPosSet.end()) {
+						if (chunkPosSet.contains(chunkPos)) {
 							if (debugInfo::LogSwitch) {
-								if (chunkMap.find(chunkPos) == chunkMap.end()) {
+								if (!chunkMap.contains(chunkPos)) {
 									Log::printError(__FILE__, __LINE__, "区块未在当前分区生成");
 								}
 							}
@@ -147,8 +147,10 @@ private:
 			for (auto& [structPos, chunkSet] : linkStructSet.node) {
 				for (auto& [chunkPos, cubeNode] : chunkSet) {
 					//处理分区间pending状态链结构
-					if (!cubeNode.isComplete && chunkMap.find(chunkPos) != chunkMap.end()) {
-						Chunk& chunkNode = chunkMap[chunkPos];
+					auto chunkIt = chunkMap.find(chunkPos);
+
+					if (!cubeNode.isComplete && chunkIt != chunkMap.end()) {
+						Chunk& chunkNode = chunkIt->second;
 
 						chunkNode.cubeArrayDataLock->lock();
 						chunkNode.isVisibleDataLock->lock();
@@ -198,7 +200,7 @@ private:
 			chunkNode.layerIdDataLock->lock();
 
 			int layer = forgeEnum::terrainLayer::Layer_1;
-			if (loopList::terrainLayerLoop.find(chunkPos - playerChunkPos) != loopList::terrainLayerLoop.end()) { layer = forgeEnum::terrainLayer::Layer_0; }
+			if (loopList::terrainLayerLoop.contains(chunkPos - playerChunkPos)) { layer = forgeEnum::terrainLayer::Layer_0; }
 
 			chunkNode.layerId = layer;			//初始化layerID
 			joinTerrainMesh(chunkNode, originPos, chunkPos, layer);
@@ -534,7 +536,7 @@ public:
 		for (glm::dvec3 chunkPos : loopList::chunkMapLoop) {
 			chunkPos += playerChunkPos;
 
-			if (chunkMap.find(chunkPos) != chunkMap.end()) {
+			if (chunkMap.contains(chunkPos)) {
 				existChunkLoop.insert(chunkPos);
 			}
 			else {
@@ -576,9 +578,9 @@ public:
 				//压入分区内链结构，RM_0.4.7（8_32：1~4）
 				for (auto& [structPos, chunkSet] : linkStructSet.node) {
 					for (auto& [chunkPos, cubeNode] : chunkSet) {
-						if (chunkPosSet.find(chunkPos) != chunkPosSet.end()) {
+						if (chunkPosSet.contains(chunkPos)) {
 							if (debugInfo::LogSwitch) {
-								if (updateChunkMap.find(chunkPos) == updateChunkMap.end()) {
+								if (!updateChunkMap.contains(chunkPos)) {
 									Log::printError(__FILE__, __LINE__, "区块未在当前分区生成");
 								}
 							}
@@ -616,7 +618,7 @@ public:
 		for (auto& [structPos, chunkSet] : linkStructManager.node) {
 			for (auto& [chunkPos, cubeNode] : chunkSet) {
 				//将active转为pending
-				if (cubeNode.isComplete && updateChunkMap.find(chunkPos) != updateChunkMap.end()) {
+				if (cubeNode.isComplete && updateChunkMap.contains(chunkPos)) {
 					cubeNode.isComplete = false;
 				}
 			}
@@ -627,7 +629,7 @@ public:
 			for (auto& [structPos, chunkSet] : linkStructSet.node) {
 				for (auto& [chunkPos, cubeNode] : chunkSet) {
 					if (debugInfo::LogSwitch) {
-						if (linkStructManager.node.find(structPos) != linkStructManager.node.end() && linkStructManager.node[structPos].find(chunkPos) != linkStructManager.node[structPos].end()) {
+						if (linkStructManager.node.contains(structPos) && linkStructManager.node[structPos].contains(chunkPos)) {
 							if (linkStructManager.node[structPos][chunkPos].cubeSet != cubeNode.cubeSet) {
 								Log::printError(__FILE__, __LINE__, "跳过链结构的cubeSet不相等");
 							}
@@ -635,10 +637,12 @@ public:
 					}
 
 					//跳过linkStructManager与linkStructPartManager的交集
-					if (linkStructManager.node.find(structPos) == linkStructManager.node.end() || linkStructManager.node[structPos].find(chunkPos) == linkStructManager.node[structPos].end()) {
+					if (!linkStructManager.node.contains(structPos) || !linkStructManager.node[structPos].contains(chunkPos)) {
 						//处理分区间pending状态链结构
-						if (!cubeNode.isComplete && updateChunkMap.find(chunkPos) != updateChunkMap.end()) {
-							Chunk& chunkNode = updateChunkMap[chunkPos];
+						auto chunkIt = updateChunkMap.find(chunkPos);
+
+						if (!cubeNode.isComplete && chunkIt != updateChunkMap.end()) {
+							Chunk& chunkNode = chunkIt->second;
 
 							chunkNode.cubeArrayDataLock->lock();
 							chunkNode.isVisibleDataLock->lock();
@@ -671,8 +675,10 @@ public:
 		for (auto& [structPos, chunkSet] : linkStructManager.node) {
 			for (auto& [chunkPos, cubeNode] : chunkSet) {
 				if (!cubeNode.isComplete) {
-					if (updateChunkMap.find(chunkPos) != updateChunkMap.end()) {
-						Chunk& chunkNode = updateChunkMap[chunkPos];
+					auto chunkIt = updateChunkMap.find(chunkPos);
+
+					if (chunkIt != updateChunkMap.end()) {
+						Chunk& chunkNode = chunkIt->second;
 
 						chunkNode.cubeArrayDataLock->lock();
 						chunkNode.isVisibleDataLock->lock();
@@ -694,7 +700,7 @@ public:
 						//标识active状态
 						cubeNode.isComplete = true;
 					}
-					else if (existChunkLoop.find(chunkPos) != existChunkLoop.end()) {
+					else if (existChunkLoop.contains(chunkPos)) {
 						updateStructSet[structPos].insert(chunkPos);
 						updateStructLoop.insert(chunkPos);
 					}
@@ -713,7 +719,7 @@ public:
 			auto& linkStructNode = linkStructManager.node[structPos];
 
 			for (const auto& chunkPos : chunkSet) {
-				bool   isExist   = updateChunkMap.find(chunkPos) == updateChunkMap.end();
+				bool   isExist   = !updateChunkMap.contains(chunkPos);
 				Chunk& chunkNode = updateChunkMap[chunkPos];
 
 				if (isExist) {
@@ -731,7 +737,7 @@ public:
 				chunkNode.isVisibleDataLock->lock();
 				for (const glm::ivec4& cubeData : linkStructNode[chunkPos].cubeSet) {
 					//如果cubeDeltaSet非空，且当前方块坐标进行过方块变更，则直接跳过压入链结构方块
-					if (isNotEmpty && std::find_if(chunkNode.cubeDeltaSet.begin(), chunkNode.cubeDeltaSet.end(), [&](const storageStruct::cubeDeltaNode& n) {return n.data[0] == (short)cubeData.x && n.data[1] == (short)cubeData.y && n.data[2] == (short)cubeData.z; }) != chunkNode.cubeDeltaSet.end()) {
+					if (isNotEmpty && chunkNode.cubeDeltaSet.contains({ (short)cubeData.x,(short)cubeData.y,(short)cubeData.z })) {
 						continue;
 					}
 
@@ -761,7 +767,7 @@ public:
 			bool isKeep = false;
 
 			for (auto& [chunkPos, cubeNode] : structIt->second) {
-				if (loopList::structClearLoop.find(chunkPos - playerChunkPos) != loopList::structClearLoop.end()) {
+				if (loopList::structClearLoop.contains(chunkPos - playerChunkPos)) {
 					isKeep = true;
 					break;
 				}
@@ -790,12 +796,11 @@ public:
 			const glm::dvec3& chunkPos = chunkIt->first;
 
 			//删除existChunkLoop外区块
-			if (existChunkLoop.find(chunkPos) == existChunkLoop.end()) {
+			if (!existChunkLoop.contains(chunkPos)) {
 				//保存区块文件
 				InitStorage.waitChunkListDataLock->lock();
-				if (InitStorage.waitChunkList.find(chunkPos) != InitStorage.waitChunkList.end()) {
-					InitStorage.waitChunkList.erase(chunkPos);
-					InitStorage.saveChunk(chunkIt->second);
+				if (InitStorage.waitChunkList.erase(chunkPos)) {	//存在则删除并返回 1（true）
+					InitStorage.saveChunk(chunkIt->second);			//只有真正删除了才保存
 				}
 				InitStorage.waitChunkListDataLock->unlock();
 
@@ -807,7 +812,7 @@ public:
 				chunkIt->second.layerIdDataLock->lock();
 
 				int layer = forgeEnum::terrainLayer::Layer_1;
-				if (loopList::terrainLayerLoop.find(chunkPos - playerChunkPos) != loopList::terrainLayerLoop.end()) { layer = forgeEnum::terrainLayer::Layer_0; }
+				if (loopList::terrainLayerLoop.contains(chunkPos - playerChunkPos)) { layer = forgeEnum::terrainLayer::Layer_0; }
 				
 				chunkIt->second.layerId = layer;										//重设layerID
 				joinTerrainMesh(chunkIt->second, tempOriginPos, chunkPos, layer);		//重拼区块网格到对应地形网格层
@@ -833,13 +838,13 @@ public:
 			[this, updateStructLoop](const glm::dvec3& chunkPos) {
 				Chunk& chunkNode = updateChunkMap[chunkPos];
 
-				if (updateStructLoop.find(chunkPos) == updateStructLoop.end()) {	//updateStructLoop由视距内已加载区块得到，故不用文件加载
-					InitStorage.readChunk(chunkNode);								//读取区块文件，在加载链结构后执行，避免压入链结构后被覆盖
+				if (!updateStructLoop.contains(chunkPos)) {		//updateStructLoop由视距内已加载区块得到，故不用文件加载
+					InitStorage.readChunk(chunkNode);			//读取区块文件，在加载链结构后执行，避免压入链结构后被覆盖
 				}
 
 				chunkNode.isVisibleDataLock->lock();
 				if (chunkNode.isVisible > 0 && chunkNode.isVisible < plateInfo::cubeArrayVolume) {
-					chunkNode.createChunkMeshData();	//生成网格
+					chunkNode.createChunkMeshData();			//生成网格
 				}
 				chunkNode.isVisibleDataLock->unlock();
 			}
@@ -858,10 +863,10 @@ public:
 			chunkNode.layerIdDataLock->lock();
 
 			int layer = forgeEnum::terrainLayer::Layer_1;
-			if (loopList::terrainLayerLoop.find(chunkPos - playerChunkPos) != loopList::terrainLayerLoop.end()) { layer = forgeEnum::terrainLayer::Layer_0; }
+			if (loopList::terrainLayerLoop.contains(chunkPos - playerChunkPos)) { layer = forgeEnum::terrainLayer::Layer_0; }
 			
 			//删除旧区块网格后重拼
-			if (updateStructLoop.find(chunkPos) != updateStructLoop.end()) {
+			if (updateStructLoop.contains(chunkPos)) {
 				delTerrainMesh(chunkPos, chunkNode.layerId);
 			}
 			chunkNode.layerId = layer;			//初始化layerID
@@ -930,7 +935,9 @@ public:
 		cube.chunkPos = glm::floor(cube.initPos / chunkLength);
 
 		while (remainingSteps != 0) {
-			if (chunkMap.find(cube.chunkPos) != chunkMap.end()) {
+			auto chunkIt = chunkMap.find(cube.chunkPos);
+
+			if (chunkIt != chunkMap.end()) {
 				//将d世界坐标系偏移到方块坐标系，cubePos范围为[1,32]
 				//此处chunkPos * chunkLength原为chunkMap[chunkPos].logicalWorldPos，因updatePlate执行chunkMap[chunkPos] = updateChunkMap[chunkPos]后会导致该值错误故更换
 				cube.cubePos = glm::ivec3{ cube.initPos - cube.chunkPos * chunkLength } + glm::ivec3{ 1 };
@@ -941,7 +948,7 @@ public:
 					}
 				}
 
-				Chunk& chunkNode = chunkMap[cube.chunkPos];
+				Chunk& chunkNode = chunkIt->second;
 				chunkNode.cubeArrayDataLock->lock();
 				if (chunkNode.cubeArray[cube.cubePos.x][cube.cubePos.y][cube.cubePos.z] != cubeEnum::cubeId::air) {
 					if (playerInfo::mouseButtonLeft.load()) {
@@ -1001,9 +1008,10 @@ public:
 		//因为forward_list的性质，处理近期处理过的区块更快，平均首次处理0.22，平均近期处理0.06
 		for (const auto& updateCubeNode : changeCubeList) {
 			glm::dvec3 chunkPos = updateCubeNode.first;
+			auto chunkIt = chunkMap.find(chunkPos);
 
-			if (chunkMap.find(chunkPos) != chunkMap.end()) {
-				Chunk& chunkNode = chunkMap[chunkPos];
+			if (chunkIt != chunkMap.end()) {
+				Chunk& chunkNode = chunkIt->second;
 				chunkNode.layerIdDataLock->lock();
 
 				int layer = chunkNode.layerId;
@@ -1033,18 +1041,18 @@ private:
 	//获取变更方块列表，用于updateDeltaCube修改网格，plateMeshDataLock也能屏蔽chunkMap[chunkPos]资源竞争，chunkPos：非空方块所处区块坐标、区块坐标系，cubePos：非空方块坐标、方块坐标系（内部范围[1,32]）
 	void getChangeCubeList(const glm::dvec3& chunkPos, const glm::ivec3& cubePos, const short& newCubeId) {
 		if (debugInfo::LogSwitch) {
-			if (chunkMap.find(chunkPos) == chunkMap.end()) {
+			if (!chunkMap.contains(chunkPos)) {
 				Log::printError(__FILE__, __LINE__, "变更方块所处区块为空");
 			}
 		}
 
 		//边界方块相邻的区块，有一个不存在则退出
-		if ((cubePos.x == 1						 && chunkMap.find(chunkPos - glm::dvec3{ 1, 0, 0 }) == chunkMap.end()) ||
-			(cubePos.x == plateInfo::chunkLength && chunkMap.find(chunkPos + glm::dvec3{ 1, 0, 0 }) == chunkMap.end()) ||
-			(cubePos.y == 1						 && chunkMap.find(chunkPos - glm::dvec3{ 0, 1, 0 }) == chunkMap.end()) ||
-			(cubePos.y == plateInfo::chunkLength && chunkMap.find(chunkPos + glm::dvec3{ 0, 1, 0 }) == chunkMap.end()) ||
-			(cubePos.z == 1						 && chunkMap.find(chunkPos - glm::dvec3{ 0, 0, 1 }) == chunkMap.end()) ||
-			(cubePos.z == plateInfo::chunkLength && chunkMap.find(chunkPos + glm::dvec3{ 0, 0, 1 }) == chunkMap.end())) {
+		if ((cubePos.x == 1						 && !chunkMap.contains(chunkPos - glm::dvec3{ 1, 0, 0 })) ||
+			(cubePos.x == plateInfo::chunkLength && !chunkMap.contains(chunkPos + glm::dvec3{ 1, 0, 0 })) ||
+			(cubePos.y == 1						 && !chunkMap.contains(chunkPos - glm::dvec3{ 0, 1, 0 })) ||
+			(cubePos.y == plateInfo::chunkLength && !chunkMap.contains(chunkPos + glm::dvec3{ 0, 1, 0 })) ||
+			(cubePos.z == 1						 && !chunkMap.contains(chunkPos - glm::dvec3{ 0, 0, 1 })) ||
+			(cubePos.z == plateInfo::chunkLength && !chunkMap.contains(chunkPos + glm::dvec3{ 0, 0, 1 }))) {
 			return;
 		}
 
@@ -1072,12 +1080,9 @@ private:
 
 		//删除cubeDeltaSet中首位相同方块坐标的数据再插入，每次插入都删除首位相同方块坐标数据就能维持不重复
 		chunkNode.cubeDeltaSetDataLock->lock();
-		auto& deltaSet = chunkNode.cubeDeltaSet;
-		auto it = std::find_if(deltaSet.begin(), deltaSet.end(), [&](const storageStruct::cubeDeltaNode& n) {return n.data[0] == (short)cubePos.x && n.data[1] == (short)cubePos.y && n.data[2] == (short)cubePos.z; });
-		if (it != deltaSet.end()) { deltaSet.erase(it); }
-
-		chunkNode.cubeDeltaSet.emplace((short)cubePos.x, (short)cubePos.y, (short)cubePos.z, newCubeId);
+		chunkNode.cubeDeltaSet[{ (short)cubePos.x, (short)cubePos.y, (short)cubePos.z }] = newCubeId;
 		chunkNode.cubeDeltaSetDataLock->unlock();
+
 		InitStorage.waitChunkListDataLock->lock();
 		InitStorage.waitChunkList.insert(chunkPos);
 		InitStorage.waitChunkListDataLock->unlock();
@@ -1107,7 +1112,7 @@ private:
 		}
 
 		if (debugInfo::LogSwitch) {
-			if (chunkMap.find(chunkPos) == chunkMap.end()) {
+			if (!chunkMap.contains(chunkPos)) {
 				Log::printError(__FILE__, __LINE__, "变更方块所处区块为空");
 			}
 		}
@@ -1116,7 +1121,7 @@ private:
 	//获取边界变更方块列表
 	void getExtremeChangeCubeList(const glm::dvec3& extremeChunkPos, const glm::ivec3& extremeCubePos, const glm::ivec2& abutCubePos, const short& newCubeId) {
 		if (debugInfo::LogSwitch) {
-			if (chunkMap.find(extremeChunkPos) == chunkMap.end()) {
+			if (!chunkMap.contains(extremeChunkPos)) {
 				Log::printError(__FILE__, __LINE__, "变更方块所处临界区块为空");
 			}
 		}
@@ -1143,18 +1148,15 @@ private:
 
 		//删除cubeDeltaSet中首位相同方块坐标的数据再插入，每次插入都删除首位相同方块坐标数据就能维持不重复
 		chunkNode.cubeDeltaSetDataLock->lock();
-		auto& deltaSet = chunkNode.cubeDeltaSet;
-		auto it = std::find_if(deltaSet.begin(), deltaSet.end(), [&](const storageStruct::cubeDeltaNode& n) {return n.data[0] == (short)extremeCubePos.x && n.data[1] == (short)extremeCubePos.y && n.data[2] == (short)extremeCubePos.z; });
-		if (it != deltaSet.end()) { deltaSet.erase(it); }
-
-		chunkNode.cubeDeltaSet.emplace((short)extremeCubePos.x, (short)extremeCubePos.y, (short)extremeCubePos.z, newCubeId);
+		chunkNode.cubeDeltaSet[{ (short)extremeCubePos.x, (short)extremeCubePos.y, (short)extremeCubePos.z }] = newCubeId;
 		chunkNode.cubeDeltaSetDataLock->unlock();
+
 		InitStorage.waitChunkListDataLock->lock();
 		InitStorage.waitChunkList.insert(extremeChunkPos);
 		InitStorage.waitChunkListDataLock->unlock();
 
 		if (debugInfo::LogSwitch) {
-			if (chunkMap.find(extremeChunkPos) == chunkMap.end()) {
+			if (!chunkMap.contains(extremeChunkPos)) {
 				Log::printError(__FILE__, __LINE__, "变更方块所处临界区块为空");
 			}
 		}

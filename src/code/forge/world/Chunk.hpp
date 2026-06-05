@@ -6,7 +6,7 @@ class Chunk {
 public:
 	//Storage（saveFullChunk、readFullChunk、readDeltaChunk），Plate（createPlate、updatePlate、getSelectBox、createUpdateCubeList），Chunk（createChunkMeshData、updateChunkMeshData）
 	short cubeArray[plateInfo::cubeArrayLength][plateInfo::cubeArrayLength][plateInfo::cubeArrayLength]{};	//方块数组，最外一圈存储相邻区块边缘方块数据，方便区块间面检测，使用范围[1,32]，边缘方块数据0和33
-	std::unordered_set<storageStruct::cubeDeltaNode, storageStruct::cubeDeltaNodeHash> cubeDeltaSet;		//方块变更集合，为变存法服务，[0,33]			//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
+	std::unordered_map<std::array<short, 3>, short, storageStruct::arrayHash> cubeDeltaSet;					//方块变更集合，为变存法服务，[0,33]			//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
 
 	int isVisible = 0;												//标识区块是否可见，如果全空或者全满为不可见，但是不能排除1~32全空但边缘非空的情况			//Storage（saveFullChunk、readFullChunk、saveDeltaChunk、readDeltaChunk），Plate（createPlate、createChunk、updatePlate、createUpdateCubeList）
 	int layerId = forgeEnum::terrainLayer::count;					//区块所在地形管线层																	//Plate（createPlate、updatePlate）

@@ -121,10 +121,13 @@ private:
 		std::filesystem::path chunkPath = std::filesystem::path{ fileInfo::storage::fullFile } / std::format("{}_{}_{}", regionPos.x, regionPos.y, regionPos.z) / std::format("{}_{}_{}.dat", chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z);
 		std::filesystem::create_directories(chunkPath.parent_path());	//如果当前文件父路径不存在则创建，如果存在则不操作
 		std::ofstream oChunkFile{ chunkPath, std::ios::binary };
-		
+
 		chunk.cubeArrayDataLock->lock();
 		oChunkFile.write(reinterpret_cast<char*>(chunk.cubeArray), storageInfo::cubeArraySize);
 		chunk.cubeArrayDataLock->unlock();
+
+		//size_t size = chunk.cubeDeltaSet.size();
+		//oChunkFile.write(reinterpret_cast<char*>(&size), sizeof(size_t));
 
 		chunk.isVisibleDataLock->lock();
 		oChunkFile.write(reinterpret_cast<char*>(&chunk.isVisible), sizeof(int));
@@ -142,6 +145,9 @@ private:
 		iChunkFile.read(reinterpret_cast<char*>(chunk.cubeArray), storageInfo::cubeArraySize);
 		chunk.cubeArrayDataLock->unlock();
 
+		//size_t size = 0;
+		//iChunkFile.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+
 		chunk.isVisibleDataLock->lock();
 		iChunkFile.read(reinterpret_cast<char*>(&chunk.isVisible), sizeof(int));
 		chunk.isVisibleDataLock->unlock();
@@ -153,15 +159,16 @@ private:
 	void saveDeltaChunk(glm::dvec3 regionPos, Chunk& chunk) {
 		std::filesystem::path chunkPath = std::filesystem::path{ fileInfo::storage::deltaFile } / std::format("{}_{}_{}", regionPos.x, regionPos.y, regionPos.z) / std::format("{}_{}_{}.dat", chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z);
 		std::filesystem::create_directories(chunkPath.parent_path());	//如果当前文件父路径不存在则创建，如果存在则不操作
-		std::ofstream oChunkFile{ chunkPath, std::ios::binary};
-		size_t size = chunk.cubeDeltaSet.size();
+		std::ofstream oChunkFile{ chunkPath, std::ios::binary };
 
-		//保存区块变存集合长度
+		//保存cubeDeltaSet.size
+		size_t size = chunk.cubeDeltaSet.size();
 		oChunkFile.write(reinterpret_cast<char*>(&size), sizeof(size_t));
 
-		//保存区块变存集合
-		for (storageStruct::cubeDeltaNode node : chunk.cubeDeltaSet) {
-			oChunkFile.write(reinterpret_cast<char*>(&node), sizeof(storageStruct::cubeDeltaNode));
+		//保存cubeDeltaSet
+		for (const auto& [key, id] : chunk.cubeDeltaSet) {
+			oChunkFile.write(reinterpret_cast<const char*>(key.data()), sizeof(short) * 3);
+			oChunkFile.write(reinterpret_cast<const char*>(&id), sizeof(short));
 		}
 
 		oChunkFile.close();
@@ -170,23 +177,24 @@ private:
 	//变存法读取区块文件
 	void readDeltaChunk(glm::dvec3 regionPos, Chunk& chunk) {
 		std::filesystem::path chunkPath = std::filesystem::path{ fileInfo::storage::deltaFile } / std::format("{}_{}_{}", regionPos.x, regionPos.y, regionPos.z) / std::format("{}_{}_{}.dat", chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z);
-		std::ifstream iChunkFile{ chunkPath, std::ios::binary};
-		size_t size = 0;
-		storageStruct::cubeDeltaNode node;
+		std::ifstream iChunkFile{ chunkPath, std::ios::binary };
 
-		//读取区块变存集合长度
-		iChunkFile.read(reinterpret_cast<char*>(&size), sizeof(size_t));
-
-		//读取区块变存集合
 		chunk.cubeArrayDataLock->lock();
 		chunk.cubeDeltaSetDataLock->lock();
 		chunk.isVisibleDataLock->lock();
+		//读取cubeDeltaSet.size
+		size_t size = 0;
+		iChunkFile.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+
+		//读取cubeDeltaSet
+		std::array<short, 3> key{};
+		short newCubeId = cubeEnum::cubeId::count;
+
 		for (size_t i = 0; i < size; i++) {
-			iChunkFile.read(reinterpret_cast<char*>(&node), sizeof(storageStruct::cubeDeltaNode));
+			iChunkFile.read(reinterpret_cast<char*>(key.data()), sizeof(short) * 3);
+			iChunkFile.read(reinterpret_cast<char*>(&newCubeId), sizeof(short));
 
-			short& oldCubeId = chunk.cubeArray[node.data[0]][node.data[1]][node.data[2]];		//[0,33]
-			short& newCubeId = node.data[3];
-
+			short& oldCubeId = chunk.cubeArray[key[0]][key[1]][key[2]];
 			if (oldCubeId == cubeEnum::cubeId::air) {
 				if (newCubeId != cubeEnum::cubeId::air) {
 					chunk.isVisible++;
@@ -199,7 +207,7 @@ private:
 			}
 
 			oldCubeId = newCubeId;
-			chunk.cubeDeltaSet.emplace(node);
+			chunk.cubeDeltaSet[key] = newCubeId;
 		}
 		chunk.isVisibleDataLock->unlock();
 		chunk.cubeDeltaSetDataLock->unlock();
