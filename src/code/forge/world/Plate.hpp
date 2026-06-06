@@ -113,27 +113,8 @@ private:
 								}
 							}
 
-							Chunk& chunkNode = chunkMap[chunkPos];
-
-							chunkNode.cubeArrayDataLock->lock();
-							chunkNode.isVisibleDataLock->lock();
-							for (const glm::ivec4& cubeData : cubeNode.cubeSet) {
-								short& cubeId = chunkNode.cubeArray[cubeData.x][cubeData.y][cubeData.z];
-
-								if (cubeId == cubeEnum::cubeId::air) {
-									chunkNode.isVisible++;
-								}
-								else if (cubeList::procCube.node[cubeData.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
-									continue;
-								}
-
-								cubeId = cubeData.w;
-							}
-							chunkNode.isVisibleDataLock->unlock();
-							chunkNode.cubeArrayDataLock->unlock();
-
-							//标识active状态
-							cubeNode.isComplete = true;
+							chunkMap[chunkPos].pushLinkStruct(cubeNode.cubeSet);
+							cubeNode.isComplete = true;		//标识active状态
 						}
 					}
 				}
@@ -147,30 +128,13 @@ private:
 			for (auto& [structPos, chunkSet] : linkStructSet.node) {
 				for (auto& [chunkPos, cubeNode] : chunkSet) {
 					//处理分区间pending状态链结构
-					auto chunkIt = chunkMap.find(chunkPos);
+					if (!cubeNode.isComplete) {
+						auto chunkIt = chunkMap.find(chunkPos);
 
-					if (!cubeNode.isComplete && chunkIt != chunkMap.end()) {
-						Chunk& chunkNode = chunkIt->second;
-
-						chunkNode.cubeArrayDataLock->lock();
-						chunkNode.isVisibleDataLock->lock();
-						for (const glm::ivec4& cubeData : cubeNode.cubeSet) {
-							short& cubeId = chunkNode.cubeArray[cubeData.x][cubeData.y][cubeData.z];
-
-							if (cubeId == cubeEnum::cubeId::air) {
-								chunkNode.isVisible++;
-							}
-							else if (cubeList::procCube.node[cubeData.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
-								continue;
-							}
-
-							cubeId = cubeData.w;
+						if (chunkIt != chunkMap.end()) {
+							chunkIt->second.pushLinkStruct(cubeNode.cubeSet);
+							cubeNode.isComplete = true;		//标识active状态
 						}
-						chunkNode.isVisibleDataLock->unlock();
-						chunkNode.cubeArrayDataLock->unlock();
-
-						//标识active状态
-						cubeNode.isComplete = true;
 					}
 
 					linkStructManager.node[structPos][chunkPos] = std::move(cubeNode);
@@ -315,7 +279,7 @@ private:
 					structCubeData = glm::ivec4{ structPos,0 } + nodePos;
 
 					if (structCubeData.x > 0 && structCubeData.x < plateInfo::lengthIncrement && structCubeData.y > 0 && structCubeData.y < plateInfo::lengthIncrement && structCubeData.z > 0 && structCubeData.z < plateInfo::lengthIncrement) {
-						//[1,32]
+						//本区块向内存[1,32]
 						short& cubeId = chunk.cubeArray[structCubeData.x][structCubeData.y][structCubeData.z];
 
 						if (cubeId == cubeEnum::cubeId::air) {
@@ -328,26 +292,26 @@ private:
 						chunkPos = chunk.chunkPos;
 						cubeId = structCubeData.w;
 
-						//[0,33]
+						//本区块向外存[0/33]
 						if (structCubeData.x == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x + 1, chunkPos.y, chunkPos.z }].cubeSet.insert(glm::ivec4{ 0, structCubeData.y, structCubeData.z, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x + 1, chunkPos.y, chunkPos.z }].cubeSet[{ (short)0, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
 						}
 						else if (structCubeData.x == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x - 1, chunkPos.y, chunkPos.z }].cubeSet.insert(glm::ivec4{ plateInfo::lengthIncrement, structCubeData.y, structCubeData.z, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x - 1, chunkPos.y, chunkPos.z }].cubeSet[{ (short)plateInfo::lengthIncrement, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
 						}
 
 						if (structCubeData.y == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y + 1, chunkPos.z }].cubeSet.insert(glm::ivec4{ structCubeData.x, 0, structCubeData.z, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y + 1, chunkPos.z }].cubeSet[{ (short)structCubeData.x, (short)0, (short)structCubeData.z }] = (short)structCubeData.w;
 						}
 						else if (structCubeData.y == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y - 1, chunkPos.z }].cubeSet.insert(glm::ivec4{ structCubeData.x, plateInfo::lengthIncrement, structCubeData.z, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y - 1, chunkPos.z }].cubeSet[{ (short)structCubeData.x, (short)plateInfo::lengthIncrement, (short)structCubeData.z }] = (short)structCubeData.w;
 						}
 
 						if (structCubeData.z == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z + 1 }].cubeSet.insert(glm::ivec4{ structCubeData.x, structCubeData.y, 0, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z + 1 }].cubeSet[{ (short)structCubeData.x, (short)structCubeData.y, (short)0 }] = (short)structCubeData.w;
 						}
 						else if (structCubeData.z == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z - 1 }].cubeSet.insert(glm::ivec4{ structCubeData.x, structCubeData.y, plateInfo::lengthIncrement, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z - 1 }].cubeSet[{ (short)structCubeData.x, (short)structCubeData.y, (short)plateInfo::lengthIncrement }] = (short)structCubeData.w;
 						}
 					}
 					else {
@@ -361,29 +325,29 @@ private:
 						structCubeData.y = (structCubeData.y + plateInfo::lengthDecrement) % plateInfo::chunkLength + 1;
 						structCubeData.z = (structCubeData.z + plateInfo::lengthDecrement) % plateInfo::chunkLength + 1;
 
-						//[1,32]
-						linkStructSet[strucWorldPos][chunkPos].cubeSet.insert(structCubeData);		//glm::ivec4一样的不用管，不一样的不会覆盖存储
+						//邻区块向内存[1,32]
+						linkStructSet[strucWorldPos][chunkPos].cubeSet[{ (short)structCubeData.x, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
 
-						//[0,33]
+						//邻区块向外存[0/33]
 						if (structCubeData.x == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x + 1, chunkPos.y, chunkPos.z }].cubeSet.insert(glm::ivec4{ 0, structCubeData.y, structCubeData.z, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x + 1, chunkPos.y, chunkPos.z }].cubeSet[{ (short)0, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
 						}
 						else if (structCubeData.x == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x - 1, chunkPos.y, chunkPos.z }].cubeSet.insert(glm::ivec4{ plateInfo::lengthIncrement, structCubeData.y, structCubeData.z, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x - 1, chunkPos.y, chunkPos.z }].cubeSet[{ (short)plateInfo::lengthIncrement, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
 						}
 
 						if (structCubeData.y == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y + 1, chunkPos.z }].cubeSet.insert(glm::ivec4{ structCubeData.x, 0, structCubeData.z, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y + 1, chunkPos.z }].cubeSet[{ (short)structCubeData.x, (short)0, (short)structCubeData.z }] = (short)structCubeData.w;
 						}
 						else if (structCubeData.y == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y - 1, chunkPos.z }].cubeSet.insert(glm::ivec4{ structCubeData.x, plateInfo::lengthIncrement, structCubeData.z, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y - 1, chunkPos.z }].cubeSet[{ (short)structCubeData.x, (short)plateInfo::lengthIncrement, (short)structCubeData.z }] = (short)structCubeData.w;
 						}
 
 						if (structCubeData.z == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z + 1 }].cubeSet.insert(glm::ivec4{ structCubeData.x, structCubeData.y, 0, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z + 1 }].cubeSet[{ (short)structCubeData.x, (short)structCubeData.y, (short)0 }] = (short)structCubeData.w;
 						}
 						else if (structCubeData.z == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z - 1 }].cubeSet.insert(glm::ivec4{ structCubeData.x, structCubeData.y, plateInfo::lengthIncrement, structCubeData.w });
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z - 1 }].cubeSet[{ (short)structCubeData.x, (short)structCubeData.y, (short)plateInfo::lengthIncrement }] = (short)structCubeData.w;
 						}
 					}
 				}
@@ -585,27 +549,8 @@ public:
 								}
 							}
 
-							Chunk& chunkNode = updateChunkMap[chunkPos];
-
-							chunkNode.cubeArrayDataLock->lock();
-							chunkNode.isVisibleDataLock->lock();
-							for (const glm::ivec4& cubeData : cubeNode.cubeSet) {
-								short& cubeId = chunkNode.cubeArray[cubeData.x][cubeData.y][cubeData.z];
-
-								if (cubeId == cubeEnum::cubeId::air) {
-									chunkNode.isVisible++;
-								}
-								else if (cubeList::procCube.node[cubeData.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
-									continue;
-								}
-
-								cubeId = cubeData.w;
-							}
-							chunkNode.isVisibleDataLock->unlock();
-							chunkNode.cubeArrayDataLock->unlock();
-
-							//标识active状态
-							cubeNode.isComplete = true;
+							updateChunkMap[chunkPos].pushLinkStruct(cubeNode.cubeSet);
+							cubeNode.isComplete = true;		//标识active状态
 						}
 					}
 				}
@@ -639,30 +584,13 @@ public:
 					//跳过linkStructManager与linkStructPartManager的交集
 					if (!linkStructManager.node.contains(structPos) || !linkStructManager.node[structPos].contains(chunkPos)) {
 						//处理分区间pending状态链结构
-						auto chunkIt = updateChunkMap.find(chunkPos);
+						if (!cubeNode.isComplete) {
+							auto chunkIt = updateChunkMap.find(chunkPos);
 
-						if (!cubeNode.isComplete && chunkIt != updateChunkMap.end()) {
-							Chunk& chunkNode = chunkIt->second;
-
-							chunkNode.cubeArrayDataLock->lock();
-							chunkNode.isVisibleDataLock->lock();
-							for (const glm::ivec4& cubeData : cubeNode.cubeSet) {
-								short& cubeId = chunkNode.cubeArray[cubeData.x][cubeData.y][cubeData.z];
-
-								if (cubeId == cubeEnum::cubeId::air) {
-									chunkNode.isVisible++;
-								}
-								else if (cubeList::procCube.node[cubeData.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
-									continue;
-								}
-
-								cubeId = cubeData.w;
+							if (chunkIt != updateChunkMap.end()) {
+								chunkIt->second.pushLinkStruct(cubeNode.cubeSet);
+								cubeNode.isComplete = true;		//标识active状态
 							}
-							chunkNode.isVisibleDataLock->unlock();
-							chunkNode.cubeArrayDataLock->unlock();
-
-							//标识active状态
-							cubeNode.isComplete = true;
 						}
 
 						linkStructManager.node[structPos][chunkPos] = std::move(cubeNode);
@@ -678,27 +606,8 @@ public:
 					auto chunkIt = updateChunkMap.find(chunkPos);
 
 					if (chunkIt != updateChunkMap.end()) {
-						Chunk& chunkNode = chunkIt->second;
-
-						chunkNode.cubeArrayDataLock->lock();
-						chunkNode.isVisibleDataLock->lock();
-						for (const glm::ivec4& cubeData : cubeNode.cubeSet) {
-							short& cubeId = chunkNode.cubeArray[cubeData.x][cubeData.y][cubeData.z];
-
-							if (cubeId == cubeEnum::cubeId::air) {
-								chunkNode.isVisible++;
-							}
-							else if (cubeList::procCube.node[cubeData.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
-								continue;
-							}
-
-							cubeId = cubeData.w;
-						}
-						chunkNode.isVisibleDataLock->unlock();
-						chunkNode.cubeArrayDataLock->unlock();
-
-						//标识active状态
-						cubeNode.isComplete = true;
+						chunkIt->second.pushLinkStruct(cubeNode.cubeSet);
+						cubeNode.isComplete = true;		//标识active状态
 					}
 					else if (existChunkLoop.contains(chunkPos)) {
 						updateStructSet[structPos].insert(chunkPos);
@@ -735,22 +644,22 @@ public:
 				bool isNotEmpty = !chunkNode.cubeDeltaSet.empty();
 
 				chunkNode.isVisibleDataLock->lock();
-				for (const glm::ivec4& cubeData : linkStructNode[chunkPos].cubeSet) {
+				for (const auto& [cubePos, newCubeId] : linkStructNode[chunkPos].cubeSet) {
 					//如果cubeDeltaSet非空，且当前方块坐标进行过方块变更，则直接跳过压入链结构方块
-					if (isNotEmpty && chunkNode.cubeDeltaSet.contains({ (short)cubeData.x,(short)cubeData.y,(short)cubeData.z })) {
+					if (isNotEmpty && chunkNode.cubeDeltaSet.contains({ cubePos[0],cubePos[1],cubePos[2] })) {
 						continue;
 					}
 
-					short& cubeId = chunkNode.cubeArray[cubeData.x][cubeData.y][cubeData.z];
+					short& oldCubeId = chunkNode.cubeArray[cubePos[0]][cubePos[1]][cubePos[2]];
 
-					if (cubeId == cubeEnum::cubeId::air) {
+					if (oldCubeId == cubeEnum::cubeId::air) {
 						chunkNode.isVisible++;
 					}
-					else if (cubeList::procCube.node[cubeData.w].coverage <= cubeList::procCube.node[cubeId].coverage) {
+					else if (cubeList::procCube.node[newCubeId].coverage <= cubeList::procCube.node[oldCubeId].coverage) {
 						continue;
 					}
 
-					cubeId = cubeData.w;
+					oldCubeId = newCubeId;
 				}
 				chunkNode.isVisibleDataLock->unlock();
 				chunkNode.cubeDeltaSetDataLock->unlock();

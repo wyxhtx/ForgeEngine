@@ -6,7 +6,8 @@ class Chunk {
 public:
 	//Storage（saveFullChunk、readFullChunk、readDeltaChunk），Plate（createPlate、updatePlate、getSelectBox、createUpdateCubeList），Chunk（createChunkMeshData、updateChunkMeshData）
 	short cubeArray[plateInfo::cubeArrayLength][plateInfo::cubeArrayLength][plateInfo::cubeArrayLength]{};	//方块数组，最外一圈存储相邻区块边缘方块数据，方便区块间面检测，使用范围[1,32]，边缘方块数据0和33
-	std::unordered_map<std::array<short, 3>, short, storageStruct::arrayHash> cubeDeltaSet;					//方块变更集合，为变存法服务，[0,33]			//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
+	std::unordered_map<std::array<short, 3>, short, plateStruct::arrayHash> cubeDeltaSet;					//方块变更集合，为变存法服务，[0,33]			//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
+	//std::unordered_set<std::array<short, 3>, plateStruct::arrayHash> linkStructDeltaSet;					//链结构变更集合，存储变更的链结构方块
 
 	int isVisible = 0;												//标识区块是否可见，如果全空或者全满为不可见，但是不能排除1~32全空但边缘非空的情况			//Storage（saveFullChunk、readFullChunk、saveDeltaChunk、readDeltaChunk），Plate（createPlate、createChunk、updatePlate、createUpdateCubeList）
 	int layerId = forgeEnum::terrainLayer::count;					//区块所在地形管线层																	//Plate（createPlate、updatePlate）
@@ -22,13 +23,15 @@ public:
 	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMesh、updateChunkMesh）
 	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMesh、updateChunkMesh、updateChunkMeshData）
 
-	std::unique_ptr<std::mutex> cubeArrayDataLock	 = std::make_unique<std::mutex>();		//cubeArray数据锁
-	std::unique_ptr<std::mutex> cubeDeltaSetDataLock = std::make_unique<std::mutex>();		//cubeDeltaSet数据锁
-	std::unique_ptr<std::mutex> isVisibleDataLock	 = std::make_unique<std::mutex>();		//isVisible数据锁
-	std::unique_ptr<std::mutex> layerIdDataLock		 = std::make_unique<std::mutex>();		//layerId数据锁
+	std::unique_ptr<std::mutex> cubeArrayDataLock		   = std::make_unique<std::mutex>();		//cubeArray数据锁
+	std::unique_ptr<std::mutex> cubeDeltaSetDataLock	   = std::make_unique<std::mutex>();		//cubeDeltaSet数据锁
+	//std::unique_ptr<std::mutex> linkStructDeltaSetDataLock = std::make_unique<std::mutex>();		//cubeDeltaSet数据锁
+	std::unique_ptr<std::mutex> isVisibleDataLock		   = std::make_unique<std::mutex>();		//isVisible数据锁
+	std::unique_ptr<std::mutex> layerIdDataLock			   = std::make_unique<std::mutex>();		//layerId数据锁
 
 
 
+	//初始化区块
 	void InitChunk(const glm::dvec3 origin, const glm::dvec3 chunkPos0) {
 		originOffset	= origin;
 		chunkPos		= chunkPos0;
@@ -38,7 +41,7 @@ public:
 
 	//创建区块网格数据
 	void createChunkMeshData() {
-		std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];	//方块坐标为键，方块ID为值，存储所有可见面，[0,31]
+		std::vector<std::vector<std::unordered_map<glm::ivec3, short>>> visibleFaceMap(6, std::vector<std::unordered_map<glm::ivec3, short>>(plateInfo::chunkLength));	//方块坐标为键，方块ID为值，存储所有可见面，[0,31]
 		int chunkLengthMax = plateInfo::chunkLength + 1;									//探极值时，因为31不为空时wSet.max不赋值，所以多探一位32必为空，33做边界值
 		int chunkLengthMin = -2;															//坐标迁移到左下角时，同理多探一位-1，-2做边界值
 
@@ -646,6 +649,26 @@ private:
 	}
 
 public:
+	//压入链结构
+	void pushLinkStruct(const std::unordered_map<std::array<short, 3>, short, plateStruct::arrayHash>& cubeSet) {
+		cubeArrayDataLock->lock();
+		isVisibleDataLock->lock();
+		for (const auto& [cubePos, newCubeId] : cubeSet) {
+			short& oldCubeId = cubeArray[cubePos[0]][cubePos[1]][cubePos[2]];
+
+			if (oldCubeId == cubeEnum::cubeId::air) {
+				isVisible++;
+			}
+			else if (cubeList::procCube.node[newCubeId].coverage <= cubeList::procCube.node[oldCubeId].coverage) {
+				continue;
+			}
+
+			oldCubeId = newCubeId;
+		}
+		isVisibleDataLock->unlock();
+		cubeArrayDataLock->unlock();
+	}
+
 	//拷贝核心数据
 	void copyCoreData(const Chunk& chunk) {
 		InitChunk(chunk.originOffset, chunk.chunkPos);
@@ -658,6 +681,10 @@ public:
 		cubeDeltaSet = chunk.cubeDeltaSet;
 		cubeDeltaSetDataLock->unlock();
 
+		//linkStructDeltaSetDataLock->lock();
+		//linkStructDeltaSet = chunk.linkStructDeltaSet;
+		//linkStructDeltaSetDataLock->unlock();
+
 		isVisibleDataLock->lock();
 		isVisible = chunk.isVisible;
 		isVisibleDataLock->unlock();
@@ -669,8 +696,8 @@ public:
 
 	//更新区块网格数据
 	void updateChunkMeshData(const std::unordered_set<glm::ivec3>& cubePosSet, const std::unordered_set<glm::ivec2>& abutCubePosSet) {
-		std::unordered_map<glm::ivec3, short> visibleFaceMap[6][plateInfo::chunkLength];						//区块截层可见面集合，[0,31]
-		std::unordered_set<int> faceSet[6];																		//区块截层集合，根据两个方块列表（cubePosSet、abutCubePosSet），截取需要更新网格的区块层，[0,31]
+		std::vector<std::vector<std::unordered_map<glm::ivec3, short>>> visibleFaceMap(6, std::vector<std::unordered_map<glm::ivec3, short>>(plateInfo::chunkLength));	//区块截层可见面集合，[0,31]
+		std::unordered_set<int> faceSet[6];								//区块截层集合，根据两个方块列表（cubePosSet、abutCubePosSet），截取需要更新网格的区块层，[0,31]
 
 		//标识各朝向对应的最大层和最小层，为优化区块截层网格的生成服务
 		int layerMax[6]{ 0,0,0,0,0,0 };

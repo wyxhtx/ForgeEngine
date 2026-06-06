@@ -52,10 +52,21 @@ namespace plateStruct {
         int vertexsSentinel = 0;                                        //标识区块各朝向顶点列表长度
     };
 
+    //重写std::array<short, 3>哈希，服务于变存法存储结点
+    struct arrayHash {
+        std::size_t operator()(const std::array<short, 3>& array) const noexcept {
+            std::size_t seed = 0;
+            seed ^= std::hash<short>{}(array[0]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= std::hash<short>{}(array[1]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= std::hash<short>{}(array[2]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            return seed;
+        }
+    };
+
     //链结构区块结点
     struct linkStructChunkNode {
-        std::unordered_set<glm::ivec4> cubeSet;     //链结构方块数据
-        bool isComplete = false;                    //标识链结构是否加载，全部压入即为加载
+        std::unordered_map<std::array<short, 3>, short, plateStruct::arrayHash> cubeSet;    //链结构方块数据
+        bool isComplete = false;                                                            //标识链结构是否加载，全部压入即为加载
     };
 
     //链结构管理器结点，structPos->chunkPos->cubeData
@@ -138,18 +149,9 @@ namespace noiseStruct {
 }
 
 //存储结构体
-namespace storageStruct {
-    //变存法存储结点Hash
-    struct arrayHash {
-        std::size_t operator()(const std::array<short, 3>& arr) const noexcept {
-            std::size_t seed = 0;
-            seed ^= std::hash<short>{}(arr[0]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            seed ^= std::hash<short>{}(arr[1]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            seed ^= std::hash<short>{}(arr[2]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            return seed;
-        }
-    };
-}
+//namespace storageStruct {
+//
+//}
 
 //玩家结构体
 namespace playerStruct {
