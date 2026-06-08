@@ -279,7 +279,7 @@ private:
 					structCubeData = glm::ivec4{ structPos,0 } + nodePos;
 
 					if (structCubeData.x > 0 && structCubeData.x < plateInfo::lengthIncrement && structCubeData.y > 0 && structCubeData.y < plateInfo::lengthIncrement && structCubeData.z > 0 && structCubeData.z < plateInfo::lengthIncrement) {
-						//本区块向内存[1,32]
+						//本区块处理[1,32]
 						short& cubeId = chunk.cubeArray[structCubeData.x][structCubeData.y][structCubeData.z];
 
 						if (cubeId == cubeEnum::cubeId::air) {
@@ -292,7 +292,7 @@ private:
 						chunkPos = chunk.chunkPos;
 						cubeId = structCubeData.w;
 
-						//本区块向外存[0/33]
+						//本区块移到邻区块处理[0/33]
 						if (structCubeData.x == plateInfo::chunkLength) {
 							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x + 1, chunkPos.y, chunkPos.z }].cubeSet[{ (short)0, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
 						}
@@ -325,10 +325,10 @@ private:
 						structCubeData.y = (structCubeData.y + plateInfo::lengthDecrement) % plateInfo::chunkLength + 1;
 						structCubeData.z = (structCubeData.z + plateInfo::lengthDecrement) % plateInfo::chunkLength + 1;
 
-						//邻区块向内存[1,32]
+						//邻区块处理[1,32]
 						linkStructSet[strucWorldPos][chunkPos].cubeSet[{ (short)structCubeData.x, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
 
-						//邻区块向外存[0/33]
+						//邻区块移到邻区块处理[0/33]
 						if (structCubeData.x == plateInfo::chunkLength) {
 							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x + 1, chunkPos.y, chunkPos.z }].cubeSet[{ (short)0, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
 						}
@@ -628,7 +628,7 @@ public:
 			auto& linkStructNode = linkStructManager.node[structPos];
 
 			for (const auto& chunkPos : chunkSet) {
-				bool   isExist   = !updateChunkMap.contains(chunkPos);
+				bool   isExist   = !updateChunkMap.contains(chunkPos);		//一开始updateChunkMap中肯定不存在当前chunkPos的，因为不同structPos可能指向同一chunkPos，所以设置isExist机制避免重复拷贝
 				Chunk& chunkNode = updateChunkMap[chunkPos];
 
 				if (isExist) {
@@ -640,29 +640,25 @@ public:
 				}
 
 				chunkNode.cubeArrayDataLock->lock();
-				chunkNode.cubeDeltaSetDataLock->lock();
-				bool isNotEmpty = !chunkNode.cubeDeltaSet.empty();
-
+				chunkNode.linkStructCubeDeltaSetDataLock->lock();
 				chunkNode.isVisibleDataLock->lock();
 				for (const auto& [cubePos, newCubeId] : linkStructNode[chunkPos].cubeSet) {
-					//如果cubeDeltaSet非空，且当前方块坐标进行过方块变更，则直接跳过压入链结构方块
-					if (isNotEmpty && chunkNode.cubeDeltaSet.contains({ cubePos[0],cubePos[1],cubePos[2] })) {
-						continue;
-					}
+					//如果linkStructCubeDeltaSet存有当前链结构方块坐标，则跳过此次压入
+					if (!chunkNode.linkStructCubeDeltaSet.contains(cubePos)) {
+						short& oldCubeId = chunkNode.cubeArray[cubePos[0]][cubePos[1]][cubePos[2]];
 
-					short& oldCubeId = chunkNode.cubeArray[cubePos[0]][cubePos[1]][cubePos[2]];
+						if (oldCubeId == cubeEnum::cubeId::air) {
+							chunkNode.isVisible++;
+						}
+						else if (cubeList::procCube.node[newCubeId].coverage <= cubeList::procCube.node[oldCubeId].coverage) {
+							continue;
+						}
 
-					if (oldCubeId == cubeEnum::cubeId::air) {
-						chunkNode.isVisible++;
+						oldCubeId = newCubeId;
 					}
-					else if (cubeList::procCube.node[newCubeId].coverage <= cubeList::procCube.node[oldCubeId].coverage) {
-						continue;
-					}
-
-					oldCubeId = newCubeId;
 				}
 				chunkNode.isVisibleDataLock->unlock();
-				chunkNode.cubeDeltaSetDataLock->unlock();
+				chunkNode.linkStructCubeDeltaSetDataLock->unlock();
 				chunkNode.cubeArrayDataLock->unlock();
 
 				//标识active状态
@@ -847,9 +843,8 @@ public:
 			auto chunkIt = chunkMap.find(cube.chunkPos);
 
 			if (chunkIt != chunkMap.end()) {
-				//将d世界坐标系偏移到方块坐标系，cubePos范围为[1,32]
-				//此处chunkPos * chunkLength原为chunkMap[chunkPos].logicalWorldPos，因updatePlate执行chunkMap[chunkPos] = updateChunkMap[chunkPos]后会导致该值错误故更换
-				cube.cubePos = glm::ivec3{ cube.initPos - cube.chunkPos * chunkLength } + glm::ivec3{ 1 };
+				//此处cube.chunkPos * chunkLength原为chunkMap[chunkPos].logicalWorldPos，因updatePlate执行copyCoreData后可能导致该值错误故更换
+				cube.cubePos = glm::ivec3{ cube.initPos - cube.chunkPos * chunkLength } + glm::ivec3{ 1 };		//将d世界坐标系偏移到方块坐标系，cubePos范围为[1,32]
 
 				if (debugInfo::LogSwitch) {
 					if (cube.cubePos.x < 1 || cube.cubePos.x > chunkLength || cube.cubePos.y < 1 || cube.cubePos.y > chunkLength || cube.cubePos.z < 1 || cube.cubePos.z > chunkLength) {
@@ -969,8 +964,9 @@ private:
 
 		Chunk& chunkNode = chunkMap[chunkPos];
 		short& oldCubeId = chunkNode.cubeArray[cubePos.x][cubePos.y][cubePos.z];		//[1,32]
+		plateStruct::cubePosNode cubePosKey = { (short)cubePos.x, (short)cubePos.y, (short)cubePos.z };
 
-		//---1~32---
+		//本区块处理[1,32]
 		chunkNode.isVisibleDataLock->lock();
 		if (oldCubeId == cubeEnum::cubeId::air) {
 			if (newCubeId != cubeEnum::cubeId::air) {
@@ -985,12 +981,20 @@ private:
 		oldCubeId = newCubeId;
 		chunkNode.isVisibleDataLock->unlock();
 
-		changeCubeList[chunkPos].insert(cubePos - glm::ivec3{ 1 });					//从[1,32]偏移到[0,31]，方便遍历32层
+		changeCubeList[chunkPos].insert(cubePos - glm::ivec3{ 1 });						//从[1,32]偏移到[0,31]，方便遍历32层
 
 		//删除cubeDeltaSet中首位相同方块坐标的数据再插入，每次插入都删除首位相同方块坐标数据就能维持不重复
 		chunkNode.cubeDeltaSetDataLock->lock();
-		chunkNode.cubeDeltaSet[{ (short)cubePos.x, (short)cubePos.y, (short)cubePos.z }] = newCubeId;
+		chunkNode.cubeDeltaSet[cubePosKey] = newCubeId;
 		chunkNode.cubeDeltaSetDataLock->unlock();
+
+		chunkNode.linkStructCubePosSetDataLock->lock();
+		if (chunkNode.linkStructCubePosSet.contains(cubePosKey)) {
+			chunkNode.linkStructCubeDeltaSetDataLock->lock();
+			chunkNode.linkStructCubeDeltaSet.insert(cubePosKey);
+			chunkNode.linkStructCubeDeltaSetDataLock->unlock();
+		}
+		chunkNode.linkStructCubePosSetDataLock->unlock();
 
 		InitStorage.waitChunkListDataLock->lock();
 		InitStorage.waitChunkList.insert(chunkPos);
@@ -998,7 +1002,7 @@ private:
 
 
 
-		//---0、33---
+		//本区块移到邻区块处理[0/33]
 		if (cubePos.x == 1) {
 			getExtremeChangeCubeList(chunkPos - glm::dvec3{ 1, 0, 0 }, glm::dvec3{ plateInfo::lengthIncrement, cubePos.y, cubePos.z }, glm::ivec2{ 2,plateInfo::lengthDecrement }, newCubeId);
 		}
@@ -1037,6 +1041,7 @@ private:
 
 		Chunk& chunkNode = chunkMap[extremeChunkPos];
 		short& oldCubeId = chunkNode.cubeArray[extremeCubePos.x][extremeCubePos.y][extremeCubePos.z];		//[0,33]
+		plateStruct::cubePosNode extremeCubePosKey = { (short)extremeCubePos.x, (short)extremeCubePos.y, (short)extremeCubePos.z };
 
 		chunkNode.isVisibleDataLock->lock();
 		if (oldCubeId == cubeEnum::cubeId::air) {
@@ -1057,8 +1062,16 @@ private:
 
 		//删除cubeDeltaSet中首位相同方块坐标的数据再插入，每次插入都删除首位相同方块坐标数据就能维持不重复
 		chunkNode.cubeDeltaSetDataLock->lock();
-		chunkNode.cubeDeltaSet[{ (short)extremeCubePos.x, (short)extremeCubePos.y, (short)extremeCubePos.z }] = newCubeId;
+		chunkNode.cubeDeltaSet[extremeCubePosKey] = newCubeId;
 		chunkNode.cubeDeltaSetDataLock->unlock();
+
+		chunkNode.linkStructCubePosSetDataLock->lock();
+		if (chunkNode.linkStructCubePosSet.contains(extremeCubePosKey)) {
+			chunkNode.linkStructCubeDeltaSetDataLock->lock();
+			chunkNode.linkStructCubeDeltaSet.insert(extremeCubePosKey);
+			chunkNode.linkStructCubeDeltaSetDataLock->unlock();
+		}
+		chunkNode.linkStructCubePosSetDataLock->unlock();
 
 		InitStorage.waitChunkListDataLock->lock();
 		InitStorage.waitChunkList.insert(extremeChunkPos);

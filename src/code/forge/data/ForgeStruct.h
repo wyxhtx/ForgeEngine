@@ -52,8 +52,13 @@ namespace plateStruct {
         int vertexsSentinel = 0;                                        //标识区块各朝向顶点列表长度
     };
 
-    //重写std::array<short, 3>哈希，服务于变存法存储结点
-    struct arrayHash {
+
+
+    //方块坐标结点
+    using cubePosNode = std::array<short, 3>;
+
+    //方块坐标哈希
+    struct cubePosHash {
         std::size_t operator()(const std::array<short, 3>& array) const noexcept {
             std::size_t seed = 0;
             seed ^= std::hash<short>{}(array[0]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
@@ -65,7 +70,7 @@ namespace plateStruct {
 
     //链结构区块结点
     struct linkStructChunkNode {
-        std::unordered_map<std::array<short, 3>, short, plateStruct::arrayHash> cubeSet;    //链结构方块数据
+        std::unordered_map<std::array<short, 3>, short, plateStruct::cubePosHash> cubeSet;  //链结构方块数据
         bool isComplete = false;                                                            //标识链结构是否加载，全部压入即为加载
     };
 
@@ -149,9 +154,54 @@ namespace noiseStruct {
 }
 
 //存储结构体
-//namespace storageStruct {
-//
-//}
+namespace storageStruct {
+    //保存文件结点，自动创建父路径并打开文件
+    struct saveFileNode : std::ofstream {
+        saveFileNode(const std::filesystem::path& path) {
+            std::filesystem::create_directories(path.parent_path());    //如果当前文件父路径不存在则创建，如果存在则不操作
+            open(path, std::ios::binary);                               //打开文件
+        }
+
+        //写入单数据
+        template<typename T>
+        void writeData(const T& data) {
+            write(reinterpret_cast<const char*>(&data), sizeof(T));
+        }
+
+        //写入数据块
+        template<typename T>
+        void writeData(const T* data, std::streamsize size) {
+            write(reinterpret_cast<const char*>(data), size);
+        }
+    };
+
+    //读取文件结点
+    struct readFileNode : std::ifstream {
+        readFileNode(const std::filesystem::path& path) {
+            open(path, std::ios::binary);                               //打开文件
+        }
+
+        //读取单数据
+        template<typename T>
+        void readData(T& data) {
+            read(reinterpret_cast<char*>(&data), sizeof(T));
+        }
+
+        //读取数据块
+        template<typename T>
+        void readData(T* data, std::streamsize size) {
+            read(reinterpret_cast<char*>(data), size);
+        }
+
+        //返回读取数据
+        template<typename T>
+        T readValue() {
+            T value{};
+            read(reinterpret_cast<char*>(&value), sizeof(T));
+            return value;
+        }
+    };
+}
 
 //玩家结构体
 namespace playerStruct {

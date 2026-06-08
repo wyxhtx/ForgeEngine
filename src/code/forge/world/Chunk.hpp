@@ -4,30 +4,33 @@
 
 class Chunk {
 public:
-	//Storage（saveFullChunk、readFullChunk、readDeltaChunk），Plate（createPlate、updatePlate、getSelectBox、createUpdateCubeList），Chunk（createChunkMeshData、updateChunkMeshData）
-	short cubeArray[plateInfo::cubeArrayLength][plateInfo::cubeArrayLength][plateInfo::cubeArrayLength]{};	//方块数组，最外一圈存储相邻区块边缘方块数据，方便区块间面检测，使用范围[1,32]，边缘方块数据0和33
-	std::unordered_map<std::array<short, 3>, short, plateStruct::arrayHash> cubeDeltaSet;					//方块变更集合，为变存法服务，[0,33]			//Storage（saveDeltaChunk、readDeltaChunk、saveChunk），Plate（createUpdateCubeList）
-	//std::unordered_set<std::array<short, 3>, plateStruct::arrayHash> linkStructDeltaSet;					//链结构变更集合，存储变更的链结构方块
+	short cubeArray[plateInfo::cubeArrayLength][plateInfo::cubeArrayLength][plateInfo::cubeArrayLength]{};		//方块数组，[1,32]存储内部数据，[0/33]存储临界区块[32/1]数据，方便区块间面检测，[0,33]
+	std::unordered_map<plateStruct::cubePosNode, short, plateStruct::cubePosHash> cubeDeltaSet;					//方块变更集合，存储方块键值对，用于变存法，[0,33]
+	std::unordered_set<plateStruct::cubePosNode, plateStruct::cubePosHash> linkStructCubePosSet;				//链结构方块坐标集合，存储链结构方块坐标，用于标识被压入的链结构方块，[0,33]
+	std::unordered_set<plateStruct::cubePosNode, plateStruct::cubePosHash> linkStructCubeDeltaSet;				//链结构方块变更集合，存储被修改过的链结构方块坐标，避免链结构再压入被修改过的链结构，[0,33]
 
-	int isVisible = 0;												//标识区块是否可见，如果全空或者全满为不可见，但是不能排除1~32全空但边缘非空的情况			//Storage（saveFullChunk、readFullChunk、saveDeltaChunk、readDeltaChunk），Plate（createPlate、createChunk、updatePlate、createUpdateCubeList）
-	int layerId = forgeEnum::terrainLayer::count;					//区块所在地形管线层																	//Plate（createPlate、updatePlate）
+	bool isFull = false;																						//标识区块是否为全存
+
+	int isVisible = 0;																							//标识区块是否可见，如果全空或全满为不可见(但是不能排除[1,32]全空但[0/33]非空的情况)，用于优化生成区块网格
+	int layerId = forgeEnum::terrainLayer::count;																//区块所在地形管线层
 
 	//由InitChunk初始化
-	glm::dvec3 originOffset{};										//区块原点偏移（d世界坐标系），用于plate类里joinChunkMesh方法处理世界原点迁移时的情况		//Plate（joinTerrainMesh），Chunk（InitChunk）
-	glm::dvec3 chunkPos{};											//区块坐标（区块坐标系），区块在Plate.chunkMap中的坐标									//Storage（saveFullChunk、readFullChunk、saveDeltaChunk、readDeltaChunk、saveChunk、readChunk），Plate（createChunk、），Chunk（InitChunk）
-	glm::dvec3 logicalWorldPos{};									//区块逻辑世界坐标（d世界坐标系）（对应cubeArray[0][0][0]处），用于地形生成				//Plate（createChunk），Chunk（InitChunk）
-	glm::ivec3 actualWorldPos{};									//区块实际世界坐标（i世界坐标系）（对应cubeArray[0][0][0]处），用于构建网格				//Chunk（InitChunk、createChunkMeshData、updateChunkMeshData）
+	glm::dvec3 originOffset{};																					//区块原点偏移（d世界坐标系），用于Plate.joinTerrainMesh处理世界原点迁移
+	glm::dvec3 chunkPos{};																						//区块坐标（区块坐标系）
+	glm::dvec3 logicalWorldPos{};																				//区块逻辑世界坐标（对应cubeArray[0][0][0]处，d世界坐标系），用于地形生成
+	glm::ivec3 actualWorldPos{};																				//区块实际世界坐标（对应cubeArray[0][0][0]处，i世界坐标系），用于构建网格
 
-	//由createChunkMeshData初始化,chunkVertexs,chunkIndexs,IndexOffset都能判断区块是否应该加载网格，34立方区块全空或全实不加载网格
-	std::vector<terrainVertex::vertexNode> chunkVertexs{};			//区块网格顶点数组																	//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMeshData、createChunkMesh、updateChunkMesh）
-	std::vector<uint32_t> chunkIndexs{};							//区块网格索引数组																	//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMesh、updateChunkMesh）
-	uint32_t indexOffset = 0;										//区块索引偏移量																		//Plate（createPlate、joinTerrainMesh、updatePlate），Chunk（createChunkMesh、updateChunkMesh、updateChunkMeshData）
+	//由createChunkMeshData初始化
+	std::vector<terrainVertex::vertexNode> chunkVertexs{};														//区块网格顶点数组
+	std::vector<uint32_t> chunkIndexs{};																		//区块网格索引数组
+	uint32_t indexOffset = 0;																					//区块索引偏移量，用于chunkIndexs索引和优化拼接地形网格
 
-	std::unique_ptr<std::mutex> cubeArrayDataLock		   = std::make_unique<std::mutex>();		//cubeArray数据锁
-	std::unique_ptr<std::mutex> cubeDeltaSetDataLock	   = std::make_unique<std::mutex>();		//cubeDeltaSet数据锁
-	//std::unique_ptr<std::mutex> linkStructDeltaSetDataLock = std::make_unique<std::mutex>();		//cubeDeltaSet数据锁
-	std::unique_ptr<std::mutex> isVisibleDataLock		   = std::make_unique<std::mutex>();		//isVisible数据锁
-	std::unique_ptr<std::mutex> layerIdDataLock			   = std::make_unique<std::mutex>();		//layerId数据锁
+	std::unique_ptr<std::mutex> cubeArrayDataLock			   = std::make_unique<std::mutex>();				//cubeArray数据锁
+	std::unique_ptr<std::mutex> cubeDeltaSetDataLock		   = std::make_unique<std::mutex>();				//cubeDeltaSet数据锁
+	std::unique_ptr<std::mutex> linkStructCubePosSetDataLock   = std::make_unique<std::mutex>();				//linkStructCubePosSet数据锁
+	std::unique_ptr<std::mutex> linkStructCubeDeltaSetDataLock = std::make_unique<std::mutex>();				//linkStructCubeDeltaSet数据锁
+	std::unique_ptr<std::mutex> isVisibleDataLock			   = std::make_unique<std::mutex>();				//isVisible数据锁
+	std::unique_ptr<std::mutex> layerIdDataLock				   = std::make_unique<std::mutex>();				//layerId数据锁
 
 
 
@@ -650,8 +653,9 @@ private:
 
 public:
 	//压入链结构
-	void pushLinkStruct(const std::unordered_map<std::array<short, 3>, short, plateStruct::arrayHash>& cubeSet) {
+	void pushLinkStruct(const std::unordered_map<plateStruct::cubePosNode, short, plateStruct::cubePosHash>& cubeSet) {
 		cubeArrayDataLock->lock();
+		linkStructCubePosSetDataLock->lock();
 		isVisibleDataLock->lock();
 		for (const auto& [cubePos, newCubeId] : cubeSet) {
 			short& oldCubeId = cubeArray[cubePos[0]][cubePos[1]][cubePos[2]];
@@ -664,9 +668,21 @@ public:
 			}
 
 			oldCubeId = newCubeId;
+			linkStructCubePosSet.insert(cubePos);
 		}
 		isVisibleDataLock->unlock();
+		linkStructCubePosSetDataLock->unlock();
 		cubeArrayDataLock->unlock();
+	}
+
+	//获取isFull
+	bool getIsFull() {
+		//一旦成为全存，永不再降级
+		if (!isFull && cubeDeltaSet.size() > storageInfo::thresholdSize) {
+			isFull = true;
+		}
+
+		return isFull;
 	}
 
 	//拷贝核心数据
@@ -681,9 +697,13 @@ public:
 		cubeDeltaSet = chunk.cubeDeltaSet;
 		cubeDeltaSetDataLock->unlock();
 
-		//linkStructDeltaSetDataLock->lock();
-		//linkStructDeltaSet = chunk.linkStructDeltaSet;
-		//linkStructDeltaSetDataLock->unlock();
+		linkStructCubePosSetDataLock->lock();
+		linkStructCubePosSet = chunk.linkStructCubePosSet;
+		linkStructCubePosSetDataLock->unlock();
+
+		linkStructCubeDeltaSetDataLock->lock();
+		linkStructCubeDeltaSet = chunk.linkStructCubeDeltaSet;
+		linkStructCubeDeltaSetDataLock->unlock();
 
 		isVisibleDataLock->lock();
 		isVisible = chunk.isVisible;
