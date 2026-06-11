@@ -55,7 +55,7 @@ public:
 		}
 	}
 
-	//校验isVisible一致性
+	//校验isVisible一致性，15ms
 	void validateIsVisibleConsistency(const std::unordered_map<glm::dvec3, Chunk>& chunkMap) {
 		while (lockInfo::chunkMapDataLock.exchange(true)) { std::this_thread::yield(); }
 
@@ -90,7 +90,7 @@ public:
 		lockInfo::chunkMapDataLock.store(false);
 	}
 
-	//校验本区块与邻区块，0或33处的方块是否对应
+	//校验本区块与邻区块，0或33处的方块是否对应，10ms
 	void validateExtremeCube(const std::unordered_map<glm::dvec3, Chunk>& chunkMap) {
 		std::mutex posMutex;
 		std::unordered_map<glm::dvec3, std::unordered_set<forgeDebugStruct::extremeCubeNode, forgeDebugStruct::extremeCubeNode::Hash>> posList{};

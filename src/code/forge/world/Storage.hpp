@@ -221,7 +221,6 @@ private:
 	}
 
 public:
-	//todo 重申逻辑，是否正确、重复
 	//更新配置，只动态读取配置加载集合元素，不动态保存配置卸载集合元素，在程序结束时统一保存配置
 	void updateConfig(glm::dvec3 playerChunkPos) {
 		glm::dvec3 tempPos = glm::floor(playerChunkPos / (double)storageInfo::regionLength);
@@ -232,7 +231,7 @@ public:
 		}
 	}
 
-	//保存区块文件
+	//保存区块文件，1ms
 	void saveChunk(Chunk& chunk) {
 		glm::dvec3 regionPos = glm::floor(chunk.chunkPos / (double)storageInfo::regionLength);
 
@@ -270,7 +269,7 @@ public:
 		chunk.cubeDeltaSetDataLock->unlock();
 	}
 
-	//读取区块文件
+	//读取区块文件，0.5ms
 	void readChunk(Chunk& chunk) {
 		glm::dvec3 regionPos = glm::floor(chunk.chunkPos / (double)storageInfo::regionLength);
 
