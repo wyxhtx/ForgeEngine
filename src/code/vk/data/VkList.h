@@ -34,17 +34,17 @@ namespace bufferList {
             node[bufferEnum::procRenderId::shadow_r]  .createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::sh_f);
         };
 
-        void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& allocator) {
+        void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& memAllocator) {
             for (int i = 0; i < bufferEnum::frameNodeId::count; i++) {
                 nodePass[i].createRenderNode(i, colorFormat, depthFormat, msaaSamples, device);
             }
 
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
                 if (i == bufferEnum::procRenderId::shadow_r) {
-                    node[i].createRenderInfo(VkExtent2D{ bufferInfo::shadowMapLength, bufferInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
+                    node[i].createRenderInfo(VkExtent2D{ bufferInfo::shadowMapLength, bufferInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, memAllocator);
                 }
                 else {
-                    node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
+                    node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, memAllocator);
                 }
             }
         }
@@ -89,30 +89,30 @@ namespace bufferList {
             return *node[procRenderId].shPtr;
         }
 
-        void cleanupSwapChain(const VkDevice& device, const VmaAllocator& allocator) {
+        void cleanupSwapChain(const VkDevice& device, const VmaAllocator& memAllocator) {
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].cleanupSwapChain(device, allocator);
+                node[i].cleanupSwapChain(device, memAllocator);
             }
         }
 
-        void recreateSwapChain(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& allocator) {
+        void recreateSwapChain(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& memAllocator) {
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
                 if (i == bufferEnum::procRenderId::shadow_r) {
-                    node[i].createRenderInfo(VkExtent2D{ bufferInfo::shadowMapLength, bufferInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
+                    node[i].createRenderInfo(VkExtent2D{ bufferInfo::shadowMapLength, bufferInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, memAllocator);
                 }
                 else {
-                    node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, allocator);
+                    node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, memAllocator);
                 }
             }
         }
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             for (int i = 0; i < bufferEnum::frameNodeId::count; i++) {
                 nodePass[i].clear(device);
             }
 
             for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].clear(device, allocator);
+                node[i].clear(device, memAllocator);
             }
         }
     };
@@ -235,7 +235,6 @@ namespace bufferList {
             samplerInfo.maxLod    = static_cast<float>(terrainMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::terrain_s]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "terrain采样器创建失败");
-                throw;
             }
 
             //staticModel_sn
@@ -243,14 +242,12 @@ namespace bufferList {
             samplerInfo.maxLod    = static_cast<float>(sModelMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::staticModel_sn]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "sModelN采样器创建失败");
-                throw;
             }
 
             //staticModel_sl
             samplerInfo.magFilter = VK_FILTER_LINEAR;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::staticModel_sl]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "sModelL采样器创建失败");
-                throw;
             }
 
             //dynamicModel_sn
@@ -258,14 +255,12 @@ namespace bufferList {
             samplerInfo.maxLod    = static_cast<float>(dModelMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::dynamicModel_sn]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "dModelN采样器创建失败");
-                throw;
             }
 
             //dynamicModel_sl
             samplerInfo.magFilter = VK_FILTER_LINEAR;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::dynamicModel_sl]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "dModelL采样器创建失败");
-                throw;
             }
 
             //uiText_s
@@ -273,7 +268,6 @@ namespace bufferList {
             samplerInfo.maxAnisotropy = 16.0f;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::uiText_s]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "uiText采样器创建失败");
-                throw;
             }
 
             //offScreen_s
@@ -282,7 +276,6 @@ namespace bufferList {
             samplerInfo.maxAnisotropy = 1.0f;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::offScreen_s]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "offScreen采样器创建失败");
-                throw;
             }
 
             //shadow_s
@@ -298,7 +291,6 @@ namespace bufferList {
             samplerInfo.maxLod           = 0.0f;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::shadow_s]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "shadow采样器创建失败");
-                throw;
             }
         }
 
@@ -355,13 +347,13 @@ namespace bufferList {
             dModelMip = *std::max_element(dMaxMip.begin(), dMaxMip.end());
         }
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-                sNode[i].clear(device, allocator);
+                sNode[i].clear(device, memAllocator);
             }
 
             for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-                dNode[i].clear(device, allocator);
+                dNode[i].clear(device, memAllocator);
             }
         }
     };
@@ -390,16 +382,16 @@ namespace bufferList {
 
         procShadowNode() = delete;
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            tShadowNode.clear(device, allocator);
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            tShadowNode.clear(device, memAllocator);
 
             for (int i = 0; i < sShadowNode.size(); i++) {
-                sShadowNode[i].clear(device, allocator);
+                sShadowNode[i].clear(device, memAllocator);
             }
 
             for (int i = 0; i < dShadowNode.size(); i++) {
                 for (int j = 0; j < dShadowNode[i].size(); j++) {
-                    dShadowNode[i][j].clear(device, allocator);
+                    dShadowNode[i][j].clear(device, memAllocator);
                 }
             }
         }
@@ -448,7 +440,6 @@ namespace pipelineList {
 
             if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineInfo, nullptr, &node[id].pipeline) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "管线创建失败");
-                throw;
             }
         }
 
@@ -470,7 +461,6 @@ namespace pipelineList {
 
             if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineInfo, nullptr, &node[id].pipeline) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "管线创建失败");
-                throw;
             }
         }
         */
@@ -509,7 +499,6 @@ namespace pipelineList {
 
             if (vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache)) {
                 Log::printError(__FILE__, __LINE__, "管线缓存创建失败");
-                throw;
             }
         }
 
@@ -535,7 +524,6 @@ namespace pipelineList {
             VkShaderModule shaderModule;
             if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "着色器创建失败");
-                throw;
             }
 
             return shaderModule;
@@ -546,7 +534,6 @@ namespace pipelineList {
 
             if (!file.is_open()) {
                 Log::printError(__FILE__, __LINE__, "着色器文件打开失败");
-                throw;
             }
 
             size_t fileSize = (size_t)file.tellg();

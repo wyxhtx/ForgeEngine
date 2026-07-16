@@ -19,9 +19,13 @@ public:
     }
 
     ~Instance() {
-       if (debugInfo::LayerSwitch) {
-            destroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-       }
+        if (debugInfo::LayerSwitch) {
+            auto debugCallbackInfo = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+
+            if (debugCallbackInfo != nullptr) {
+                debugCallbackInfo(instance, debugCallback, nullptr);
+            }
+        }
 
        vkDestroyInstance(instance, nullptr);
 
@@ -31,205 +35,191 @@ public:
     }
 
 private:
-    uint32_t APIVersion;                            //vulkan版本号
-    VkDebugUtilsMessengerEXT debugMessenger;
+    VkDebugUtilsMessengerEXT debugCallback;            //校验层回调
 
     
 
     //初始化Instance
     void createInstance() {
-        //获取版本信息
-        APIVersion = VK_API_VERSION_1_0;
-        if (vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceVersion")) {
-            vkEnumerateInstanceVersion(&APIVersion);
-        }
+        //vulkan版本号
+        uint32_t apiVersion = VK_API_VERSION_1_0;       //默认赋值1.0
+        vkEnumerateInstanceVersion(&apiVersion);        //获取实际版本号
 
         if (debugInfo::LogSwitch) {
             Log::printTitle("Vulkan API 版本号");
-            std::cout << "\t" << VK_VERSION_MAJOR(APIVersion) << "." << VK_VERSION_MINOR(APIVersion) << "." << VK_VERSION_PATCH(APIVersion) << std::endl;
+            std::cout << "\t" << VK_API_VERSION_MAJOR(apiVersion) << "." << VK_API_VERSION_MINOR(apiVersion) << "." << VK_API_VERSION_PATCH(apiVersion) << std::endl;
             Log::delimiter();
         }
 
+        //应用信息
         VkApplicationInfo appInfo{};
-        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pNext = nullptr;
-        appInfo.pApplicationName = windowInfo::gameName;
-        appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
-        appInfo.pEngineName = windowInfo::engineName;
-        appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 1);
-        appInfo.apiVersion = APIVersion;
+        appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        appInfo.pNext              = nullptr;
+        appInfo.pApplicationName   = windowInfo::gameName;
+        appInfo.applicationVersion = VK_MAKE_API_VERSION(0, 0, 0, 1);
+        appInfo.pEngineName        = windowInfo::engineName;
+        appInfo.engineVersion      = VK_MAKE_API_VERSION(0, 0, 0, 1);
+        appInfo.apiVersion         = apiVersion;
 
+        //instance创建信息
         VkInstanceCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        createInfo.flags = 0;
+        createInfo.sType            = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+        createInfo.flags            = 0;
         createInfo.pApplicationInfo = &appInfo;
+        
+        //debugCallback配置
+        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+        debugCreateInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        debugCreateInfo.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        debugCreateInfo.pfnUserCallback = debugCallbackFunc;
 
         //启用层
-        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
         if (debugInfo::LayerSwitch) {
-            //检测是否支持所有层
-            checkLayer();
-            populateDebugMessengerCreateInfo(debugCreateInfo);
-
-            createInfo.enabledLayerCount = static_cast<uint32_t>(enableConfigInfo::enableLayer.size());
-            createInfo.ppEnabledLayerNames = enableConfigInfo::enableLayer.data();
-            createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
-
+            enableLayerListSupport(enableConfigInfo::enableLayerList);
+            createInfo.pNext               = &debugCreateInfo;
+            createInfo.enabledLayerCount   = (uint32_t)enableConfigInfo::enableLayerList.size();
+            createInfo.ppEnabledLayerNames = enableConfigInfo::enableLayerList.data();
         }
         else {
-            createInfo.enabledLayerCount = 0;
+            createInfo.pNext               = nullptr;
+            createInfo.enabledLayerCount   = 0;
             createInfo.ppEnabledLayerNames = nullptr;
-            createInfo.pNext = nullptr;
         }
 
         //启用扩展
-        std::vector<const char*> extensions = getInstanceExtension();
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-        createInfo.ppEnabledExtensionNames = extensions.data();
+        std::vector<const char*> extensionList = enableInstanceExtensionListSupport(enableConfigInfo::enableInstanceExtensionList);
+        createInfo.enabledExtensionCount       = (uint32_t)extensionList.size();
+        createInfo.ppEnabledExtensionNames     = extensionList.data();
 
+        //创建instance
         if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-            Log::printError(__FILE__, __LINE__, "实例创建失败");
-            throw;
+            Log::printError(__FILE__, __LINE__, "instance创建失败");
         }
 
-        if (debugInfo::LayerSwitch && (createDebugUtilsMessengerEXT(instance, &debugCreateInfo, nullptr, &debugMessenger) != VK_SUCCESS)) {
-            Log::printError(__FILE__, __LINE__, "配置回调失败");
-            throw;
-        }
-    }
-
-
-
-    void checkLayer() {
-        uint32_t layerCount;
-        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-        if (layerCount == 0) {
-            Log::print("无启用层");
-            return;
-        }
-
-        std::vector<VkLayerProperties> availableLayers(layerCount);
-        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-        //输出支持层
-        if (debugInfo::LogSwitch) {
-            Log::printTitle("Vulkan_Instance 层支持");
-            for (const auto& layer : availableLayers) {
-                Log::print(layer.layerName);
-                Log::print(layer.description);
-                Log::print("------");
-            }
-            Log::delimiter();
-
-            Log::printTitle("Vulkan_Instance 层启用");
-            for (const auto& layer : enableConfigInfo::enableLayer) {
-                Log::print(layer);
-            }
-            Log::delimiter();
-        }
-
-        //支持查询
-        for (const auto& enable : enableConfigInfo::enableLayer) {
-            bool found = false;
-
-            for (const auto& layer : availableLayers) {
-                if (std::strcmp(enable, layer.layerName) == 0) {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found) {
-                Log::print(enable);
-                Log::printError(__FILE__, __LINE__, "层缺少支持");
-                throw;
-            }
-        }
-    }
-
-    std::vector<const char*> getInstanceExtension() {
-        //输出Vulkan支持的Instance扩展
-        if (debugInfo::LogSwitch) {
-            uint32_t extensionCount;
-            vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-
-            std::vector<VkExtensionProperties> availableExtension(extensionCount);
-            vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtension.data());
-
-            Log::printTitle("Vulkan_Instance 扩展支持");
-
-            for (const auto& extension : availableExtension) {
-                Log::print(extension.extensionName);
-                Log::print("------");
-            }
-
-            Log::delimiter();
-        }
-
-        uint32_t extensionCount;        //设备支持的扩展数量
-        const char** extensionInfo;     //设备支持的扩展信息
-
-        extensionInfo = glfwGetRequiredInstanceExtensions(&extensionCount);
-        std::vector<const char*> extensionList(extensionInfo, extensionInfo + extensionCount);      //设备支持列表
-
+        //创建debugCallback
         if (debugInfo::LayerSwitch) {
-            extensionList.insert(extensionList.end(), enableConfigInfo::enableInstanceExtension.begin(), enableConfigInfo::enableInstanceExtension.end());
-        }
+            auto debugCallbackInfo = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
 
-        if (debugInfo::LogSwitch) {
-            Log::printTitle("Vulkan_Instance 扩展启用");
-
-            //输出Vulkan支持的Instance扩展
-            for (int i = 0; i < extensionList.size(); i++) {
-                Log::print(extensionList[i]);
+            if (debugCallbackInfo == nullptr) {
+                Log::printError(__FILE__, __LINE__, "vkCreateDebugUtilsMessengerEXT函数指针获取失败");
             }
-
-            Log::delimiter();
-        }
-
-        return extensionList;
-    }
-
-    //填充调试信使创建信息
-    void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
-        createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        createInfo.pfnUserCallback = debugCallback;
-    }
-
-    //创建回调
-    VkResult createDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-        if (func != nullptr) {
-            return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-        }
-        else {
-            return VK_ERROR_EXTENSION_NOT_PRESENT;
+            else if (debugCallbackInfo(instance, &debugCreateInfo, nullptr, &debugCallback) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "debugCallback创建失败");
+            }
         }
     }
 
 
 
-    //处理回调
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-        std::cerr << "校验层: " << pCallbackData->pMessage << std::endl << "------" << std::endl;
+    //回调处理
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallbackFunc(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+        std::cerr << "校验层: " << std::endl << pCallbackData->pMessage << std::endl << "------" << std::endl;
 
         //Pipeline生命周期中，校验层报错时暂停
-        while (lockInfo::logPauseEnableLock.load()) { 
+        while (lockInfo::logPauseEnableLock.load()) {
             std::this_thread::yield();
-        }; 
+        };
 
         return VK_FALSE;
     }
 
-    //销毁回调
-    void destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-        if (func != nullptr) {
-            func(instance, debugMessenger, pAllocator);
+    //enableLayerList支持
+    void enableLayerListSupport(const std::vector<const char*>& enableLayerList) {
+        //支持层数量
+        uint32_t supportLayerCount;
+        vkEnumerateInstanceLayerProperties(&supportLayerCount, nullptr);
+
+        //支持层信息
+        std::vector<VkLayerProperties> supportLayerList(supportLayerCount);
+        vkEnumerateInstanceLayerProperties(&supportLayerCount, supportLayerList.data());
+
+        //输出支持层与启用层
+        if (debugInfo::LogSwitch) {
+            Log::printTitle("Vulkan Instance 支持层");
+            for (const auto& supportLayerNode : supportLayerList) {
+                Log::print(supportLayerNode.layerName);
+                Log::print(supportLayerNode.description);
+                Log::print("------");
+            }
+            Log::delimiter();
+
+            Log::printTitle("Vulkan Instance 启用层");
+            for (const auto& enableLayerNode : enableLayerList) {
+                Log::print(enableLayerNode);
+            }
+            Log::delimiter();
         }
+
+        //启用层支持查询
+        for (const auto& enableLayerNode : enableLayerList) {
+            bool isSupport = false;     //支持标识
+
+            for (const auto& supportLayerNode : supportLayerList) {
+                if (std::strcmp(enableLayerNode, supportLayerNode.layerName) == 0) {
+                    isSupport = true;
+                    break;
+                }
+            }
+
+            if (!isSupport) {
+                Log::print(enableLayerNode);
+                Log::printError(__FILE__, __LINE__, "缺少启用层支持");
+            }
+        }
+    }
+
+    //enableInstanceExtensionList支持
+    std::vector<const char*> enableInstanceExtensionListSupport(const std::vector<const char*>& enableInstanceExtensionList) {
+        uint32_t                 platformExtensionCount;                                                                            //平台扩展数量
+        const char**             platformExtensionInfo = glfwGetRequiredInstanceExtensions(&platformExtensionCount);                //平台扩展信息
+        std::vector<const char*> platformExtensionList(platformExtensionInfo, platformExtensionInfo + platformExtensionCount);      //平台扩展列表
+    
+        if (debugInfo::LayerSwitch) {
+            platformExtensionList.insert(platformExtensionList.end(), enableInstanceExtensionList.begin(), enableInstanceExtensionList.end());
+        }
+
+        //支持instance扩展数量
+        uint32_t supportExtensionCount;
+        vkEnumerateInstanceExtensionProperties(nullptr, &supportExtensionCount, nullptr);
+    
+        //支持instance扩展信息
+        std::vector<VkExtensionProperties> supportExtensionList(supportExtensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &supportExtensionCount, supportExtensionList.data());
+    
+        //输出支持扩展与启用扩展
+        if (debugInfo::LogSwitch) {
+            Log::printTitle("Vulkan Instance 支持扩展");
+            for (const auto& supportExtensionNode : supportExtensionList) {
+                Log::print(supportExtensionNode.extensionName);
+                Log::print("------");
+            }
+            Log::delimiter();
+    
+            Log::printTitle("Vulkan Instance 启用扩展");
+            for (const auto& platformExtensionNode : platformExtensionList) {
+                Log::print(platformExtensionNode);
+            }
+            Log::delimiter();
+        }
+    
+        //启用扩展支持查询
+        for (const auto& platformExtensionNode : platformExtensionList) {
+            bool isSupport = false;     //支持标识
+    
+            for (const auto& supportExtensionNode : supportExtensionList) {
+                if (std::strcmp(platformExtensionNode, supportExtensionNode.extensionName) == 0) {
+                    isSupport = true;
+                    break;
+                }
+            }
+    
+            if (!isSupport) {
+                Log::print(platformExtensionNode);
+                Log::printError(__FILE__, __LINE__, "缺少启用instance扩展支持");
+            }
+        }
+
+        return platformExtensionList;
     }
 };

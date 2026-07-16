@@ -52,13 +52,13 @@ private:
 
     //创建交换链支持结点
     void createScSupport() {
-        scSupport.createScSupport(Device.physicalDevice, Device.surface);
-        scSupport.createScCreateInfo(Device.surface, Device.availableDevices.queueIndices[0]);
+        scSupport.createScSupport(Device.getGpu().gpu, Device.presentSurface);
+        scSupport.createScCreateInfo(Device.presentSurface);
 
         scExtent = scSupport.scCreateInfo.imageExtent;
         colorFormat = scSupport.scCreateInfo.imageFormat;
-        depthFormat = scSupport.getDepthFormat(Device.physicalDevice, { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-        msaaSamples = scSupport.getMsaaSamples(Device.physicalDevice);
+        depthFormat = scSupport.getDepthFormat(Device.getGpu().gpu, { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        msaaSamples = scSupport.getMsaaSamples(Device.getGpu().gpu);
 
         if (debugInfo::LogSwitch) {
             Log::print("最大采样次数:\t" + std::to_string(msaaSamples));
@@ -89,7 +89,6 @@ private:
         for (size_t i = 0; i < scSupport.scCreateInfo.minImageCount; i++) {
             if (vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS || vkCreateFence(Device.device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "信号量创建失败");
-                throw;
             }
         }
     }
@@ -109,7 +108,6 @@ public:
         }
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
             Log::printError(__FILE__, __LINE__, "获取交换链映像失败");
-            throw;
         }
 
         //队列提交和同步
@@ -130,7 +128,6 @@ public:
         lockInfo::queueThreadLock.lock();
         if (vkQueueSubmit(Device.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "提交绘制命令缓冲区失败");
-            throw;
         }
 
         VkPresentInfoKHR presentInfo = {};
@@ -144,7 +141,7 @@ public:
         presentInfo.pImageIndices   = &imageIndex;
         presentInfo.pResults        = nullptr;
 
-        result = vkQueuePresentKHR(Device.presentQueue, &presentInfo);
+        result = vkQueuePresentKHR(Device.graphicsQueue, &presentInfo);
         lockInfo::queueThreadLock.unlock();
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
@@ -152,7 +149,6 @@ public:
         }
         else if (result != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "呈现交换链图像失败");
-            throw;
         }
 
         currentFrame = (currentFrame + 1) % scSupport.scCreateInfo.minImageCount;
@@ -170,7 +166,7 @@ public:
 
 
     void recreateSwapChain() {
-        scSupport.recreateScCreateInfo(Device.physicalDevice, Device.surface, swapchain);
+        scSupport.recreateScCreateInfo(Device.getGpu().gpu, Device.presentSurface, swapchain);
         scExtent = scSupport.scCreateInfo.imageExtent;
 
         vkQueueWaitIdle(Device.graphicsQueue);
@@ -178,7 +174,6 @@ public:
         VkSwapchainKHR tempSwapchain;
         if (vkCreateSwapchainKHR(Device.device, &scSupport.scCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "重建交换链创建失败");
-            throw;
         }
 
         vkDestroySwapchainKHR(Device.device, swapchain, nullptr);

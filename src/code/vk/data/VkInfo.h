@@ -4,17 +4,17 @@
 
 namespace enableConfigInfo {
     //层启用，目前只适用于开启校验层
-    std::vector<const char*> enableLayer = {
+    std::vector<const char*> enableLayerList = {
         "VK_LAYER_KHRONOS_validation"
     };
 
     //Instance扩展启用
-    std::vector<const char*> enableInstanceExtension = {
+    std::vector<const char*> enableInstanceExtensionList = {
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME
     };
 
     //Device扩展启用
-    std::vector<const char*> enableDeviceExtension = {
+    std::vector<const char*> enableDeviceExtensionList = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
 }
@@ -25,10 +25,10 @@ namespace debugInfo {
     //const bool LogSwitch = false;
 
     const bool LayerSwitch = true;          //校验开关
-    const bool LogSwitch = true;            //调试开关
+    const bool LogSwitch   = true;          //调试开关
 #else
     const bool LayerSwitch = true;          //校验开关
-    const bool LogSwitch = true;            //调试开关
+    const bool LogSwitch   = true;          //调试开关
 #endif
 }
 

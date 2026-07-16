@@ -10,9 +10,9 @@ public:
 
 	Buffer(Device& Device) :Device{ Device } {
 		createScResource();
-		procRenderPass.createRenderPassInfo(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device, Device.allocator);
+		procRenderPass.createRenderPassInfo(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device, Device.memAllocator);
 
-		command.createCommandPool(Device.device, Device.queueFamilyIndex);
+		command.createCommandPool(Device.device, Device.getGpu().graphicsQueueFamily.index);
 		command.initCommandBuffer(uint32_t(procRenderPass.node[bufferEnum::procRenderId::scScence_r].scPtr->framebuffer.size()));
 
 		createMeshBuffer();
@@ -31,21 +31,21 @@ public:
 	}
 
 	~Buffer() {
-		procRenderPass.clear(Device.device, Device.allocator);
+		procRenderPass.clear(Device.device, Device.memAllocator);
 		procDescriptor.clear(Device.device);
 		procSampler	  .clear(Device.device);
 
 		command.clear(Device.device);
 
-		if (terrain.isEnable)	 { terrain	 .clear(Device.device, Device.allocator); }
-		if (procModel.isEnable)  { procModel .clear(Device.device, Device.allocator); }
-		if (skybox.isEnable)	 { skybox	 .clear(Device.device, Device.allocator); }
-		if (mine.isEnable)		 { mine		 .clear(Device.device, Device.allocator); }
-		if (uiText.isEnable)	 { uiText	 .clear(Device.device, Device.allocator); }
-		if (osMirror.isEnable)	 { osMirror	 .clear(Device.device, Device.allocator); }
-		if (osScence.isEnable)	 { osScence	 .clear(Device.device, Device.allocator); }
-		if (dsScence.isEnable)	 { dsScence	 .clear(Device.device, Device.allocator); }
-		if (procShadow.isEnable) { procShadow.clear(Device.device, Device.allocator); }
+		if (terrain.isEnable)	 { terrain	 .clear(Device.device, Device.memAllocator); }
+		if (procModel.isEnable)  { procModel .clear(Device.device, Device.memAllocator); }
+		if (skybox.isEnable)	 { skybox	 .clear(Device.device, Device.memAllocator); }
+		if (mine.isEnable)		 { mine		 .clear(Device.device, Device.memAllocator); }
+		if (uiText.isEnable)	 { uiText	 .clear(Device.device, Device.memAllocator); }
+		if (osMirror.isEnable)	 { osMirror	 .clear(Device.device, Device.memAllocator); }
+		if (osScence.isEnable)	 { osScence	 .clear(Device.device, Device.memAllocator); }
+		if (dsScence.isEnable)	 { dsScence	 .clear(Device.device, Device.memAllocator); }
+		if (procShadow.isEnable) { procShadow.clear(Device.device, Device.memAllocator); }
 		
 		if (debugInfo::LogSwitch) {
 			Log::print("Buffer已清除");
@@ -294,7 +294,6 @@ private:
 				}
 				else {
 					Log::printError(__FILE__, __LINE__, "skybox分配描述符集失败");
-					throw;
 				}
 			}
 
@@ -309,7 +308,6 @@ private:
 				}
 				else {
 					Log::printError(__FILE__, __LINE__, "mine分配描述符集失败");
-					throw;
 				}
 			}
 
@@ -327,7 +325,6 @@ private:
 				}
 				else {
 					Log::printError(__FILE__, __LINE__, "osMirror分配描述符集失败");
-					throw;
 				}
 			}
 
@@ -343,7 +340,6 @@ private:
 				}
 				else {
 					Log::printError(__FILE__, __LINE__, "osScence分配描述符集失败");
-					throw;
 				}
 			}
 		}
@@ -364,7 +360,6 @@ private:
 				}
 				else {
 					Log::printError(__FILE__, __LINE__, "terrain分配描述符集失败");
-					throw;
 				}
 			}
 
@@ -382,7 +377,6 @@ private:
 					}
 					else {
 						Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\t分配描述符集失败");
-						throw;
 					}
 				}
 
@@ -399,7 +393,6 @@ private:
 						}
 						else {
 							Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\t分配描述符集失败");
-							throw;
 						}
 					}
 				}
@@ -421,7 +414,6 @@ private:
 				}
 				else {
 					Log::printError(__FILE__, __LINE__, "uiText分配描述符集失败");
-					throw;
 				}
 			}
 		}
@@ -447,7 +439,6 @@ private:
 			}
 			else {
 				Log::printError(__FILE__, __LINE__, "dsScence分配描述符集失败");
-				throw;
 			}
 		}
 
@@ -467,7 +458,6 @@ private:
 				}
 				else {
 					Log::printError(__FILE__, __LINE__, "shadow-terrain描述符集分配失败");
-					throw;
 				}
 			}
 
@@ -484,7 +474,6 @@ private:
 					}
 					else {
 						Log::printError(__FILE__, __LINE__, "shadow-sNode描述符集分配失败");
-						throw;
 					}
 				}
 
@@ -500,7 +489,6 @@ private:
 						}
 						else {
 							Log::printError(__FILE__, __LINE__, "shadow-dNode描述符集分配失败");
-							throw;
 						}
 					}
 				}
@@ -593,7 +581,7 @@ private:
 		//临时缓冲拷贝到顶点缓冲
 		copyBuffer(tempBuffer.buffer, vertexBuffer.buffer, bufferSize);
 
-		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
+		vmaDestroyBuffer(Device.memAllocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 	}
 
 	//将vertexNode类中的索引映射到buffer类里对应的VkBuffer
@@ -614,7 +602,7 @@ private:
 		//临时缓冲拷贝到索引缓冲
 		copyBuffer(tempBuffer.buffer, indexBuffer.buffer, bufferSize);
 
-		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
+		vmaDestroyBuffer(Device.memAllocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 	}
 
 	//加载静态模型
@@ -899,7 +887,6 @@ private:
 
 		if (result != KTX_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
-			throw;
 		}
 
 		uint32_t texWidth = ktxTexture->baseWidth;
@@ -921,7 +908,7 @@ private:
 
 		createImageView(imageBuffer.image, imageBuffer.view, arrayLayer, mipLevel, VK_IMAGE_VIEW_TYPE_2D_ARRAY, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
-		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
+		vmaDestroyBuffer(Device.memAllocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 		ktxTexture2_Destroy(ktxTexture);
 	}
 
@@ -939,7 +926,6 @@ private:
 
 		if (result != KTX_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
-			throw;
 		}
 
 		uint32_t texWidth = ktxTexture->baseWidth;
@@ -965,7 +951,7 @@ private:
 
 		createImageView(imageBuffer.image, imageBuffer.view, 1, mipLevel, VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
-		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
+		vmaDestroyBuffer(Device.memAllocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 		ktxTexture2_Destroy(ktxTexture);
 	}
 
@@ -994,7 +980,7 @@ private:
 		copyBufferToImage(static_cast<uint32_t>(fontWidth), static_cast<uint32_t>(fontHeight), tempBuffer.buffer, imageBuffer.image);
 		//图像格式转换为采样最佳
 		transitionImageLayout(imageBuffer.image, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		vmaDestroyBuffer(Device.allocator, tempBuffer.buffer, tempBuffer.bufferMemory);
+		vmaDestroyBuffer(Device.memAllocator, tempBuffer.buffer, tempBuffer.bufferMemory);
 
 		createImageView(imageBuffer.image, imageBuffer.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
@@ -1015,7 +1001,6 @@ private:
 
 		if (vkCreateImageView(Device.device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "图像视图创建失败");
-			throw;
 		}
 	}
 
@@ -1028,7 +1013,7 @@ private:
 		allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN; //使用 VMA_MEMORY_USAGE_UNKNOWN 将内存属性交由属性参数控制
 		allocInfo.requiredFlags = properties;		//设置所需的内存属性
 
-		vmaCreateBuffer(Device.allocator, &bufferInfo, &allocInfo, &bufferNode.buffer, &bufferNode.bufferMemory, nullptr);
+		vmaCreateBuffer(Device.memAllocator, &bufferInfo, &allocInfo, &bufferNode.buffer, &bufferNode.bufferMemory, nullptr);
 	}
 
 	//为createUniformBuffer服务的简略版
@@ -1041,15 +1026,15 @@ private:
 		allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN;																//使用 VMA_MEMORY_USAGE_UNKNOWN 将内存属性交由属性参数控制
 		allocInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;	//设置所需的内存属性
 
-		vmaCreateBuffer(Device.allocator, &bufferInfo, &allocInfo, &bufferNode.buffer, &bufferNode.bufferMemory, nullptr);
+		vmaCreateBuffer(Device.memAllocator, &bufferInfo, &allocInfo, &bufferNode.buffer, &bufferNode.bufferMemory, nullptr);
 	}
 
 	void createMapMemory(VmaAllocation tempMemory, const void* sourceData, size_t dataSize) {
 		//内存映射
 		void* data;
-		vmaMapMemory(Device.allocator, tempMemory, &data);
+		vmaMapMemory(Device.memAllocator, tempMemory, &data);
 		memcpy(data, sourceData, dataSize);
-		vmaUnmapMemory(Device.allocator, tempMemory);
+		vmaUnmapMemory(Device.memAllocator, tempMemory);
 	}
 
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
@@ -1098,9 +1083,8 @@ private:
 		allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 		allocInfo.requiredFlags = properties;
 
-		if (vmaCreateImage(Device.allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
+		if (vmaCreateImage(Device.memAllocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "图像创建失败");
-			throw;
 		}
 	}
 
@@ -1169,7 +1153,6 @@ private:
 		else {
 			// 如果出现无法识别的布局转换，输出错误信息并抛出异常
 			Log::printError(__FILE__, __LINE__, "无支持的布局转换");
-			throw;
 		}
 
 		// 在命令缓冲区中插入图像内存屏障，以实现布局转换
@@ -1281,7 +1264,7 @@ public:
 
 		if (!uiText.isEnable) { return; }
 
-		uiText.beginTextUpdate(Device.allocator);
+		uiText.beginTextUpdate(Device.memAllocator);
 
 		//世界坐标
 		oss << std::fixed << std::setprecision(0);	//设置输出流的格式,不保留小数
@@ -1304,13 +1287,12 @@ public:
 		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::left);
 		oss.str("");
 
-		uiText.endTextUpdate(Device.allocator);
+		uiText.endTextUpdate(Device.memAllocator);
 	}
 
 	void createCommandBuffer(int threadId, pipelineList::procPipelineNode& procPipeline) {
 		if (vkAllocateCommandBuffers(Device.device, &command.allocInfo, command.commandBuffer[threadId].data()) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "基础命令缓冲创建失败");
-			throw;
 		}
 
 		for (int frameId = 0; frameId < command.commandBuffer[threadId].size(); frameId++) {
@@ -1470,8 +1452,8 @@ public:
 		//重建下一线程Lod_0地形管线，RM_0.4.6（8_32：10）
 		if (isNullTerrainMesh(layer)) {
 			lockInfo::queueThreadLock.lock();
-			vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
-			vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
+			vmaDestroyBuffer(Device.memAllocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
+			vmaDestroyBuffer(Device.memAllocator, terrain.index[threadId][layer].buffer, terrain.index[threadId][layer].bufferMemory);
 			lockInfo::queueThreadLock.unlock();
 
 			createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
@@ -1480,7 +1462,7 @@ public:
 			//重建下一线程Lod_0地形阴影
 			if (procShadow.isEnable) {
 				lockInfo::queueThreadLock.lock();
-				vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[threadId][layer].buffer, procShadow.tShadowNode.vertex[threadId][layer].bufferMemory);
+				vmaDestroyBuffer(Device.memAllocator, procShadow.tShadowNode.vertex[threadId][layer].buffer, procShadow.tShadowNode.vertex[threadId][layer].bufferMemory);
 				lockInfo::queueThreadLock.unlock();
 
 				shadowVertex::loadTerrainVertexs(layer);
@@ -1507,8 +1489,8 @@ public:
 
 				//重建下一线程Lod_1地形管线
 				lockInfo::queueThreadLock.lock();
-				vmaDestroyBuffer(Device.allocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
-				vmaDestroyBuffer(Device.allocator, terrain.index[threadId][layer].buffer,  terrain.index[threadId][layer].bufferMemory);
+				vmaDestroyBuffer(Device.memAllocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMemory);
+				vmaDestroyBuffer(Device.memAllocator, terrain.index[threadId][layer].buffer,  terrain.index[threadId][layer].bufferMemory);
 				lockInfo::queueThreadLock.unlock();
 				createBuffer(vertexSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[threadId][layer]);
 				createBuffer(indexSize,  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.index[threadId][layer]);
@@ -1518,7 +1500,7 @@ public:
 				//重建下一线程Lod_1地形阴影
 				if (procShadow.isEnable) {
 					lockInfo::queueThreadLock.lock();
-					vmaDestroyBuffer(Device.allocator, procShadow.tShadowNode.vertex[threadId][layer].buffer, procShadow.tShadowNode.vertex[threadId][layer].bufferMemory);
+					vmaDestroyBuffer(Device.memAllocator, procShadow.tShadowNode.vertex[threadId][layer].buffer, procShadow.tShadowNode.vertex[threadId][layer].bufferMemory);
 					lockInfo::queueThreadLock.unlock();
 
 					shadowVertex::loadTerrainVertexs(layer);
@@ -1545,16 +1527,16 @@ public:
 				//重建上轮当前线程Lod_1地形管线
 				int tempThreadId = (threadId + 1) % 2;
 				lockInfo::queueThreadLock.lock();
-				vmaDestroyBuffer(Device.allocator, terrain.vertex[tempThreadId][layer].buffer, terrain.vertex[tempThreadId][layer].bufferMemory);
-				vmaDestroyBuffer(Device.allocator, terrain.index[tempThreadId][layer].buffer,  terrain.index[tempThreadId][layer].bufferMemory);
+				vmaDestroyBuffer(Device.memAllocator, terrain.vertex[tempThreadId][layer].buffer, terrain.vertex[tempThreadId][layer].bufferMemory);
+				vmaDestroyBuffer(Device.memAllocator, terrain.index[tempThreadId][layer].buffer,  terrain.index[tempThreadId][layer].bufferMemory);
 				lockInfo::queueThreadLock.unlock();
 				createBuffer(vertexSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[tempThreadId][layer]);
 				createBuffer(indexSize,  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.index[tempThreadId][layer]);
 				copyBuffer(vertexBuffer.buffer, terrain.vertex[tempThreadId][layer].buffer, vertexSize);
 				copyBuffer(indexBuffer.buffer,  terrain.index[tempThreadId][layer].buffer,  indexSize);
 
-				vmaDestroyBuffer(Device.allocator, vertexBuffer.buffer, vertexBuffer.bufferMemory);
-				vmaDestroyBuffer(Device.allocator, indexBuffer.buffer,  indexBuffer.bufferMemory);
+				vmaDestroyBuffer(Device.memAllocator, vertexBuffer.buffer, vertexBuffer.bufferMemory);
+				vmaDestroyBuffer(Device.memAllocator, indexBuffer.buffer,  indexBuffer.bufferMemory);
 
 				isEntireRebuild.store(false);
 				return;
@@ -1762,13 +1744,13 @@ public:
 	}
 
 	void cleanupSwapChain() {
-		procRenderPass.cleanupSwapChain(Device.device, Device.allocator);
+		procRenderPass.cleanupSwapChain(Device.device, Device.memAllocator);
 	}
 
 	void recreateSwapChain() {
 		InitSwapchain.recreateSwapChain();
 		createScResource();
-		procRenderPass.recreateSwapChain(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device, Device.allocator);
+		procRenderPass.recreateSwapChain(InitSwapchain.scExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaaSamples, Device.device, Device.memAllocator);
 
 
 

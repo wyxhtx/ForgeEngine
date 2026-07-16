@@ -43,23 +43,17 @@ namespace engineStruct {
 }
 
 namespace deviceStruct {
-    struct queueIndiceNode {
-        //四大操作支持索引
-        int support = -1;
-
-        //呈现索引
-        int present = -1;
-
-        //存储显卡使用队列数量
-        int count = -1;
+    //队列族结点
+    struct queueFamilyNode {
+        uint32_t index = VK_QUEUE_FAMILY_IGNORED;               //队列族内队列索引，初始值为忽略
+        uint32_t count = 0;                                     //队列族内队列数量，初始值为0
+        float priority = 1.0f;                                  //队列族内队列优先级，暂时无用
     };
 
-    struct deviceNode {
-        //显卡
-        std::vector<VkPhysicalDevice> physicalDevices;
-
-        //队列
-        std::vector<deviceStruct::queueIndiceNode> queueIndices;    //queueIndices[0]经过排序后的最优显卡
+    //物理设备结点
+    struct gpuNode {
+        VkPhysicalDevice gpu;                                   //物理设备，一般是显卡
+        deviceStruct::queueFamilyNode graphicsQueueFamily{};    //图形队列族
     };
 }
 
@@ -83,34 +77,31 @@ namespace swapStruct {
         }
 
         //设置交换链支持结点
-        void createScSupport(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface) {
+        void createScSupport(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentSurface) {
             //表面功能查询
-            if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilitie)) {
+            if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, presentSurface, &capabilitie)) {
                 Log::printError(__FILE__, __LINE__, "表面功能获取失败");
-                throw;
             }
 
 
             //表面格式查询
             uint32_t formatCount;
-            vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, presentSurface, &formatCount, nullptr);
             if (formatCount == 0) {
                 Log::printError(__FILE__, __LINE__, "表面格式获取失败");
-                throw;
             }
             scFormat.resize(formatCount);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, scFormat.data());
+            vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, presentSurface, &formatCount, scFormat.data());
 
 
             //呈现模式查询
             uint32_t presentModeCount;
-            vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, presentSurface, &presentModeCount, nullptr);
             if (presentModeCount == 0) {
                 Log::printError(__FILE__, __LINE__, "呈现模式获取失败");
-                throw;
             }
             presentMode.resize(presentModeCount);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentMode.data());
+            vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, presentSurface, &presentModeCount, presentMode.data());
 
 
 
@@ -137,29 +128,16 @@ namespace swapStruct {
         }
 
         //设置scCreateInfo
-        void createScCreateInfo(const VkSurfaceKHR& surface, const deviceStruct::queueIndiceNode& currentQueue) {
+        void createScCreateInfo(const VkSurfaceKHR& presentSurface) {
             VkSurfaceFormatKHR scFormat = getScFormat();
-            
-
-            scCreateInfo.surface                = surface;
+            scCreateInfo.surface                = presentSurface;
             scCreateInfo.minImageCount          = capabilitie.minImageCount + (capabilitie.maxImageCount > capabilitie.minImageCount);
             scCreateInfo.imageFormat            = scFormat.format;
             scCreateInfo.imageColorSpace        = scFormat.colorSpace;
             scCreateInfo.imageExtent            = getScExtent();
-
-            if (currentQueue.support != currentQueue.present) {
-                uint32_t index[] = { (uint32_t)currentQueue.support, (uint32_t)currentQueue.present };
-
-                scCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-                scCreateInfo.queueFamilyIndexCount = 2;
-                scCreateInfo.pQueueFamilyIndices = index;
-            }
-            else {
-                scCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-                scCreateInfo.queueFamilyIndexCount = 0;
-                scCreateInfo.pQueueFamilyIndices = nullptr;
-            }
-
+            scCreateInfo.imageSharingMode       = VK_SHARING_MODE_EXCLUSIVE;
+            scCreateInfo.queueFamilyIndexCount  = 0;
+            scCreateInfo.pQueueFamilyIndices    = nullptr;
             scCreateInfo.preTransform           = capabilitie.currentTransform;
             scCreateInfo.presentMode            = getScPresentMode();
             scCreateInfo.oldSwapchain           = VK_NULL_HANDLE;
@@ -252,7 +230,6 @@ namespace swapStruct {
             }
 
             Log::printError(__FILE__, __LINE__, "深度格式获取失败");
-            throw;
         }
 
         //获取多重采样
@@ -274,10 +251,9 @@ namespace swapStruct {
 
 
         //重建scExtent
-        void recreateScCreateInfo(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const VkSwapchainKHR& swapchain) {
-            if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilitie)) {
+        void recreateScCreateInfo(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentSurface, const VkSwapchainKHR& swapchain) {
+            if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, presentSurface, &capabilitie)) {
                 Log::printError(__FILE__, __LINE__, "重建交换链时表面功能获取失败");
-                throw;
             }
 
             scCreateInfo.imageExtent = getScExtent();
@@ -329,7 +305,6 @@ namespace bufferStruct {
 
             if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "命令池创建失败");
-                throw;
             }
         }
 
@@ -598,18 +573,18 @@ namespace bufferStruct {
         terrainBufferNode() = delete;
 
         //清理结构体，descriptorSet由描述符池管理，无需手动清理
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
                 for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-                    vmaDestroyBuffer(allocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMemory);
-                    vmaDestroyBuffer(allocator, index[thread][layer].buffer, index[thread][layer].bufferMemory);
+                    vmaDestroyBuffer(memAllocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMemory);
+                    vmaDestroyBuffer(memAllocator, index[thread][layer].buffer, index[thread][layer].bufferMemory);
                 }
             }
 
-            vmaDestroyImage(allocator, texture.image, texture.imageMemory);
+            vmaDestroyImage(memAllocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
 
-            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
         }
     };
 
@@ -655,17 +630,17 @@ namespace bufferStruct {
             modelWorldPos = tempModelWorldPos;
         }
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
+            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMemory);
 
-            vmaDestroyImage(allocator, texture.image, texture.imageMemory);
+            vmaDestroyImage(memAllocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
 
-            //vmaDestroyImage(allocator, normal.image, normal.imageMemory);
+            //vmaDestroyImage(memAllocator, normal.image, normal.imageMemory);
             //vkDestroyImageView(device, normal.view, nullptr);
 
-            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
         }
     };
 
@@ -689,17 +664,17 @@ namespace bufferStruct {
 
 
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
+            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMemory);
 
-            vmaDestroyImage(allocator, texture.image, texture.imageMemory);
+            vmaDestroyImage(memAllocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
 
-            //vmaDestroyImage(allocator, normal.image, normal.imageMemory);
+            //vmaDestroyImage(memAllocator, normal.image, normal.imageMemory);
             //vkDestroyImageView(device, normal.view, nullptr);
 
-            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
         }
     };
 
@@ -736,9 +711,9 @@ namespace bufferStruct {
             modelWorldPos = tempModelWorldPos;
         }
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             for (int i = 0; i < node.size(); i++) {
-                node[i].clear(device, allocator);
+                node[i].clear(device, memAllocator);
             }
         }
     };
@@ -770,12 +745,12 @@ namespace bufferStruct {
 
         skyboxBufferNode() = delete;
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
+            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMemory);
 
-            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
-            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(memAllocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };
 
@@ -804,11 +779,11 @@ namespace bufferStruct {
 
         mineBufferNode() = delete;
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
+            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMemory);
 
-            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
         }
     };
 
@@ -842,8 +817,8 @@ namespace bufferStruct {
 
         uiTextBufferNode() = delete;
 
-        void beginTextUpdate(VmaAllocator allocator) {
-            vmaMapMemory(allocator, vertex.bufferMemory, (void**)&mapped);
+        void beginTextUpdate(VmaAllocator memAllocator) {
+            vmaMapMemory(memAllocator, vertex.bufferMemory, (void**)&mapped);
             numLetters = 0;
         }
 
@@ -914,15 +889,15 @@ namespace bufferStruct {
             }
         }
 
-        void endTextUpdate(const VmaAllocator& allocator) {
-            vmaUnmapMemory(allocator, vertex.bufferMemory);
+        void endTextUpdate(const VmaAllocator& memAllocator) {
+            vmaUnmapMemory(memAllocator, vertex.bufferMemory);
             mapped = nullptr;
         }
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
 
-            vmaDestroyImage(allocator, texture.image, texture.imageMemory);
+            vmaDestroyImage(memAllocator, texture.image, texture.imageMemory);
             vkDestroyImageView(device, texture.view, nullptr);
         }
     };
@@ -956,12 +931,12 @@ namespace bufferStruct {
 
         osMirrorBufferNode() = delete;
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(allocator, index.buffer, index.bufferMemory);
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
+            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMemory);
 
-            vmaDestroyBuffer(allocator, uniform.buffer, uniform.bufferMemory);
-            vmaDestroyBuffer(allocator, lightUniform.buffer, lightUniform.bufferMemory);
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
+            vmaDestroyBuffer(memAllocator, lightUniform.buffer, lightUniform.bufferMemory);
         }
     };
 
@@ -984,7 +959,7 @@ namespace bufferStruct {
 
         osScenceBufferNode() = delete;
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
 
         }
     };
@@ -1014,9 +989,9 @@ namespace bufferStruct {
 
         dsScenceBufferNode() = delete;
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, lightUniform.buffer,  lightUniform.bufferMemory);
-            vmaDestroyBuffer(allocator, shadowUniform.buffer, shadowUniform.bufferMemory);
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, lightUniform.buffer,  lightUniform.bufferMemory);
+            vmaDestroyBuffer(memAllocator, shadowUniform.buffer, shadowUniform.bufferMemory);
         }
     };
 
@@ -1033,14 +1008,14 @@ namespace bufferStruct {
 
 
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
                 for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
-                    vmaDestroyBuffer(allocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMemory);
+                    vmaDestroyBuffer(memAllocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMemory);
                 }
             }
 
-            vmaDestroyBuffer(allocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMemory);
+            vmaDestroyBuffer(memAllocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMemory);
         }
     };
 
@@ -1057,10 +1032,10 @@ namespace bufferStruct {
 
 
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            vmaDestroyBuffer(allocator, vertex.buffer, vertex.bufferMemory);
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
 
-            vmaDestroyBuffer(allocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMemory);
+            vmaDestroyBuffer(memAllocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMemory);
         }
     };
 
@@ -1076,12 +1051,12 @@ namespace bufferStruct {
 
         
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             vkDestroyImageView(device, color.view, nullptr);
-            vmaDestroyImage(allocator, color.image, color.imageMemory);
+            vmaDestroyImage(memAllocator, color.image, color.imageMemory);
 
             vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(allocator, depth.image, depth.imageMemory);
+            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
 
             for (int i = 0; i < scView.size(); i++) {
                 vkDestroyImageView(device, scView[i], nullptr);
@@ -1102,15 +1077,15 @@ namespace bufferStruct {
 
 
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             vkDestroyImageView(device, color.view, nullptr);
-            vmaDestroyImage(allocator, color.image, color.imageMemory);
+            vmaDestroyImage(memAllocator, color.image, color.imageMemory);
 
             vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(allocator, depth.image, depth.imageMemory);
+            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
 
             vkDestroyImageView(device, osView.view, nullptr);
-            vmaDestroyImage(allocator, osView.image, osView.imageMemory);
+            vmaDestroyImage(memAllocator, osView.image, osView.imageMemory);
 
             vkDestroyFramebuffer(device, framebuffer, nullptr);
         }
@@ -1126,18 +1101,18 @@ namespace bufferStruct {
 
 
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             vkDestroyImageView(device, position.view, nullptr);
-            vmaDestroyImage(allocator, position.image, position.imageMemory);
+            vmaDestroyImage(memAllocator, position.image, position.imageMemory);
 
             vkDestroyImageView(device, normal.view, nullptr);
-            vmaDestroyImage(allocator, normal.image, normal.imageMemory);
+            vmaDestroyImage(memAllocator, normal.image, normal.imageMemory);
 
             vkDestroyImageView(device, albedo.view, nullptr);
-            vmaDestroyImage(allocator, albedo.image, albedo.imageMemory);
+            vmaDestroyImage(memAllocator, albedo.image, albedo.imageMemory);
 
             vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(allocator, depth.image, depth.imageMemory);
+            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
 
             vkDestroyFramebuffer(device, framebuffer, nullptr);
         }
@@ -1150,9 +1125,9 @@ namespace bufferStruct {
 
 
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(allocator, depth.image, depth.imageMemory);
+            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
 
             vkDestroyFramebuffer(device, framebuffer, nullptr);
         }
@@ -1224,7 +1199,6 @@ namespace bufferStruct {
             //创建渲染路径
             if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &render) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "交换链渲染通道创建失败");
-                throw;
             }
         }
 
@@ -1277,7 +1251,6 @@ namespace bufferStruct {
 
             if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &render) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "离屏渲染通道创建失败");
-                throw;
             }
         }
 
@@ -1334,7 +1307,6 @@ namespace bufferStruct {
 
             if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &render) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "延迟着色渲染通道创建失败");
-                throw;
             }
         }
 
@@ -1383,7 +1355,6 @@ namespace bufferStruct {
 
             if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &render) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "阴影映射渲染通道创建失败");
-                throw;
             }
         }
 
@@ -1541,27 +1512,27 @@ namespace bufferStruct {
             }
         }
 
-        void createRenderInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkRenderPass& render, const VkDevice& device, const VmaAllocator& allocator) {
+        void createRenderInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkRenderPass& render, const VkDevice& device, const VmaAllocator& memAllocator) {
             if (frameNodeType == bufferEnum::frameNodeId::sc_f) {
                 createScFramebuffer(scExtent, render, device);
             }
             else if (frameNodeType == bufferEnum::frameNodeId::os_f) {
-                createImageNode(osPtr->color,   scExtent.width, scExtent.height, colorFormat, msaaSamples, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
-                createImageNode(osPtr->depth,   scExtent.width, scExtent.height, depthFormat, msaaSamples, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
-                createImageNode(osPtr->osView,  scExtent.width, scExtent.height, colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
+                createImageNode(osPtr->color,   scExtent.width, scExtent.height, colorFormat, msaaSamples, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
+                createImageNode(osPtr->depth,   scExtent.width, scExtent.height, depthFormat, msaaSamples, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator);
+                createImageNode(osPtr->osView,  scExtent.width, scExtent.height, colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
 
                 createOsFramebuffer(scExtent, render, device);
             }
             else if (frameNodeType == bufferEnum::frameNodeId::ds_f) {
-                createImageNode(dsPtr->position, scExtent.width, scExtent.height, bufferInfo::dsPosFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
-                createImageNode(dsPtr->normal,   scExtent.width, scExtent.height, colorFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
-                createImageNode(dsPtr->albedo,   scExtent.width, scExtent.height, colorFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, allocator);
-                createImageNode(dsPtr->depth,    scExtent.width, scExtent.height, depthFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
+                createImageNode(dsPtr->position, scExtent.width, scExtent.height, bufferInfo::dsPosFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
+                createImageNode(dsPtr->normal,   scExtent.width, scExtent.height, colorFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
+                createImageNode(dsPtr->albedo,   scExtent.width, scExtent.height, colorFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
+                createImageNode(dsPtr->depth,    scExtent.width, scExtent.height, depthFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator);
 
                 createDsFramebuffer(scExtent, render, device);
             }
             else if (frameNodeType == bufferEnum::frameNodeId::sh_f) {
-                createImageNode(shPtr->depth, scExtent.width, scExtent.height, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, allocator);
+                createImageNode(shPtr->depth, scExtent.width, scExtent.height, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator);
 
                 createShFramebuffer(scExtent, render, device);
             }
@@ -1573,8 +1544,8 @@ namespace bufferStruct {
             renderInfo.renderArea.extent = scExtent;
         }
 
-        void clear(const VkDevice& device, const VmaAllocator& allocator) {
-            std::visit([&device, &allocator](auto& node) {node.clear(device, allocator); }, frameNode);
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            std::visit([&device, &memAllocator](auto& node) {node.clear(device, memAllocator); }, frameNode);
         }
 
     private:
@@ -1597,7 +1568,6 @@ namespace bufferStruct {
 
 	    		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer[i]) != VK_SUCCESS) {
 	    			Log::printError(__FILE__, __LINE__, "交换链帧缓冲创建失败");
-	    			throw;
 	    		}
 	    	}
 	    }
@@ -1618,7 +1588,6 @@ namespace bufferStruct {
 
 		    if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
 		    	Log::printError(__FILE__, __LINE__, "离屏帧缓冲创建失败");
-		    	throw;
 		    }
             
             renderInfo.framebuffer = tempFrameNode.framebuffer;
@@ -1640,7 +1609,6 @@ namespace bufferStruct {
 
             if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "延迟着色帧缓冲创建失败");
-                throw;
             }
 
             renderInfo.framebuffer = tempFrameNode.framebuffer;
@@ -1661,7 +1629,6 @@ namespace bufferStruct {
 
             if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "阴影映射帧缓冲创建失败");
-                throw;
             }
 
             renderInfo.framebuffer = tempFrameNode.framebuffer;
@@ -1669,7 +1636,7 @@ namespace bufferStruct {
 
 
 
-        void createImageNode(imageNode& image, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& allocator) {
+        void createImageNode(imageNode& image, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
             VkImageCreateInfo imageInfo = {};
             imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
             imageInfo.imageType     = VK_IMAGE_TYPE_2D;
@@ -1689,9 +1656,8 @@ namespace bufferStruct {
             allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
             allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-            if (vmaCreateImage(allocator, &imageInfo, &allocInfo, &image.image, &image.imageMemory, nullptr) != VK_SUCCESS) {
+            if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image.image, &image.imageMemory, nullptr) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "图像创建失败");
-                throw;
             }
 
             VkImageViewCreateInfo viewInfo{};
@@ -1707,12 +1673,11 @@ namespace bufferStruct {
 
             if (vkCreateImageView(device, &viewInfo, nullptr, &image.view) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "图像视图创建失败");
-                throw;
             }
         }
         
         /*
-        void createImageArrayNode(imageNode& image, uint32_t width, uint32_t height, uint32_t array, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& allocator) {
+        void createImageArrayNode(imageNode& image, uint32_t width, uint32_t height, uint32_t array, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
             VkImageCreateInfo imageInfo = {};
             imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
             imageInfo.imageType     = VK_IMAGE_TYPE_2D;
@@ -1732,9 +1697,8 @@ namespace bufferStruct {
             allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
             allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-            if (vmaCreateImage(allocator, &imageInfo, &allocInfo, &image.image, &image.imageMemory, nullptr) != VK_SUCCESS) {
+            if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image.image, &image.imageMemory, nullptr) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "图像创建失败");
-                throw;
             }
 
             VkImageViewCreateInfo viewInfo{};
@@ -1750,14 +1714,13 @@ namespace bufferStruct {
 
             if (vkCreateImageView(device, &viewInfo, nullptr, &image.view) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "图像视图创建失败");
-                throw;
             }
         }
         */
 
     public:
-        void cleanupSwapChain(const VkDevice& device, const VmaAllocator& allocator) {
-            std::visit([&device, &allocator](auto& node) {node.clear(device, allocator); }, frameNode);
+        void cleanupSwapChain(const VkDevice& device, const VmaAllocator& memAllocator) {
+            std::visit([&device, &memAllocator](auto& node) {node.clear(device, memAllocator); }, frameNode);
         }
 
         void setScFramebuffer(int i) {
@@ -1873,7 +1836,6 @@ namespace bufferStruct {
 
             if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
-                throw;
             }
         }
     };
