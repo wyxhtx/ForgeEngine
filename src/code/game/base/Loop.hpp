@@ -112,7 +112,7 @@ private:
 		}
 
 		//terrainLayerLoop
-		range = plateInfo::terrainLayerSight[forgeEnum::terrainLayer::Layer_0];
+		range = plateInfo::terrainLayerSight[plateEnum::terrainLayer::Layer_0];
 		rangeSquare = range * range;
 
 		for (int x = -range; x < range; x++) {

@@ -2,7 +2,8 @@
 
 
 
-namespace enableConfigInfo {
+//engine信息
+namespace engineInfo {
     //层启用，目前只适用于开启校验层
     std::vector<const char*> enableLayerList = {
         "VK_LAYER_KHRONOS_validation"
@@ -15,10 +16,12 @@ namespace enableConfigInfo {
 
     //Device扩展启用
     std::vector<const char*> enableDeviceExtensionList = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_EXT_MESH_SHADER_EXTENSION_NAME
     };
 }
 
+//debug信息，全局
 namespace debugInfo {
 #ifdef NDEBUG
     //const bool LayerSwitch = false;
@@ -32,21 +35,51 @@ namespace debugInfo {
 #endif
 }
 
+//window信息
 namespace windowInfo {
-    const uint32_t  width = 800;
+    const uint32_t  width  = 800;
     const uint32_t  height = 450;
 
     const char* engineName = "ForgeEngine";
-    const char* gameName = "Forge";
+    const char* gameName   = "Forge";
 
     //const bool resizableEnabled = true;
     const bool resizableEnabled = false;    //窗口拉伸启用标识
 }
 
-namespace swapchainInfo {
-    const VkExtent2D windowkExtent = { windowInfo::width, windowInfo::height };
+//lock信息
+namespace lockInfo {
+    //原子线程锁
+    std::mutex queueThreadLock;                         //队列线程锁，用于原子同步graphicsQueue队列操作
+    std::mutex logThreadLock;                           //日志线程锁，用于原子同步各线程调用日志
+    std::atomic<bool> musicThreadLock = false;          //音乐线程锁，用于原子同步音乐线程
+
+    //原子函数锁
+    std::mutex drawFuncLock;                            //用于避免InitSwapchain.drawFrame()和InitBuffer.recreateCommandBuffer()的threadId = (threadId + 1) % 2重建同时执行
+    std::atomic<bool> updatePlateFuncLock = false;      //用于实现atomicUpdatePlate函数原子线程化
+    std::atomic<bool> recreateCmdFuncLock = false;      //用于实现atomicRecreateCommandBuffer函数原子线程化
+
+    //原子数据锁
+    std::atomic<bool> plateMeshDataLock = false;        //板块网格数据锁，用于原子同步对板块网格的修改操作
+    std::atomic<bool> chunkMapDataLock  = false;        //区块映射数据锁，用于原子同步对区块映射的修改操作
+
+    //原子启用锁
+    std::atomic<bool> logPauseEnableLock = false;       //日志暂停启用锁，用于校验层报错时暂停
+
+
+
+    //获取锁值
+    //如果 lock == false，设置 lock = true，返回 true
+    //如果 lock == true， 返回 false
+    bool getLock(std::atomic<bool>& lock) {
+        bool isLock = false;
+        return lock.compare_exchange_strong(isLock, true);
+    }
 }
 
+
+
+//vertex信息
 namespace vertexInfo {
     //顶点索引
     const std::vector<glm::vec3> vertexID = {
@@ -80,10 +113,7 @@ namespace vertexInfo {
     };
 }
 
-namespace coordsInfo {
-    const glm::vec3 worldUp{ 0.0, 1.0, 0.0 };    //y轴做世界坐标系法向量
-}
-
+//light信息
 namespace lightInfo {
     const glm::vec3 sunLightColor = glm::vec3(1.0f, 1.0f, 1.0f);    //太阳平行光颜色
     const glm::vec3 sunLightDir   = glm::vec3(0.0f,-1.0f, 0.0f);    //太阳平行光方向
@@ -92,41 +122,30 @@ namespace lightInfo {
     const float specularScale     = 1.0f;                           //镜面反射缩放
 }
 
-namespace bufferInfo {
-    const int commandThreadCount = 2;           //命令线程数
-
-    const uint32_t scenceForwardCount  = 4;     //scenceForward描述符池上限，  skybox，mine，osMirror，osScence
-    const uint32_t scenceDeferredCount = 5;     //scenceDeferred描述符池上限， terrain，m_temple，m_droid*3
-    const uint32_t uiTextCount         = 1;     //uiText描述符池上限，         uiText
-    const uint32_t dsScenceCount       = 1;     //dsScence描述符池上限，       dsScence
-    const uint32_t shadowCount         = 6;     //shadow描述符池上限，         terrain*2，m_temple，m_droid*3
-
-    VkFormat dsPosFormat               = VK_FORMAT_R32G32B32A32_SFLOAT;
-    const uint32_t shadowMapLength     = 2048;
+//camera信息
+namespace cameraInfo {
+    const glm::vec3 worldUp{ 0.0, 1.0, 0.0 };    //y轴做世界坐标系法向量
 }
 
+//file信息
 namespace fileInfo {
     namespace shader {
-        //const std::string terrainVert = "src/shader/terrain/terrainForwardVert.spv";
-        //const std::string terrainFrag = "src/shader/terrain/terrainForwardFrag.spv";
-
+        const std::string terrainTask = "src/shader/terrain/terrainDeferredTask.spv";
+        const std::string terrainMesh = "src/shader/terrain/terrainDeferredMesh.spv";
         const std::string terrainVert = "src/shader/terrain/terrainDeferredVert.spv";
         const std::string terrainFrag = "src/shader/terrain/terrainDeferredFrag.spv";
 
-        //const std::string pbrVert = "src/shader/model/pbrForwardVert.spv";
-        //const std::string pbrFrag = "src/shader/model/pbrForwardFrag.spv";
+        const std::string pbrVert     = "src/shader/model/pbrDeferredVert.spv";
+        const std::string pbrFrag     = "src/shader/model/pbrDeferredFrag.spv";
 
-        const std::string pbrVert = "src/shader/model/pbrDeferredVert.spv";
-        const std::string pbrFrag = "src/shader/model/pbrDeferredFrag.spv";
+        const std::string skyboxVert  = "src/shader/skybox/skyboxVert.spv";
+        const std::string skyboxFrag  = "src/shader/skybox/skyboxFrag.spv";
 
-        const std::string skyboxVert = "src/shader/skybox/skyboxVert.spv";
-        const std::string skyboxFrag = "src/shader/skybox/skyboxFrag.spv";
+        const std::string mineVert    = "src/shader/mine/mineVert.spv";
+        const std::string mineFrag    = "src/shader/mine/mineFrag.spv";
 
-        const std::string mineVert = "src/shader/mine/mineVert.spv";
-        const std::string mineFrag = "src/shader/mine/mineFrag.spv";
-
-        const std::string uitextVert = "src/shader/uiText/uitextVert.spv";
-        const std::string uitextFrag = "src/shader/uiText/uitextFrag.spv";
+        const std::string uitextVert  = "src/shader/uiText/uitextVert.spv";
+        const std::string uitextFrag  = "src/shader/uiText/uitextFrag.spv";
 
         const std::string osMirrorVert = "src/shader/osMirror/osMirrorVert.spv";
         const std::string osMirrorFrag = "src/shader/osMirror/osMirrorFrag.spv";
@@ -137,8 +156,8 @@ namespace fileInfo {
         const std::string dsScenceVert = "src/shader/dsScence/dsScenceVert.spv";
         const std::string dsScenceFrag = "src/shader/dsScence/dsScenceFrag.spv";
 
-        const std::string shadowVert = "src/shader/shadow/shadowVert.spv";
-        const std::string shadowFrag = "src/shader/shadow/shadowFrag.spv";
+        const std::string shadowVert   = "src/shader/shadow/shadowVert.spv";
+        const std::string shadowFrag   = "src/shader/shadow/shadowFrag.spv";
     }
 
     namespace music {
@@ -165,38 +184,39 @@ namespace fileInfo {
     }
 
     namespace storage {
-        const char* fullFile = "storage/chunk/full";                        //全存法区块存储路径
-        const char* deltaFile = "storage/chunk/delta";                      //变存法区块存储路径
+        const char* fullFile  = "storage/chunk/full";       //全存法区块存储路径
+        const char* deltaFile = "storage/chunk/delta";      //变存法区块存储路径
     }
 
-    const char* dll = ".\\src\\library\\dll";
+    const char* dll = ".\\src\\library\\dll";               //动态库路径
 }
 
-namespace lockInfo {
-    //原子线程锁
-    std::mutex queueThreadLock;                         //队列线程锁，用于原子同步graphicsQueue队列操作
-    std::mutex logThreadLock;                           //日志线程锁，用于原子同步各线程调用日志
-    std::atomic<bool> musicThreadLock = false;          //音乐线程锁，用于原子同步音乐线程
-
-    //原子函数锁
-    std::mutex drawFuncLock;                            //用于避免InitSwapchain.drawFrame()和InitBuffer.recreateCommandBuffer()的threadId = (threadId + 1) % 2重建同时执行
-    std::atomic<bool> updatePlateFuncLock = false;      //用于实现atomicUpdatePlate函数原子线程化
-    std::atomic<bool> recreateCmdFuncLock = false;      //用于实现atomicRecreateCommandBuffer函数原子线程化
-
-    //原子数据锁
-    std::atomic<bool> plateMeshDataLock = false;        //板块网格数据锁，用于原子同步对板块网格的修改操作
-    std::atomic<bool> chunkMapDataLock  = false;        //区块映射数据锁，用于原子同步对区块映射的修改操作
-
-    //原子启用锁
-    std::atomic<bool> logPauseEnableLock = false;       //日志暂停启用锁，用于校验层报错时暂停
-
-
-
-    //获取锁值
-    //如果 lock == false，设置 lock = true，返回 true
-    //如果 lock == true， 返回 false
-    bool getLock(std::atomic<bool>& lock) {
-        bool isLock = false;
-        return lock.compare_exchange_strong(isLock, true);
+//texture信息
+namespace textureInfo {
+    namespace terrain {
+	    const int tileWidth   = 16;							    //纹理宽度
+	    const int tileHeight  = 16;							    //纹理高度
+	    const int atlasWidth  = 64;							    //图集宽几个纹理
+	    const int atlasHeight = 32;							    //图集高几个纹理
+	    const uint32_t arrayLayer = atlasWidth * atlasHeight;   //图集层数
     }
+}
+
+
+
+//render信息
+namespace renderInfo {
+    const VkFormat dsPosColorFormat = VK_FORMAT_R32G32B32A32_SFLOAT;    //延迟渲染坐标颜色附件格式
+    const uint32_t shadowMapLength  = 2048;                             //阴影映射边长
+}
+
+//buffer信息
+namespace bufferInfo {
+    const int commandThreadCount = 2;           //命令线程数
+
+    const uint32_t scenceForwardCount  = 4;     //scenceForward描述符池上限，  skybox，mine，osMirror，osScence
+    const uint32_t scenceDeferredCount = 5;     //scenceDeferred描述符池上限， terrain，m_temple，m_droid*3
+    const uint32_t uiTextCount         = 1;     //uiText描述符池上限，         uiText
+    const uint32_t dsScenceCount       = 1;     //dsScence描述符池上限，       dsScence
+    const uint32_t shadowCount         = 6;     //shadow描述符池上限，         terrain*2，m_temple，m_droid*3
 }

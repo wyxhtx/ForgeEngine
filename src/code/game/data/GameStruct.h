@@ -2,7 +2,46 @@
 
 
 
-//方块结构体
+//噪音结构空间
+namespace noiseStruct {
+    //噪音结点
+    struct noiseNode {
+        FastNoise::SmartNode<> noise{};
+        int seed = 0;
+
+
+
+        void create(const char* noiseTree, int tempSeed) {
+            noise = FastNoise::NewFromEncodedNodeTree(noiseTree);
+            seed  = tempSeed;
+        }
+    };
+
+    //噪音数据结点
+    struct noiseDataNode {
+        std::vector<float> data{};
+        double value = 0;
+    };
+
+    //树结构结点
+    struct treeStructureNode {
+        int r;          //树冠半径
+        int length;     //树干高度
+        int leaf;       //树叶方块id
+        int trunk;      //树干方块id
+
+
+
+        void create(int tempR, int tempLength, int tempLeaf, int tempTrunk) {
+            r      = tempR;
+            length = tempLength;
+            leaf   = tempLeaf;
+            trunk  = tempTrunk;
+        }
+    };
+}
+
+//方块结构空间
 namespace cubeStruct {
     //贪心算法使用范围（1~32）遍历节点
     struct traversalNode {
@@ -30,7 +69,7 @@ namespace cubeStruct {
     };
 }
 
-//板块结构体
+//板块结构空间
 namespace plateStruct {
     //地形网格标识结点
     struct terrainMeshSignNode {
@@ -114,46 +153,7 @@ namespace plateStruct {
     };
 }
 
-//噪音结构体
-namespace noiseStruct {
-    //噪音结点
-    struct noiseNode {
-        FastNoise::SmartNode<> noise{};
-        int seed = 0;
-
-
-
-        void create(const char* noiseTree, int tempSeed) {
-            noise = FastNoise::NewFromEncodedNodeTree(noiseTree);
-            seed  = tempSeed;
-        }
-    };
-
-    //噪音数据结点
-    struct noiseDataNode {
-        std::vector<float> data{};
-        double value = 0;
-    };
-
-    //树结构结点
-    struct treeStructureNode {
-        int r;          //树冠半径
-        int length;     //树干高度
-        int leaf;       //树叶方块id
-        int trunk;      //树干方块id
-
-
-
-        void create(int tempR, int tempLength, int tempLeaf, int tempTrunk) {
-            r      = tempR;
-            length = tempLength;
-            leaf   = tempLeaf;
-            trunk  = tempTrunk;
-        }
-    };
-}
-
-//存储结构体
+//存储结构空间
 namespace storageStruct {
     //保存文件结点，自动创建父路径并打开文件
     struct saveFileNode : std::ofstream {
@@ -203,7 +203,9 @@ namespace storageStruct {
     };
 }
 
-//玩家结构体
+
+
+//玩家结构空间
 namespace playerStruct {
     //摄像机结点
     struct cameraNode {
@@ -227,8 +229,8 @@ namespace playerStruct {
     };
 }
 
-//游戏层debug结构体
-namespace forgeDebugStruct {
+//gameDebug结构空间
+namespace gameDebugStruct {
     //临界方块检测结构体
     struct extremeCubeNode {
         glm::dvec3 pos;     //方块坐标

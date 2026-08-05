@@ -2,7 +2,31 @@
 
 
 
-//方块枚举
+//噪音枚举空间
+namespace noiseEnum {
+	//噪音索引
+	namespace noiseId {
+		enum type {
+			elevation,	//海拔，划分群系，地皮过渡
+			ground,		//地表
+			cave,		//洞穴
+			tree,		//树
+
+			count
+		};
+	}
+
+	//树索引
+	namespace treeId {
+		enum type {
+			oak,		//橡树
+
+			count
+		};
+	}
+}
+
+//方块枚举空间
 namespace cubeEnum {
 	//方块索引
 	namespace cubeId {
@@ -40,32 +64,8 @@ namespace cubeEnum {
 	}
 }
 
-//噪音枚举
-namespace noiseEnum {
-	//噪音索引
-	namespace noiseId {
-		enum type {
-			elevation,	//海拔，划分群系，地皮过渡
-			ground,		//地表
-			cave,		//洞穴
-			tree,		//树
-
-			count
-		};
-	}
-
-	//树索引
-	namespace treeId {
-		enum type {
-			oak,		//橡树
-
-			count
-		};
-	}
-}
-
-//铸造游戏枚举
-namespace forgeEnum {
+//板块枚举空间
+namespace plateEnum {
 	//地形层级
 	namespace terrainLayer {
 		enum type {

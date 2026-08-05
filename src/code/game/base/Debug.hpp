@@ -44,7 +44,7 @@ public:
 
 	//校验地形层非空
 	void validateTerrainLayerEmpty() {
-		for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
+		for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
 			if (terrainVertex::vertexs[layer].size() == 0) {
 				Log::printWarning(__FILE__, __LINE__, std::format("Layer_{}对应顶点数组为空", layer));
 			}
@@ -93,7 +93,7 @@ public:
 	//校验本区块与邻区块，0或33处的方块是否对应，10ms
 	void validateExtremeCube(const std::unordered_map<glm::dvec3, Chunk>& chunkMap) {
 		std::mutex posMutex;
-		std::unordered_map<glm::dvec3, std::unordered_set<forgeDebugStruct::extremeCubeNode, forgeDebugStruct::extremeCubeNode::Hash>> posList{};
+		std::unordered_map<glm::dvec3, std::unordered_set<gameDebugStruct::extremeCubeNode, gameDebugStruct::extremeCubeNode::Hash>> posList{};
 
 		std::for_each(std::execution::par, chunkMap.begin(), chunkMap.end(),
 			[&](const auto& node) {
@@ -128,37 +128,37 @@ public:
 						//左
 						if (xA && cubeArray[plateInfo::lengthIncrement][a][b] != itXA->second.cubeArray[1][a][b]) {
 							std::lock_guard<std::mutex> lock(posMutex);
-							posList[chunkPos].insert(forgeDebugStruct::extremeCubeNode{ glm::dvec3{plateInfo::lengthIncrement, a, b} + node.second.logicalWorldPos - glm::dvec3{1},	cubeArray[plateInfo::lengthIncrement][a][b], itXA->second.cubeArray[1][a][b] });
+							posList[chunkPos].insert(gameDebugStruct::extremeCubeNode{ glm::dvec3{plateInfo::lengthIncrement, a, b} + node.second.logicalWorldPos - glm::dvec3{1},	cubeArray[plateInfo::lengthIncrement][a][b], itXA->second.cubeArray[1][a][b] });
 						}
 
 						//右
 						if (xB && cubeArray[0][a][b] != itXB->second.cubeArray[plateInfo::chunkLength][a][b]) {
 							std::lock_guard<std::mutex> lock(posMutex);
-							posList[chunkPos].insert(forgeDebugStruct::extremeCubeNode{glm::dvec3{0, a, b} + node.second.logicalWorldPos - glm::dvec3{1},							cubeArray[0][a][b],						  itXB->second.cubeArray[plateInfo::chunkLength][a][b] });
+							posList[chunkPos].insert(gameDebugStruct::extremeCubeNode{glm::dvec3{0, a, b} + node.second.logicalWorldPos - glm::dvec3{1},							cubeArray[0][a][b],						  itXB->second.cubeArray[plateInfo::chunkLength][a][b] });
 						}
 
 						//上
 						if (yA && cubeArray[a][plateInfo::lengthIncrement][b] != itYA->second.cubeArray[a][1][b]) {
 							std::lock_guard<std::mutex> lock(posMutex);
-							posList[chunkPos].insert(forgeDebugStruct::extremeCubeNode{glm::dvec3{a, plateInfo::lengthIncrement, b} + node.second.logicalWorldPos - glm::dvec3{1},	cubeArray[a][plateInfo::lengthIncrement][b], itYA->second.cubeArray[a][1][b] });
+							posList[chunkPos].insert(gameDebugStruct::extremeCubeNode{glm::dvec3{a, plateInfo::lengthIncrement, b} + node.second.logicalWorldPos - glm::dvec3{1},	cubeArray[a][plateInfo::lengthIncrement][b], itYA->second.cubeArray[a][1][b] });
 						}
 
 						//下
 						if (yB && cubeArray[a][0][b] != itYB->second.cubeArray[a][plateInfo::chunkLength][b]) {
 							std::lock_guard<std::mutex> lock(posMutex);
-							posList[chunkPos].insert(forgeDebugStruct::extremeCubeNode{glm::dvec3{a, 0, b} + node.second.logicalWorldPos - glm::dvec3{1},							cubeArray[a][0][b],						  itYB->second.cubeArray[a][plateInfo::chunkLength][b] });
+							posList[chunkPos].insert(gameDebugStruct::extremeCubeNode{glm::dvec3{a, 0, b} + node.second.logicalWorldPos - glm::dvec3{1},							cubeArray[a][0][b],						  itYB->second.cubeArray[a][plateInfo::chunkLength][b] });
 						}
 
 						//前
 						if (zA && cubeArray[a][b][plateInfo::lengthIncrement] != itZA->second.cubeArray[a][b][1]) {
 							std::lock_guard<std::mutex> lock(posMutex);
-							posList[chunkPos].insert(forgeDebugStruct::extremeCubeNode{glm::dvec3{a, b, plateInfo::lengthIncrement} + node.second.logicalWorldPos - glm::dvec3{1},	cubeArray[a][b][plateInfo::lengthIncrement], itZA->second.cubeArray[a][b][1] });
+							posList[chunkPos].insert(gameDebugStruct::extremeCubeNode{glm::dvec3{a, b, plateInfo::lengthIncrement} + node.second.logicalWorldPos - glm::dvec3{1},	cubeArray[a][b][plateInfo::lengthIncrement], itZA->second.cubeArray[a][b][1] });
 						}
 
 						//后
 						if (zB && cubeArray[a][b][0] != itZB->second.cubeArray[a][b][plateInfo::chunkLength]) {
 							std::lock_guard<std::mutex> lock(posMutex);
-							posList[chunkPos].insert(forgeDebugStruct::extremeCubeNode{glm::dvec3{a, b, 0} + node.second.logicalWorldPos - glm::dvec3{1},							cubeArray[a][b][0],						  itZB->second.cubeArray[a][b][plateInfo::chunkLength] });
+							posList[chunkPos].insert(gameDebugStruct::extremeCubeNode{glm::dvec3{a, b, 0} + node.second.logicalWorldPos - glm::dvec3{1},							cubeArray[a][b][0],						  itZB->second.cubeArray[a][b][plateInfo::chunkLength] });
 						}
 					}
 				}

@@ -12,7 +12,7 @@ public:
 	bool isFull = false;																						//标识区块是否为全存
 
 	int isVisible = 0;																							//标识区块是否可见，如果全空或全满为不可见(但是不能排除[1,32]全空但[0/33]非空的情况)，用于优化生成区块网格
-	int layerId = forgeEnum::terrainLayer::count;																//区块所在地形管线层
+	int layerId = plateEnum::terrainLayer::count;																//区块所在地形管线层
 
 	//由InitChunk初始化
 	glm::dvec3 originOffset{};																					//区块原点偏移（d世界坐标系），用于Plate.joinTerrainMesh处理世界原点迁移
@@ -87,7 +87,7 @@ public:
 						std::unordered_map<glm::ivec3, short>& node = visibleFaceMap[i][j];
 						glm::ivec3 pos = node.begin()->first;
 						short cubeId = node.begin()->second;
-						int faceId = cubeList::procCube.node[cubeId].faceId[i].x + cubeList::procCube.node[cubeId].faceId[i].y * textureInfo::atlasWidth;
+						int faceId = cubeList::procCube.node[cubeId].faceId[i].x + cubeList::procCube.node[cubeId].faceId[i].y * textureInfo::terrain::atlasWidth;
 
 						cubeStruct::traversalNode wSet;
 						cubeStruct::traversalNode hSet;
@@ -985,7 +985,7 @@ public:
 						std::unordered_map<glm::ivec3, short>& node = visibleFaceMap[i][j];
 						glm::ivec3 pos = node.begin()->first;
 						short cubeId = node.begin()->second;
-						int faceId = cubeList::procCube.node[cubeId].faceId[i].x + cubeList::procCube.node[cubeId].faceId[i].y * textureInfo::atlasWidth;
+						int faceId = cubeList::procCube.node[cubeId].faceId[i].x + cubeList::procCube.node[cubeId].faceId[i].y * textureInfo::terrain::atlasWidth;
 
 						cubeStruct::traversalNode wSet;
 						cubeStruct::traversalNode hSet;

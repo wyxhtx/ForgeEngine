@@ -76,10 +76,10 @@ private:
 
         //启用层
         if (debugInfo::LayerSwitch) {
-            enableLayerListSupport(enableConfigInfo::enableLayerList);
+            enableLayerListSupport(engineInfo::enableLayerList);
             createInfo.pNext               = &debugCreateInfo;
-            createInfo.enabledLayerCount   = (uint32_t)enableConfigInfo::enableLayerList.size();
-            createInfo.ppEnabledLayerNames = enableConfigInfo::enableLayerList.data();
+            createInfo.enabledLayerCount   = (uint32_t)engineInfo::enableLayerList.size();
+            createInfo.ppEnabledLayerNames = engineInfo::enableLayerList.data();
         }
         else {
             createInfo.pNext               = nullptr;
@@ -88,7 +88,7 @@ private:
         }
 
         //启用扩展
-        std::vector<const char*> extensionList = enableInstanceExtensionListSupport(enableConfigInfo::enableInstanceExtensionList);
+        std::vector<const char*> extensionList = enableInstanceExtensionListSupport(engineInfo::enableInstanceExtensionList);
         createInfo.enabledExtensionCount       = (uint32_t)extensionList.size();
         createInfo.ppEnabledExtensionNames     = extensionList.data();
 
@@ -97,12 +97,12 @@ private:
             Log::printError(__FILE__, __LINE__, "instance创建失败");
         }
 
-        //创建debugCallback
+        //获取instance扩展函数
         if (debugInfo::LayerSwitch) {
-            auto debugCallbackInfo = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+            PFN_vkCreateDebugUtilsMessengerEXT debugCallbackInfo = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
 
             if (debugCallbackInfo == nullptr) {
-                Log::printError(__FILE__, __LINE__, "vkCreateDebugUtilsMessengerEXT函数指针获取失败");
+                Log::printError(__FILE__, __LINE__, "vkCreateDebugUtilsMessengerEXT获取失败");
             }
             else if (debugCallbackInfo(instance, &debugCreateInfo, nullptr, &debugCallback) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "debugCallback创建失败");
@@ -136,13 +136,13 @@ private:
 
         //输出支持层与启用层
         if (debugInfo::LogSwitch) {
-            Log::printTitle("Vulkan Instance 支持层");
-            for (const auto& supportLayerNode : supportLayerList) {
-                Log::print(supportLayerNode.layerName);
-                Log::print(supportLayerNode.description);
-                Log::print("------");
-            }
-            Log::delimiter();
+            //Log::printTitle("Vulkan Instance 支持层");
+            //for (const auto& supportLayerNode : supportLayerList) {
+            //    Log::print(supportLayerNode.layerName);
+            //    Log::print(supportLayerNode.description);
+            //    Log::print("------");
+            //}
+            //Log::delimiter();
 
             Log::printTitle("Vulkan Instance 启用层");
             for (const auto& enableLayerNode : enableLayerList) {
@@ -189,12 +189,12 @@ private:
     
         //输出支持扩展与启用扩展
         if (debugInfo::LogSwitch) {
-            Log::printTitle("Vulkan Instance 支持扩展");
-            for (const auto& supportExtensionNode : supportExtensionList) {
-                Log::print(supportExtensionNode.extensionName);
-                Log::print("------");
-            }
-            Log::delimiter();
+            //Log::printTitle("Vulkan Instance 支持扩展");
+            //for (const auto& supportExtensionNode : supportExtensionList) {
+            //    Log::print(supportExtensionNode.extensionName);
+            //    Log::print("------");
+            //}
+            //Log::delimiter();
     
             Log::printTitle("Vulkan Instance 启用扩展");
             for (const auto& platformExtensionNode : platformExtensionList) {

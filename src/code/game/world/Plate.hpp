@@ -21,7 +21,7 @@ public:
 
 		Log::printTitle("板块创建信息");
 		Log::print("创建用时:\t" + time.end());
-		Log::print("优化面数:\t" + std::to_string((terrainVertex::vertexs[forgeEnum::terrainLayer::Layer_0].size() + terrainVertex::vertexs[forgeEnum::terrainLayer::Layer_1].size()) / 4));
+		Log::print("优化面数:\t" + std::to_string((terrainVertex::vertexs[plateEnum::terrainLayer::Layer_0].size() + terrainVertex::vertexs[plateEnum::terrainLayer::Layer_1].size()) / 4));
 
 		if (debugInfo::LogSwitch) {
 			Log::delimiter();
@@ -50,7 +50,7 @@ private:
 
 	std::unordered_map<glm::dvec3, Chunk> chunkMap;																//区块map，存储区块数据
 	std::unordered_map<glm::dvec3, Chunk> updateChunkMap;														//更新区块map，临时存储区块数据，存储当前视距内未加载区块
-	std::forward_list<plateStruct::terrainMeshSignNode> terrainMeshSignList[forgeEnum::terrainLayer::count];	//标识地形管线各层网格中，区块顶点数组和索引数组的大小，为裁剪区块截层网格服务
+	std::forward_list<plateStruct::terrainMeshSignNode> terrainMeshSignList[plateEnum::terrainLayer::count];	//标识地形管线各层网格中，区块顶点数组和索引数组的大小，为裁剪区块截层网格服务
 
 	const int maxThreadCount = std::thread::hardware_concurrency();												//设备最大核心数量，用于板块多线程创建，在Plate赋值
 	plateStruct::linkStructManagerNode linkStructManager;														//链结构管理器[0,33]，只管理小于等于32并且无空气的结构，超出32会产生很多问题，比如区块存储加载，方块更新后的网格更新
@@ -163,8 +163,8 @@ private:
 			Chunk& chunkNode = chunkMap[chunkPos];
 			chunkNode.layerIdDataLock->lock();
 
-			int layer = forgeEnum::terrainLayer::Layer_1;
-			if (loopList::terrainLayerLoop.contains(chunkPos - playerChunkPos)) { layer = forgeEnum::terrainLayer::Layer_0; }
+			int layer = plateEnum::terrainLayer::Layer_1;
+			if (loopList::terrainLayerLoop.contains(chunkPos - playerChunkPos)) { layer = plateEnum::terrainLayer::Layer_0; }
 
 			chunkNode.layerId = layer;			//初始化layerID
 			joinTerrainMesh(chunkNode, originPos, chunkPos, layer);
@@ -689,7 +689,7 @@ public:
 
 
 		//卸载视距外区块网格，因为原点未迁移处理耗时太高，所以全采用原点迁移处理，RM_0.4.6（8_32：20）
-		for (int layer = 0; layer < forgeEnum::terrainLayer::count; layer++) {
+		for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
 			//清空全部区块网格
 			terrainVertex::vertexs[layer].clear();
 			terrainVertex::indexs[layer].clear();
@@ -716,8 +716,8 @@ public:
 			else {
 				chunkIt->second.layerIdDataLock->lock();
 
-				int layer = forgeEnum::terrainLayer::Layer_1;
-				if (loopList::terrainLayerLoop.contains(chunkPos - playerChunkPos)) { layer = forgeEnum::terrainLayer::Layer_0; }
+				int layer = plateEnum::terrainLayer::Layer_1;
+				if (loopList::terrainLayerLoop.contains(chunkPos - playerChunkPos)) { layer = plateEnum::terrainLayer::Layer_0; }
 				
 				chunkIt->second.layerId = layer;										//重设layerID
 				joinTerrainMesh(chunkIt->second, tempOriginPos, chunkPos, layer);		//重拼区块网格到对应地形网格层
@@ -767,8 +767,8 @@ public:
 			chunkNode = std::move(updateChunkMap[chunkPos]);		//此处使用move后，updateChunkMap就不能再使用了
 			chunkNode.layerIdDataLock->lock();
 
-			int layer = forgeEnum::terrainLayer::Layer_1;
-			if (loopList::terrainLayerLoop.contains(chunkPos - playerChunkPos)) { layer = forgeEnum::terrainLayer::Layer_0; }
+			int layer = plateEnum::terrainLayer::Layer_1;
+			if (loopList::terrainLayerLoop.contains(chunkPos - playerChunkPos)) { layer = plateEnum::terrainLayer::Layer_0; }
 			
 			//删除旧区块网格后重拼
 			if (updateStructLoop.contains(chunkPos)) {
@@ -919,7 +919,7 @@ public:
 				chunkNode.layerIdDataLock->lock();
 
 				int layer = chunkNode.layerId;
-				if (layer != forgeEnum::terrainLayer::Layer_0) { isEntireRebuild.store(true); }
+				if (layer != plateEnum::terrainLayer::Layer_0) { isEntireRebuild.store(true); }
 
 				delTerrainMesh(chunkPos, layer);													//从地形网格中删除旧区块网格
 				chunkNode.updateChunkMeshData(updateCubeNode.second, changeAbutCubeList[chunkPos]);	//生成方块变更后的新区块网格

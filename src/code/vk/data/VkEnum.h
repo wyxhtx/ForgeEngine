@@ -2,6 +2,7 @@
 
 
 
+//engine枚举空间
 namespace engineEnum {
     namespace tickEnum {
         enum type {
@@ -15,6 +16,97 @@ namespace engineEnum {
     }
 }
 
+
+
+//render枚举空间
+namespace renderEnum {
+    //render附件枚举
+    namespace renderAttId {
+        enum type {
+            forward_ra,     //前向渲染附件
+            deferred_ra,    //延迟渲染附件
+            shadowMap_ra,   //阴影映射附件
+
+            count
+        };
+    }
+
+    //render帧图像枚举
+    namespace renderFrameId {
+        enum type {
+            conv_rf,        //常规：颜色、深度、视图
+            swap_rf,        //交换链
+
+            count
+        };
+    }
+
+    //render模板枚举
+    namespace renderTemplateId {
+        enum type {
+            swapChain_rt,   //交换链
+            offScreen_rt,   //离屏
+            deferred_rt,    //延迟渲染
+            shadowMap_rt,   //阴影映射
+
+            count
+        };
+
+        namespace swapChain_rf {
+            enum type {
+                color,
+                depth,
+                swap,
+
+                count
+            };
+        }
+
+        namespace offScreen_rf {
+            enum type {
+                color,
+                depth,
+                view,
+
+                count
+            };
+        }
+
+        namespace deferred_rf {
+            enum type {
+                position,
+                normal,
+                albedo,
+                depth,
+
+                count
+            };
+        }
+
+        namespace shadowMap_rf {
+            enum type {
+                depth,
+
+                count
+            };
+        }
+    }
+
+    //render实例枚举
+    namespace renderInstanceId {
+        enum type {
+            scScence_ri,    //交换链场景
+            osScence_ri,    //离屏场景
+            osMirror_ri,    //离屏镜面
+            dsScence_ri,    //延迟渲染场景
+            shadowMap_ri,   //阴影映射
+
+            count
+        };
+    }
+}
+
+//buffer枚举空间
 namespace bufferEnum {
     namespace textAlignId {
         enum type {
@@ -24,37 +116,13 @@ namespace bufferEnum {
         };
     }
 
-    //一种帧结点类型意味着一种renderPass，各种离屏可以共用同一种renderPass
-    namespace frameNodeId {
-        enum type {
-            sc_f,	        //交换链    swapChain
-            os_f,	        //离屏      offScreen
-            ds_f,           //延迟着色  deferredShading
-            sh_f,           //阴影映射  shadowMapping
-
-            count
-        };
-    }
-
-    namespace procRenderId {
-        enum type {
-            scScence_r,	    //交换链场景
-            osScence_r,	    //离屏场景，所有渲染结果先集中到此，最后统一提交到交换链场景
-            osMirror_r,     //离屏镜面
-            dsScence_r,	    //延迟着色场景
-            shadow_r,       //阴影映射
-
-            count
-        };
-    }
-
     namespace procDescriptorId {
         enum type {
             scenceForward_d,    //场景前向描述符
             scenceDeferred_d,   //场景延迟描述符，用于将纹理贴图和法线贴图转换为3大附件
             uiText_d,           //文本描述符
-            dsScence_d,         //延迟着色描述符，用于将3大附件和光照处理成最终结果
-            shadow_d,           //阴影描述符
+            dsScence_d,         //延迟渲染描述符，用于将3大附件和光照处理成最终结果
+            shadowMap_d,        //阴影映射描述符
 
             count
         };
@@ -69,7 +137,7 @@ namespace bufferEnum {
             dynamicModel_sl,    //动态模型线性采样器
             uiText_s,           //文本采样器
             offScreen_s,        //离屏渲染采样器
-            shadow_s,           //阴影采样器
+            shadowMap_s,        //阴影映射采样器
 
             count
         };
@@ -92,7 +160,32 @@ namespace bufferEnum {
     }
 }
 
+//pipeline枚举空间
 namespace pipelineEnum {
+    //着色器结点枚举
+    namespace shaderNodeId {
+        namespace vert {
+            enum type {
+                vert,   //顶点着色器
+                frag,   //片段着色器
+
+                count
+            };
+        }
+
+        namespace mesh {
+            enum type {
+                task,   //任务着色器
+                mesh,   //网格着色器
+                frag,   //片段着色器
+
+                count
+            };
+        }
+    }
+
+
+    //pipeline实例枚举
     namespace procPipelineId {
         enum type {
             terrain_p,      //地形
@@ -102,8 +195,8 @@ namespace pipelineEnum {
             uiText_p,       //文本ui
             osMirror_p,     //离屏镜面
             osScence_p,     //离屏场景
-            dsScence_p,	    //延迟着色场景
-            shadow_p,       //阴影映射
+            dsScence_p,	    //延迟渲染场景
+            shadowMap_p,    //阴影映射
 
             count
         };

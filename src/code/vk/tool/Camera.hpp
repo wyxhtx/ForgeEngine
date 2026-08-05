@@ -9,7 +9,7 @@ public:
 
 
     Camera() {
-        node.view = glm::lookAt(glm::vec3(0)/*摄像机坐标*/, glm::vec3(0)/*被观测坐标*/, coordsInfo::worldUp);
+        node.view = glm::lookAt(glm::vec3(0)/*摄像机坐标*/, glm::vec3(0)/*被观测坐标*/, cameraInfo::worldUp);
         node.rota = { 1.0f, 0.0f, 0.0f, 0.0f };
         node.pos = playerInfo::initSpawnPos;       //设置相机坐标
         node.front = { 0.0f, 0.0f, 0.0f };
@@ -29,7 +29,7 @@ public:
     void keyHandle(glm::vec3 direction) {
         static glm::vec3 xAxis{ -1.0f, 0.0f, 0.0f };
 
-        node.pos += keySpeed * (direction.x * glm::vec3{ node.rota * xAxis } - direction.y * node.front + direction.z * glm::vec3{coordsInfo::worldUp});
+        node.pos += keySpeed * (direction.x * glm::vec3{ node.rota * xAxis } - direction.y * node.front + direction.z * glm::vec3{cameraInfo::worldUp});
 
         updateView();
     }

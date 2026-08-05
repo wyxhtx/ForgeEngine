@@ -2,6 +2,7 @@
 
 
 
+//engine列表空间
 namespace engineList {
     struct procTickNode {
         std::vector<engineStruct::tickNode> node{};
@@ -19,100 +20,115 @@ namespace engineList {
     procTickNode procTick{};
 }
 
+
+
+//buffer列表空间
 namespace bufferList {
     struct procRenderNode {
-        std::vector<bufferStruct::renderNode> nodePass{};
-        std::vector<bufferStruct::renderInfoNode> node{};
+        std::vector<renderStruct::renderTemplateNode> nodePass{};           //渲染通道
+        std::vector<bufferStruct::renderInfoNode> nodeInfo{};       //渲染通道信息
 
 
 
-        procRenderNode() : nodePass(bufferEnum::frameNodeId::count), node(bufferEnum::procRenderId::count) {
-            node[bufferEnum::procRenderId::scScence_r].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::sc_f);
-            node[bufferEnum::procRenderId::osScence_r].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os_f);
-            node[bufferEnum::procRenderId::osMirror_r].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::os_f);
-            node[bufferEnum::procRenderId::dsScence_r].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::ds_f);
-            node[bufferEnum::procRenderId::shadow_r]  .createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, bufferEnum::frameNodeId::sh_f);
+        procRenderNode(const std::vector<VkImage>& swapImageList) : nodePass(renderEnum::renderTemplateId::count), nodeInfo(renderEnum::renderInstanceId::count) {
+            nodeInfo[renderEnum::renderInstanceId::scScence_ri] .createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, renderEnum::renderTemplateId::swapChain_rt);
+            nodeInfo[renderEnum::renderInstanceId::osScence_ri] .createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, renderEnum::renderTemplateId::offScreen_rt);
+            nodeInfo[renderEnum::renderInstanceId::osMirror_ri] .createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, renderEnum::renderTemplateId::offScreen_rt);
+            nodeInfo[renderEnum::renderInstanceId::dsScence_ri] .createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, renderEnum::renderTemplateId::deferred_rt);
+            nodeInfo[renderEnum::renderInstanceId::shadowMap_ri].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, renderEnum::renderTemplateId::shadowMap_rt);
+
+            //todo封装起来？
+            nodeInfo[renderEnum::renderInstanceId::scScence_ri].scPtr->swapImageList.resize(swapImageList.size());
+            for (int i = 0; i < swapImageList.size(); i++) {
+                nodeInfo[renderEnum::renderInstanceId::scScence_ri].scPtr->swapImageList[i].image = swapImageList[i];
+            }
         };
 
         void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& memAllocator) {
-            for (int i = 0; i < bufferEnum::frameNodeId::count; i++) {
-                nodePass[i].createRenderNode(i, colorFormat, depthFormat, msaaSamples, device);
+            for (int i = 0; i < renderEnum::renderTemplateId::count; i++) {
+                nodePass[i].createRenderNode((renderEnum::renderTemplateId::type)i, colorFormat, depthFormat, msaaSamples, device);
             }
 
-            for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                if (i == bufferEnum::procRenderId::shadow_r) {
-                    node[i].createRenderInfo(VkExtent2D{ bufferInfo::shadowMapLength, bufferInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, memAllocator);
+            for (int i = 0; i < renderEnum::renderInstanceId::count; i++) {
+                if (i == renderEnum::renderInstanceId::shadowMap_ri) {
+                    nodeInfo[i].createRenderInfo(VkExtent2D{ renderInfo::shadowMapLength, renderInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[nodeInfo[i].renderTemplateType].render, device, memAllocator);
                 }
                 else {
-                    node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, memAllocator);
+                    nodeInfo[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[nodeInfo[i].renderTemplateType].render, device, memAllocator);
                 }
             }
         }
 
-        bufferStruct::scFramebufferNode& getScFramebufferNode(bufferEnum::procRenderId::type procRenderId) {
+        bufferStruct::scFramebufferNode& getScFramebufferNode(renderEnum::renderInstanceId::type procRenderId) {
             if (debugInfo::LogSwitch) {
-                if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::sc_f) {
+                if (nodeInfo[procRenderId].renderTemplateType != renderEnum::renderTemplateId::swapChain_rt) {
                     Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
                 }
             }
 
-            return *node[procRenderId].scPtr;
+            return *nodeInfo[procRenderId].scPtr;
         }
 
-        bufferStruct::osFramebufferNode& getOsFramebufferNode(bufferEnum::procRenderId::type procRenderId) {
+        bufferStruct::osFramebufferNode& getOsFramebufferNode(renderEnum::renderInstanceId::type procRenderId) {
             if (debugInfo::LogSwitch) {
-                if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::os_f) {
+                if (nodeInfo[procRenderId].renderTemplateType != renderEnum::renderTemplateId::offScreen_rt) {
                     Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
                 }
             }
 
-            return *node[procRenderId].osPtr;
+            return *nodeInfo[procRenderId].osPtr;
         }
 
-        bufferStruct::dsFramebufferNode& getDsFramebufferNode(bufferEnum::procRenderId::type procRenderId) {
+        bufferStruct::dsFramebufferNode& getDsFramebufferNode(renderEnum::renderInstanceId::type procRenderId) {
             if (debugInfo::LogSwitch) {
-                if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::ds_f) {
+                if (nodeInfo[procRenderId].renderTemplateType != renderEnum::renderTemplateId::deferred_rt) {
                     Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
                 }
             }
 
-            return *node[procRenderId].dsPtr;
+            return *nodeInfo[procRenderId].dsPtr;
         }
 
-        bufferStruct::shFramebufferNode& getShFramebufferNode(bufferEnum::procRenderId::type procRenderId) {
+        bufferStruct::shFramebufferNode& getShFramebufferNode(renderEnum::renderInstanceId::type procRenderId) {
             if (debugInfo::LogSwitch) {
-                if (node[procRenderId].frameNodeType != bufferEnum::frameNodeId::sh_f) {
+                if (nodeInfo[procRenderId].renderTemplateType != renderEnum::renderTemplateId::shadowMap_rt) {
                     Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
                 }
             }
 
-            return *node[procRenderId].shPtr;
+            return *nodeInfo[procRenderId].shPtr;
         }
 
-        void cleanupSwapChain(const VkDevice& device, const VmaAllocator& memAllocator) {
-            for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].cleanupSwapChain(device, memAllocator);
+        void clearSwapChain(const VkDevice& device, const VmaAllocator& memAllocator) {
+            for (int i = 0; i < renderEnum::renderInstanceId::count; i++) {
+                nodeInfo[i].clearSwapChain(device, memAllocator);
             }
         }
 
-        void recreateSwapChain(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& memAllocator) {
-            for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                if (i == bufferEnum::procRenderId::shadow_r) {
-                    node[i].createRenderInfo(VkExtent2D{ bufferInfo::shadowMapLength, bufferInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, memAllocator);
+        void recreateSwapChain(const std::vector<VkImage>& swapImageList, const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& memAllocator) {
+            //todo封装起来？
+            nodeInfo[renderEnum::renderInstanceId::scScence_ri].scPtr->swapImageList.resize(swapImageList.size());
+            for (int i = 0; i < swapImageList.size(); i++) {
+                nodeInfo[renderEnum::renderInstanceId::scScence_ri].scPtr->swapImageList[i].image = swapImageList[i];
+            }
+            
+            for (int i = 0; i < renderEnum::renderInstanceId::count; i++) {
+                if (i == renderEnum::renderInstanceId::shadowMap_ri) {
+                    nodeInfo[i].createRenderInfo(VkExtent2D{ renderInfo::shadowMapLength, renderInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[nodeInfo[i].renderTemplateType].render, device, memAllocator);
                 }
                 else {
-                    node[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[node[i].frameNodeType].render, device, memAllocator);
+                    nodeInfo[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[nodeInfo[i].renderTemplateType].render, device, memAllocator);
                 }
             }
         }
 
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            for (int i = 0; i < bufferEnum::frameNodeId::count; i++) {
+            for (int i = 0; i < renderEnum::renderTemplateId::count; i++) {
                 nodePass[i].clear(device);
             }
 
-            for (int i = 0; i < bufferEnum::procRenderId::count; i++) {
-                node[i].clear(device, memAllocator);
+            for (int i = 0; i < renderEnum::renderInstanceId::count; i++) {
+                nodeInfo[i].clear(device, memAllocator);
             }
         }
     };
@@ -159,8 +175,8 @@ namespace bufferList {
                 {5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount}          //片段阴影
             };
 
-            //shadow_d
-            node[bufferEnum::procDescriptorId::shadow_d].config = {
+            //shadowMap_d
+            node[bufferEnum::procDescriptorId::shadowMap_d].config = {
                 {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, bufferInfo::shadowCount}     //顶点阴影mvp映射
             };
 
@@ -278,7 +294,7 @@ namespace bufferList {
                 Log::printError(__FILE__, __LINE__, "offScreen采样器创建失败");
             }
 
-            //shadow_s
+            //shadowMap_s
             samplerInfo.magFilter        = VK_FILTER_NEAREST;
             samplerInfo.addressModeU     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
             samplerInfo.addressModeV     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -289,7 +305,7 @@ namespace bufferList {
             samplerInfo.mipLodBias       = 0;
             samplerInfo.minLod           = 0.0f;
             samplerInfo.maxLod           = 0.0f;
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::shadow_s]) != VK_SUCCESS) {
+            if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::shadowMap_s]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "shadow采样器创建失败");
             }
         }
@@ -398,6 +414,7 @@ namespace bufferList {
     };
 }
 
+//pipeline列表空间
 namespace pipelineList {
     struct procPipelineNode {
         std::vector<pipelineStruct::pipeLayoutNode> nodeLayout{};
@@ -405,69 +422,91 @@ namespace pipelineList {
 
 
 
-        procPipelineNode() : nodeLayout(bufferEnum::procDescriptorId::count), node(pipelineEnum::procPipelineId::count) {
-            node[pipelineEnum::procPipelineId::terrain_p] .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred_d, fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag);
-            node[pipelineEnum::procPipelineId::model_p]   .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred_d, fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag);
-            node[pipelineEnum::procPipelineId::skybox_p]  .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag);
-            node[pipelineEnum::procPipelineId::mine_p]    .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  fileInfo::shader::mineVert,     fileInfo::shader::mineFrag);
-            node[pipelineEnum::procPipelineId::uiText_p]  .createPipelineNode(bufferEnum::procDescriptorId::uiText_d,         fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag);
-            node[pipelineEnum::procPipelineId::osMirror_p].createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag);
-            node[pipelineEnum::procPipelineId::osScence_p].createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag);
-            node[pipelineEnum::procPipelineId::dsScence_p].createPipelineNode(bufferEnum::procDescriptorId::dsScence_d,       fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag);
-            node[pipelineEnum::procPipelineId::shadow_p]  .createPipelineNode(bufferEnum::procDescriptorId::shadow_d,         fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag);
-        }
-
-        void createPipeLayout(const VkDevice& device, std::vector<bufferStruct::descriptorNode>& dstNode) {
+        procPipelineNode(const VkDevice& device, const std::vector<bufferStruct::descriptorNode>& dstList, const std::vector<renderStruct::renderTemplateNode>& renderList, const VkSampleCountFlagBits& msaa) : nodeLayout(bufferEnum::procDescriptorId::count), node(pipelineEnum::procPipelineId::count) {
+            /*配置nodeLayout*/
             for (size_t i = 0; i < bufferEnum::procDescriptorId::count; i++) {
-                nodeLayout[i].createPipeLayoutNode(device, dstNode[i].layout);
+                nodeLayout[i].createPipeLayoutNode(device, dstList[i].layout);
             }
+
+            /*配置node*/
+            //node[pipelineEnum::procPipelineId::terrain_p] .createMeshPipelineNode(device, extent, msaa, bufferEnum::procDescriptorId::scenceDeferred_d, fileInfo::shader::terrainTask, fileInfo::shader::terrainMesh, fileInfo::shader::terrainFrag);
+            node[pipelineEnum::procPipelineId::terrain_p]  .createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::deferred_ra,  renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag  });
+            node[pipelineEnum::procPipelineId::model_p]    .createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::deferred_ra,  renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag      });
+            node[pipelineEnum::procPipelineId::skybox_p]   .createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::deferred_ra,  renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag   });
+            node[pipelineEnum::procPipelineId::mine_p]     .createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::deferred_ra,  renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag     });
+            node[pipelineEnum::procPipelineId::uiText_p]   .createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::deferred_ra,  renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::uiText_d],         { fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag   });
+            node[pipelineEnum::procPipelineId::osMirror_p] .createPipelineNode(device, msaa,                  renderEnum::renderAttId::forward_ra,   renderList[renderEnum::renderTemplateId::offScreen_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag });
+            node[pipelineEnum::procPipelineId::osScence_p] .createPipelineNode(device, msaa,                  renderEnum::renderAttId::forward_ra,   renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag });
+            node[pipelineEnum::procPipelineId::dsScence_p] .createPipelineNode(device, msaa,                  renderEnum::renderAttId::forward_ra,   renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::dsScence_d],       { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag });
+            node[pipelineEnum::procPipelineId::shadowMap_p].createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::shadowMap_ra, renderList[renderEnum::renderTemplateId::shadowMap_rt], nodeLayout[bufferEnum::procDescriptorId::shadowMap_d],      { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   });
+
+            /*配置node.pipeConfig*/
+            //depthStencil 实现只在空白处显示
+            node[pipelineEnum::procPipelineId::skybox_p].pipeConfig.depthStencil.depthWriteEnable = VK_FALSE;
+            node[pipelineEnum::procPipelineId::skybox_p].pipeConfig.depthStencil.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;
+
+            //primitiveState 线段图元，rasterizer 线填充
+            node[pipelineEnum::procPipelineId::mine_p].pipeConfig.primitiveState.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            node[pipelineEnum::procPipelineId::mine_p].pipeConfig.rasterizer.polygonMode  = VK_POLYGON_MODE_LINE;
+            node[pipelineEnum::procPipelineId::mine_p].pipeConfig.rasterizer.lineWidth    = 1.0f;
+
+            //primitiveState 条带图元，rasterizer 顺时针，depthStencil 实现始终渲染在最上层
+            node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.primitiveState.topology       = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+            node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.rasterizer.frontFace          = VK_FRONT_FACE_CLOCKWISE;
+            node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.depthStencil.depthTestEnable  = VK_FALSE;
+            node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.depthStencil.depthWriteEnable = VK_FALSE;
+
+            //pipeDynamicStageState 动态视口与动态裁剪，rasterizer 剔除正面
+            node[pipelineEnum::procPipelineId::osScence_p].pipeConfig.setPipeDynamicStage({ VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR });
+            node[pipelineEnum::procPipelineId::osScence_p].pipeConfig.rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+
+            //pipeDynamicStageState 动态视口与动态裁剪，rasterizer 剔除正面
+            node[pipelineEnum::procPipelineId::dsScence_p].pipeConfig.setPipeDynamicStage({ VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR });
+            node[pipelineEnum::procPipelineId::dsScence_p].pipeConfig.rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+
+            //depthStencil 防止照射面被误判为阴影
+            node[pipelineEnum::procPipelineId::shadowMap_p].pipeConfig.depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+
+            /*创建pipeCache*/
+            createPipelineCache(device);
         }
 
+        procPipelineNode() = delete;
+
+        
+
+        //创建管线
         template<typename VertexType>
-        void createPipeline(const VkDevice& device, pipelineEnum::procPipelineId::type id, std::array<VkPipelineShaderStageCreateInfo, 2>& shader, VkPipelineVertexInputStateCreateInfo& input, VkGraphicsPipelineCreateInfo& pipelineInfo) {
-            shader[0] = loadShader(device, node[id].vertFile, VK_SHADER_STAGE_VERTEX_BIT);
-            shader[1] = loadShader(device, node[id].fragFile, VK_SHADER_STAGE_FRAGMENT_BIT);
-            
+        void createPipeline(const VkDevice& device, pipelineEnum::procPipelineId::type id, const VkExtent2D& extent) {
+            //配置vertInputStage
             auto binding   = VertexType::getBindingDescription();
             auto attribute = VertexType::getAttributeDescriptions();
 
-            input.vertexBindingDescriptionCount   = uint32_t(binding.size());
-            input.vertexAttributeDescriptionCount = uint32_t(attribute.size());
-            input.pVertexBindingDescriptions      = binding.data();
-            input.pVertexAttributeDescriptions    = attribute.data();
+            VkPipelineVertexInputStateCreateInfo vertInputStage{};
+            vertInputStage.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            vertInputStage.vertexBindingDescriptionCount   = uint32_t(binding.size());
+            vertInputStage.vertexAttributeDescriptionCount = uint32_t(attribute.size());
+            vertInputStage.pVertexBindingDescriptions      = binding.data();
+            vertInputStage.pVertexAttributeDescriptions    = attribute.data();
 
-            pipelineInfo.layout = getPipeLayout(id);
+            //配置pipeConfig
+            pipelineStruct::pipeConfigNode& pipeConfig = node[id].pipeConfig;
+            pipeConfig.viewport.width  = (float)extent.width;
+            pipeConfig.viewport.height = (float)extent.height;
+            pipeConfig.scissor.extent  = extent;
+            pipeConfig.pipeInfo.pVertexInputState = &vertInputStage;
 
-            if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineInfo, nullptr, &node[id].pipeline) != VK_SUCCESS) {
+            //创建pipeline
+            if (vkCreateGraphicsPipelines(device, pipeCache, 1, &pipeConfig.pipeInfo, nullptr, &node[id].pipeline) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "管线创建失败");
             }
         }
+        
 
-        /*
-        template<typename VertexType>
-        void createShadowPipeline(const VkDevice& device, pipelineEnum::procPipelineId::type id, std::array<VkPipelineShaderStageCreateInfo, 2>& shader, VkPipelineVertexInputStateCreateInfo& input, VkGraphicsPipelineCreateInfo& pipelineInfo) {
-            shader[0] = loadShader(device, node[id].vertFile, VK_SHADER_STAGE_VERTEX_BIT);
-            shader[1] = loadShader(device, node[id].fragFile, VK_SHADER_STAGE_GEOMETRY_BIT);
 
-            auto binding = VertexType::getBindingDescription();
-            auto attribute = VertexType::getAttributeDescriptions();
-
-            input.vertexBindingDescriptionCount = uint32_t(binding.size());
-            input.vertexAttributeDescriptionCount = uint32_t(attribute.size());
-            input.pVertexBindingDescriptions = binding.data();
-            input.pVertexAttributeDescriptions = attribute.data();
-
-            pipelineInfo.layout = getPipeLayout(id);
-
-            if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineInfo, nullptr, &node[id].pipeline) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "管线创建失败");
-            }
-        }
-        */
-
-        void cleanupSwapChain(const VkDevice& device) {
+        void clearSwapChain(const VkDevice& device) {
             for (int i = 0; i < pipelineEnum::procPipelineId::count; i++) {
-                node[i].clear(device);
+                node[i].clearSwapChain(device);
             }
         }
 
@@ -480,75 +519,27 @@ namespace pipelineList {
                 node[i].clear(device);
             }
 
-            vkDestroyPipelineCache(device, pipelineCache, nullptr);
-
-            for (auto shaderModule : shaderModule) {
-                vkDestroyShaderModule(device, shaderModule, nullptr);
-            }
+            vkDestroyPipelineCache(device, pipeCache, nullptr);
         }
 
     private:
-        VkPipelineCache pipelineCache;
-        std::vector<VkShaderModule> shaderModule;
+        VkPipelineCache pipeCache;
 
 
 
+        //创建pipeCache
         void createPipelineCache(const VkDevice& device){
-            VkPipelineCacheCreateInfo pipelineCacheCreateInfo{};
-            pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+            VkPipelineCacheCreateInfo pipeCacheInfo{};
+            pipeCacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 
-            if (vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache)) {
+            if (vkCreatePipelineCache(device, &pipeCacheInfo, nullptr, &pipeCache)) {
                 Log::printError(__FILE__, __LINE__, "管线缓存创建失败");
             }
         }
 
-        VkPipelineShaderStageCreateInfo loadShader(const VkDevice& device, std::string fileName, VkShaderStageFlagBits stage) {
-            shaderModule.push_back(createShaderModule(device, readFile(fileName)));
-
-            VkPipelineShaderStageCreateInfo shaderStage = {};
-            shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shaderStage.stage = stage;
-            shaderStage.module = shaderModule.back();
-            shaderStage.pName = "main";
-            return shaderStage;
-        }
-
-
-
-        VkShaderModule createShaderModule(const VkDevice& device, const std::vector<char>& code) {
-            VkShaderModuleCreateInfo createInfo = {};
-            createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            createInfo.codeSize = code.size();
-            createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-            VkShaderModule shaderModule;
-            if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "着色器创建失败");
-            }
-
-            return shaderModule;
-        }
-
-        static std::vector<char> readFile(const std::string& filename) {
-            std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-            if (!file.is_open()) {
-                Log::printError(__FILE__, __LINE__, "着色器文件打开失败");
-            }
-
-            size_t fileSize = (size_t)file.tellg();
-            std::vector<char> buffer(fileSize);
-
-            file.seekg(0);
-            file.read(buffer.data(), fileSize);
-            file.close();
-
-            return buffer;
-        }
-
     public:
         VkPipelineLayout& getPipeLayout(pipelineEnum::procPipelineId::type id) {
-            return nodeLayout[node[id].pipeLayoutId].pipeLayout;
+            return node[id].pipeConfig.pipeInfo.layout;
         }
 
         VkPipeline& getPipeline(pipelineEnum::procPipelineId::type id) {

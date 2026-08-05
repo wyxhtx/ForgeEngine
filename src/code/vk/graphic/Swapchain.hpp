@@ -26,7 +26,7 @@ public:
 	~Swapchain() {
         vkDestroySwapchainKHR(Device.device, swapchain, nullptr);
 
-        for (size_t i = 0; i < scSupport.scCreateInfo.minImageCount; i++) {
+        for (size_t i = 0; i < swapSupport.scCreateInfo.minImageCount; i++) {
             vkDestroySemaphore(Device.device, renderFinishedSemaphores[i], nullptr);
             vkDestroySemaphore(Device.device, imageAvailableSemaphores[i], nullptr);
             vkDestroyFence(Device.device, inFlightFences[i], nullptr);
@@ -40,8 +40,8 @@ public:
 private:
     Device& Device;
 
-    swapStruct::scSupportNode scSupport;
-    VkSwapchainKHR swapchain;
+    swapStruct::swapSupportNode swapSupport;            //交换链支持
+    VkSwapchainKHR swapchain;                           //交换链
 
     std::vector<VkSemaphore> imageAvailableSemaphores;  //开始渲染
     std::vector<VkSemaphore> renderFinishedSemaphores;  //开始呈现
@@ -52,13 +52,13 @@ private:
 
     //创建交换链支持结点
     void createScSupport() {
-        scSupport.createScSupport(Device.getGpu().gpu, Device.presentSurface);
-        scSupport.createScCreateInfo(Device.presentSurface);
+        swapSupport.createScSupport(Device.enableGpu->gpu, Device.presentSurface);
+        swapSupport.createScCreateInfo(Device.presentSurface);
 
-        scExtent = scSupport.scCreateInfo.imageExtent;
-        colorFormat = scSupport.scCreateInfo.imageFormat;
-        depthFormat = scSupport.getDepthFormat(Device.getGpu().gpu, { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-        msaaSamples = scSupport.getMsaaSamples(Device.getGpu().gpu);
+        scExtent = swapSupport.scCreateInfo.imageExtent;
+        colorFormat = swapSupport.scCreateInfo.imageFormat;
+        depthFormat = swapSupport.getDepthFormat(Device.enableGpu->gpu, { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        msaaSamples = swapSupport.getMsaaSamples(Device.enableGpu->gpu);
 
         if (debugInfo::LogSwitch) {
             Log::print("最大采样次数:\t" + std::to_string(msaaSamples));
@@ -68,16 +68,16 @@ private:
 
     //创建交换链
     void createSwapChain() {
-        if (vkCreateSwapchainKHR(Device.device, &scSupport.scCreateInfo, nullptr, &swapchain) != VK_SUCCESS) {
+        if (vkCreateSwapchainKHR(Device.device, &swapSupport.scCreateInfo, nullptr, &swapchain) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "交换链创建失败");
         }
     }
 
     //创建信号量
     void createSyncObjects() {
-        imageAvailableSemaphores.resize(scSupport.scCreateInfo.minImageCount);
-        renderFinishedSemaphores.resize(scSupport.scCreateInfo.minImageCount);
-        inFlightFences.resize(scSupport.scCreateInfo.minImageCount);
+        imageAvailableSemaphores.resize(swapSupport.scCreateInfo.minImageCount);
+        renderFinishedSemaphores.resize(swapSupport.scCreateInfo.minImageCount);
+        inFlightFences.resize(swapSupport.scCreateInfo.minImageCount);
 
         VkSemaphoreCreateInfo semaphoreInfo = {};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -86,7 +86,7 @@ private:
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-        for (size_t i = 0; i < scSupport.scCreateInfo.minImageCount; i++) {
+        for (size_t i = 0; i < swapSupport.scCreateInfo.minImageCount; i++) {
             if (vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS || vkCreateFence(Device.device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "信号量创建失败");
             }
@@ -151,28 +151,32 @@ public:
             Log::printError(__FILE__, __LINE__, "呈现交换链图像失败");
         }
 
-        currentFrame = (currentFrame + 1) % scSupport.scCreateInfo.minImageCount;
+        currentFrame = (currentFrame + 1) % swapSupport.scCreateInfo.minImageCount;
         return false;
     }
 
-    void createScImage(std::vector<VkImage>& scImage) {
-        uint32_t imageCount = scSupport.scCreateInfo.minImageCount;
-        vkGetSwapchainImagesKHR(Device.device, swapchain, &imageCount, nullptr);
+    //todo
+    //获取交换链图像列表，供procRenderNode. 什么什么 创建交换链图像结点
+    std::vector<VkImage> getSwapImageList() {
+        uint32_t swapImageCount = 0;
+        vkGetSwapchainImagesKHR(Device.device, swapchain, &swapImageCount, nullptr);
 
-        scImage.resize(imageCount);
-        vkGetSwapchainImagesKHR(Device.device, swapchain, &imageCount, scImage.data());
+        std::vector<VkImage> swapImageList(swapImageCount);
+        vkGetSwapchainImagesKHR(Device.device, swapchain, &swapImageCount, swapImageList.data());
+
+        return swapImageList;
     }
     
 
 
     void recreateSwapChain() {
-        scSupport.recreateScCreateInfo(Device.getGpu().gpu, Device.presentSurface, swapchain);
-        scExtent = scSupport.scCreateInfo.imageExtent;
+        swapSupport.recreateScCreateInfo(Device.enableGpu->gpu, Device.presentSurface, swapchain);
+        scExtent = swapSupport.scCreateInfo.imageExtent;
 
         vkQueueWaitIdle(Device.graphicsQueue);
 
         VkSwapchainKHR tempSwapchain;
-        if (vkCreateSwapchainKHR(Device.device, &scSupport.scCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
+        if (vkCreateSwapchainKHR(Device.device, &swapSupport.scCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "重建交换链创建失败");
         }
 

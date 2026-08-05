@@ -8,9 +8,11 @@ public:
 
     std::vector<deviceStruct::gpuNode> gpuCandidateList{};      //gpu候选列表
     int enableGpuIndex = -1;                                    //启用gpu索引
-    VkQueue graphicsQueue;                                      //渲染队列
+    deviceStruct::gpuNode* enableGpu = nullptr;                 //启用gpu
 
     VkDevice device;                                            //逻辑设备，vulkan和gpu之间的api接口
+    VkQueue graphicsQueue;                                      //渲染队列
+
     VmaAllocator memAllocator;                                  //内存分配器
 
 
@@ -22,7 +24,7 @@ public:
         }
 
         getGpuIndex();
-        createDevice(getGpu(), enableConfigInfo::enableDeviceExtensionList);
+        createDevice(engineInfo::enableDeviceExtensionList);
 
         createVMA();
 
@@ -93,9 +95,10 @@ private:
                 enableGpuIndex = i;
             }
         }
+        enableGpu = &gpuCandidateList[enableGpuIndex];
 
         //显卡支持检测
-        gpuSupportCheck(getGpu().gpu, enableConfigInfo::enableDeviceExtensionList);
+        gpuSupportCheck(enableGpu->gpu, engineInfo::enableDeviceExtensionList);
         if (debugInfo::LogSwitch) {
             Log::printTitle("选择显卡");
             Log::print(gpuInfoList[enableGpuIndex].deviceName);
@@ -104,19 +107,28 @@ private:
     }
 
     //创建逻辑设备
-    void createDevice(const deviceStruct::gpuNode& node, const std::vector<const char*>& enableDeviceExtensionList) {
+    void createDevice(const std::vector<const char*>& enableDeviceExtensionList) {
         //队列创建信息
         VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queueCreateInfo.queueCount       = 1;
-        queueCreateInfo.queueFamilyIndex = node.graphicsQueueFamily.index;
-        queueCreateInfo.pQueuePriorities = &node.graphicsQueueFamily.priority;
+        queueCreateInfo.queueFamilyIndex = enableGpu->graphicsQueueFamily.index;
+        queueCreateInfo.pQueuePriorities = &enableGpu->graphicsQueueFamily.priority;
 
-        //获取gpu功能支持
+        //网格着色器特性，由gpuFeatures2自动填充
+        //包含taskShader（任务着色器）、meshShader（网格着色器）、multiviewMeshShader（多视图网格着色器，用于VR双视角渲染）、primitiveFragmentShadingRateMeshShader（逐图元可变着色率网格着色器，用于meshShader输出的每个图元指定不同着色率）、meshShaderQueries（网格着色器查询，用于GPU性能分析）
+        VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{};
+        meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+
+        //获取gpu特性支持
         VkPhysicalDeviceFeatures2 gpuFeatures2{};
         gpuFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-        gpuFeatures2.pNext = nullptr;
-        vkGetPhysicalDeviceFeatures2(node.gpu, &gpuFeatures2);
+        gpuFeatures2.pNext = &meshShaderFeatures;
+        vkGetPhysicalDeviceFeatures2(enableGpu->gpu, &gpuFeatures2);
+        
+        //关闭无需gpu特性
+        meshShaderFeatures.multiviewMeshShader                    = VK_FALSE;   //多视图网格着色器，用于VR双视角渲染
+        meshShaderFeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;   //逐图元可变着色率网格着色器，用于meshShader输出的每个图元指定不同着色率
 
         //创建device
         VkDeviceCreateInfo deviceCreateInfo{};
@@ -126,18 +138,18 @@ private:
         deviceCreateInfo.enabledExtensionCount   = (uint32_t)enableDeviceExtensionList.size();
         deviceCreateInfo.ppEnabledExtensionNames = enableDeviceExtensionList.data();
         deviceCreateInfo.pNext                   = &gpuFeatures2;
-        if (vkCreateDevice(node.gpu, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS) {
+        if (vkCreateDevice(enableGpu->gpu, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "设备创建失败");
         }
 
         //创建graphicsQueue
-        vkGetDeviceQueue(device, node.graphicsQueueFamily.index, 0, &graphicsQueue);
+        vkGetDeviceQueue(device, enableGpu->graphicsQueueFamily.index, 0, &graphicsQueue);
     }
 
     //创建内存管理
     void createVMA() {
         VmaAllocatorCreateInfo allocatorInfo{};
-        allocatorInfo.physicalDevice = getGpu().gpu;
+        allocatorInfo.physicalDevice = enableGpu->gpu;
         allocatorInfo.device         = device;
         allocatorInfo.instance       = InitInstance.instance;
         vmaCreateAllocator(&allocatorInfo, &memAllocator);
@@ -175,11 +187,11 @@ private:
 
             for (uint32_t i = 0; i < queueFamilyCount; i++) {
                 VkQueueFamilyProperties queueFamilyInfo = queueFamilieList[i];
-                std::cout << std::left << "\t" << "族: " << std::setw(3) << i << "\t" << "数量: " << std::setw(4) << queueFamilyInfo.queueCount << "\t" << "掩码: " << std::setw(5) << queueFamilyInfo.queueFlags << "\t";
+                std::cout << std::left << "\t" << "族: " << std::setw(5) << i << "数量: " << std::setw(5) << queueFamilyInfo.queueCount << "掩码: " << std::setw(5) << queueFamilyInfo.queueFlags;
 
                 for (const auto& entry : flagTable) {
                     if (queueFamilyInfo.queueFlags & entry.flag) {
-                        std::cout << std::setw(12) << std::left << entry.name;
+                        std::cout << std::left << std::setw(5) << entry.name;
                     }
                 }
 
@@ -200,8 +212,8 @@ private:
                     node.graphicsQueueFamily.count = queueFamilyInfo.queueCount;
 
                     if (debugInfo::LogSwitch) {
-                        Log::printTitle("待选显卡队列");
-                        std::cout << "\t" << "族: " << node.graphicsQueueFamily.index << "\t" << "数量: " << node.graphicsQueueFamily.count << std::endl;
+                        Log::printTitle("待选队列");
+                        std::cout << std::left << "\t" << "族: " << std::setw(5) << node.graphicsQueueFamily.index << "数量: " << std::setw(5) << node.graphicsQueueFamily.count << std::endl;
                         Log::delimiter();
                     }
 
@@ -222,6 +234,22 @@ private:
         //支持device扩展信息
         std::vector<VkExtensionProperties> supportExtensionList(supportExtensionCount);
         vkEnumerateDeviceExtensionProperties(gpu, nullptr, &supportExtensionCount, supportExtensionList.data());
+
+        if (debugInfo::LogSwitch) {
+            //太长了所以注释掉
+            //Log::printTitle("Vulkan Device 支持扩展");
+            //for (const auto& supportExtensionNode : supportExtensionList) {
+            //    Log::print(supportExtensionNode.extensionName);
+            //    Log::print("------");
+            //}
+            //Log::delimiter();
+
+            Log::printTitle("Vulkan Device 启用扩展");
+            for (const auto& enableDeviceExtensionNode : enableDeviceExtensionList) {
+                Log::print(enableDeviceExtensionNode);
+            }
+            Log::delimiter();
+        }
 
         //启用扩展支持查询
         for (const auto& enableDeviceExtensionNode : enableDeviceExtensionList) {
@@ -248,11 +276,5 @@ private:
         if (!gpuFeaturesSupported.geometryShader) {
             Log::printError(__FILE__, __LINE__, "设备不支持几何着色器");
         }
-    }
-
-public:
-    //获取gpu
-    const deviceStruct::gpuNode& getGpu() {
-        return gpuCandidateList[enableGpuIndex];
     }
 };

@@ -106,19 +106,19 @@
     <None Include=".gitignore" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\code\forge\data\ForgeInfo.h">
+    <ClInclude Include="src\code\game\data\GameInfo.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\forge\data\ForgeList.h">
+    <ClInclude Include="src\code\game\data\GameList.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\forge\data\ForgeStruct.h">
+    <ClInclude Include="src\code\game\data\GameStruct.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\forge\world\Chunk.hpp">
+    <ClInclude Include="src\code\game\world\Chunk.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\forge\world\Plate.hpp">
+    <ClInclude Include="src\code\game\world\Plate.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\code\vk\base\Device.hpp">
@@ -130,7 +130,7 @@
     <ClInclude Include="src\code\vk\base\Window.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\vk\data\Vertex.h">
+    <ClInclude Include="src\code\vk\data\VkVertex.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\code\vk\data\VkInfo.h">
@@ -160,22 +160,22 @@
     <ClInclude Include="src\library\vma\vk_mem_alloc.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\forge\base\Loop.hpp">
+    <ClInclude Include="src\code\game\base\Loop.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\forge\world\Storage.hpp">
+    <ClInclude Include="src\code\game\world\Storage.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\forge\data\ForgeEnum.h">
+    <ClInclude Include="src\code\game\data\GameEnum.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\library\textures\ktx\ktx.h">
+    <ClInclude Include="src\library\texture\ktx\ktx.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\library\textures\ktx\ktxvulkan.h">
+    <ClInclude Include="src\library\texture\ktx\ktxvulkan.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\library\textures\ktx\khr_df.h">
+    <ClInclude Include="src\library\texture\ktx\khr_df.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\code\vk\data\VkList.h">
@@ -304,7 +304,7 @@
     <ClInclude Include="src\library\model\tinygltf\stb_image_write.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\forge\base\Debug.hpp">
+    <ClInclude Include="src\code\game\base\Debug.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

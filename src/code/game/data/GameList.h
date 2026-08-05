@@ -2,30 +2,6 @@
 
 
 
-//方块列表
-namespace cubeList {
-	struct procCubeNode {
-		std::vector<cubeStruct::cubeNode> node{};
-
-
-
-		procCubeNode() : node(cubeEnum::cubeId::count) {
-			node[cubeEnum::cubeId::dirt]		.create({ { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2} }, cubeEnum::coverageId::dirt);
-			node[cubeEnum::cubeId::grass]		.create({ { 0,  0}, { 0,  2}, { 0,  1}, { 0,  1}, { 0,  1}, { 0,  1} }, cubeEnum::coverageId::grass);
-			node[cubeEnum::cubeId::stone]		.create({ {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0} }, cubeEnum::coverageId::stone);
-			node[cubeEnum::cubeId::gravel]		.create({ {16,  1}, {16,  1}, {16,  1}, {16,  1}, {16,  1}, {16,  1} }, cubeEnum::coverageId::gravel);
-			node[cubeEnum::cubeId::sand]		.create({ {16,  2}, {16,  2}, {16,  2}, {16,  2}, {16,  2}, {16,  2} }, cubeEnum::coverageId::sand);
-
-			node[cubeEnum::cubeId::oakTrunk]	.create({ {32,  0}, {32,  0}, {32,  1}, {32,  1}, {32,  1}, {32,  1} }, cubeEnum::coverageId::oakTrunk);
-			node[cubeEnum::cubeId::oakLeaf]		.create({ {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2} }, cubeEnum::coverageId::oakLeaf);
-
-			node[cubeEnum::cubeId::stoneSquared].create({ { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16} }, cubeEnum::coverageId::stoneSquared);
-		}
-	};
-
-	procCubeNode procCube{};
-}
-
 //循环列表
 namespace loopList {
 	std::vector<glm::ivec3> cubeMapLoop;					//方块Map循环列表，用于遍历方块数组，[1,32]
@@ -39,6 +15,8 @@ namespace loopList {
 
 	std::unordered_set<glm::dvec3> terrainLayerLoop;		//地形管线0层循环列表，用于判断区块坐标是否在terrainEnum::terrainLayer::Layer_0中
 }
+
+
 
 //噪音列表
 namespace noiseList {
@@ -157,4 +135,28 @@ namespace noiseList {
 			treeNode[noiseEnum::treeId::oak].create(5, 10, cubeEnum::cubeId::oakLeaf, cubeEnum::cubeId::oakTrunk);
 		}
 	};
+}
+
+//方块列表
+namespace cubeList {
+	struct procCubeNode {
+		std::vector<cubeStruct::cubeNode> node{};
+
+
+
+		procCubeNode() : node(cubeEnum::cubeId::count) {
+			node[cubeEnum::cubeId::dirt]		.create({ { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2} }, cubeEnum::coverageId::dirt);
+			node[cubeEnum::cubeId::grass]		.create({ { 0,  0}, { 0,  2}, { 0,  1}, { 0,  1}, { 0,  1}, { 0,  1} }, cubeEnum::coverageId::grass);
+			node[cubeEnum::cubeId::stone]		.create({ {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0} }, cubeEnum::coverageId::stone);
+			node[cubeEnum::cubeId::gravel]		.create({ {16,  1}, {16,  1}, {16,  1}, {16,  1}, {16,  1}, {16,  1} }, cubeEnum::coverageId::gravel);
+			node[cubeEnum::cubeId::sand]		.create({ {16,  2}, {16,  2}, {16,  2}, {16,  2}, {16,  2}, {16,  2} }, cubeEnum::coverageId::sand);
+
+			node[cubeEnum::cubeId::oakTrunk]	.create({ {32,  0}, {32,  0}, {32,  1}, {32,  1}, {32,  1}, {32,  1} }, cubeEnum::coverageId::oakTrunk);
+			node[cubeEnum::cubeId::oakLeaf]		.create({ {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2}, {32,  2} }, cubeEnum::coverageId::oakLeaf);
+
+			node[cubeEnum::cubeId::stoneSquared].create({ { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16}, { 0, 16} }, cubeEnum::coverageId::stoneSquared);
+		}
+	};
+
+	procCubeNode procCube{};
 }

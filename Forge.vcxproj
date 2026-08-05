@@ -256,19 +256,19 @@
     <None Include="src\shader\uiText\uiTextVert.spv" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\code\forge\base\Debug.hpp" />
-    <ClInclude Include="src\code\forge\base\Loop.hpp" />
-    <ClInclude Include="src\code\forge\world\Storage.hpp" />
-    <ClInclude Include="src\code\forge\data\ForgeEnum.h" />
-    <ClInclude Include="src\code\forge\data\ForgeInfo.h" />
-    <ClInclude Include="src\code\forge\data\ForgeList.h" />
-    <ClInclude Include="src\code\forge\data\ForgeStruct.h" />
-    <ClInclude Include="src\code\forge\world\Chunk.hpp" />
-    <ClInclude Include="src\code\forge\world\Plate.hpp" />
+    <ClInclude Include="src\code\game\base\Debug.hpp" />
+    <ClInclude Include="src\code\game\base\Loop.hpp" />
+    <ClInclude Include="src\code\game\world\Storage.hpp" />
+    <ClInclude Include="src\code\game\data\GameEnum.h" />
+    <ClInclude Include="src\code\game\data\GameInfo.h" />
+    <ClInclude Include="src\code\game\data\GameList.h" />
+    <ClInclude Include="src\code\game\data\GameStruct.h" />
+    <ClInclude Include="src\code\game\world\Chunk.hpp" />
+    <ClInclude Include="src\code\game\world\Plate.hpp" />
     <ClInclude Include="src\code\vk\base\Device.hpp" />
     <ClInclude Include="src\code\vk\base\Instance.hpp" />
     <ClInclude Include="src\code\vk\base\Window.hpp" />
-    <ClInclude Include="src\code\vk\data\Vertex.h" />
+    <ClInclude Include="src\code\vk\data\VkVertex.h" />
     <ClInclude Include="src\code\vk\data\VkEnum.h" />
     <ClInclude Include="src\code\vk\data\VkInfo.h" />
     <ClInclude Include="src\code\vk\data\VkList.h" />
@@ -319,9 +319,9 @@
     <ClInclude Include="src\library\model\tinygltf\stb_image.h" />
     <ClInclude Include="src\library\model\tinygltf\stb_image_write.h" />
     <ClInclude Include="src\library\model\tinygltf\tiny_gltf.h" />
-    <ClInclude Include="src\library\textures\ktx\khr_df.h" />
-    <ClInclude Include="src\library\textures\ktx\ktx.h" />
-    <ClInclude Include="src\library\textures\ktx\ktxvulkan.h" />
+    <ClInclude Include="src\library\texture\ktx\khr_df.h" />
+    <ClInclude Include="src\library\texture\ktx\ktx.h" />
+    <ClInclude Include="src\library\texture\ktx\ktxvulkan.h" />
     <ClInclude Include="src\library\vma\vk_mem_alloc.h" />
   </ItemGroup>
   <ItemGroup>

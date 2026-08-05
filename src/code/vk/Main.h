@@ -68,9 +68,9 @@
 #include "../../library/model/tinygltf/tiny_gltf.h"
 
 //纹理库
-#include "../../library/textures/ktx/khr_df.h"
-#include "../../library/textures/ktx/ktx.h"
-#include "../../library/textures/ktx/ktxvulkan.h"
+#include "../../library/texture/ktx/khr_df.h"
+#include "../../library/texture/ktx/ktx.h"
+#include "../../library/texture/ktx/ktxvulkan.h"
 
 //字体库
 #pragma warning(push)
@@ -88,17 +88,17 @@
 /*内部库文件*/
 #include "tool/Log.hpp"
 
-#include "../forge/data/ForgeEnum.h"
-#include "../forge/data/ForgeInfo.h"
+#include "../game/data/GameEnum.h"
+#include "../game/data/GameInfo.h"
 #pragma warning(push)
 #pragma warning(disable: 26495)
-#include "../forge/data/ForgeStruct.h"
+#include "../game/data/GameStruct.h"
 #pragma warning(pop)
-#include "../forge/data/ForgeList.h"
+#include "../game/data/GameList.h"
 
 #include "data/VkEnum.h"
 #include "data/VkInfo.h"
-#include "data/Vertex.h"
+#include "data/VkVertex.h"
 #pragma warning(push)
 #pragma warning(disable: 26495)
 #include "data/VkStruct.h"
@@ -108,11 +108,13 @@
 #include "tool/Camera.hpp"
 #include "tool/Music.hpp"
 
-#include "../forge/base/Loop.hpp"
-#include "../forge/world/Chunk.hpp"
-#include "../forge/world/Storage.hpp"
-#include "../forge/base/Debug.hpp"
-#include "../forge/world/Plate.hpp"
+
+
+#include "../game/base/Loop.hpp"
+#include "../game/world/Chunk.hpp"
+#include "../game/world/Storage.hpp"
+#include "../game/base/Debug.hpp"
+#include "../game/world/Plate.hpp"
 
 #include "base/Window.hpp"
 #pragma warning(push)

@@ -15,6 +15,15 @@ namespace faceInfo {
 	};
 }
 
+
+
+//噪音信息
+namespace noiseInfo {
+	const int worldSeed = 0;
+
+	const double noiseExtreme = pow(2, 23);		//噪音极值，因为fastnoise2精度问题，为确保结果正确，大于该值时从GenPositionArray2D换成GenSingle2D运算
+}
+
 //板块信息
 namespace plateInfo {
 	const int groundPlane = 4096;														//地平面
@@ -35,33 +44,19 @@ namespace plateInfo {
 	const int originShiftThreshold = (int)pow(2, 8);									//测试用256
 	//const int originShiftThreshold = (int)pow(2, 13);									//原点迁移阈值8192，小数点后还有三位能准确表示精度
 
-	const int terrainLayerSight[forgeEnum::terrainLayer::count] = { 4,plateInfo::sightRange };	//地形管线各层视距列表
-}
-
-//噪音信息
-namespace noiseInfo {
-	const int worldSeed = 0;
-
-	const double noiseExtreme = pow(2, 23);		//噪音极值，因为fastnoise2精度问题，为确保结果正确，大于该值时从GenPositionArray2D换成GenSingle2D运算
+	const int terrainLayerSight[plateEnum::terrainLayer::count] = { 4,plateInfo::sightRange };	//地形管线各层视距列表
 }
 
 //存储信息
 namespace storageInfo {
-	const int cubeArraySize = plateInfo::cubeArrayVolume * sizeof(short);				//方块数组大小
-	const int thresholdSize = plateInfo::cubeArrayVolume / 4;							//存法阈值，r=32时该值为9826，源自plateInfo::cubeArrayVolume * sizeof(short) / 4 * sizeof(short)
+	const int cubeArraySize = plateInfo::cubeArrayVolume * sizeof(short);		//方块数组大小
+	const int thresholdSize = plateInfo::cubeArrayVolume / 4;					//存法阈值，r=32时该值为9826，源自plateInfo::cubeArrayVolume * sizeof(short) / 4 * sizeof(short)
 
-	const int regionLoopLength = 2;														//地区循环边长，即3x3x3的立方体
-	const int regionLength = 32;														//地区边长，至少一倍视距，不然更新板块出错，不能跟视距写死，不然视距改变后读存区块出错
+	const int regionLoopLength = 2;												//地区循环边长，即3x3x3的立方体
+	const int regionLength	   = 32;											//地区边长，至少一倍视距，不然更新板块出错，不能跟视距写死，不然视距改变后读存区块出错
 }
 
-//贴图信息
-namespace textureInfo {
-	const int tileWidth = 16;									//贴图宽度
-	const int tileHeight = 16;									//贴图高度
-	const int atlasWidth = 64;									//图集宽几个贴图
-	const int atlasHeight = 32;									//图集高几个贴图
-	const uint32_t arrayLayer = atlasWidth * atlasHeight;		//图集层数
-}
+
 
 //玩家信息，内部元素大多涉及频繁更新
 namespace playerInfo {
@@ -78,7 +73,7 @@ namespace playerInfo {
 	const float cubeInteractionRange = 16;				//方块交互半径
 
 	//鼠标按键状态
-	std::atomic<bool> mouseButtonLeft  = false;			//鼠标左键
-	std::atomic<bool> mouseButtonRight = false;			//鼠标右键
+	std::atomic<bool> mouseButtonLeft	   = false;		//鼠标左键
+	std::atomic<bool> mouseButtonRight	   = false;		//鼠标右键
 	std::atomic<bool> mouseButtonRightJust = false;		//鼠标右键刚按下
 }
