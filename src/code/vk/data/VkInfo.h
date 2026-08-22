@@ -55,7 +55,7 @@ namespace lockInfo {
     std::atomic<bool> musicThreadLock = false;          //音乐线程锁，用于原子同步音乐线程
 
     //原子函数锁
-    std::mutex drawFuncLock;                            //用于避免InitSwapchain.drawFrame()和InitBuffer.recreateCommandBuffer()的threadId = (threadId + 1) % 2重建同时执行
+    std::mutex drawFuncLock;                            //用于避免InitSwapchain.drawFrame()和InitBuffer.recreateCmd()的threadId = (threadId + 1) % 2重建同时执行
     std::atomic<bool> updatePlateFuncLock = false;      //用于实现atomicUpdatePlate函数原子线程化
     std::atomic<bool> recreateCmdFuncLock = false;      //用于实现atomicRecreateCommandBuffer函数原子线程化
 
@@ -172,6 +172,7 @@ namespace fileInfo {
     }
 
     namespace image {
+        //todo 待整合，着色器，贴图，贴图信息
         const char* cube       = "src/image/terrain/cube_16_64.ktx2";
 
         const char* temple     = "src/image/model/temple/baseColor.ktx2";
@@ -194,11 +195,17 @@ namespace fileInfo {
 //texture信息
 namespace textureInfo {
     namespace terrain {
+        //todo 待删除
 	    const int tileWidth   = 16;							    //纹理宽度
 	    const int tileHeight  = 16;							    //纹理高度
 	    const int atlasWidth  = 64;							    //图集宽几个纹理
 	    const int atlasHeight = 32;							    //图集高几个纹理
 	    const uint32_t arrayLayer = atlasWidth * atlasHeight;   //图集层数
+
+        //todo
+        const VkFormat   colorFormat = VK_FORMAT_R8G8B8A8_UNORM;    //颜色格式
+        const VkExtent2D tileExtent  = { 16, 16 };                  //纹理尺寸
+        const VkExtent2D atlasExtent = { 64, 32 };                  //图集尺寸
     }
 }
 
@@ -206,8 +213,11 @@ namespace textureInfo {
 
 //render信息
 namespace renderInfo {
-    const VkFormat dsPosColorFormat = VK_FORMAT_R32G32B32A32_SFLOAT;    //延迟渲染坐标颜色附件格式
-    const uint32_t shadowMapLength  = 2048;                             //阴影映射边长
+    const VkFormat   dsPosColorFormat = VK_FORMAT_R32G32B32A32_SFLOAT;      //延迟渲染坐标颜色附件格式
+    const VkExtent2D shadowMapExtent  = { 2048, 2048 };                     //阴影映射尺寸
+
+    const VkClearValue colorClearValue = { .color = {105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f } };      //颜色清理值
+    const VkClearValue depthClearValue = { .depthStencil = { 1.0f, 0u } };                                          //深度清理值
 }
 
 //buffer信息

@@ -51,45 +51,6 @@ namespace renderEnum {
 
             count
         };
-
-        namespace swapChain_rf {
-            enum type {
-                color,
-                depth,
-                swap,
-
-                count
-            };
-        }
-
-        namespace offScreen_rf {
-            enum type {
-                color,
-                depth,
-                view,
-
-                count
-            };
-        }
-
-        namespace deferred_rf {
-            enum type {
-                position,
-                normal,
-                albedo,
-                depth,
-
-                count
-            };
-        }
-
-        namespace shadowMap_rf {
-            enum type {
-                depth,
-
-                count
-            };
-        }
     }
 
     //render实例枚举
@@ -106,6 +67,64 @@ namespace renderEnum {
     }
 }
 
+//pipeline枚举空间
+namespace pipelineEnum {
+    //shader结点枚举
+    namespace shaderNodeId {
+        namespace vert {
+            enum type {
+                vert,   //顶点着色器
+                frag,   //片段着色器
+
+                count
+            };
+        }
+
+        namespace mesh {
+            enum type {
+                task,   //任务着色器
+                mesh,   //网格着色器
+                frag,   //片段着色器
+
+                count
+            };
+        }
+    }
+
+    //cmdDraw枚举
+    namespace cmdDrawId {
+        enum type {
+            indexed,        //索引绘制
+            fullscreen,     //全屏三角形
+            text,           //UI文本
+
+            count
+        };
+    }
+
+
+
+    //pipeline实例枚举
+    namespace procPipelineId {
+        enum type {
+            terrain_p,      //地形
+            model_p,        //模型
+            skybox_p,       //天空盒
+            mine_p,         //选择框
+            uiText_p,       //文本ui
+            osMirror_p,     //离屏镜面
+            osScence_p,     //离屏场景
+            dsScence_p,	    //延迟渲染场景
+            shadowMap_p,    //阴影映射
+
+            count
+        };
+    }
+}
+
+
+
+//todo 后续慢慢拆分
 //buffer枚举空间
 namespace bufferEnum {
     namespace textAlignId {
@@ -154,49 +173,6 @@ namespace bufferEnum {
     namespace procDynamicModelId {
         enum type {
             droid_m,		//机器人
-
-            count
-        };
-    }
-}
-
-//pipeline枚举空间
-namespace pipelineEnum {
-    //着色器结点枚举
-    namespace shaderNodeId {
-        namespace vert {
-            enum type {
-                vert,   //顶点着色器
-                frag,   //片段着色器
-
-                count
-            };
-        }
-
-        namespace mesh {
-            enum type {
-                task,   //任务着色器
-                mesh,   //网格着色器
-                frag,   //片段着色器
-
-                count
-            };
-        }
-    }
-
-
-    //pipeline实例枚举
-    namespace procPipelineId {
-        enum type {
-            terrain_p,      //地形
-            model_p,        //模型
-            skybox_p,       //天空盒
-            mine_p,         //选择框
-            uiText_p,       //文本ui
-            osMirror_p,     //离屏镜面
-            osScence_p,     //离屏场景
-            dsScence_p,	    //延迟渲染场景
-            shadowMap_p,    //阴影映射
 
             count
         };

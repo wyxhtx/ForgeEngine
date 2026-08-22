@@ -22,114 +22,71 @@ namespace engineList {
 
 
 
+//todo 待到拆解完成后都移入pipelineList下
 //buffer列表空间
 namespace bufferList {
     struct procRenderNode {
-        std::vector<renderStruct::renderTemplateNode> nodePass{};           //渲染通道
-        std::vector<bufferStruct::renderInfoNode> nodeInfo{};       //渲染通道信息
+        std::vector<renderStruct::renderTemplateNode> renderTemplateList{};
+        std::vector<renderStruct::renderInstanceNode> renderInstanceList{};
 
 
 
-        procRenderNode(const std::vector<VkImage>& swapImageList) : nodePass(renderEnum::renderTemplateId::count), nodeInfo(renderEnum::renderInstanceId::count) {
-            nodeInfo[renderEnum::renderInstanceId::scScence_ri] .createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, renderEnum::renderTemplateId::swapChain_rt);
-            nodeInfo[renderEnum::renderInstanceId::osScence_ri] .createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, renderEnum::renderTemplateId::offScreen_rt);
-            nodeInfo[renderEnum::renderInstanceId::osMirror_ri] .createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, renderEnum::renderTemplateId::offScreen_rt);
-            nodeInfo[renderEnum::renderInstanceId::dsScence_ri] .createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, renderEnum::renderTemplateId::deferred_rt);
-            nodeInfo[renderEnum::renderInstanceId::shadowMap_ri].createRenderInfoNode({ 105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f }, { 1.0f, 0 }, renderEnum::renderTemplateId::shadowMap_rt);
+        procRenderNode(const VkFormat& colorFormat, const VkFormat& depthFormat, const VkExtent2D& swapExtent, const VkSampleCountFlagBits& msaa, const VkDevice& device, const VmaAllocator& memAllocator) : renderTemplateList(renderEnum::renderTemplateId::count), renderInstanceList(renderEnum::renderInstanceId::count) {
+            renderTemplateList[renderEnum::renderTemplateId::swapChain_rt].createRenderTemplateNode(renderEnum::renderTemplateId::swapChain_rt, colorFormat, depthFormat, msaa, device);
+            renderTemplateList[renderEnum::renderTemplateId::offScreen_rt].createRenderTemplateNode(renderEnum::renderTemplateId::offScreen_rt, colorFormat, depthFormat, msaa, device);
+            renderTemplateList[renderEnum::renderTemplateId::deferred_rt] .createRenderTemplateNode(renderEnum::renderTemplateId::deferred_rt,  colorFormat, depthFormat, msaa, device);
+            renderTemplateList[renderEnum::renderTemplateId::shadowMap_rt].createRenderTemplateNode(renderEnum::renderTemplateId::shadowMap_rt, colorFormat, depthFormat, msaa, device);
 
-            //todo封装起来？
-            nodeInfo[renderEnum::renderInstanceId::scScence_ri].scPtr->swapImageList.resize(swapImageList.size());
-            for (int i = 0; i < swapImageList.size(); i++) {
-                nodeInfo[renderEnum::renderInstanceId::scScence_ri].scPtr->swapImageList[i].image = swapImageList[i];
-            }
-        };
+            renderInstanceList[renderEnum::renderInstanceId::scScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::swapChain_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+            renderInstanceList[renderEnum::renderInstanceId::osScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::offScreen_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+            renderInstanceList[renderEnum::renderInstanceId::osMirror_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::offScreen_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+            renderInstanceList[renderEnum::renderInstanceId::dsScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::deferred_rt],  colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+            renderInstanceList[renderEnum::renderInstanceId::shadowMap_ri].createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::shadowMap_rt], colorFormat, depthFormat, renderInfo::shadowMapExtent, msaa, device, memAllocator);
+        }
 
-        void createRenderPassInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& memAllocator) {
+        procRenderNode() = delete;
+
+
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             for (int i = 0; i < renderEnum::renderTemplateId::count; i++) {
-                nodePass[i].createRenderNode((renderEnum::renderTemplateId::type)i, colorFormat, depthFormat, msaaSamples, device);
+                renderTemplateList[i].clear(device);
             }
 
             for (int i = 0; i < renderEnum::renderInstanceId::count; i++) {
-                if (i == renderEnum::renderInstanceId::shadowMap_ri) {
-                    nodeInfo[i].createRenderInfo(VkExtent2D{ renderInfo::shadowMapLength, renderInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[nodeInfo[i].renderTemplateType].render, device, memAllocator);
-                }
-                else {
-                    nodeInfo[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[nodeInfo[i].renderTemplateType].render, device, memAllocator);
-                }
+                renderInstanceList[i].clear(device, memAllocator);
             }
-        }
-
-        bufferStruct::scFramebufferNode& getScFramebufferNode(renderEnum::renderInstanceId::type procRenderId) {
-            if (debugInfo::LogSwitch) {
-                if (nodeInfo[procRenderId].renderTemplateType != renderEnum::renderTemplateId::swapChain_rt) {
-                    Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
-                }
-            }
-
-            return *nodeInfo[procRenderId].scPtr;
-        }
-
-        bufferStruct::osFramebufferNode& getOsFramebufferNode(renderEnum::renderInstanceId::type procRenderId) {
-            if (debugInfo::LogSwitch) {
-                if (nodeInfo[procRenderId].renderTemplateType != renderEnum::renderTemplateId::offScreen_rt) {
-                    Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
-                }
-            }
-
-            return *nodeInfo[procRenderId].osPtr;
-        }
-
-        bufferStruct::dsFramebufferNode& getDsFramebufferNode(renderEnum::renderInstanceId::type procRenderId) {
-            if (debugInfo::LogSwitch) {
-                if (nodeInfo[procRenderId].renderTemplateType != renderEnum::renderTemplateId::deferred_rt) {
-                    Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
-                }
-            }
-
-            return *nodeInfo[procRenderId].dsPtr;
-        }
-
-        bufferStruct::shFramebufferNode& getShFramebufferNode(renderEnum::renderInstanceId::type procRenderId) {
-            if (debugInfo::LogSwitch) {
-                if (nodeInfo[procRenderId].renderTemplateType != renderEnum::renderTemplateId::shadowMap_rt) {
-                    Log::printError(__FILE__, __LINE__, "帧缓冲结点类型不符");
-                }
-            }
-
-            return *nodeInfo[procRenderId].shPtr;
         }
 
         void clearSwapChain(const VkDevice& device, const VmaAllocator& memAllocator) {
             for (int i = 0; i < renderEnum::renderInstanceId::count; i++) {
-                nodeInfo[i].clearSwapChain(device, memAllocator);
+                renderInstanceList[i].clear(device, memAllocator);
             }
         }
 
-        void recreateSwapChain(const std::vector<VkImage>& swapImageList, const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaaSamples, const VkDevice& device, const VmaAllocator& memAllocator) {
-            //todo封装起来？
-            nodeInfo[renderEnum::renderInstanceId::scScence_ri].scPtr->swapImageList.resize(swapImageList.size());
-            for (int i = 0; i < swapImageList.size(); i++) {
-                nodeInfo[renderEnum::renderInstanceId::scScence_ri].scPtr->swapImageList[i].image = swapImageList[i];
-            }
-            
-            for (int i = 0; i < renderEnum::renderInstanceId::count; i++) {
-                if (i == renderEnum::renderInstanceId::shadowMap_ri) {
-                    nodeInfo[i].createRenderInfo(VkExtent2D{ renderInfo::shadowMapLength, renderInfo::shadowMapLength }, colorFormat, depthFormat, msaaSamples, nodePass[nodeInfo[i].renderTemplateType].render, device, memAllocator);
-                }
-                else {
-                    nodeInfo[i].createRenderInfo(scExtent, colorFormat, depthFormat, msaaSamples, nodePass[nodeInfo[i].renderTemplateType].render, device, memAllocator);
-                }
-            }
+        void recreateSwapChain(const VkExtent2D& swapExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaa, const VkDevice& device, const VmaAllocator& memAllocator) {
+            renderInstanceList[renderEnum::renderInstanceId::scScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::swapChain_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+            renderInstanceList[renderEnum::renderInstanceId::osScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::offScreen_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+            renderInstanceList[renderEnum::renderInstanceId::osMirror_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::offScreen_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+            renderInstanceList[renderEnum::renderInstanceId::dsScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::deferred_rt],  colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+            renderInstanceList[renderEnum::renderInstanceId::shadowMap_ri].createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::shadowMap_rt], colorFormat, depthFormat, renderInfo::shadowMapExtent, msaa, device, memAllocator);
         }
 
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            for (int i = 0; i < renderEnum::renderTemplateId::count; i++) {
-                nodePass[i].clear(device);
-            }
 
-            for (int i = 0; i < renderEnum::renderInstanceId::count; i++) {
-                nodeInfo[i].clear(device, memAllocator);
-            }
+
+        //获取frameImage，为创建描述符服务
+        const VkImageView& getFrameImage(const renderEnum::renderInstanceId::type& renderInstanceType, const renderEnum::renderFrameId::type& renderFrameType, int viewId) {
+            return renderInstanceList[renderInstanceType].frameImageList[renderFrameType].imageList[viewId].view;
+        }
+
+        //获取renderBegin
+        const VkRenderPassBeginInfo& getRenderBegin(const renderEnum::renderInstanceId::type& renderInstanceType) {
+            return renderInstanceList[renderInstanceType].frameBufferList[0].renderBegin;
+        }
+
+        //获取renderBegin，swap版
+        const VkRenderPassBeginInfo& getRenderBegin(const renderEnum::renderInstanceId::type& renderInstanceType, int frameId) {
+            return renderInstanceList[renderInstanceType].frameBufferList[frameId].renderBegin;
         }
     };
 
@@ -430,15 +387,15 @@ namespace pipelineList {
 
             /*配置node*/
             //node[pipelineEnum::procPipelineId::terrain_p] .createMeshPipelineNode(device, extent, msaa, bufferEnum::procDescriptorId::scenceDeferred_d, fileInfo::shader::terrainTask, fileInfo::shader::terrainMesh, fileInfo::shader::terrainFrag);
-            node[pipelineEnum::procPipelineId::terrain_p]  .createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::deferred_ra,  renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag  });
-            node[pipelineEnum::procPipelineId::model_p]    .createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::deferred_ra,  renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag      });
-            node[pipelineEnum::procPipelineId::skybox_p]   .createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::deferred_ra,  renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag   });
-            node[pipelineEnum::procPipelineId::mine_p]     .createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::deferred_ra,  renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag     });
-            node[pipelineEnum::procPipelineId::uiText_p]   .createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::deferred_ra,  renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::uiText_d],         { fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag   });
-            node[pipelineEnum::procPipelineId::osMirror_p] .createPipelineNode(device, msaa,                  renderEnum::renderAttId::forward_ra,   renderList[renderEnum::renderTemplateId::offScreen_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag });
-            node[pipelineEnum::procPipelineId::osScence_p] .createPipelineNode(device, msaa,                  renderEnum::renderAttId::forward_ra,   renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag });
-            node[pipelineEnum::procPipelineId::dsScence_p] .createPipelineNode(device, msaa,                  renderEnum::renderAttId::forward_ra,   renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::dsScence_d],       { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag });
-            node[pipelineEnum::procPipelineId::shadowMap_p].createPipelineNode(device, VK_SAMPLE_COUNT_1_BIT, renderEnum::renderAttId::shadowMap_ra, renderList[renderEnum::renderTemplateId::shadowMap_rt], nodeLayout[bufferEnum::procDescriptorId::shadowMap_d],      { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   });
+            node[pipelineEnum::procPipelineId::terrain_p]  .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag  }, device);
+            node[pipelineEnum::procPipelineId::model_p]    .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag      }, device);
+            node[pipelineEnum::procPipelineId::skybox_p]   .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag   }, device);
+            node[pipelineEnum::procPipelineId::mine_p]     .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag     }, device);
+            node[pipelineEnum::procPipelineId::uiText_p]   .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::uiText_d],         { fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag   }, device);
+            node[pipelineEnum::procPipelineId::osMirror_p] .createPipelineNode(msaa,                  renderList[renderEnum::renderTemplateId::offScreen_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag }, device);
+            node[pipelineEnum::procPipelineId::osScence_p] .createPipelineNode(msaa,                  renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag }, device);
+            node[pipelineEnum::procPipelineId::dsScence_p] .createPipelineNode(msaa,                  renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::dsScence_d],       { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag }, device);
+            node[pipelineEnum::procPipelineId::shadowMap_p].createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::shadowMap_rt], nodeLayout[bufferEnum::procDescriptorId::shadowMap_d],      { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   }, device);
 
             /*配置node.pipeConfig*/
             //depthStencil 实现只在空白处显示
@@ -504,12 +461,6 @@ namespace pipelineList {
         
 
 
-        void clearSwapChain(const VkDevice& device) {
-            for (int i = 0; i < pipelineEnum::procPipelineId::count; i++) {
-                node[i].clearSwapChain(device);
-            }
-        }
-
         void clear(const VkDevice& device) {
             for (size_t i = 0; i < bufferEnum::procDescriptorId::count; i++) {
                 nodeLayout[i].clear(device);
@@ -520,6 +471,12 @@ namespace pipelineList {
             }
 
             vkDestroyPipelineCache(device, pipeCache, nullptr);
+        }
+
+        void clearSwapChain(const VkDevice& device) {
+            for (int i = 0; i < pipelineEnum::procPipelineId::count; i++) {
+                node[i].clearSwapChain(device);
+            }
         }
 
     private:

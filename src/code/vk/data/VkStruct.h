@@ -61,28 +61,326 @@ namespace deviceStruct {
 
 
 
+//buffer结构空间
+namespace bufferStruct {
+    //baseBuffer结点
+    struct baseBufferNode {
+        VkBuffer      buffer{};
+        VmaAllocation bufferMem{};
+
+
+
+        //创建cpuBuffer
+        baseBufferNode(const void* bufferData, const VkDeviceSize& bufferSize, const VkBufferUsageFlags& bufferUsage, const VkMemoryPropertyFlags& memProperty, const VmaAllocator& memAllocator) {
+            createBuffer(bufferSize, bufferUsage, memProperty, memAllocator);
+            createMemMap(bufferData, bufferSize, memAllocator);
+        }
+
+        //baseBufferNode() = delete;
+        baseBufferNode() {}
+
+
+
+        void clear(const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, buffer, bufferMem);
+        }
+
+    private:
+        //创建buffer
+        void createBuffer(const VkDeviceSize& bufferSize, const VkBufferUsageFlags& bufferUsage, const VkMemoryPropertyFlags& memProperty, const VmaAllocator& memAllocator) {
+            VkBufferCreateInfo bufferInfo{};
+            bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            bufferInfo.size  = bufferSize;
+            bufferInfo.usage = bufferUsage;
+
+            VmaAllocationCreateInfo memInfo{};
+            memInfo.usage         = VMA_MEMORY_USAGE_UNKNOWN;       //使用 VMA_MEMORY_USAGE_UNKNOWN 将内存属性交由属性参数控制
+            memInfo.requiredFlags = memProperty;		            //设置所需的内存属性
+
+            vmaCreateBuffer(memAllocator, &bufferInfo, &memInfo, &buffer, &bufferMem, nullptr);
+        }
+
+        //创建memMap
+        void createMemMap(const void* bufferData, const VkDeviceSize& bufferSize, const VmaAllocator& memAllocator) {
+            void* memMap{};
+
+            vmaMapMemory(memAllocator, bufferMem, &memMap);
+            memcpy(memMap, bufferData, (size_t)bufferSize);
+            vmaUnmapMemory(memAllocator, bufferMem);
+        }
+    };
+
+    //imageBuffer结点
+    struct imageBufferNode {
+        VkImage       image{};          //在renderEnum::renderFrameId::swap_rf类型下无用
+        VmaAllocation imageMem{};
+        VkImageView   view{};
+
+
+
+        //todo 临时
+        imageBufferNode() {}
+
+        //创建 arrayLayer = 1 && mipLevel = 1 的图像
+        imageBufferNode(const VkFormat& format, const VkExtent2D& swapExtent, const VkSampleCountFlagBits& msaa, const VkImageUsageFlags& usage, const VkImageAspectFlags& aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
+            VkImageCreateInfo imageInfo{};
+            imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+            imageInfo.format        = format;
+            imageInfo.extent.width  = swapExtent.width;
+            imageInfo.extent.height = swapExtent.height;
+            imageInfo.extent.depth  = 1;
+            imageInfo.mipLevels     = 1;
+            imageInfo.arrayLayers   = 1;
+            imageInfo.samples       = msaa;
+            imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+            imageInfo.usage         = usage;
+            imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+            VmaAllocationCreateInfo allocInfo{};
+            allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
+            allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+            if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image, &imageMem, nullptr) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "image创建失败");
+            }
+
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image    = image;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format   = format;
+            viewInfo.subresourceRange.aspectMask     = aspectFlags;
+            viewInfo.subresourceRange.baseMipLevel   = 0;
+            viewInfo.subresourceRange.levelCount     = 1;
+            viewInfo.subresourceRange.baseArrayLayer = 0;
+            viewInfo.subresourceRange.layerCount     = 1;
+
+            if (vkCreateImageView(device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "view创建失败");
+            }
+        }
+
+        //todo 待续
+        //创建 arrayLayer = n && mipLevel = 1 的图像
+        imageBufferNode(const VkFormat& format, const VkExtent2D& swapExtent, const VkSampleCountFlagBits& msaa, const uint32_t& arrayLayer, const VkImageUsageFlags& usage, const VkImageAspectFlags& aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
+            VkImageCreateInfo imageInfo{};
+            imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+            imageInfo.format        = format;
+            imageInfo.extent.width  = swapExtent.width;
+            imageInfo.extent.height = swapExtent.height;
+            imageInfo.extent.depth  = 1;
+            imageInfo.mipLevels     = 1;
+            imageInfo.arrayLayers   = arrayLayer;
+            imageInfo.samples       = msaa;
+            imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+            imageInfo.usage         = usage;
+            imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+            VmaAllocationCreateInfo allocInfo{};
+            allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
+            allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+            if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image, &imageMem, nullptr) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "image创建失败");
+            }
+
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image    = image;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format   = format;
+            viewInfo.subresourceRange.aspectMask     = aspectFlags;
+            viewInfo.subresourceRange.baseMipLevel   = 0;
+            viewInfo.subresourceRange.levelCount     = 1;
+            viewInfo.subresourceRange.baseArrayLayer = 0;
+            viewInfo.subresourceRange.layerCount     = 1;
+
+            if (vkCreateImageView(device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "view创建失败");
+            }
+        }
+
+        //创建 arrayLayer = 1 && mipLevel = n 的图像
+        /*imageBufferNode(const VkFormat& format, const VkExtent2D& swapExtent, const VkSampleCountFlagBits& msaa, const uint32_t& mipLevel, const VkImageUsageFlags& usage, const VkImageAspectFlags& aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
+            VkImageCreateInfo imageInfo{};
+            imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+            imageInfo.format        = format;
+            imageInfo.extent.width  = swapExtent.width;
+            imageInfo.extent.height = swapExtent.height;
+            imageInfo.extent.depth  = 1;
+            imageInfo.mipLevels     = mipLevel;
+            imageInfo.arrayLayers   = 1;
+            imageInfo.samples       = msaa;
+            imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+            imageInfo.usage         = usage;
+            imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+            VmaAllocationCreateInfo allocInfo{};
+            allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
+            allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+            if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image, &imageMem, nullptr) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "image创建失败");
+            }
+
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image    = image;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format   = format;
+            viewInfo.subresourceRange.aspectMask     = aspectFlags;
+            viewInfo.subresourceRange.baseMipLevel   = 0;
+            viewInfo.subresourceRange.levelCount     = 1;
+            viewInfo.subresourceRange.baseArrayLayer = 0;
+            viewInfo.subresourceRange.layerCount     = 1;
+
+            if (vkCreateImageView(device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "view创建失败");
+            }
+        }*/
+
+
+
+        //完整清理
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vkDestroyImageView(device, view, nullptr);
+            vmaDestroyImage(memAllocator, image, imageMem);
+        }
+
+        //view清理
+        void clearView(const VkDevice& device) {
+            vkDestroyImageView(device, view, nullptr);
+        }
+
+    private:
+    };
+
+    //imageBufferList结点
+    struct imageBufferListNode {
+        std::vector<bufferStruct::imageBufferNode> imageList{};
+
+
+
+        //创建swap图像列表
+        void createSwapImageList(std::vector<VkImage>& swapImageList, const VkFormat& format, const VkImageAspectFlags& aspectFlags, const VkDevice& device) {
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format   = format;
+            viewInfo.subresourceRange.aspectMask     = aspectFlags;
+            viewInfo.subresourceRange.baseMipLevel   = 0;
+            viewInfo.subresourceRange.levelCount     = 1;
+            viewInfo.subresourceRange.baseArrayLayer = 0;
+            viewInfo.subresourceRange.layerCount     = 1;
+
+            imageList.clear();
+            imageList.resize(swapImageList.size());
+
+            for (int i = 0; i < swapImageList.size(); i++) {
+                viewInfo.image = swapImageList[i];
+
+                if (vkCreateImageView(device, &viewInfo, nullptr, &imageList[i].view) != VK_SUCCESS) {
+                    Log::printError(__FILE__, __LINE__, "view创建失败");
+                }
+            }
+        }
+
+        //获取view列表
+        std::vector<VkImageView> getViewList() const {
+            std::vector<VkImageView> viewList{};
+
+            for (const auto& node : imageList) {
+                viewList.push_back(node.view);
+            }
+
+            return viewList;
+        }
+
+
+
+        //完整清理
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            for (bufferStruct::imageBufferNode& node : imageList) {
+                node.clear(device, memAllocator);
+            }
+        }
+
+        //view清理
+        void clearView(const VkDevice& device) {
+            for (bufferStruct::imageBufferNode& node : imageList) {
+                node.clearView(device);
+            }
+        }
+    };
+
+    //textureBuffer结点
+    struct textureBufferNode {
+        bufferStruct::imageBufferNode imageNode{};  //图像缓冲结点
+        uint32_t arrayLayer = 1;                    //纹理数组层数
+        uint32_t mipLevel   = 1;                    //mip级别
+
+
+
+        //创建textureArray，使用无损压缩
+        textureBufferNode(const char* imageFile, const VkFormat& colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, const VkDevice& device, const VmaAllocator& memAllocator)
+            :/*imageNode(colorFormat, tileExtent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator), */arrayLayer(atlasExtent.width* atlasExtent.height) {
+
+            ktxTexture2* ktxTexture;
+		    if (ktxTexture2_CreateFromNamedFile(imageFile, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture) != KTX_SUCCESS) {
+		    	Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
+		    }
+
+		    uint32_t   texWidth    = ktxTexture->baseWidth;
+		    uint32_t   texHeight   = ktxTexture->baseHeight;
+		    ktx_size_t textureSize = ktxTexture->dataSize;
+		    mipLevel = ktxTexture->numLevels;
+
+		    bufferStruct::baseBufferNode cpuBuffer{ ktxTexture->pData, textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+		    
+		    //createImage(textureInfo::terrain::tileWidth, textureInfo::terrain::tileHeight, arrayLayer, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageNode.image, imageNode.imageMem);
+            //
+		    //transitionImageLayout(imageBuffer.image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		    //copyBufferToImageArray(pixel, textureInfo::terrain::tileWidth, textureInfo::terrain::tileHeight, textureInfo::terrain::atlasWidth, textureInfo::terrain::atlasHeight, texWidth, texHeight, arrayLayer, cpuBuffer.buffer, imageBuffer.image);
+		    //transitionImageLayout(imageBuffer.image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            //
+		    //createImageView(imageBuffer.image, imageBuffer.view, arrayLayer, mipLevel, VK_IMAGE_VIEW_TYPE_2D_ARRAY, format, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		    cpuBuffer.clear(memAllocator);
+		    ktxTexture2_Destroy(ktxTexture);
+        }
+
+        textureBufferNode() = delete;
+    };
+}
+
 //swapchain结构空间
 namespace swapStruct {
     struct swapSupportNode {
-        VkSurfaceCapabilitiesKHR capabilitie{};
-        std::vector<VkSurfaceFormatKHR> scFormat{};
-        std::vector<VkPresentModeKHR> presentMode{};
+        VkSurfaceCapabilitiesKHR        capabilitie{};
+        std::vector<VkSurfaceFormatKHR> swapFormat{};
+        std::vector<VkPresentModeKHR>   presentMode{};
 
-        VkSwapchainCreateInfoKHR scCreateInfo{};
+        VkSwapchainCreateInfoKHR swapCreateInfo{};
 
 
 
         swapSupportNode() {
-            scCreateInfo.sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-            scCreateInfo.imageArrayLayers = 1;
-            scCreateInfo.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-            scCreateInfo.compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-            scCreateInfo.clipped          = VK_TRUE;
-            scCreateInfo.oldSwapchain     = VK_NULL_HANDLE;
+            swapCreateInfo.sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+            swapCreateInfo.imageArrayLayers = 1;
+            swapCreateInfo.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            swapCreateInfo.compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+            swapCreateInfo.clipped          = VK_TRUE;
+            swapCreateInfo.oldSwapchain     = VK_NULL_HANDLE;
         }
 
         //设置交换链支持结点
-        void createScSupport(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentSurface) {
+        void createSwapSupport(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentSurface) {
             //表面功能查询
             if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, presentSurface, &capabilitie)) {
                 Log::printError(__FILE__, __LINE__, "表面功能获取失败");
@@ -95,8 +393,8 @@ namespace swapStruct {
             if (formatCount == 0) {
                 Log::printError(__FILE__, __LINE__, "表面格式获取失败");
             }
-            scFormat.resize(formatCount);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, presentSurface, &formatCount, scFormat.data());
+            swapFormat.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, presentSurface, &formatCount, swapFormat.data());
 
 
             //呈现模式查询
@@ -118,7 +416,7 @@ namespace swapStruct {
                 Log::print("");
 
                 Log::print("支持格式:");
-                for (auto format : scFormat) {
+                for (auto format : swapFormat) {
                     std::cout << "\t" << "format: " << format.format << ", colorSpace: " << format.colorSpace << std::endl;
                 }
                 Log::print("");
@@ -132,25 +430,25 @@ namespace swapStruct {
             }
         }
 
-        //设置scCreateInfo
-        void createScCreateInfo(const VkSurfaceKHR& presentSurface) {
-            VkSurfaceFormatKHR scFormat = getScFormat();
-            scCreateInfo.surface                = presentSurface;
-            scCreateInfo.minImageCount          = capabilitie.minImageCount + (capabilitie.maxImageCount > capabilitie.minImageCount);
-            scCreateInfo.imageFormat            = scFormat.format;
-            scCreateInfo.imageColorSpace        = scFormat.colorSpace;
-            scCreateInfo.imageExtent            = getScExtent();
-            scCreateInfo.imageSharingMode       = VK_SHARING_MODE_EXCLUSIVE;
-            scCreateInfo.queueFamilyIndexCount  = 0;
-            scCreateInfo.pQueueFamilyIndices    = nullptr;
-            scCreateInfo.preTransform           = capabilitie.currentTransform;
-            scCreateInfo.presentMode            = getScPresentMode();
-            scCreateInfo.oldSwapchain           = VK_NULL_HANDLE;
+        //设置swapCreateInfo
+        void createSwapCreateInfo(const VkSurfaceKHR& presentSurface) {
+            VkSurfaceFormatKHR SwapFormat = getSwapFormat();
+            swapCreateInfo.surface                = presentSurface;
+            swapCreateInfo.minImageCount          = capabilitie.minImageCount + (capabilitie.maxImageCount > capabilitie.minImageCount);
+            swapCreateInfo.imageFormat            = SwapFormat.format;
+            swapCreateInfo.imageColorSpace        = SwapFormat.colorSpace;
+            swapCreateInfo.imageExtent            = getSwapExtent();
+            swapCreateInfo.imageSharingMode       = VK_SHARING_MODE_EXCLUSIVE;
+            swapCreateInfo.queueFamilyIndexCount  = 0;
+            swapCreateInfo.pQueueFamilyIndices    = nullptr;
+            swapCreateInfo.preTransform           = capabilitie.currentTransform;
+            swapCreateInfo.presentMode            = getSwapPresentMode();
+            swapCreateInfo.oldSwapchain           = VK_NULL_HANDLE;
         }
 
     private:
         //获取交换链绘制范围
-        VkExtent2D getScExtent() {
+        VkExtent2D getSwapExtent() {
             //Vulkan特殊约定，如果currentExtent.width为最大值，表示尺寸由应用程序决定，反之使用系统指定的尺寸
             if (capabilitie.currentExtent.width == std::numeric_limits<uint32_t>::max()) {
                 VkExtent2D actualExtent = { windowInfo::width, windowInfo::height };
@@ -166,24 +464,24 @@ namespace swapStruct {
         }
 
         //获取交换链格式
-        VkSurfaceFormatKHR getScFormat() {
+        VkSurfaceFormatKHR getSwapFormat() {
             //只有一个未定义格式时，返回指定格式
-            if (scFormat.size() == 1 && scFormat[0].format == VK_FORMAT_UNDEFINED) {
+            if (swapFormat.size() == 1 && swapFormat[0].format == VK_FORMAT_UNDEFINED) {
                 return { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
             }
 
             //含有多个格式支持时，从中挑选返回
-            for (VkSurfaceFormatKHR availableFormat : scFormat) {
+            for (VkSurfaceFormatKHR availableFormat : swapFormat) {
                 if (availableFormat.format == VK_FORMAT_R8G8B8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
                     return availableFormat;
                 }
             }
 
-            return scFormat[0];
+            return swapFormat[0];
         }
 
         //获取交换链合适的呈现模式
-        VkPresentModeKHR getScPresentMode() {
+        VkPresentModeKHR getSwapPresentMode() {
             for (auto availablePresentMode : presentMode) {
                 if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
 
@@ -239,7 +537,7 @@ namespace swapStruct {
         }
 
         //获取多重采样
-        VkSampleCountFlagBits getMsaaSamples(const VkPhysicalDevice& physicalDevice) {
+        VkSampleCountFlagBits getMsaa(const VkPhysicalDevice& physicalDevice) {
             VkPhysicalDeviceProperties physicalDeviceProperties;
             vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
 
@@ -256,37 +554,24 @@ namespace swapStruct {
 
 
 
-        //重建scExtent
-        void recreateScCreateInfo(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentSurface, const VkSwapchainKHR& swapchain) {
+        //重建swapExtent
+        void recreateSwapCreateInfo(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentSurface, const VkSwapchainKHR& swapchain) {
             if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, presentSurface, &capabilitie)) {
                 Log::printError(__FILE__, __LINE__, "重建交换链时表面功能获取失败");
             }
 
-            scCreateInfo.imageExtent = getScExtent();
-            scCreateInfo.oldSwapchain = swapchain;
+            swapCreateInfo.imageExtent = getSwapExtent();
+            swapCreateInfo.oldSwapchain = swapchain;
         }
     };
-}
 
-//前向声明buffer的缓冲结点
-namespace bufferStruct {
-    //图像缓冲结点
-    struct imageNode {
-        VkImage       image;
-        VmaAllocation imageMemory;
-        VkImageView   view;
-    };
-
-    //通用缓冲结点
-    struct bufferNode {
-        VkBuffer      buffer;
-        VmaAllocation bufferMemory;
-    };
+    //交换链图像列表，服务于renderFrameNode
+    std::vector<VkImage> swapImageList{};
 }
 
 //render结构空间
 namespace renderStruct {
-    //renderPass附件结构体
+    //render附件结点
     struct renderAttachmentNode {
         std::vector<VkAttachmentDescription>              attDescList{};    //渲染附件描述列表
         std::array<std::vector<VkAttachmentReference>, 3> attRefList{};     //渲染附件引用列表，0 颜色、1 深度、2 解析
@@ -375,7 +660,7 @@ namespace renderStruct {
         }
     };
 
-    //renderPass子通道结构体
+    //render子通道结点
     struct renderSubpassNode {
         /*
         示例链：上阶段    → 本阶段
@@ -494,173 +779,100 @@ namespace renderStruct {
             };
         }
     };
-
-    //renderPass帧图像结构体
+    
+    //render帧结点
     struct renderFrameNode {
-        std::vector<std::vector<bufferStruct::imageNode>> frameImageList{};      //帧图像列表
-        std::vector<VkFramebuffer>                        frameBufferList{};     //帧缓冲列表
+        VkFramebuffer         frameBuffer{};    //帧缓冲
+        VkRenderPassBeginInfo renderBegin{};    //渲染通道开始信息
 
 
 
-        renderFrameNode() {
+        renderFrameNode(const VkRenderPass& render, const std::vector<VkImageView>& frameAttList, const std::vector<VkClearValue>& clearValueList, const VkExtent2D& extent, const VkDevice& device) {
+            VkFramebufferCreateInfo framebufferInfo{};
+            framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass      = render;
+            framebufferInfo.attachmentCount = (uint32_t)frameAttList.size();
+            framebufferInfo.pAttachments    = frameAttList.data();
+            framebufferInfo.width           = extent.width;
+            framebufferInfo.height          = extent.height;
+            framebufferInfo.layers          = 1;
 
+            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &frameBuffer) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "frameBuffer创建失败");
+            }
+
+            renderBegin.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderBegin.renderPass        = render;
+            renderBegin.framebuffer       = frameBuffer;
+            renderBegin.renderArea.offset = { 0, 0 };
+            renderBegin.renderArea.extent = extent;
+            renderBegin.clearValueCount   = (uint32_t)clearValueList.size();
+            renderBegin.pClearValues      = clearValueList.data();
         }
 
-        //renderFrameNode() = delete;
+        renderFrameNode() = delete;
 
-
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            for (bufferStruct::imageNode& node : frameImageList[renderEnum::renderFrameId::conv_rf]) {
-                vkDestroyImageView(device,    node.view,  nullptr);
-                vmaDestroyImage(memAllocator, node.image, node.imageMemory);
-            }
-
-            for (bufferStruct::imageNode& node : frameImageList[renderEnum::renderFrameId::swap_rf]){
-                vkDestroyImageView(device, node.view, nullptr);
-            }
-
-            for (int i = 0; i < frameBufferList.size(); i++) {
-                vkDestroyFramebuffer(device, frameBufferList[i], nullptr);
-            }
+        void clear(const VkDevice& device) {
+            vkDestroyFramebuffer(device, frameBuffer, nullptr);
         }
     };
 
-    /*
-    //todo 都改成带Image的
-    struct scFramebufferNode {
-        bufferStruct::imageNode color;                          //颜色图像
-        bufferStruct::imageNode depth;                          //深度图像
-        std::vector<bufferStruct::imageNode> swapImageList;     //交换链图像
-
-        std::vector<VkFramebuffer> framebuffer;
 
 
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vkDestroyImageView(device, color.view, nullptr);
-            vmaDestroyImage(memAllocator, color.image, color.imageMemory);
-
-            vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
-
-            //通过vkGetSwapchainImagesKHR获取的VkImage，会随着swapchain的销毁自动释放
-            for (int i = 0; i < swapImageList.size(); i++) {
-                vkDestroyImageView(device, swapImageList[i].view, nullptr);
-            }
-            swapImageList.clear();
-
-            for (int i = 0; i < framebuffer.size(); i++) {
-                vkDestroyFramebuffer(device, framebuffer[i], nullptr);
-            }
-        }
-    };
-
-    struct osFramebufferNode {
-        bufferStruct::imageNode color;
-        bufferStruct::imageNode depth;
-        bufferStruct::imageNode osView;
-
-        VkFramebuffer framebuffer;
-
-
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vkDestroyImageView(device, color.view, nullptr);
-            vmaDestroyImage(memAllocator, color.image, color.imageMemory);
-
-            vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
-
-            vkDestroyImageView(device, osView.view, nullptr);
-            vmaDestroyImage(memAllocator, osView.image, osView.imageMemory);
-
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }
-    };
-
-    struct dsFramebufferNode {
-        bufferStruct::imageNode position;  //位置附件（世界空间坐标）
-        bufferStruct::imageNode normal;    //法线附件（世界空间法线）
-        bufferStruct::imageNode albedo;    //反照率附件（颜色+高光系数）
-        bufferStruct::imageNode depth;     //深度附件
-
-        VkFramebuffer framebuffer;
-
-
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vkDestroyImageView(device, position.view, nullptr);
-            vmaDestroyImage(memAllocator, position.image, position.imageMemory);
-
-            vkDestroyImageView(device, normal.view, nullptr);
-            vmaDestroyImage(memAllocator, normal.image, normal.imageMemory);
-
-            vkDestroyImageView(device, albedo.view, nullptr);
-            vmaDestroyImage(memAllocator, albedo.image, albedo.imageMemory);
-
-            vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
-
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }
-    };
-
-    struct shFramebufferNode {
-        bufferStruct::imageNode depth;      //深度附件
-
-        VkFramebuffer framebuffer;
-
-
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
-
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }
-    };
-    //
-    */
-
-
-    //renderPass模板结构体
+    //render模板结点
     struct renderTemplateNode {
-        VkRenderPass render;
+        renderEnum::renderAttId::type      renderAttType      = renderEnum::renderAttId::count;
+        renderEnum::renderTemplateId::type renderTemplateType = renderEnum::renderTemplateId::count;
+
+        VkRenderPass render{};      //渲染通道
 
 
 
-        void createRenderNode(const renderEnum::renderTemplateId::type& renderTemplateType, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaa, const VkDevice& device) {
-            switch (renderTemplateType) {
+        void createRenderTemplateNode(const renderEnum::renderTemplateId::type& tRenderTemplateType, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaa, const VkDevice& device) {
+            switch (tRenderTemplateType) {
             case renderEnum::renderTemplateId::swapChain_rt: {
-                renderStruct::renderAttachmentNode renderAttachment{ renderEnum::renderAttId::forward_ra, colorFormat, depthFormat, msaa, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR };
-                renderStruct::renderSubpassNode    renderSubpass   { renderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
+                renderAttType = renderEnum::renderAttId::forward_ra;
 
-                createRenderPass(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "交换链");
+                renderStruct::renderAttachmentNode renderAttachment{ renderAttType, colorFormat, depthFormat, msaa, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR };
+                renderStruct::renderSubpassNode    renderSubpass   { tRenderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
+
+                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "交换链");
+
                 break;
             }
             case renderEnum::renderTemplateId::offScreen_rt: {
-                renderStruct::renderAttachmentNode renderAttachment{ renderEnum::renderAttId::forward_ra, colorFormat, depthFormat, msaa, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-                renderStruct::renderSubpassNode    renderSubpass   { renderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
+                renderAttType = renderEnum::renderAttId::forward_ra;
 
-                createRenderPass(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "离屏");
+                renderStruct::renderAttachmentNode renderAttachment{ renderAttType, colorFormat, depthFormat, msaa, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+                renderStruct::renderSubpassNode    renderSubpass   { tRenderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
+
+                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "离屏");
+
                 break;
             }
             case renderEnum::renderTemplateId::deferred_rt: {
-                renderStruct::renderAttachmentNode renderAttachment{ renderEnum::renderAttId::deferred_ra, colorFormat, depthFormat };
-                renderStruct::renderSubpassNode    renderSubpass   { renderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
+                renderAttType = renderEnum::renderAttId::deferred_ra;
 
-                createRenderPass(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "延迟着色");
+                renderStruct::renderAttachmentNode renderAttachment{ renderAttType, colorFormat, depthFormat };
+                renderStruct::renderSubpassNode    renderSubpass   { tRenderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
+
+                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "延迟着色");
+
                 break;
             }
             case renderEnum::renderTemplateId::shadowMap_rt: {
-                renderStruct::renderAttachmentNode renderAttachment{ renderEnum::renderAttId::shadowMap_ra, VK_FORMAT_MAX_ENUM, depthFormat };
-                renderStruct::renderSubpassNode    renderSubpass   { renderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
+                renderAttType = renderEnum::renderAttId::shadowMap_ra;
 
-                createRenderPass(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "阴影映射");
+                renderStruct::renderAttachmentNode renderAttachment{ renderAttType, VK_FORMAT_MAX_ENUM, depthFormat };
+                renderStruct::renderSubpassNode    renderSubpass   { tRenderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
+
+                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "阴影映射");
+
                 break;
             }
             }
+
+            renderTemplateType = tRenderTemplateType;
         }
 
         void clear(const VkDevice& device) {
@@ -668,7 +880,7 @@ namespace renderStruct {
         }
 
     private:
-        void createRenderPass(const std::vector<VkAttachmentDescription>& attDescList, const std::vector<VkSubpassDescription>& subpassList, std::vector<VkSubpassDependency>& dependencyList, const VkDevice& device, const char* name) {
+        void createRender(const std::vector<VkAttachmentDescription>& attDescList, const std::vector<VkSubpassDescription>& subpassList, std::vector<VkSubpassDependency>& dependencyList, const VkDevice& device, const char* name) {
             VkRenderPassCreateInfo createInfo{};
             createInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
             createInfo.attachmentCount = (uint32_t)attDescList.size();
@@ -684,1563 +896,125 @@ namespace renderStruct {
         }
     };
 
-    //todo
-    //renderPass实例结构体
+    //render实例结点
     struct renderInstanceNode {
-        //todo
-        //std::vector<VkClearValue> clearValue;       //清理值，决定渲染清空后的背景颜色
+        std::vector<bufferStruct::imageBufferListNode> frameImageList{};        //帧图像列表
+        std::vector<renderStruct::renderFrameNode>     frameBufferList{};       //帧缓冲列表
 
 
 
-        renderInstanceNode(const renderEnum::renderAttId::type& renderAttType, const renderEnum::renderTemplateId::type& renderTemplateType) {
-
-        }
-    };
-
-
-
-    /*---
-    struct renderInfoNode {
-        std::array<VkClearValue, 2> clearValueForward;      //前向清理（解析附件不需要清除值）
-        std::array<VkClearValue, 4> clearValueDeferred;     //延迟清理
-        std::array<VkClearValue, 1> clearValueShadow;       //阴影清理
-
-        renderEnum::renderTemplateId::type renderTemplateType;
-        std::variant<scFramebufferNode, osFramebufferNode, dsFramebufferNode, shFramebufferNode> frameNode;
-        scFramebufferNode* scPtr = nullptr;
-        osFramebufferNode* osPtr = nullptr;
-        dsFramebufferNode* dsPtr = nullptr;
-        shFramebufferNode* shPtr = nullptr;
-
-        VkRenderPassBeginInfo renderInfo;
-
-
-
-        void createRenderInfoNode(const VkClearColorValue& color, const VkClearDepthStencilValue& depthStencil, renderEnum::renderTemplateId::type tRenderTemplateType) {
-            clearValueForward[0].color = color;
-            clearValueForward[1].depthStencil = depthStencil;
-
-            clearValueDeferred[0].color = color;
-            clearValueDeferred[1].color = color;
-            clearValueDeferred[2].color = color;
-            clearValueDeferred[3].depthStencil = depthStencil;
-
-            clearValueShadow[0].depthStencil = depthStencil;
-
-            renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderInfo.renderArea.offset = { 0, 0 };
-
-            renderTemplateType = tRenderTemplateType;
-
-            if (tRenderTemplateType == renderEnum::renderTemplateId::swapChain_rt) {
-                frameNode = scFramebufferNode{};
-                scPtr = &std::get<bufferStruct::scFramebufferNode>(frameNode);
-
-                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueForward.size());
-                renderInfo.pClearValues = clearValueForward.data();
-            }
-            else if (tRenderTemplateType == renderEnum::renderTemplateId::offScreen_rt) {
-                frameNode = osFramebufferNode{};
-                osPtr = &std::get<bufferStruct::osFramebufferNode>(frameNode);
-
-                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueForward.size());
-                renderInfo.pClearValues = clearValueForward.data();
-            }
-            else if (tRenderTemplateType == renderEnum::renderTemplateId::deferred_rt) {
-                frameNode = dsFramebufferNode{};
-                dsPtr = &std::get<bufferStruct::dsFramebufferNode>(frameNode);
-
-                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueDeferred.size());
-                renderInfo.pClearValues = clearValueDeferred.data();
-            }
-            else if (tRenderTemplateType == renderEnum::renderTemplateId::shadowMap_rt) {
-                frameNode = shFramebufferNode{};
-                shPtr = &std::get<bufferStruct::shFramebufferNode>(frameNode);
-
-                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueShadow.size());
-                renderInfo.pClearValues = clearValueShadow.data();
-            }
-            else {
-                Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(tRenderTemplateType));
-            }
-        }
-
-        void createRenderInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaa, const VkRenderPass& render, const VkDevice& device, const VmaAllocator& memAllocator) {
-            if (renderTemplateType == renderEnum::renderTemplateId::swapChain_rt) {
-                createImageNode(scPtr->color, scExtent.width, scExtent.height, colorFormat, msaa, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-                createImageNode(scPtr->depth, scExtent.width, scExtent.height, depthFormat, msaa, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator);
-                createImageNode(scPtr->swapImageList, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, device);
-
-                createScFramebuffer(scExtent, render, device);
-            }
-            else if (renderTemplateType == renderEnum::renderTemplateId::offScreen_rt) {
-                createImageNode(osPtr->color, scExtent.width, scExtent.height, colorFormat, msaa, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-                createImageNode(osPtr->depth, scExtent.width, scExtent.height, depthFormat, msaa, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator);
-                createImageNode(osPtr->osView, scExtent.width, scExtent.height, colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-
-                createOsFramebuffer(scExtent, render, device);
-            }
-            else if (renderTemplateType == renderEnum::renderTemplateId::deferred_rt) {
-                createImageNode(dsPtr->position, scExtent.width, scExtent.height, renderInfo::dsPosColorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-                createImageNode(dsPtr->normal, scExtent.width, scExtent.height, colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-                createImageNode(dsPtr->albedo, scExtent.width, scExtent.height, colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-                createImageNode(dsPtr->depth, scExtent.width, scExtent.height, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator);
-
-                createDsFramebuffer(scExtent, render, device);
-            }
-            else if (renderTemplateType == renderEnum::renderTemplateId::shadowMap_rt) {
-                createImageNode(shPtr->depth, scExtent.width, scExtent.height, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator);
-
-                createShFramebuffer(scExtent, render, device);
-            }
-            else {
-                Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(renderTemplateType));
-            }
-
-            renderInfo.renderPass = render;
-            renderInfo.renderArea.extent = scExtent;
-        }
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            std::visit([&device, &memAllocator](auto& node) {node.clear(device, memAllocator); }, frameNode);
-        }
-
-    private:
-        //创建交换链帧缓冲
-        void createScFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
-            VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = render;
-            framebufferInfo.width = scExtent.width;
-            framebufferInfo.height = scExtent.height;
-            framebufferInfo.layers = 1;
-
-            bufferStruct::scFramebufferNode& tempFrameNode = std::get<bufferStruct::scFramebufferNode>(frameNode);
-            tempFrameNode.framebuffer.resize(tempFrameNode.swapImageList.size());
-
-            for (size_t i = 0; i < tempFrameNode.swapImageList.size(); i++) {
-                std::array<VkImageView, 3> attachments{ tempFrameNode.color.view,tempFrameNode.depth.view,tempFrameNode.swapImageList[i].view };
-                framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-                framebufferInfo.pAttachments = attachments.data();
-
-                if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer[i]) != VK_SUCCESS) {
-                    Log::printError(__FILE__, __LINE__, "交换链帧缓冲创建失败");
-                }
-            }
-        }
-
-        //创建离屏帧缓冲
-        void createOsFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
-            bufferStruct::osFramebufferNode& tempFrameNode = std::get<bufferStruct::osFramebufferNode>(frameNode);
-            std::array<VkImageView, 3> attachments{ tempFrameNode.color.view,tempFrameNode.depth.view,tempFrameNode.osView.view };
-
-            VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = render;	                                    //渲染通道
-            framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());	//附件数量
-            framebufferInfo.pAttachments = attachments.data();							//附件
-            framebufferInfo.width = scExtent.width;				                //宽度
-            framebufferInfo.height = scExtent.height;				                //高度
-            framebufferInfo.layers = 1;											//层数
-
-            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "离屏帧缓冲创建失败");
-            }
-
-            renderInfo.framebuffer = tempFrameNode.framebuffer;
-        }
-
-        //创建延迟渲染帧缓冲
-        void createDsFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
-            bufferStruct::dsFramebufferNode& tempFrameNode = std::get<bufferStruct::dsFramebufferNode>(frameNode);
-            std::array<VkImageView, 4> attachments{ tempFrameNode.position.view, tempFrameNode.normal.view,tempFrameNode.albedo.view,tempFrameNode.depth.view };
-
-            VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = render;
-            framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-            framebufferInfo.pAttachments = attachments.data();
-            framebufferInfo.width = scExtent.width;
-            framebufferInfo.height = scExtent.height;
-            framebufferInfo.layers = 1;
-
-            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "延迟渲染帧缓冲创建失败");
-            }
-
-            renderInfo.framebuffer = tempFrameNode.framebuffer;
-        }
-
-        //创建阴影映射帧缓冲
-        void createShFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
-            bufferStruct::shFramebufferNode& tempFrameNode = std::get<bufferStruct::shFramebufferNode>(frameNode);
-
-            VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = render;
-            framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = &tempFrameNode.depth.view;
-            framebufferInfo.width = scExtent.width;
-            framebufferInfo.height = scExtent.height;
-            framebufferInfo.layers = 1;
-
-            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "阴影映射帧缓冲创建失败");
-            }
-
-            renderInfo.framebuffer = tempFrameNode.framebuffer;
-        }
-
-
-
-        //创建图像结点
-        void createImageNode(bufferStruct::imageNode& image, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
-            VkImageCreateInfo imageInfo = {};
-            imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            imageInfo.imageType = VK_IMAGE_TYPE_2D;
-            imageInfo.format = format;
-            imageInfo.extent.width = width;
-            imageInfo.extent.height = height;
-            imageInfo.extent.depth = 1;
-            imageInfo.mipLevels = 1;
-            imageInfo.arrayLayers = 1;
-            imageInfo.samples = numSamples;
-            imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            imageInfo.usage = usage;
-            imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-            VmaAllocationCreateInfo allocInfo = {};
-            allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-            allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-            if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image.image, &image.imageMemory, nullptr) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "图像创建失败");
-            }
-
-            VkImageViewCreateInfo viewInfo{};
-            viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewInfo.image = image.image;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewInfo.format = format;
-            viewInfo.subresourceRange.aspectMask = aspectFlags;
-            viewInfo.subresourceRange.baseMipLevel = 0;
-            viewInfo.subresourceRange.levelCount = 1;
-            viewInfo.subresourceRange.baseArrayLayer = 0;
-            viewInfo.subresourceRange.layerCount = 1;
-
-            if (vkCreateImageView(device, &viewInfo, nullptr, &image.view) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "图像视图创建失败");
-            }
-        }
-
-        //创建交换链图像结点
-        void createImageNode(std::vector<bufferStruct::imageNode>& swapImageList, VkFormat format, VkImageAspectFlags aspectFlags, const VkDevice& device) {
-            VkImageViewCreateInfo viewInfo{};
-            viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewInfo.format = format;
-            viewInfo.subresourceRange.aspectMask = aspectFlags;
-            viewInfo.subresourceRange.baseMipLevel = 0;
-            viewInfo.subresourceRange.levelCount = 1;
-            viewInfo.subresourceRange.baseArrayLayer = 0;
-            viewInfo.subresourceRange.layerCount = 1;
-
-            for (auto& imageNode : swapImageList) {
-                viewInfo.image = imageNode.image;
-
-                if (vkCreateImageView(device, &viewInfo, nullptr, &imageNode.view) != VK_SUCCESS) {
-                    Log::printError(__FILE__, __LINE__, "图像视图创建失败");
-                }
-            }
-        }
-
-    public:
-        void clearSwapChain(const VkDevice& device, const VmaAllocator& memAllocator) {
-            std::visit([&device, &memAllocator](auto& node) {node.clear(device, memAllocator); }, frameNode);
-        }
-
-        void setScFramebuffer(int i) {
-            renderInfo.framebuffer = scPtr->framebuffer[i];
-        }
-    };
-    */
-}
-
-//buffer结构空间
-namespace bufferStruct {
-    //命令结点
-    struct commandNode {
-        VkCommandPool                commandPool;                                           //命令池
-        std::vector<VkCommandBuffer> commandBuffer[bufferInfo::commandThreadCount];         //使用双重命令缓冲防止更新区块卡顿
-
-
-
-        //命令创建
-        void cmdCreate(const VkDevice& device, const uint32_t queueFamilyIndex, const uint32_t frameSize) {
-            //创建commandPool
-            VkCommandPoolCreateInfo poolInfo{};
-            poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            poolInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-            poolInfo.queueFamilyIndex = queueFamilyIndex;
-            if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "命令池创建失败");
-            }
-
-            //配置commandBuffer
-            for (int i = 0; i < bufferInfo::commandThreadCount; i++) {
-                commandBuffer[i].resize(frameSize);
-            }
-
-            //配置allocInfo
-            allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            allocInfo.commandPool        = commandPool;
-            allocInfo.commandBufferCount = frameSize;
-
-            //配置beginInfo
-            beginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            beginInfo.flags            = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-            beginInfo.pInheritanceInfo = nullptr;
-
-            viewport.x        = 0.0f;
-            viewport.y        = 0.0f;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-
-            scissor.offset = { 0, 0 };
-
-            memBarrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            memBarrier.pNext         = nullptr;
-            memBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;    //等待颜色写入完成
-            memBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;               //让着色器能读取
-
-            loadExtFunc(device);
-        }
-
-        //命令池释放
-        void cmdPoolFree(const VkDevice& device) {
-            vkDestroyCommandPool(device, commandPool, nullptr);
-        }
-
-        //命令释放
-        void cmdFree(const VkDevice& device, const int threadID) {
-            vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffer[threadID].size()), commandBuffer[threadID].data());
-        }
-
-
-
-        //命令分配
-        void cmdAllocate(const VkDevice& device, const int threadId) {
-            if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffer[threadId].data()) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "命令分配失败");
-            }
-        }
-
-        //命令重置
-        void cmdReset(const int threadID, const int frameID) {
-            if (vkResetCommandBuffer(commandBuffer[threadID][frameID], 0) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "命令重置失败");
-            }
-        }
-
-        //命令开始
-        void cmdBegin(const int threadID, const int frameID) {
-            if (vkBeginCommandBuffer(commandBuffer[threadID][frameID], &beginInfo) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "命令开始失败");
-            }
-        }
-
-        //命令结束
-        void cmdEnd(const int threadID, const int frameID) {
-            vertOffset = std::vector<VkDeviceSize>{ 0 };
-
-            if (vkEndCommandBuffer(commandBuffer[threadID][frameID]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "命令结束失败");
-            }
-        }
-
-
-
-        //命令录制，通用
-        void cmdRecord(int threadID, int frameID, const VkPipeline& pipeline, const VkPipelineLayout& pipelineLayout, const VkDescriptorSet& descriptorSet, const VkBuffer& vertexBuffer, const VkBuffer& indexBuffer, uint32_t indexSize) {
-            vkCmdBindPipeline(      commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-            vkCmdBindDescriptorSets(commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-            vkCmdBindVertexBuffers( commandBuffer[threadID][frameID], 0, 1, &vertexBuffer, vertOffset.data());
-            vkCmdBindIndexBuffer(   commandBuffer[threadID][frameID], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-            vkCmdDrawIndexed(       commandBuffer[threadID][frameID], indexSize, 1, 0, 0, 0);
-        }
-
-        //命令录制，全屏三角形
-        void cmdRecord(int threadID, int frameID, const VkPipeline& pipeline, const VkPipelineLayout& pipelineLayout, const VkDescriptorSet& descriptorSet, const VkExtent2D& scExtent) {
-            viewport.width  = (float)scExtent.width;
-            viewport.height = (float)scExtent.height;
-
-            scissor.extent = scExtent;
-
-            vkCmdBindPipeline(      commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-            vkCmdSetViewport(       commandBuffer[threadID][frameID], 0, 1, &viewport);
-            vkCmdSetScissor(        commandBuffer[threadID][frameID], 0, 1, &scissor);
-            vkCmdBindDescriptorSets(commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-            vkCmdDraw(              commandBuffer[threadID][frameID], 3, 1, 0, 0);
-        }
-
-        //命令录制，ui
-        void cmdRecord(int threadID, int frameID, const VkPipeline& pipeline, const VkPipelineLayout& pipelineLayout, const VkDescriptorSet& descriptorSet, const VkBuffer& vertexBuffer, uint32_t numLetters) {
-            vkCmdBindPipeline(      commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-            vkCmdBindDescriptorSets(commandBuffer[threadID][frameID], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
-            vkCmdBindVertexBuffers( commandBuffer[threadID][frameID], 0, 1, &vertexBuffer, vertOffset.data());
-            vkCmdBindVertexBuffers( commandBuffer[threadID][frameID], 1, 1, &vertexBuffer, vertOffset.data());
-
-            for (uint32_t j = 0; j < numLetters; j++) {
-                vkCmdDraw(commandBuffer[threadID][frameID], 4, 1, j * 4, 0);		//不用循环文本底部有连线
-            }
-        }
-
-
-
-        //命令队列提交
-        void cmdQueueSubmit(VkDevice& device, VkQueue& graphicsQueue, VkCommandBuffer& tempCommandBuffer) {
-            VkSubmitInfo submitInfo{};
-            submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submitInfo.commandBufferCount = 1;
-            submitInfo.pCommandBuffers    = &tempCommandBuffer;
-
-            std::lock_guard<std::mutex> lock(lockInfo::queueThreadLock);
-            vkEndCommandBuffer(tempCommandBuffer);
-
-            vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-            vkQueueWaitIdle(graphicsQueue);
-
-            vkFreeCommandBuffers(device, commandPool, 1, &tempCommandBuffer);
-        }
-
-        //命令管线屏障
-        void cmdBarrier(int threadID, int frameID) {
-            vkCmdPipelineBarrier(commandBuffer[threadID][frameID], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, &memBarrier, 0, nullptr, 0, nullptr);
-        }
-
-
-
-        int currentThreadId = 0;						                                    //当前帧命令缓冲区线程id
-        int nextThreadId = currentThreadId;						                            //下一帧命令缓冲区线程id
-        std::unique_ptr<std::mutex> nextThreadIdDataLock = std::make_unique<std::mutex>();  //nextThreadId数据锁
-
-        //判断命令缓冲区线程是否需要更新
-        bool isUpdate() {
-            return nextThreadId != currentThreadId;
-        }
-
-        //设置当前帧命令缓冲区线程id
-        void setCurrentThreadId() {
-            nextThreadIdDataLock->lock();
-            currentThreadId = nextThreadId;
-            nextThreadIdDataLock->unlock();
-        }
-
-        //设置下一帧命令缓冲区线程id
-        void setNextThreadId() {
-            nextThreadIdDataLock->lock();
-            nextThreadId = (currentThreadId + 1) % 2;
-            nextThreadIdDataLock->unlock();
-        }
-
-    private:
-        VkCommandBufferAllocateInfo allocInfo{};                    //命令的创建信息
-        VkCommandBufferBeginInfo beginInfo{};                       //命令的录制信息
-
-        VkViewport viewport{};
-        VkRect2D scissor{};
-
-        VkMemoryBarrier memBarrier{}; 
-
-        std::vector<VkDeviceSize> vertOffset{ 0 };                  //顶点偏移量，绑定管线过程中指定各顶点缓冲区的偏移量
-
-        PFN_vkCmdDrawMeshTasksEXT vkCmdDrawMeshTasksEXT = nullptr;  //网格着色器绘制函数
-
-
-
-        //加载扩展函数
-        void loadExtFunc(const VkDevice& device) {
-            //网格着色器绘制函数
-            vkCmdDrawMeshTasksEXT = (PFN_vkCmdDrawMeshTasksEXT)vkGetDeviceProcAddr(device, "vkCmdDrawMeshTasksEXT");
-            if (vkCmdDrawMeshTasksEXT == nullptr) {
-                Log::printError(__FILE__, __LINE__, "vkCmdDrawMeshTasksEXT获取失败");
-            }
-        }
-    };
-
-    //ui信息结点
-    struct uiTextInfoNode {
-        glm::dvec3 pos;
-        glm::dvec3 chunkPos;
-        glm::ivec3 minepos{};
-    };
-
-
-
-    //点光源结点
-    struct pointLightNode {
-        glm::vec3 position;     //位置
-        float radius;           //半径
-
-        glm::vec3 color;        //颜色
-        float placeholder;      //占位符
-    };
-
-    //平行光结点
-    struct dirLightNode {
-        glm::vec3 direction;    //方向
-        float scale;            //强度
-
-        glm::vec3 color;        //颜色
-        float placeholder;      //占位符
-    };
-
-    //聚光灯结点
-    struct spotLightNode {
-        glm::vec3 position;     //位置
-        float inner;            //内圆锥
-
-        glm::vec3 color;        //颜色
-        float outer;            //外圆锥
-
-        glm::vec3 direction;    //方向
-        float placeholder;      //占位符
-    };
-
-    //mvp统一结点
-    struct mvpUBO {
-        glm::mat4 model;            //模型矩阵，用于将模型变换到世界坐标系
-        glm::mat4 modelTI;          //模型转置逆矩阵，用于计算光照法线
-        glm::mat4 view;             //视图矩阵，用于将世界坐标系变换到观察者坐标系
-        glm::mat4 proj;             //投影矩阵，用于将观察者坐标系变换到裁剪坐标系
-    };
-
-    //前向光照统一结点
-    struct forwardLightUBO {
-        glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
-        float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到，用于周期性效果
-
-        glm::vec3 gLightColor;      //全局光照颜色，决定环境光和漫反射基础颜色
-        float ambientScale;         //环境光缩放，决定环境光强度
-
-        glm::vec3 gLightPos;        //全局光照坐标，点光源坐标，决定漫反射效果
-        float diffuseScale;         //漫反射缩放，决定漫反射强度
-
-        glm::vec3 gLightDir;        //全局光照方向，平行光坐标，决定漫反射效果
-        float specularScale;        //镜面反射缩放，决定镜面反射强度
-
-        glm::vec3 flashPos;         //聚光灯坐标
-        float flashCutOff;          //聚光灯内圆锥
-
-        glm::vec3 flashDir;         //聚光灯方向
-        float outerCutOff;          //聚光灯外圆锥
-    };
-
-    //延迟光照统一结点
-    struct deferredLightUBO {
-        glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
-        float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到，用于周期性效果
-        
-        float ambientScale;         //环境光强度
-        float diffuseScale;         //漫反射强度
-        float specularScale;        //镜面反射强度
-        float placeholder;          //占位符
-        
-        pointLightNode pointLightList[1];
-        dirLightNode   dirLightList[1];
-        spotLightNode  spotLightList[1];
-    };
-
-    //延迟阴影统一结点
-    struct deferredShadowUBO {
-        glm::mat4 shadowMvp;        //阴影mvp
-        glm::vec2 shadowExtent;     //阴影贴图大小
-    };
-
-    //阴影mvp统一结点
-    struct shadowMvpUBO {
-        glm::mat4 mvp;              //阴影mvp变换
-    };
-
-
-
-    /*管线缓冲区*/
-    struct terrainBufferNode {
-        //网格缓冲
-        bufferNode vertex[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
-        bufferNode index[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
-
-        //纹理缓冲
-        const char* textureFile;
-        imageNode texture;
-
-        //纹理参数
-        uint32_t arrayLayer;
-        uint32_t mipLevel = 1;
-
-        //统一缓冲
-        bufferNode uniform;
-        mvpUBO ubo;
-
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
-        //程序化索引
-        bool isEnable;
-        pipelineEnum::procPipelineId::type pipeId;  //管线索引
-        bufferEnum::procSamplerId::type samplerId;  //采样索引
-
-
-
-        terrainBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
-            textureFile = fileInfo::image::cube;
-            arrayLayer = textureInfo::terrain::arrayLayer;
-
-            isEnable  = enable;
-            pipeId    = pId;
-            samplerId = sId;
-        }
-
-        terrainBufferNode() = delete;
-
-        //清理结构体，descriptorSet由描述符池管理，无需手动清理
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
-                for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
-                    vmaDestroyBuffer(memAllocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMemory);
-                    vmaDestroyBuffer(memAllocator, index[thread][layer].buffer, index[thread][layer].bufferMemory);
-                }
-            }
-
-            vmaDestroyImage(memAllocator, texture.image, texture.imageMemory);
-            vkDestroyImageView(device, texture.view, nullptr);
-
-            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
-        }
-    };
-
-    struct staticModelNode {
-        //模型文件
-        std::string modelFile;
-
-        //网格缓冲
-        bufferNode vertex;
-        bufferNode index;
-
-        //纹理缓冲
-        const char* textureFile;
-        imageNode texture;
-        //const char* normalFile;
-        //imageNode normal;
-
-        //纹理参数
-        uint32_t mipLevel;                  //在创建texture时赋值
-
-        //统一缓冲
-        bufferNode uniform;
-        mvpUBO ubo;
-
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
-        //程序化索引
-        bufferEnum::procSamplerId::type samplerId;
-
-        //用于屏蔽超出视觉范围模型的命令提交和统一缓冲更新
-        glm::dvec3 modelWorldPos;           //模型世界坐标（d世界坐标系），在初始化时赋值
-        glm::dvec3 currentWorldPos;         //当前世界坐标（d世界坐标系），在更新统一缓冲时赋值
-        bool isVisible = true;              //模型可见标识，在提交命令时赋值
-
-
-
-        void create(const std::string tempModelFile, const char* tempTextureFile, /*const char* tempNormalFile,*/ bufferEnum::procSamplerId::type sId, const glm::dvec3& tempModelWorldPos) {
-            modelFile     = tempModelFile;
-            textureFile   = tempTextureFile;
-            //normalFile  = tempNormalFile;
-            samplerId     = sId;
-            modelWorldPos = tempModelWorldPos;
-        }
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMemory);
-
-            vmaDestroyImage(memAllocator, texture.image, texture.imageMemory);
-            vkDestroyImageView(device, texture.view, nullptr);
-
-            //vmaDestroyImage(memAllocator, normal.image, normal.imageMemory);
-            //vkDestroyImageView(device, normal.view, nullptr);
-
-            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
-        }
-    };
-
-    struct dynamicModelSubNode {
-        //网格缓冲
-        bufferNode vertex;
-        bufferNode index;
-
-        //纹理缓冲
-        const char* textureFile;
-        imageNode texture;
-        //const char* normalFile;
-        //imageNode normal;
-
-        //统一缓冲
-        bufferNode uniform;
-        mvpUBO ubo;
-
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
-
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMemory);
-
-            vmaDestroyImage(memAllocator, texture.image, texture.imageMemory);
-            vkDestroyImageView(device, texture.view, nullptr);
-
-            //vmaDestroyImage(memAllocator, normal.image, normal.imageMemory);
-            //vkDestroyImageView(device, normal.view, nullptr);
-
-            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
-        }
-    };
-
-    struct dynamicModelNode {
-        //模型文件
-        std::string modelFile;
-
-        //动态模型结点列表
-        std::vector<dynamicModelSubNode> node;
-
-        //纹理参数
-        uint32_t mipLevel;
-
-        //程序化索引
-        bufferEnum::procSamplerId::type samplerId;
-
-        //用于屏蔽超出视觉范围模型的命令提交和统一缓冲更新
-        glm::dvec3 modelWorldPos;           //模型世界坐标（d世界坐标系），在初始化时赋值
-        glm::dvec3 currentWorldPos;         //当前世界坐标（d世界坐标系），在更新统一缓冲时赋值
-        bool isVisible = true;              //模型可见标识，在提交命令时赋值
-
-
-
-        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, /*std::vector<const char*> tempNormalFile,*/ bufferEnum::procSamplerId::type sId, const glm::dvec3& tempModelWorldPos) {
-            modelFile = tempModelFile;
-
-            node.resize(tempTextureFile.size());
-            for (int i = 0; i < tempTextureFile.size(); i++) {
-                node[i].textureFile = tempTextureFile[i];
-                //node[i].normalFile = tempNormalFile[i];
-            }
-
-            samplerId = sId;
-            modelWorldPos = tempModelWorldPos;
-        }
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            for (int i = 0; i < node.size(); i++) {
-                node[i].clear(device, memAllocator);
-            }
-        }
-    };
-
-    struct skyboxBufferNode {
-        //网格缓冲
-        bufferNode vertex;
-        bufferNode index;
-
-        //统一缓冲
-        bufferNode uniform;
-        mvpUBO ubo;
-        bufferNode lightUniform;
-        forwardLightUBO lightUbo;
-
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
-        //程序化索引
-        bool isEnable;
-        pipelineEnum::procPipelineId::type pipeId;
-
-
-
-        skyboxBufferNode(bool enable, pipelineEnum::procPipelineId::type pId) {
-            isEnable = enable;
-            pipeId   = pId;
-        }
-
-        skyboxBufferNode() = delete;
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMemory);
-
-            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
-            vmaDestroyBuffer(memAllocator, lightUniform.buffer, lightUniform.bufferMemory);
-        }
-    };
-
-    struct mineBufferNode {
-        //网格缓冲
-        bufferNode vertex;
-        bufferNode index;
-
-        //统一缓冲
-        bufferNode uniform;
-        mvpUBO ubo;
-
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
-        //程序化索引
-        bool isEnable;
-        pipelineEnum::procPipelineId::type pipeId;
-
-
-
-        mineBufferNode(bool enable, pipelineEnum::procPipelineId::type pId) {
-            isEnable = enable;
-            pipeId   = pId;
-        }
-
-        mineBufferNode() = delete;
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMemory);
-
-            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
-        }
-    };
-
-    struct uiTextBufferNode {
-        //网格缓冲
-        bufferNode vertex;
-
-        //纹理缓冲
-        imageNode texture;
-        stb_fontchar* stbFontData = new stb_fontchar[STB_FONT_consolas_24_latin1_NUM_CHARS];    //字符数据
-
-        //纹理参数
-        glm::vec4* mapped = nullptr;
-        uint32_t numLetters;
-
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
-        //程序化索引
-        bool isEnable;
-        pipelineEnum::procPipelineId::type pipeId;
-        bufferEnum::procSamplerId::type samplerId;
-
-
-
-        uiTextBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
-            isEnable  = enable;
-            pipeId    = pId;
-            samplerId = sId;
-        }
-
-        uiTextBufferNode() = delete;
-
-        void beginTextUpdate(VmaAllocator memAllocator) {
-            vmaMapMemory(memAllocator, vertex.bufferMemory, (void**)&mapped);
-            numLetters = 0;
-        }
-
-        void addText(std::string texts, float x, float y, bufferEnum::textAlignId::type align) {
-            // 字符的起始索引
-            const uint32_t firstChar = STB_FONT_consolas_24_latin1_FIRST_CHAR;
-
-            // 以窗口大小为单位，计算字符宽度和高度
-            const float charW = 1.5f * 1.0f / windowInfo::width;
-            const float charH = 1.5f * 1.0f / windowInfo::height;
-
-            // 窗口的宽度和高度
-            x = (x / windowInfo::width * 2.0f) - 1.0f;
-            y = (y / windowInfo::height * 2.0f) - 1.0f;
-
-            // 计算文本宽度
-            float textWidth = 0;
-            for (char letter : texts) {
-                stb_fontchar* charData = &stbFontData[(uint32_t)letter - firstChar];
-                textWidth += charData->advance * charW;
-            }
-
-            // 根据对齐方式调整x坐标
-            switch (align) {
-            case bufferEnum::textAlignId::right:
-                x -= textWidth;
-                break;
-            case bufferEnum::textAlignId::center:
-                x -= textWidth / 2.0f;
-                break;
-            case bufferEnum::textAlignId::left:
+        void createRenderInstanceNode(const renderStruct::renderTemplateNode& renderTemplate, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkExtent2D& extent, const VkSampleCountFlagBits& msaa, const VkDevice& device, const VmaAllocator& memAllocator) {
+            switch (renderTemplate.renderAttType) {
+            case renderEnum::renderAttId::forward_ra: {
+                clearValueList = { renderInfo::colorClearValue, renderInfo::depthClearValue };
+               
                 break;
             }
+            case renderEnum::renderAttId::deferred_ra: {
+                clearValueList = { renderInfo::colorClearValue, renderInfo::colorClearValue, renderInfo::colorClearValue, renderInfo::depthClearValue };
 
-            // 为每个字符生成uv映射的四边形
-            for (char letter : texts) {
-                // 创建一个指向stb_fontchar类型数据的指针
-                stb_fontchar* charData = &stbFontData[(uint32_t)letter - firstChar];
+                break;
+            }
+            case renderEnum::renderAttId::shadowMap_ra: {
+                clearValueList = { renderInfo::depthClearValue };
 
-                // 设置四边形的uv坐标和位置
-                mapped->x = (x + (float)charData->x0 * charW);
-                mapped->y = (y + (float)charData->y0 * charH);
-                mapped->z = charData->s0;
-                mapped->w = charData->t0;
-                mapped++;
+                break;
+            }
+            }
 
-                mapped->x = (x + (float)charData->x1 * charW);
-                mapped->y = (y + (float)charData->y0 * charH);
-                mapped->z = charData->s1;
-                mapped->w = charData->t0;
-                mapped++;
+            switch (renderTemplate.renderTemplateType) {
+            case renderEnum::renderTemplateId::swapChain_rt: {
+                frameImageList.resize(renderEnum::renderFrameId::count);
 
-                mapped->x = (x + (float)charData->x0 * charW);
-                mapped->y = (y + (float)charData->y1 * charH);
-                mapped->z = charData->s0;
-                mapped->w = charData->t1;
-                mapped++;
+                //color、depth
+                frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
+                    {colorFormat, extent, msaa, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {depthFormat, extent, msaa, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                                   VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                };
 
-                mapped->x = (x + (float)charData->x1 * charW);
-                mapped->y = (y + (float)charData->y1 * charH);
-                mapped->z = charData->s1;
-                mapped->w = charData->t1;
-                mapped++;
+                //swap
+                frameImageList[renderEnum::renderFrameId::swap_rf].createSwapImageList(swapStruct::swapImageList, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, device);
 
-                x += charData->advance * charW;
+                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], frameImageList[renderEnum::renderFrameId::swap_rf], renderTemplate.render, extent, device);
+                break;
+            }
+            case renderEnum::renderTemplateId::offScreen_rt: {
+                frameImageList.resize(1);
 
-                numLetters++;
+                //color、depth、view
+                frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
+                    {colorFormat, extent, msaa,                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {depthFormat, extent, msaa,                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {colorFormat, extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                };
+
+                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, extent, device);
+                break;
+            }
+            case renderEnum::renderTemplateId::deferred_rt: {
+                frameImageList.resize(1);
+
+                //position、normal、albedo、depth
+                frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
+                    {renderInfo::dsPosColorFormat, extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {colorFormat,                  extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {colorFormat,                  extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {depthFormat,                  extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                };
+
+                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, extent, device);
+                break;
+            }
+            case renderEnum::renderTemplateId::shadowMap_rt: {
+                frameImageList.resize(1);
+
+                //depth
+                frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
+                    {depthFormat, extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                };
+
+                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, extent, device);
+                break;
+            }
             }
         }
 
-        void endTextUpdate(const VmaAllocator& memAllocator) {
-            vmaUnmapMemory(memAllocator, vertex.bufferMemory);
-            mapped = nullptr;
-        }
-
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
+            //清理frameImageList
+            frameImageList[renderEnum::renderFrameId::conv_rf].clear(device, memAllocator);
 
-            vmaDestroyImage(memAllocator, texture.image, texture.imageMemory);
-            vkDestroyImageView(device, texture.view, nullptr);
-        }
-    };
-
-    struct osMirrorBufferNode {
-        //网格缓冲
-        bufferNode vertex;
-        bufferNode index;
-
-        //统一缓冲
-        bufferNode uniform;
-        mvpUBO ubo;
-        bufferNode lightUniform;
-        forwardLightUBO lightUbo;
-
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
-        //程序化索引
-        bool isEnable;
-        pipelineEnum::procPipelineId::type pipeId;
-        bufferEnum::procSamplerId::type samplerId;
-
-
-
-        osMirrorBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
-            isEnable  = enable;
-            pipeId    = pId;
-            samplerId = sId;
-        }
-
-        osMirrorBufferNode() = delete;
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
-            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMemory);
-
-            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMemory);
-            vmaDestroyBuffer(memAllocator, lightUniform.buffer, lightUniform.bufferMemory);
-        }
-    };
-
-    struct osScenceBufferNode {
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
-        //程序化索引
-        bool isEnable;
-        pipelineEnum::procPipelineId::type pipeId;
-        bufferEnum::procSamplerId::type samplerId;
-
-
-
-        osScenceBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
-            isEnable  = enable;
-            pipeId    = pId;
-            samplerId = sId;
-        }
-
-        osScenceBufferNode() = delete;
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-
-        }
-    };
-
-    struct dsScenceBufferNode {
-        //统一缓冲
-        bufferNode lightUniform;
-        deferredLightUBO lightUbo;
-        bufferNode shadowUniform;
-        deferredShadowUBO shadowUbo;
-
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
-        //程序化索引
-        bool isEnable;
-        pipelineEnum::procPipelineId::type pipeId;
-        bufferEnum::procSamplerId::type samplerId;
-
-
-
-        dsScenceBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
-            isEnable  = enable;
-            pipeId    = pId;
-            samplerId = sId;
-        }
-
-        dsScenceBufferNode() = delete;
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vmaDestroyBuffer(memAllocator, lightUniform.buffer,  lightUniform.bufferMemory);
-            vmaDestroyBuffer(memAllocator, shadowUniform.buffer, shadowUniform.bufferMemory);
-        }
-    };
-
-    struct shadowTerrainBufferNode {
-        //网格缓冲，索引直接用源网格的
-        bufferNode vertex[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
-
-        //统一缓冲
-        bufferNode shadowMvpUniform;
-        shadowMvpUBO shadowMvpUbo;
-
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
-
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
-                for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
-                    vmaDestroyBuffer(memAllocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMemory);
-                }
+            if (frameImageList.size() > renderEnum::renderFrameId::swap_rf) {
+                frameImageList[renderEnum::renderFrameId::swap_rf].clearView(device);
             }
+            frameImageList.clear();
 
-            vmaDestroyBuffer(memAllocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMemory);
+            //清理frameBufferList
+            for (int i = 0; i < frameBufferList.size(); i++) {
+                frameBufferList[i].clear(device);
+            }
+            frameBufferList.clear();
         }
-    };
 
-    struct shadowBufferNode {
-        //网格缓冲，索引直接用源网格的
-        bufferNode vertex;
-
-        //统一缓冲
-        bufferNode shadowMvpUniform;
-        shadowMvpUBO shadowMvpUbo;
-
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
-
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMemory);
-
-            vmaDestroyBuffer(memAllocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMemory);
-        }
-    };
-
-
-
-    //todo 都改成带Image的
-    struct scFramebufferNode {
-        bufferStruct::imageNode color;                          //颜色图像
-        bufferStruct::imageNode depth;                          //深度图像
-        std::vector<bufferStruct::imageNode> swapImageList;     //交换链图像
-
-        std::vector<VkFramebuffer> framebuffer;
+    private:
+        std::vector<VkClearValue> clearValueList{};     //清理值列表
 
         
 
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vkDestroyImageView(device, color.view, nullptr);
-            vmaDestroyImage(memAllocator, color.image, color.imageMemory);
-
-            vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
-
-            //通过vkGetSwapchainImagesKHR获取的VkImage，会随着swapchain的销毁自动释放
-            for (int i = 0; i < swapImageList.size(); i++) {
-                vkDestroyImageView(device, swapImageList[i].view, nullptr);
-            }
-            swapImageList.clear();
-
-            for (int i = 0; i < framebuffer.size(); i++) {
-                vkDestroyFramebuffer(device, framebuffer[i], nullptr);
-            }
-        }
-    };
-
-    struct osFramebufferNode {
-        bufferStruct::imageNode color;
-        bufferStruct::imageNode depth;
-        bufferStruct::imageNode osView;
-        
-        VkFramebuffer framebuffer;
-
-
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vkDestroyImageView(device, color.view, nullptr);
-            vmaDestroyImage(memAllocator, color.image, color.imageMemory);
-
-            vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
-
-            vkDestroyImageView(device, osView.view, nullptr);
-            vmaDestroyImage(memAllocator, osView.image, osView.imageMemory);
-
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }
-    };
-
-    struct dsFramebufferNode {
-        bufferStruct::imageNode position;  //位置附件（世界空间坐标）
-        bufferStruct::imageNode normal;    //法线附件（世界空间法线）
-        bufferStruct::imageNode albedo;    //反照率附件（颜色+高光系数）
-        bufferStruct::imageNode depth;     //深度附件
-
-        VkFramebuffer framebuffer;
-
-
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vkDestroyImageView(device, position.view, nullptr);
-            vmaDestroyImage(memAllocator, position.image, position.imageMemory);
-
-            vkDestroyImageView(device, normal.view, nullptr);
-            vmaDestroyImage(memAllocator, normal.image, normal.imageMemory);
-
-            vkDestroyImageView(device, albedo.view, nullptr);
-            vmaDestroyImage(memAllocator, albedo.image, albedo.imageMemory);
-
-            vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
-
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }
-    };
-
-    struct shFramebufferNode {
-        bufferStruct::imageNode depth;      //深度附件
-
-        VkFramebuffer framebuffer;
-
-
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vkDestroyImageView(device, depth.view, nullptr);
-            vmaDestroyImage(memAllocator, depth.image, depth.imageMemory);
-
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }
-    };
-
-    struct renderInfoNode {
-        std::array<VkClearValue, 2> clearValueForward;      //前向清理（解析附件不需要清除值）
-        std::array<VkClearValue, 4> clearValueDeferred;     //延迟清理
-        std::array<VkClearValue, 1> clearValueShadow;       //阴影清理
-
-        renderEnum::renderTemplateId::type renderTemplateType;
-        std::variant<scFramebufferNode, osFramebufferNode, dsFramebufferNode, shFramebufferNode> frameNode;
-        scFramebufferNode* scPtr = nullptr;
-        osFramebufferNode* osPtr = nullptr;
-        dsFramebufferNode* dsPtr = nullptr;
-        shFramebufferNode* shPtr = nullptr;
-
-        VkRenderPassBeginInfo renderInfo;
-
-
-
-        void createRenderInfoNode(const VkClearColorValue& color, const VkClearDepthStencilValue& depthStencil, renderEnum::renderTemplateId::type tRenderTemplateType) {
-            clearValueForward[0].color        = color;
-            clearValueForward[1].depthStencil = depthStencil;
-
-            clearValueDeferred[0].color        = color;
-            clearValueDeferred[1].color        = color;
-            clearValueDeferred[2].color        = color;
-            clearValueDeferred[3].depthStencil = depthStencil;
-
-            clearValueShadow[0].depthStencil = depthStencil;
-
-            renderInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderInfo.renderArea.offset = { 0, 0 };
-
-            renderTemplateType = tRenderTemplateType;
-
-            if (tRenderTemplateType == renderEnum::renderTemplateId::swapChain_rt) {
-                frameNode = scFramebufferNode{};
-                scPtr     = &std::get<bufferStruct::scFramebufferNode>(frameNode);
-
-                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueForward.size());
-                renderInfo.pClearValues    = clearValueForward.data();
-            }
-            else if(tRenderTemplateType == renderEnum::renderTemplateId::offScreen_rt){
-                frameNode = osFramebufferNode{};
-                osPtr     = &std::get<bufferStruct::osFramebufferNode>(frameNode);
-
-                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueForward.size());
-                renderInfo.pClearValues    = clearValueForward.data();
-            }
-            else if (tRenderTemplateType == renderEnum::renderTemplateId::deferred_rt) {
-                frameNode = dsFramebufferNode{};
-                dsPtr     = &std::get<bufferStruct::dsFramebufferNode>(frameNode);
-
-                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueDeferred.size());
-                renderInfo.pClearValues    = clearValueDeferred.data();
-            }
-            else if (tRenderTemplateType == renderEnum::renderTemplateId::shadowMap_rt) {
-                frameNode = shFramebufferNode{};
-                shPtr     = &std::get<bufferStruct::shFramebufferNode>(frameNode);
-                
-                renderInfo.clearValueCount = static_cast<uint32_t>(clearValueShadow.size());
-                renderInfo.pClearValues    = clearValueShadow.data();
-            }
-            else {
-                Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(tRenderTemplateType));
-            }
-        }
-
-        void createRenderInfo(const VkExtent2D& scExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaa, const VkRenderPass& render, const VkDevice& device, const VmaAllocator& memAllocator) {
-            if (renderTemplateType == renderEnum::renderTemplateId::swapChain_rt) {
-                createImageNode(scPtr->color, scExtent.width, scExtent.height, colorFormat, msaa, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-                createImageNode(scPtr->depth, scExtent.width, scExtent.height, depthFormat, msaa, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                                   VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator);
-                createImageNode(scPtr->swapImageList, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, device);
-
-                createScFramebuffer(scExtent, render, device);
-            }
-            else if (renderTemplateType == renderEnum::renderTemplateId::offScreen_rt) {
-                createImageNode(osPtr->color,   scExtent.width, scExtent.height, colorFormat, msaa, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-                createImageNode(osPtr->depth,   scExtent.width, scExtent.height, depthFormat, msaa, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator);
-                createImageNode(osPtr->osView,  scExtent.width, scExtent.height, colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-
-                createOsFramebuffer(scExtent, render, device);
-            }
-            else if (renderTemplateType == renderEnum::renderTemplateId::deferred_rt) {
-                createImageNode(dsPtr->position, scExtent.width, scExtent.height, renderInfo::dsPosColorFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-                createImageNode(dsPtr->normal,   scExtent.width, scExtent.height, colorFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-                createImageNode(dsPtr->albedo,   scExtent.width, scExtent.height, colorFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-                createImageNode(dsPtr->depth,    scExtent.width, scExtent.height, depthFormat,             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator);
-
-                createDsFramebuffer(scExtent, render, device);
-            }
-            else if (renderTemplateType == renderEnum::renderTemplateId::shadowMap_rt) {
-                createImageNode(shPtr->depth, scExtent.width, scExtent.height, depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator);
-
-                createShFramebuffer(scExtent, render, device);
-            }
-            else {
-                Log::printError(__FILE__, __LINE__, "该帧缓冲类型不存在: \t" + std::to_string(renderTemplateType));
-            }
-
-            renderInfo.renderPass = render;
-            renderInfo.renderArea.extent = scExtent;
-        }
-
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            std::visit([&device, &memAllocator](auto& node) {node.clear(device, memAllocator); }, frameNode);
-        }
-
-    private:
-        //创建交换链帧缓冲
-        void createScFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
-	    	VkFramebufferCreateInfo framebufferInfo{};
-	    	framebufferInfo.sType	   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	    	framebufferInfo.renderPass = render;
-	    	framebufferInfo.width	   = scExtent.width;
-	    	framebufferInfo.height     = scExtent.height;
-	    	framebufferInfo.layers	   = 1;
-
-            bufferStruct::scFramebufferNode& tempFrameNode = std::get<bufferStruct::scFramebufferNode>(frameNode);
-            tempFrameNode.framebuffer.resize(tempFrameNode.swapImageList.size());
-
-	    	for (size_t i = 0; i < tempFrameNode.swapImageList.size(); i++) {
-	    		std::array<VkImageView, 3> attachments{ tempFrameNode.color.view,tempFrameNode.depth.view,tempFrameNode.swapImageList[i].view };
-	    		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-	    		framebufferInfo.pAttachments	= attachments.data();
-
-	    		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer[i]) != VK_SUCCESS) {
-	    			Log::printError(__FILE__, __LINE__, "交换链帧缓冲创建失败");
-	    		}
-	    	}
-	    }
-
-        //创建离屏帧缓冲
-        void createOsFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
-            bufferStruct::osFramebufferNode& tempFrameNode = std::get<bufferStruct::osFramebufferNode>(frameNode);
-            std::array<VkImageView, 3> attachments{ tempFrameNode.color.view,tempFrameNode.depth.view,tempFrameNode.osView.view };
-
-		    VkFramebufferCreateInfo framebufferInfo{};
-		    framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		    framebufferInfo.renderPass		= render;	                                    //渲染通道
-		    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());	//附件数量
-		    framebufferInfo.pAttachments	= attachments.data();							//附件
-		    framebufferInfo.width			= scExtent.width;				                //宽度
-		    framebufferInfo.height			= scExtent.height;				                //高度
-		    framebufferInfo.layers			= 1;											//层数
-
-		    if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
-		    	Log::printError(__FILE__, __LINE__, "离屏帧缓冲创建失败");
-		    }
-            
-            renderInfo.framebuffer = tempFrameNode.framebuffer;
-        }
-
-        //创建延迟渲染帧缓冲
-        void createDsFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
-            bufferStruct::dsFramebufferNode& tempFrameNode = std::get<bufferStruct::dsFramebufferNode>(frameNode);
-            std::array<VkImageView, 4> attachments{ tempFrameNode.position.view, tempFrameNode.normal.view,tempFrameNode.albedo.view,tempFrameNode.depth.view };
-
-            VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass      = render;
-            framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-            framebufferInfo.pAttachments    = attachments.data();
-            framebufferInfo.width           = scExtent.width;
-            framebufferInfo.height          = scExtent.height;
-            framebufferInfo.layers          = 1;
-
-            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "延迟渲染帧缓冲创建失败");
-            }
-
-            renderInfo.framebuffer = tempFrameNode.framebuffer;
-        }
-
-        //创建阴影映射帧缓冲
-        void createShFramebuffer(const VkExtent2D& scExtent, const VkRenderPass& render, const VkDevice& device) {
-            bufferStruct::shFramebufferNode& tempFrameNode = std::get<bufferStruct::shFramebufferNode>(frameNode);
-
-            VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass      = render;
-            framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments    = &tempFrameNode.depth.view;
-            framebufferInfo.width           = scExtent.width;
-            framebufferInfo.height          = scExtent.height;
-            framebufferInfo.layers          = 1;
-
-            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &tempFrameNode.framebuffer) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "阴影映射帧缓冲创建失败");
-            }
-
-            renderInfo.framebuffer = tempFrameNode.framebuffer;
-        }
-
-
-
-        //创建图像结点
-        void createImageNode(bufferStruct::imageNode& image, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
-            VkImageCreateInfo imageInfo = {};
-            imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-            imageInfo.format        = format;
-            imageInfo.extent.width  = width;
-            imageInfo.extent.height = height;
-            imageInfo.extent.depth  = 1;
-            imageInfo.mipLevels     = 1;
-            imageInfo.arrayLayers   = 1;
-            imageInfo.samples       = numSamples;
-            imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            imageInfo.usage         = usage;
-            imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-
-            VmaAllocationCreateInfo allocInfo = {};
-            allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
-            allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-            if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image.image, &image.imageMemory, nullptr) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "图像创建失败");
-            }
-
-            VkImageViewCreateInfo viewInfo{};
-            viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewInfo.image    = image.image;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewInfo.format   = format;
-            viewInfo.subresourceRange.aspectMask     = aspectFlags;
-            viewInfo.subresourceRange.baseMipLevel   = 0;
-            viewInfo.subresourceRange.levelCount     = 1;
-            viewInfo.subresourceRange.baseArrayLayer = 0;
-            viewInfo.subresourceRange.layerCount     = 1;
-
-            if (vkCreateImageView(device, &viewInfo, nullptr, &image.view) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "图像视图创建失败");
-            }
-        }
-
-        //创建交换链图像结点
-        void createImageNode(std::vector<bufferStruct::imageNode>& swapImageList, VkFormat format, VkImageAspectFlags aspectFlags, const VkDevice& device) {
-            VkImageViewCreateInfo viewInfo{};
-            viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewInfo.format   = format;
-            viewInfo.subresourceRange.aspectMask     = aspectFlags;
-            viewInfo.subresourceRange.baseMipLevel   = 0;
-            viewInfo.subresourceRange.levelCount     = 1;
-            viewInfo.subresourceRange.baseArrayLayer = 0;
-            viewInfo.subresourceRange.layerCount     = 1;
-
-            for (auto& imageNode: swapImageList) {
-                viewInfo.image = imageNode.image;
-
-                if (vkCreateImageView(device, &viewInfo, nullptr, &imageNode.view) != VK_SUCCESS) {
-                    Log::printError(__FILE__, __LINE__, "图像视图创建失败");
-                }
-            }
-        }
-
-    public:
-        void clearSwapChain(const VkDevice& device, const VmaAllocator& memAllocator) {
-            std::visit([&device, &memAllocator](auto& node) {node.clear(device, memAllocator); }, frameNode);
-        }
-
-        void setScFramebuffer(int i) {
-            renderInfo.framebuffer = scPtr->framebuffer[i];
-        }
-    };
-
-
-
-    struct descriptorConfigNode {
-        VkDescriptorPoolSize         pool{};
-        VkDescriptorSetLayoutBinding layout{};
-        VkWriteDescriptorSet         write{};
-
-
-
-        descriptorConfigNode(uint32_t id, VkDescriptorType type, VkShaderStageFlags stage, uint32_t count) {
-            pool.type = type;
-            pool.descriptorCount = count;
-
-            layout.descriptorCount = 1;
-            layout.pImmutableSamplers = nullptr;
-            layout.binding        = id;
-            layout.descriptorType = type;
-            layout.stageFlags     = stage;
-
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstArrayElement = 0;
-            write.descriptorCount = 1;
-            write.dstBinding      = id;
-            write.descriptorType  = type;
-
-            bufferInfo.offset = 0;
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        }
-
-        descriptorConfigNode() = delete;
-
-        const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkBuffer& buffer, const VkDeviceSize& range) {
-            bufferInfo.buffer = buffer;
-            bufferInfo.range  = range;
-
-            write.dstSet      = dstSet;
-            write.pBufferInfo = &bufferInfo;
-
-            return write;
-        }
-
-        const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkSampler& sampler, const VkImageView& imageView) {
-            imageInfo.sampler   = sampler;
-            imageInfo.imageView = imageView;
-
-            write.dstSet     = dstSet;
-            write.pImageInfo = &imageInfo;
-
-            return write;
-        }
-
-    private:
-        VkDescriptorBufferInfo bufferInfo{};
-        VkDescriptorImageInfo imageInfo{};
-    };
-
-    struct descriptorNode {
-        std::vector<bufferStruct::descriptorConfigNode> config{};
-
-        VkDescriptorPool pool{};            //描述符池
-        VkDescriptorSetLayout layout{};     //描述符布局
-
-
-
-        void createDescriptorNode(const VkDevice& device) {
-            createPool(device);
-            createLayout(device);
-        }
-
-        void clear(const VkDevice& device) {
-            vkDestroyDescriptorPool(device, pool, nullptr);
-            vkDestroyDescriptorSetLayout(device, layout, nullptr);
-        }
-
-    private:
-        void createPool(const VkDevice& device) {
-            std::vector<VkDescriptorPoolSize> poolSize{};
-            for (const auto& i : config) {
-                poolSize.push_back(i.pool);
-            }
-
-            VkDescriptorPoolCreateInfo poolInfo{
-                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-                .maxSets = config[0].pool.descriptorCount,
-                .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
-                .pPoolSizes = poolSize.data()
+        //创建frameBufferList
+        void createFrameBufferList(const bufferStruct::imageBufferListNode& conv, const VkRenderPass& render, const VkExtent2D& extent, const VkDevice& device) {
+            frameBufferList = {
+                {render, conv.getViewList(), clearValueList, extent, device}
             };
-
-            if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "描述符池创建失败");
-            }
         }
 
-        void createLayout(const VkDevice& device) {
-            std::vector<VkDescriptorSetLayoutBinding> layoutBinding{};
-            for (const auto& i : config) {
-                layoutBinding.push_back(i.layout);
-            }
+        //创建frameBufferList，swap版
+        void createFrameBufferList(const bufferStruct::imageBufferListNode& conv, const bufferStruct::imageBufferListNode& swap, const VkRenderPass& render, const VkExtent2D& extent, const VkDevice& device) {
+            std::vector<VkImageView> viewList = conv.getViewList();
+            viewList.push_back({});     //预留 swap 槽位
 
-            VkDescriptorSetLayoutCreateInfo layoutInfo{
-                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                .pNext = nullptr,
-                .bindingCount = static_cast<uint32_t>(layoutBinding.size()),
-                .pBindings = layoutBinding.data()
-            };
-
-            if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
+            for (int i = 0; i < swap.imageList.size(); i++) {
+                viewList.back() = swap.imageList[i].view;
+                frameBufferList.push_back(renderStruct::renderFrameNode{ render, viewList, clearValueList, extent, device });
             }
         }
     };
@@ -2248,7 +1022,7 @@ namespace bufferStruct {
 
 //pipeline结构空间
 namespace pipelineStruct {
-    //着色器结点
+    //shader结点
     struct shaderNode {
         VkShaderModule shader{};                            //着色器
         VkPipelineShaderStageCreateInfo shaderStage{};      //着色器状态
@@ -2291,9 +1065,10 @@ namespace pipelineStruct {
         }
     };
 
-    //管线配置结点
+    //pipeConfig结点
     struct pipeConfigNode {
         std::vector<VkPipelineShaderStageCreateInfo>     shaderStageList{};         //着色阶段列表（顶点模式、网格模式）
+        VkPipelineVertexInputStateCreateInfo             vertInputStage{};          //顶点配置
         VkPipelineInputAssemblyStateCreateInfo			 primitiveState{};	        //图元配置
         VkViewport										 viewport{};			    //视口区域
         VkRect2D										 scissor{};				    //裁剪区域
@@ -2415,6 +1190,7 @@ namespace pipelineStruct {
 			pipeInfo.sType				 = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
             pipeInfo.stageCount          = (uint32_t)shaderStageList.size();
             pipeInfo.pStages             = shaderStageList.data();
+            pipeInfo.pVertexInputState   = &vertInputStage;
 			pipeInfo.pInputAssemblyState = &primitiveState;
 			pipeInfo.pViewportState		 = &viewportState;
 			pipeInfo.pRasterizationState = &rasterizer;
@@ -2429,6 +1205,7 @@ namespace pipelineStruct {
 			pipeInfo.basePipelineIndex	 = -1;
 		}
     
+        //设置管线动态处理的阶段
         void setPipeDynamicStage(const std::vector<VkDynamicState>& list) {
             pipeDynamicStageList                    = list;
             pipeDynamicStageState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -2441,7 +1218,7 @@ namespace pipelineStruct {
 
 
 
-    //管线布局结点
+    //pipeLayout结点
     struct pipeLayoutNode {
         VkPipelineLayout pipeLayout{};      //管线布局
 
@@ -2465,7 +1242,7 @@ namespace pipelineStruct {
         }
     };
 
-    //管线结点
+    //pipe结点
     struct pipelineNode {
         std::vector<pipelineStruct::shaderNode> shaderList{};   //着色器列表
         pipelineStruct::pipeConfigNode          pipeConfig{};   //管线配置
@@ -2474,8 +1251,8 @@ namespace pipelineStruct {
 
 
         //创建顶点管线结点
-        void createPipelineNode(const VkDevice& device, const VkSampleCountFlagBits& msaa, const renderEnum::renderAttId::type& renderAttType, const renderStruct::renderTemplateNode& renderTemplateNode, const pipelineStruct::pipeLayoutNode& pipeLayoutNode, const std::vector<std::string>& shaderFileList) {
-            //创建vertShaderList
+        void createPipelineNode(const VkSampleCountFlagBits& msaa, const renderStruct::renderTemplateNode& renderTemplateNode, const pipelineStruct::pipeLayoutNode& pipeLayoutNode, const std::vector<std::string>& shaderFileList, const VkDevice& device) {
+            //创建shaderList
             shaderList.resize(shaderFileList.size());
             if (shaderFileList.size() == pipelineEnum::shaderNodeId::vert::count) {
                 shaderList[pipelineEnum::shaderNodeId::vert::vert].createShaderNode(device, shaderFileList[0], VK_SHADER_STAGE_VERTEX_BIT);
@@ -2486,20 +1263,1087 @@ namespace pipelineStruct {
             }
 
             //创建pipeConfig
-            pipeConfig.createPipeConfigNode(shaderList, msaa, renderAttType, renderTemplateNode.render, pipeLayoutNode.pipeLayout);
+            pipeConfig.createPipeConfigNode(shaderList, msaa, renderTemplateNode.renderAttType, renderTemplateNode.render, pipeLayoutNode.pipeLayout);
         }
 
 
-
-        void clearSwapChain(const VkDevice& device) {
-            vkDestroyPipeline(device, pipeline, nullptr);
-        }
 
         void clear(const VkDevice& device) {
             vkDestroyPipeline(device, pipeline, nullptr);
 
             for (auto shaderNode : shaderList) {
                 shaderNode.clear(device);
+            }
+        }
+
+        void clearSwapChain(const VkDevice& device) {
+            vkDestroyPipeline(device, pipeline, nullptr);
+        }
+    };
+}
+
+//cmd结构空间
+namespace cmdStruct {
+    //cmd线程结点
+    struct cmdThreadNode {
+        std::mutex lock{};      //线程锁
+        int current = 0;        //当前线程
+        int next    = 0;        //下一线程
+
+
+
+        //判断更新
+        bool isFlip() const {
+            return next != current;
+        }
+
+        //进行更新：next切到另一线程
+        void flip() {
+            std::lock_guard<std::mutex> guard(lock);
+            next = (current + 1) % 2;
+        }
+
+        //完成更新：当前线程切到next
+        void swap() {
+            std::lock_guard<std::mutex> guard(lock);
+            current = next;
+        }
+    };
+
+    //cmd缓冲结点
+    struct cmdBufferNode {
+        VkCommandPool                pool  = VK_NULL_HANDLE;
+        VkFence                      fence = VK_NULL_HANDLE;    //本线程命令执行完成信号
+        VkCommandBufferAllocateInfo  info{};
+        std::vector<VkCommandBuffer> list{};
+    
+    
+    
+        //创建cmdPool、info、fence
+        cmdBufferNode(const VkDevice& device, const uint32_t& queueFamily, const uint32_t& frameCount) {
+            VkCommandPoolCreateInfo poolInfo{};
+            poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            poolInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            poolInfo.queueFamilyIndex = queueFamily;
+    
+            if (vkCreateCommandPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "cmdPool创建失败");
+            }
+    
+            info.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            info.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            info.commandPool        = pool;
+            info.commandBufferCount = frameCount;
+    
+            list.resize(frameCount);
+            createCmdList(device);
+    
+            VkFenceCreateInfo fenceInfo{};
+            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    
+            if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "fence创建失败");
+            }
+        }
+    
+        cmdBufferNode() = delete;
+    
+    
+    
+        //创建cmdList
+        void createCmdList(const VkDevice& device) {
+            if (vkAllocateCommandBuffers(device, &info, list.data()) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "cmdList创建失败");
+            }
+        }
+    
+        //重建cmdList
+        void recreateCmdList(const VkDevice& device) {
+            clearCmdList(device);
+            createCmdList(device);
+        }
+
+        //清理cmdPool
+        void clearCmdPool(const VkDevice& device) {
+            vkDestroyFence(device, fence, nullptr);
+            vkDestroyCommandPool(device, pool, nullptr);
+
+            pool  = VK_NULL_HANDLE;
+            fence = VK_NULL_HANDLE;
+        }
+
+        //清理cmdList
+        void clearCmdList(const VkDevice& device) {
+            vkFreeCommandBuffers(device, pool, static_cast<uint32_t>(list.size()), list.data());
+        }
+    
+    
+    
+        //重载
+        VkCommandBuffer& operator[](int frameId) { return list[frameId]; }
+        size_t           size()            const { return list.size(); }
+    };
+
+    //todo后续写成pipe结点
+    //cmd配置结点
+    struct cmdConfigNode {
+        VkPipeline       pipe        = VK_NULL_HANDLE;
+        VkPipelineLayout layout      = VK_NULL_HANDLE;
+        VkDescriptorSet  desc        = VK_NULL_HANDLE;
+        VkBuffer         vertBuffer  = VK_NULL_HANDLE;
+        VkBuffer         indexBuffer = VK_NULL_HANDLE;
+
+
+
+        //重置
+        void reset() {
+            pipe        = VK_NULL_HANDLE;
+            layout      = VK_NULL_HANDLE;
+            desc        = VK_NULL_HANDLE;
+            vertBuffer  = VK_NULL_HANDLE;
+            indexBuffer = VK_NULL_HANDLE;
+        }
+    };
+
+    //cmd录制结点
+    struct cmdRecorderNode {
+        VkCommandBuffer           cmd = VK_NULL_HANDLE;     //命令
+        VkCommandBufferBeginInfo  cmdBegin{};               //命令开始
+        cmdStruct::cmdConfigNode  cmdConfig{};              //命令配置
+
+        VkViewport                viewport{};               //视口
+        VkRect2D                  scissor{};                //裁剪
+
+        std::vector<VkDeviceSize> vertOffset{ 0 };          //顶点偏移
+        VkMemoryBarrier           memBarrier{};             //内存屏障
+
+
+
+        cmdRecorderNode() {
+            cmdBegin.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            cmdBegin.flags            = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+            cmdBegin.pInheritanceInfo = nullptr;
+
+            viewport.x        = 0.0f;
+            viewport.y        = 0.0f;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            scissor.offset = { 0, 0 };
+
+            memBarrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+            memBarrier.pNext         = nullptr;
+            memBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            memBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        }
+
+        //绑定cmd
+        void bind(const VkCommandBuffer& tCmd) {
+            cmd = tCmd;
+            cmdConfig.reset();
+        }
+
+        //重置cmd
+        void reset() {
+            if (vkResetCommandBuffer(cmd, 0) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "cmd重置失败");
+            }
+        }
+
+        //开始cmd
+        void begin() {
+            if (vkBeginCommandBuffer(cmd, &cmdBegin) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "cmd开始失败");
+            }
+        }
+
+        //结束cmd
+        void end() {
+            vertOffset = std::vector<VkDeviceSize>{ 0 };
+
+            if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "cmd结束失败");
+            }
+        }
+
+        //开始渲染
+        void beginRender(const VkRenderPassBeginInfo* info) {
+            cmdConfig.reset();
+            vkCmdBeginRenderPass(cmd, info, VK_SUBPASS_CONTENTS_INLINE);
+        }
+
+        //结束渲染
+        void endRender() {
+            vkCmdEndRenderPass(cmd);
+        }
+
+
+
+        //绘制
+        void draw(const pipelineEnum::cmdDrawId::type& cmdDrawType, const VkPipeline& tPipe, const VkPipelineLayout& tLayout, const VkDescriptorSet& tDesc, const VkBuffer& tVertBuffer = VK_NULL_HANDLE, const VkBuffer& tIndexBuffer = VK_NULL_HANDLE, uint32_t tCount = 0, const VkExtent2D& tExtent = {}) {
+            switch (cmdDrawType) {
+            case pipelineEnum::cmdDrawId::indexed: {
+                bindPipe(tPipe);
+                bindLayoutDesc(tLayout, tDesc);
+                bindVert(tVertBuffer);
+                bindIndex(tIndexBuffer);
+
+                vkCmdDrawIndexed(cmd, tCount, 1, 0, 0, 0);
+                break;
+            }
+            case pipelineEnum::cmdDrawId::fullscreen: {
+                viewport.width  = static_cast<float>(tExtent.width);
+                viewport.height = static_cast<float>(tExtent.height);
+                scissor.extent  = tExtent;
+
+                bindPipe(tPipe);
+                bindLayoutDesc(tLayout, tDesc);
+
+                vkCmdSetViewport(cmd, 0, 1, &viewport);
+                vkCmdSetScissor(cmd, 0, 1, &scissor);
+                vkCmdDraw(cmd, 3, 1, 0, 0);
+                break;
+            }
+            case pipelineEnum::cmdDrawId::text: {
+                bindPipe(tPipe);
+                bindLayoutDesc(tLayout, tDesc);
+                bindVert(tVertBuffer);
+
+                vkCmdBindVertexBuffers(cmd, 1, 1, &tVertBuffer, vertOffset.data());
+                for (uint32_t i = 0; i < tCount; i++) {
+                    vkCmdDraw(cmd, 4, 1, i * 4, 0);
+                }
+                break;
+            }
+            }
+        }
+
+        //管线屏障
+        void barrier() {
+            vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, &memBarrier, 0, nullptr, 0, nullptr);
+        }
+
+    private:
+        //绑定pipe
+        void bindPipe(const VkPipeline& tPipe) {
+            if (cmdConfig.pipe != tPipe) {
+                cmdConfig.pipe = tPipe;
+                vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, cmdConfig.pipe);
+            }
+        }
+
+        //绑定layout、desc（API 要求同时给）
+        void bindLayoutDesc(const VkPipelineLayout& tLayout, const VkDescriptorSet& tDesc) {
+            if (cmdConfig.layout != tLayout || cmdConfig.desc != tDesc) {
+                cmdConfig.layout = tLayout;
+                cmdConfig.desc   = tDesc;
+                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, cmdConfig.layout, 0, 1, &cmdConfig.desc, 0, nullptr);
+            }
+        }
+
+        //绑定vert
+        void bindVert(const VkBuffer& tVertBuffer) {
+            if (cmdConfig.vertBuffer != tVertBuffer) {
+                cmdConfig.vertBuffer = tVertBuffer;
+                vkCmdBindVertexBuffers(cmd, 0, 1, &cmdConfig.vertBuffer, vertOffset.data());
+            }
+        }
+
+        //绑定index
+        void bindIndex(const VkBuffer& tIndexBuffer) {
+            if (cmdConfig.indexBuffer != tIndexBuffer) {
+                cmdConfig.indexBuffer = tIndexBuffer;
+                vkCmdBindIndexBuffer(cmd, cmdConfig.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+            }
+        }
+    };
+
+
+
+    //cmd结点
+    struct cmdNode {
+        cmdStruct::cmdThreadNode              thread{};     //线程
+        std::vector<cmdStruct::cmdBufferNode> buffer{};     //缓冲
+        cmdStruct::cmdRecorderNode            recorder{};   //录制
+    
+    
+    
+        cmdNode(const VkDevice& device, const uint32_t& queueFamily, const uint32_t& frameCount) : buffer{ cmdStruct::cmdBufferNode(device, queueFamily, frameCount), cmdStruct::cmdBufferNode(device, queueFamily, frameCount) }{}
+    
+        cmdNode() = delete;
+    
+        void clear(const VkDevice& device) {
+            for (auto& node : buffer) {
+                node.clearCmdPool(device);
+            }
+        }
+    
+    
+
+        //录制命令
+        template<typename F>
+        void record(int threadId, int frameId, F&& func) {
+            recorder.bind(buffer[threadId][frameId]);
+            recorder.reset();
+            recorder.begin();
+            func(recorder);
+            recorder.end();
+        }
+
+        //提交单次命令
+        void submitOnce(const VkDevice& device, const VkQueue& graphicsQueue, const VkCommandBuffer& cmd) {
+            std::lock_guard<std::mutex> queueGuard(lockInfo::queueThreadLock);
+            vkEndCommandBuffer(cmd);
+    
+            VkSubmitInfo submitInfo{};
+            submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submitInfo.commandBufferCount = 1;
+            submitInfo.pCommandBuffers    = &cmd;
+    
+            vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+            vkQueueWaitIdle(graphicsQueue);
+            vkFreeCommandBuffers(device, buffer[0].pool, 1, &cmd);
+        }
+
+        //获取当前命令列表
+        std::vector<VkCommandBuffer>& getCmdList() {
+            return buffer[thread.current].list;
+        }
+    
+        //等待本线程命令执行完成
+        void waitFence(const VkDevice& device, int threadId) {
+            vkWaitForFences(device, 1, &buffer[threadId].fence, VK_TRUE, UINT64_MAX);       //等待fence
+        }
+
+
+
+        bool isFlip() const { return thread.isFlip(); }
+        void swap()        { thread.swap(); }
+        void flip()        { thread.flip(); }
+    };
+}
+
+
+
+//buffer结构空间， todo后续慢慢拆分
+namespace bufferStruct {
+    //ui信息结点
+    struct uiTextInfoNode {
+        glm::dvec3 pos;
+        glm::dvec3 chunkPos;
+        glm::ivec3 minepos{};
+    };
+
+
+
+    //点光源结点
+    struct pointLightNode {
+        glm::vec3 position;     //位置
+        float radius;           //半径
+
+        glm::vec3 color;        //颜色
+        float placeholder;      //占位符
+    };
+
+    //平行光结点
+    struct dirLightNode {
+        glm::vec3 direction;    //方向
+        float scale;            //强度
+
+        glm::vec3 color;        //颜色
+        float placeholder;      //占位符
+    };
+
+    //聚光灯结点
+    struct spotLightNode {
+        glm::vec3 position;     //位置
+        float inner;            //内圆锥
+
+        glm::vec3 color;        //颜色
+        float outer;            //外圆锥
+
+        glm::vec3 direction;    //方向
+        float placeholder;      //占位符
+    };
+
+    //mvp统一结点
+    struct mvpUBO {
+        glm::mat4 model;            //模型矩阵，用于将模型变换到世界坐标系
+        glm::mat4 modelTI;          //模型转置逆矩阵，用于计算光照法线
+        glm::mat4 view;             //视图矩阵，用于将世界坐标系变换到观察者坐标系
+        glm::mat4 proj;             //投影矩阵，用于将观察者坐标系变换到裁剪坐标系
+    };
+
+    //前向光照统一结点
+    struct forwardLightUBO {
+        glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
+        float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到，用于周期性效果
+
+        glm::vec3 gLightColor;      //全局光照颜色，决定环境光和漫反射基础颜色
+        float ambientScale;         //环境光缩放，决定环境光强度
+
+        glm::vec3 gLightPos;        //全局光照坐标，点光源坐标，决定漫反射效果
+        float diffuseScale;         //漫反射缩放，决定漫反射强度
+
+        glm::vec3 gLightDir;        //全局光照方向，平行光坐标，决定漫反射效果
+        float specularScale;        //镜面反射缩放，决定镜面反射强度
+
+        glm::vec3 flashPos;         //聚光灯坐标
+        float flashCutOff;          //聚光灯内圆锥
+
+        glm::vec3 flashDir;         //聚光灯方向
+        float outerCutOff;          //聚光灯外圆锥
+    };
+
+    //延迟光照统一结点
+    struct deferredLightUBO {
+        glm::vec3 viewPos;          //观察者坐标，用于计算镜面反射
+        float currentHour;          //当前小时，通过gameTime(游戏运行时长)%24得到，用于周期性效果
+        
+        float ambientScale;         //环境光强度
+        float diffuseScale;         //漫反射强度
+        float specularScale;        //镜面反射强度
+        float placeholder;          //占位符
+        
+        pointLightNode pointLightList[1];
+        dirLightNode   dirLightList[1];
+        spotLightNode  spotLightList[1];
+    };
+
+    //延迟阴影统一结点
+    struct deferredShadowUBO {
+        glm::mat4 shadowMvp;        //阴影mvp
+        glm::vec2 shadowExtent;     //阴影贴图大小
+    };
+
+    //阴影mvp统一结点
+    struct shadowMvpUBO {
+        glm::mat4 mvp;              //阴影mvp变换
+    };
+
+
+
+    /*管线缓冲区*/
+    struct terrainBufferNode {
+        //todo
+        textureBufferNode temp_texture;                                                                  //纹理结点，构造时初始化
+
+
+
+        terrainBufferNode(const bool& tEnable, const pipelineEnum::procPipelineId::type& tPipeType, const bufferEnum::procSamplerId::type& tSamplerType, const char* imageFile, const VkFormat& colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, const VkDevice& device, const VmaAllocator& memAllocator)
+            :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType), temp_texture(imageFile, colorFormat, tileExtent, atlasExtent, device, memAllocator) {
+
+            textureFile = imageFile;
+            arrayLayer  = atlasExtent.width * atlasExtent.height;
+        }
+
+        terrainBufferNode() = delete;
+
+
+
+        //---
+        //todo baseBufferNode    mesh[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];     //网格结点
+        baseBufferNode vertex[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
+        baseBufferNode index[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
+
+        //纹理缓冲
+        const char* textureFile;
+        imageBufferNode texture;
+
+        //纹理参数
+        uint32_t arrayLayer;
+        uint32_t mipLevel = 1;
+
+        //统一缓冲
+        baseBufferNode uniform;
+        mvpUBO ubo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        bool isEnable;
+        //todo 改成type
+        pipelineEnum::procPipelineId::type pipeType;  //管线索引
+        bufferEnum::procSamplerId::type samplerType;  //采样索引
+
+
+
+        //清理结构体，descriptorSet由描述符池管理，无需手动清理
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
+                for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
+                    vmaDestroyBuffer(memAllocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMem);
+                    vmaDestroyBuffer(memAllocator, index[thread][layer].buffer, index[thread][layer].bufferMem);
+                }
+            }
+
+            vmaDestroyImage(memAllocator, texture.image, texture.imageMem);
+            vkDestroyImageView(device, texture.view, nullptr);
+
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
+        }
+    };
+
+    struct staticModelNode {
+        //模型文件
+        std::string modelFile;
+
+        //网格缓冲
+        baseBufferNode vertex;
+        baseBufferNode index;
+
+        //纹理缓冲
+        const char* textureFile;
+        imageBufferNode texture;
+        //const char* normalFile;
+        //imageBufferNode normal;
+
+        //纹理参数
+        uint32_t mipLevel;                  //在创建texture时赋值
+
+        //统一缓冲
+        baseBufferNode uniform;
+        mvpUBO ubo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        bufferEnum::procSamplerId::type samplerId;
+
+        //用于屏蔽超出视觉范围模型的命令提交和统一缓冲更新
+        glm::dvec3 modelWorldPos;           //模型世界坐标（d世界坐标系），在初始化时赋值
+        glm::dvec3 currentWorldPos;         //当前世界坐标（d世界坐标系），在更新统一缓冲时赋值
+        bool isVisible = true;              //模型可见标识，在提交命令时赋值
+
+
+
+        void create(const std::string tempModelFile, const char* tempTextureFile, /*const char* tempNormalFile,*/ bufferEnum::procSamplerId::type sId, const glm::dvec3& tempModelWorldPos) {
+            modelFile     = tempModelFile;
+            textureFile   = tempTextureFile;
+            //normalFile  = tempNormalFile;
+            samplerId     = sId;
+            modelWorldPos = tempModelWorldPos;
+        }
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
+            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
+
+            vmaDestroyImage(memAllocator, texture.image, texture.imageMem);
+            vkDestroyImageView(device, texture.view, nullptr);
+
+            //vmaDestroyImage(memAllocator, normal.image, normal.imageMem);
+            //vkDestroyImageView(device, normal.view, nullptr);
+
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
+        }
+    };
+
+    struct dynamicModelSubNode {
+        //网格缓冲
+        baseBufferNode vertex;
+        baseBufferNode index;
+
+        //纹理缓冲
+        const char* textureFile;
+        imageBufferNode texture;
+        //const char* normalFile;
+        //imageBufferNode normal;
+
+        //统一缓冲
+        baseBufferNode uniform;
+        mvpUBO ubo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
+            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
+
+            vmaDestroyImage(memAllocator, texture.image, texture.imageMem);
+            vkDestroyImageView(device, texture.view, nullptr);
+
+            //vmaDestroyImage(memAllocator, normal.image, normal.imageMem);
+            //vkDestroyImageView(device, normal.view, nullptr);
+
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
+        }
+    };
+
+    struct dynamicModelNode {
+        //模型文件
+        std::string modelFile;
+
+        //动态模型结点列表
+        std::vector<dynamicModelSubNode> node;
+
+        //纹理参数
+        uint32_t mipLevel;
+
+        //程序化索引
+        bufferEnum::procSamplerId::type samplerId;
+
+        //用于屏蔽超出视觉范围模型的命令提交和统一缓冲更新
+        glm::dvec3 modelWorldPos;           //模型世界坐标（d世界坐标系），在初始化时赋值
+        glm::dvec3 currentWorldPos;         //当前世界坐标（d世界坐标系），在更新统一缓冲时赋值
+        bool isVisible = true;              //模型可见标识，在提交命令时赋值
+
+
+
+        void create(const std::string tempModelFile, std::vector<const char*> tempTextureFile, /*std::vector<const char*> tempNormalFile,*/ bufferEnum::procSamplerId::type sId, const glm::dvec3& tempModelWorldPos) {
+            modelFile = tempModelFile;
+
+            node.resize(tempTextureFile.size());
+            for (int i = 0; i < tempTextureFile.size(); i++) {
+                node[i].textureFile = tempTextureFile[i];
+                //node[i].normalFile = tempNormalFile[i];
+            }
+
+            samplerId = sId;
+            modelWorldPos = tempModelWorldPos;
+        }
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            for (int i = 0; i < node.size(); i++) {
+                node[i].clear(device, memAllocator);
+            }
+        }
+    };
+
+    struct skyboxBufferNode {
+        //网格缓冲
+        baseBufferNode vertex;
+        baseBufferNode index;
+
+        //统一缓冲
+        baseBufferNode uniform;
+        mvpUBO ubo;
+        baseBufferNode lightUniform;
+        forwardLightUBO lightUbo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        bool isEnable;
+        pipelineEnum::procPipelineId::type pipeId;
+
+
+
+        skyboxBufferNode(bool enable, pipelineEnum::procPipelineId::type pId) {
+            isEnable = enable;
+            pipeId   = pId;
+        }
+
+        skyboxBufferNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
+            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
+
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
+            vmaDestroyBuffer(memAllocator, lightUniform.buffer, lightUniform.bufferMem);
+        }
+    };
+
+    struct mineBufferNode {
+        //网格缓冲
+        baseBufferNode vertex;
+        baseBufferNode index;
+
+        //统一缓冲
+        baseBufferNode uniform;
+        mvpUBO ubo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        bool isEnable;
+        pipelineEnum::procPipelineId::type pipeId;
+
+
+
+        mineBufferNode(bool enable, pipelineEnum::procPipelineId::type pId) {
+            isEnable = enable;
+            pipeId   = pId;
+        }
+
+        mineBufferNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
+            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
+
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
+        }
+    };
+
+    struct uiTextBufferNode {
+        //网格缓冲
+        baseBufferNode vertex;
+
+        //纹理缓冲
+        imageBufferNode texture;
+        stb_fontchar* stbFontData = new stb_fontchar[STB_FONT_consolas_24_latin1_NUM_CHARS];    //字符数据
+
+        //纹理参数
+        glm::vec4* mapped = nullptr;
+        uint32_t numLetters;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        bool isEnable;
+        pipelineEnum::procPipelineId::type pipeId;
+        bufferEnum::procSamplerId::type samplerId;
+
+
+
+        uiTextBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            isEnable  = enable;
+            pipeId    = pId;
+            samplerId = sId;
+        }
+
+        uiTextBufferNode() = delete;
+
+        void beginTextUpdate(VmaAllocator memAllocator) {
+            vmaMapMemory(memAllocator, vertex.bufferMem, (void**)&mapped);
+            numLetters = 0;
+        }
+
+        void addText(std::string texts, float x, float y, bufferEnum::textAlignId::type align) {
+            // 字符的起始索引
+            const uint32_t firstChar = STB_FONT_consolas_24_latin1_FIRST_CHAR;
+
+            // 以窗口大小为单位，计算字符宽度和高度
+            const float charW = 1.5f * 1.0f / windowInfo::width;
+            const float charH = 1.5f * 1.0f / windowInfo::height;
+
+            // 窗口的宽度和高度
+            x = (x / windowInfo::width * 2.0f) - 1.0f;
+            y = (y / windowInfo::height * 2.0f) - 1.0f;
+
+            // 计算文本宽度
+            float textWidth = 0;
+            for (char letter : texts) {
+                stb_fontchar* charData = &stbFontData[(uint32_t)letter - firstChar];
+                textWidth += charData->advance * charW;
+            }
+
+            // 根据对齐方式调整x坐标
+            switch (align) {
+            case bufferEnum::textAlignId::right:
+                x -= textWidth;
+                break;
+            case bufferEnum::textAlignId::center:
+                x -= textWidth / 2.0f;
+                break;
+            case bufferEnum::textAlignId::left:
+                break;
+            }
+
+            // 为每个字符生成uv映射的四边形
+            for (char letter : texts) {
+                // 创建一个指向stb_fontchar类型数据的指针
+                stb_fontchar* charData = &stbFontData[(uint32_t)letter - firstChar];
+
+                // 设置四边形的uv坐标和位置
+                mapped->x = (x + (float)charData->x0 * charW);
+                mapped->y = (y + (float)charData->y0 * charH);
+                mapped->z = charData->s0;
+                mapped->w = charData->t0;
+                mapped++;
+
+                mapped->x = (x + (float)charData->x1 * charW);
+                mapped->y = (y + (float)charData->y0 * charH);
+                mapped->z = charData->s1;
+                mapped->w = charData->t0;
+                mapped++;
+
+                mapped->x = (x + (float)charData->x0 * charW);
+                mapped->y = (y + (float)charData->y1 * charH);
+                mapped->z = charData->s0;
+                mapped->w = charData->t1;
+                mapped++;
+
+                mapped->x = (x + (float)charData->x1 * charW);
+                mapped->y = (y + (float)charData->y1 * charH);
+                mapped->z = charData->s1;
+                mapped->w = charData->t1;
+                mapped++;
+
+                x += charData->advance * charW;
+
+                numLetters++;
+            }
+        }
+
+        void endTextUpdate(const VmaAllocator& memAllocator) {
+            vmaUnmapMemory(memAllocator, vertex.bufferMem);
+            mapped = nullptr;
+        }
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
+
+            vmaDestroyImage(memAllocator, texture.image, texture.imageMem);
+            vkDestroyImageView(device, texture.view, nullptr);
+        }
+    };
+
+    struct osMirrorBufferNode {
+        //网格缓冲
+        baseBufferNode vertex;
+        baseBufferNode index;
+
+        //统一缓冲
+        baseBufferNode uniform;
+        mvpUBO ubo;
+        baseBufferNode lightUniform;
+        forwardLightUBO lightUbo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        bool isEnable;
+        pipelineEnum::procPipelineId::type pipeId;
+        bufferEnum::procSamplerId::type samplerId;
+
+
+
+        osMirrorBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            isEnable  = enable;
+            pipeId    = pId;
+            samplerId = sId;
+        }
+
+        osMirrorBufferNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
+            vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
+
+            vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
+            vmaDestroyBuffer(memAllocator, lightUniform.buffer, lightUniform.bufferMem);
+        }
+    };
+
+    struct osScenceBufferNode {
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        bool isEnable;
+        pipelineEnum::procPipelineId::type pipeId;
+        bufferEnum::procSamplerId::type samplerId;
+
+
+
+        osScenceBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            isEnable  = enable;
+            pipeId    = pId;
+            samplerId = sId;
+        }
+
+        osScenceBufferNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+
+        }
+    };
+
+    struct dsScenceBufferNode {
+        //统一缓冲
+        baseBufferNode lightUniform;
+        deferredLightUBO lightUbo;
+        baseBufferNode shadowUniform;
+        deferredShadowUBO shadowUbo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+        //程序化索引
+        bool isEnable;
+        pipelineEnum::procPipelineId::type pipeId;
+        bufferEnum::procSamplerId::type samplerId;
+
+
+
+        dsScenceBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+            isEnable  = enable;
+            pipeId    = pId;
+            samplerId = sId;
+        }
+
+        dsScenceBufferNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, lightUniform.buffer,  lightUniform.bufferMem);
+            vmaDestroyBuffer(memAllocator, shadowUniform.buffer, shadowUniform.bufferMem);
+        }
+    };
+
+    struct shadowTerrainBufferNode {
+        //网格缓冲，索引直接用源网格的
+        baseBufferNode vertex[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
+
+        //统一缓冲
+        baseBufferNode shadowMvpUniform;
+        shadowMvpUBO shadowMvpUbo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
+                for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
+                    vmaDestroyBuffer(memAllocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMem);
+                }
+            }
+
+            vmaDestroyBuffer(memAllocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMem);
+        }
+    };
+
+    struct shadowBufferNode {
+        //网格缓冲，索引直接用源网格的
+        baseBufferNode vertex;
+
+        //统一缓冲
+        baseBufferNode shadowMvpUniform;
+        shadowMvpUBO shadowMvpUbo;
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
+
+
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
+
+            vmaDestroyBuffer(memAllocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMem);
+        }
+    };
+
+
+
+    struct descriptorConfigNode {
+        VkDescriptorPoolSize         pool{};
+        VkDescriptorSetLayoutBinding layout{};
+        VkWriteDescriptorSet         write{};
+
+
+
+        descriptorConfigNode(uint32_t id, VkDescriptorType type, VkShaderStageFlags stage, uint32_t count) {
+            pool.type = type;
+            pool.descriptorCount = count;
+
+            layout.descriptorCount = 1;
+            layout.pImmutableSamplers = nullptr;
+            layout.binding        = id;
+            layout.descriptorType = type;
+            layout.stageFlags     = stage;
+
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstArrayElement = 0;
+            write.descriptorCount = 1;
+            write.dstBinding      = id;
+            write.descriptorType  = type;
+
+            bufferInfo.offset = 0;
+            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
+
+        descriptorConfigNode() = delete;
+
+        const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkBuffer& buffer, const VkDeviceSize& range) {
+            bufferInfo.buffer = buffer;
+            bufferInfo.range  = range;
+
+            write.dstSet      = dstSet;
+            write.pBufferInfo = &bufferInfo;
+
+            return write;
+        }
+
+        const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkSampler& sampler, const VkImageView& imageView) {
+            imageInfo.sampler   = sampler;
+            imageInfo.imageView = imageView;
+
+            write.dstSet     = dstSet;
+            write.pImageInfo = &imageInfo;
+
+            return write;
+        }
+
+    private:
+        VkDescriptorBufferInfo bufferInfo{};
+        VkDescriptorImageInfo imageInfo{};
+    };
+
+    struct descriptorNode {
+        std::vector<bufferStruct::descriptorConfigNode> config{};
+
+        VkDescriptorPool pool{};            //描述符池
+        VkDescriptorSetLayout layout{};     //描述符布局
+
+
+
+        void createDescriptorNode(const VkDevice& device) {
+            createPool(device);
+            createLayout(device);
+        }
+
+        void clear(const VkDevice& device) {
+            vkDestroyDescriptorPool(device, pool, nullptr);
+            vkDestroyDescriptorSetLayout(device, layout, nullptr);
+        }
+
+    private:
+        void createPool(const VkDevice& device) {
+            std::vector<VkDescriptorPoolSize> poolSize{};
+            for (const auto& i : config) {
+                poolSize.push_back(i.pool);
+            }
+
+            VkDescriptorPoolCreateInfo poolInfo{
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                .maxSets = config[0].pool.descriptorCount,
+                .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
+                .pPoolSizes = poolSize.data()
+            };
+
+            if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "描述符池创建失败");
+            }
+        }
+
+        void createLayout(const VkDevice& device) {
+            std::vector<VkDescriptorSetLayoutBinding> layoutBinding{};
+            for (const auto& i : config) {
+                layoutBinding.push_back(i.layout);
+            }
+
+            VkDescriptorSetLayoutCreateInfo layoutInfo{
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                .pNext = nullptr,
+                .bindingCount = static_cast<uint32_t>(layoutBinding.size()),
+                .pBindings = layoutBinding.data()
+            };
+
+            if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
             }
         }
     };

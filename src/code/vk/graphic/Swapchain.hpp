@@ -4,17 +4,19 @@
 
 class Swapchain {
 public:
-    VkExtent2D scExtent;                    //绘制区域
-    VkFormat colorFormat;                   //颜色格式
-    VkFormat depthFormat;                   //深度格式
-    VkSampleCountFlagBits msaaSamples;      //多重采样
+    VkFormat colorFormat;           //颜色格式
+    VkFormat depthFormat;           //深度格式
+    VkExtent2D swapExtent;          //绘制区域
+    VkSampleCountFlagBits msaa;     //多重采样
 
 
 
     Swapchain(Device& Device) :Device{ Device } {
-        createScSupport();
+        createSwapSupport();
         createSwapChain();
+
         createSyncObjects();
+        createSwapImageList();
 
         if (debugInfo::LogSwitch) {
             Log::printTitle("————————Swapchain已创建");
@@ -26,10 +28,9 @@ public:
 	~Swapchain() {
         vkDestroySwapchainKHR(Device.device, swapchain, nullptr);
 
-        for (size_t i = 0; i < swapSupport.scCreateInfo.minImageCount; i++) {
-            vkDestroySemaphore(Device.device, renderFinishedSemaphores[i], nullptr);
-            vkDestroySemaphore(Device.device, imageAvailableSemaphores[i], nullptr);
-            vkDestroyFence(Device.device, inFlightFences[i], nullptr);
+        for (size_t i = 0; i < swapSupport.swapCreateInfo.minImageCount; i++) {
+            vkDestroySemaphore(Device.device, renderDone[i], nullptr);
+            vkDestroySemaphore(Device.device, imageDone[i], nullptr);
         }
 
         if (debugInfo::LogSwitch) {
@@ -40,147 +41,146 @@ public:
 private:
     Device& Device;
 
-    swapStruct::swapSupportNode swapSupport;            //交换链支持
-    VkSwapchainKHR swapchain;                           //交换链
+    swapStruct::swapSupportNode swapSupport;        //交换链支持
+    VkSwapchainKHR swapchain;                       //交换链
 
-    std::vector<VkSemaphore> imageAvailableSemaphores;  //开始渲染
-    std::vector<VkSemaphore> renderFinishedSemaphores;  //开始呈现
-    std::vector<VkFence> inFlightFences; 
+    std::vector<VkSemaphore> imageDone;             //图像完成，开始渲染
+    std::vector<VkSemaphore> renderDone;            //渲染完成，开始呈现
     size_t currentFrame = 0;
 
 
 
     //创建交换链支持结点
-    void createScSupport() {
-        swapSupport.createScSupport(Device.enableGpu->gpu, Device.presentSurface);
-        swapSupport.createScCreateInfo(Device.presentSurface);
+    void createSwapSupport() {
+        swapSupport.createSwapSupport(Device.enableGpu->gpu, Device.presentSurface);
+        swapSupport.createSwapCreateInfo(Device.presentSurface);
 
-        scExtent = swapSupport.scCreateInfo.imageExtent;
-        colorFormat = swapSupport.scCreateInfo.imageFormat;
+        colorFormat = swapSupport.swapCreateInfo.imageFormat;
         depthFormat = swapSupport.getDepthFormat(Device.enableGpu->gpu, { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-        msaaSamples = swapSupport.getMsaaSamples(Device.enableGpu->gpu);
+        swapExtent  = swapSupport.swapCreateInfo.imageExtent;
+        msaa        = swapSupport.getMsaa(Device.enableGpu->gpu);
 
         if (debugInfo::LogSwitch) {
-            Log::print("最大采样次数:\t" + std::to_string(msaaSamples));
+            Log::print("最大采样次数:\t" + std::to_string(msaa));
             Log::delimiter();
         }
     }
 
     //创建交换链
     void createSwapChain() {
-        if (vkCreateSwapchainKHR(Device.device, &swapSupport.scCreateInfo, nullptr, &swapchain) != VK_SUCCESS) {
+        if (vkCreateSwapchainKHR(Device.device, &swapSupport.swapCreateInfo, nullptr, &swapchain) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "交换链创建失败");
         }
     }
 
+
+
     //创建信号量
     void createSyncObjects() {
-        imageAvailableSemaphores.resize(swapSupport.scCreateInfo.minImageCount);
-        renderFinishedSemaphores.resize(swapSupport.scCreateInfo.minImageCount);
-        inFlightFences.resize(swapSupport.scCreateInfo.minImageCount);
+        imageDone .resize(swapSupport.swapCreateInfo.minImageCount);
+        renderDone.resize(swapSupport.swapCreateInfo.minImageCount);
 
-        VkSemaphoreCreateInfo semaphoreInfo = {};
+        VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-        VkFenceCreateInfo fenceInfo = {};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        for (size_t i = 0; i < swapSupport.scCreateInfo.minImageCount; i++) {
-            if (vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS || vkCreateFence(Device.device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
+        for (size_t i = 0; i < swapSupport.swapCreateInfo.minImageCount; i++) {
+            if (vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &imageDone[i]) != VK_SUCCESS ||
+                vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &renderDone[i]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "信号量创建失败");
             }
         }
     }
 
-public:
-    bool drawFrame(std::vector<VkCommandBuffer>& commandBuffer) {
-        vkWaitForFences(Device.device, 1, &inFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
-        vkResetFences(Device.device, 1, &inFlightFences[currentFrame]);
-
-        //从交换链中获取图像
-        uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(Device.device, swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-        
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            //重建交换链
-            return true;
-        }
-        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-            Log::printError(__FILE__, __LINE__, "获取交换链映像失败");
-        }
-
-        //队列提交和同步
-        VkSemaphore waitSemaphores[]      = { imageAvailableSemaphores[currentFrame] };
-        VkSemaphore signalSemaphores[]    = { renderFinishedSemaphores[currentFrame] };
-        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.waitSemaphoreCount   = 1;
-        submitInfo.pWaitSemaphores      = waitSemaphores;
-        submitInfo.pWaitDstStageMask    = waitStages;
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores    = signalSemaphores;
-        submitInfo.commandBufferCount   = 1;
-        submitInfo.pCommandBuffers      = &commandBuffer[imageIndex];
-
-        lockInfo::queueThreadLock.lock();
-        if (vkQueueSubmit(Device.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
-            Log::printError(__FILE__, __LINE__, "提交绘制命令缓冲区失败");
-        }
-
-        VkPresentInfoKHR presentInfo = {};
-        presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores    = signalSemaphores;
-
-        VkSwapchainKHR swapChains[] = { swapchain };
-        presentInfo.swapchainCount  = 1;
-        presentInfo.pSwapchains     = swapChains;
-        presentInfo.pImageIndices   = &imageIndex;
-        presentInfo.pResults        = nullptr;
-
-        result = vkQueuePresentKHR(Device.graphicsQueue, &presentInfo);
-        lockInfo::queueThreadLock.unlock();
-
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-            return true;
-        }
-        else if (result != VK_SUCCESS) {
-            Log::printError(__FILE__, __LINE__, "呈现交换链图像失败");
-        }
-
-        currentFrame = (currentFrame + 1) % swapSupport.scCreateInfo.minImageCount;
-        return false;
-    }
-
-    //todo
-    //获取交换链图像列表，供procRenderNode. 什么什么 创建交换链图像结点
-    std::vector<VkImage> getSwapImageList() {
+    //创建交换链图像列表
+    void createSwapImageList() {
         uint32_t swapImageCount = 0;
         vkGetSwapchainImagesKHR(Device.device, swapchain, &swapImageCount, nullptr);
 
-        std::vector<VkImage> swapImageList(swapImageCount);
-        vkGetSwapchainImagesKHR(Device.device, swapchain, &swapImageCount, swapImageList.data());
-
-        return swapImageList;
+        swapStruct::swapImageList.clear();
+        swapStruct::swapImageList.resize(swapImageCount);
+        vkGetSwapchainImagesKHR(Device.device, swapchain, &swapImageCount, swapStruct::swapImageList.data());
     }
+
+public:
+    bool drawFrame(std::vector<VkCommandBuffer>& cmdList, VkFence cmdFence) {
+        vkWaitForFences(Device.device, 1, &cmdFence, VK_TRUE, std::numeric_limits<uint64_t>::max());
+        vkResetFences  (Device.device, 1, &cmdFence);
+    
+        //从交换链中获取图像
+        uint32_t imageIndex = 0;
+        switch (vkAcquireNextImageKHR(Device.device, swapchain, UINT64_MAX, imageDone[currentFrame], VK_NULL_HANDLE, &imageIndex)) {
+        case VK_SUCCESS:                //正常
+        case VK_SUBOPTIMAL_KHR:         //正常
+            break;
+        case VK_ERROR_OUT_OF_DATE_KHR:  //重建
+            return true;
+        default:                        //报错
+            Log::printError(__FILE__, __LINE__, "获取交换链映像失败");
+            break;
+        }
     
 
 
+        //队列提交
+        lockInfo::queueThreadLock.lock();
+        VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.waitSemaphoreCount   = 1;
+        submitInfo.pWaitSemaphores      = &imageDone[currentFrame];
+        submitInfo.pWaitDstStageMask    = &waitStage;
+        submitInfo.commandBufferCount   = 1;
+        submitInfo.pCommandBuffers      = &cmdList[imageIndex];
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores    = &renderDone[currentFrame];
+    
+        if (vkQueueSubmit(Device.graphicsQueue, 1, &submitInfo, cmdFence) != VK_SUCCESS) {
+            Log::printError(__FILE__, __LINE__, "命令提交失败");
+        }
+    
+        //队列呈现
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores    = &renderDone[currentFrame];
+        presentInfo.swapchainCount     = 1;
+        presentInfo.pSwapchains        = &swapchain;
+        presentInfo.pImageIndices      = &imageIndex;
+        presentInfo.pResults           = nullptr;
+    
+        switch (vkQueuePresentKHR(Device.graphicsQueue, &presentInfo)) {
+        case VK_ERROR_OUT_OF_DATE_KHR:      //swapchain与Device.presentSurface不兼容
+        case VK_SUBOPTIMAL_KHR:             //不是最优配置
+            lockInfo::queueThreadLock.unlock();
+            return true;
+        case VK_SUCCESS:                    //正常
+            break;
+        default:                            //报错
+            Log::printError(__FILE__, __LINE__, "图像呈现失败");
+            break;
+        }
+        lockInfo::queueThreadLock.unlock();
+    
+    
+    
+        currentFrame = (currentFrame + 1) % swapSupport.swapCreateInfo.minImageCount;
+        return false;
+    }
+
     void recreateSwapChain() {
-        swapSupport.recreateScCreateInfo(Device.enableGpu->gpu, Device.presentSurface, swapchain);
-        scExtent = swapSupport.scCreateInfo.imageExtent;
+        swapSupport.recreateSwapCreateInfo(Device.enableGpu->gpu, Device.presentSurface, swapchain);
+        swapExtent = swapSupport.swapCreateInfo.imageExtent;
 
         vkQueueWaitIdle(Device.graphicsQueue);
 
         VkSwapchainKHR tempSwapchain;
-        if (vkCreateSwapchainKHR(Device.device, &swapSupport.scCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
+        if (vkCreateSwapchainKHR(Device.device, &swapSupport.swapCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
             Log::printError(__FILE__, __LINE__, "重建交换链创建失败");
         }
 
         vkDestroySwapchainKHR(Device.device, swapchain, nullptr);
         swapchain = tempSwapchain;
+
+        createSwapImageList();
     }
 };
