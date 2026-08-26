@@ -56,8 +56,9 @@ namespace lockInfo {
 
     //原子函数锁
     std::mutex drawFuncLock;                            //用于避免InitSwapchain.drawFrame()和InitBuffer.recreateCmd()的threadId = (threadId + 1) % 2重建同时执行
-    std::atomic<bool> updatePlateFuncLock = false;      //用于实现atomicUpdatePlate函数原子线程化
-    std::atomic<bool> recreateCmdFuncLock = false;      //用于实现atomicRecreateCommandBuffer函数原子线程化
+    std::atomic<bool> updatePlateFuncLock = false;      //用于实现 submitUpdatePlate 函数原子线程化
+    std::atomic<bool> updateCubeFuncLock  = false;      //用于实现 submitUpdateCube  函数原子线程化
+    std::atomic<bool> recreateCmdFuncLock = false;      //用于实现 submitRecreateCmd 函数原子线程化
 
     //原子数据锁
     std::atomic<bool> plateMeshDataLock = false;        //板块网格数据锁，用于原子同步对板块网格的修改操作
@@ -127,61 +128,62 @@ namespace cameraInfo {
     const glm::vec3 worldUp{ 0.0, 1.0, 0.0 };    //y轴做世界坐标系法向量
 }
 
+//todo 实现对应资产的固定根路径
 //file信息
 namespace fileInfo {
     namespace shader {
-        const std::string terrainTask = "src/shader/terrain/terrainDeferredTask.spv";
-        const std::string terrainMesh = "src/shader/terrain/terrainDeferredMesh.spv";
-        const std::string terrainVert = "src/shader/terrain/terrainDeferredVert.spv";
-        const std::string terrainFrag = "src/shader/terrain/terrainDeferredFrag.spv";
+        const std::string terrainTask = "src/1_assets/0_shader/terrain/terrainDeferredTask.spv";
+        const std::string terrainMesh = "src/1_assets/0_shader/terrain/terrainDeferredMesh.spv";
+        const std::string terrainVert = "src/1_assets/0_shader/terrain/terrainDeferredVert.spv";
+        const std::string terrainFrag = "src/1_assets/0_shader/terrain/terrainDeferredFrag.spv";
 
-        const std::string pbrVert     = "src/shader/model/pbrDeferredVert.spv";
-        const std::string pbrFrag     = "src/shader/model/pbrDeferredFrag.spv";
+        const std::string pbrVert     = "src/1_assets/0_shader/model/pbrDeferredVert.spv";
+        const std::string pbrFrag     = "src/1_assets/0_shader/model/pbrDeferredFrag.spv";
 
-        const std::string skyboxVert  = "src/shader/skybox/skyboxVert.spv";
-        const std::string skyboxFrag  = "src/shader/skybox/skyboxFrag.spv";
+        const std::string skyboxVert  = "src/1_assets/0_shader/skybox/skyboxVert.spv";
+        const std::string skyboxFrag  = "src/1_assets/0_shader/skybox/skyboxFrag.spv";
 
-        const std::string mineVert    = "src/shader/mine/mineVert.spv";
-        const std::string mineFrag    = "src/shader/mine/mineFrag.spv";
+        const std::string mineVert    = "src/1_assets/0_shader/mine/mineVert.spv";
+        const std::string mineFrag    = "src/1_assets/0_shader/mine/mineFrag.spv";
 
-        const std::string uitextVert  = "src/shader/uiText/uitextVert.spv";
-        const std::string uitextFrag  = "src/shader/uiText/uitextFrag.spv";
+        const std::string uitextVert  = "src/1_assets/0_shader/uiText/uitextVert.spv";
+        const std::string uitextFrag  = "src/1_assets/0_shader/uiText/uitextFrag.spv";
 
-        const std::string osMirrorVert = "src/shader/osMirror/osMirrorVert.spv";
-        const std::string osMirrorFrag = "src/shader/osMirror/osMirrorFrag.spv";
+        const std::string osMirrorVert = "src/1_assets/0_shader/osMirror/osMirrorVert.spv";
+        const std::string osMirrorFrag = "src/1_assets/0_shader/osMirror/osMirrorFrag.spv";
 
-        const std::string osScenceVert = "src/shader/osScence/osScenceVert.spv";
-        const std::string osScenceFrag = "src/shader/osScence/osScenceFrag.spv";
+        const std::string osScenceVert = "src/1_assets/0_shader/osScence/osScenceVert.spv";
+        const std::string osScenceFrag = "src/1_assets/0_shader/osScence/osScenceFrag.spv";
 
-        const std::string dsScenceVert = "src/shader/dsScence/dsScenceVert.spv";
-        const std::string dsScenceFrag = "src/shader/dsScence/dsScenceFrag.spv";
+        const std::string dsScenceVert = "src/1_assets/0_shader/dsScence/dsScenceVert.spv";
+        const std::string dsScenceFrag = "src/1_assets/0_shader/dsScence/dsScenceFrag.spv";
 
-        const std::string shadowVert   = "src/shader/shadow/shadowVert.spv";
-        const std::string shadowFrag   = "src/shader/shadow/shadowFrag.spv";
-    }
-
-    namespace music {
-        const char* throughTheMounta = "src/music/background/Through the Mounta.wav";
-        //const char* throughTheMounta = "src/music/background/Greedy.wav";
-    }
-
-    namespace model {
-        const std::string temple  = "src/model/temple/scene.gltf";
-        const std::string droid   = "src/model/droid/scene.gltf";
-        //const std::string nextTemp = "src/model/nextTemp/scene.gltf";
+        const std::string shadowVert   = "src/1_assets/0_shader/shadow/shadowVert.spv";
+        const std::string shadowFrag   = "src/1_assets/0_shader/shadow/shadowFrag.spv";
     }
 
     namespace image {
         //todo 待整合，着色器，贴图，贴图信息
-        const char* cube       = "src/image/terrain/cube_16_64.ktx2";
+        const char* cube       = "src/1_assets/1_image/terrain/cube_16_64.ktx2";
 
-        const char* temple     = "src/image/model/temple/baseColor.ktx2";
-        const char* droidBodyC = "src/image/model/droid/Body_baseColor.ktx2";
-        const char* droidHeadC = "src/image/model/droid/Head_baseColor.ktx2";
-        const char* droidMiscC = "src/image/model/droid/Misc_baseColor.ktx2";
-        //const char* droidBodyN = "src/image/model/droid/Body_normal.ktx2";
-        //const char* droidHeadN = "src/image/model/droid/Head_normal.ktx2";
-        //const char* droidMiscN = "src/image/model/droid/Misc_normal.ktx2";
+        const char* temple     = "src/1_assets/1_image/model/temple/baseColor.ktx2";
+        const char* droidBodyC = "src/1_assets/1_image/model/droid/Body_baseColor.ktx2";
+        const char* droidHeadC = "src/1_assets/1_image/model/droid/Head_baseColor.ktx2";
+        const char* droidMiscC = "src/1_assets/1_image/model/droid/Misc_baseColor.ktx2";
+        //const char* droidBodyN = "src/1_assets/1_image/model/droid/Body_normal.ktx2";
+        //const char* droidHeadN = "src/1_assets/1_image/model/droid/Head_normal.ktx2";
+        //const char* droidMiscN = "src/1_assets/1_image/model/droid/Misc_normal.ktx2";
+    }
+
+    namespace model {
+        const std::string temple = "src/1_assets/2_model/temple/scene.gltf";
+        const std::string droid  = "src/1_assets/2_model/droid/scene.gltf";
+        //const std::string nextTemp = "src/1_assets/2_model/nextTemp/scene.gltf";
+    }
+
+    namespace music {
+        const char* throughTheMounta = "src/1_assets/3_music/background/Through the Mounta.wav";
+        //const char* throughTheMounta = "src/music/background/Greedy.wav";
     }
 
     namespace storage {
@@ -189,7 +191,9 @@ namespace fileInfo {
         const char* deltaFile = "storage/chunk/delta";      //变存法区块存储路径
     }
 
-    const char* dll = ".\\src\\library\\dll";               //动态库路径
+
+
+    const char* dll = ".\\src\\0_library\\dll";               //动态库路径
 }
 
 //texture信息

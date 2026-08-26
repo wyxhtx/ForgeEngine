@@ -18,6 +18,21 @@ namespace engineEnum {
 
 
 
+//buffer枚举空间
+namespace bufferEnum {
+    //imageBuffer枚举
+    namespace imageBufferId {
+        enum type {
+            base,       //基础图像，array = 1, mip = n，model
+            array,      //数组图像，array = n, mip = 1，terrain
+            text,       //文本图像，array = 1, mip = 1，uiText
+            frame,      //帧图像，  array = 1, mip = 1
+
+            count
+        };
+    }
+}
+
 //render枚举空间
 namespace renderEnum {
     //render附件枚举

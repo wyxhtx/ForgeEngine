@@ -28,7 +28,7 @@
 
 
 /*外部库文件*/
-//glfw库内自带vulkan头文件
+//glfw框架库，其内自带vulkan头文件
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -42,7 +42,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 //算法库
-#include "../../library/algorithm/kmeans/Kmeans.hpp"	//聚类算法，划分区块所属区域，让域内区块聚合，减少域外链结构
+#include "../../0_library/0_algorithm/kmeans/Kmeans.hpp"	//聚类算法，划分区块所属区域，让域内区块聚合，减少域外链结构
+
+//噪音库
+#include <FastNoise/FastNoise.h>
+#include <FastNoise/Metadata.h>
 
 //内存库
 #define VMA_IMPLEMENTATION
@@ -54,28 +58,24 @@
 #pragma warning(disable : 26110)
 #pragma warning(disable : 26495)
 #pragma warning(disable : 26819)
-#include "../../library/vma/vk_mem_alloc.h"
+#include "../../0_library/1_memory/vma/vk_mem_alloc.h"
 #pragma warning(pop)
 
-//噪音库
-#include <FastNoise/FastNoise.h>
-#include <FastNoise/Metadata.h>
+//纹理库
+#include "../../0_library/2_texture/ktx/khr_df.h"
+#include "../../0_library/2_texture/ktx/ktx.h"
+#include "../../0_library/2_texture/ktx/ktxvulkan.h"
 
 //模型库
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION  
 #define TINYGLTF_NO_STB_IMAGE_WRITE
-#include "../../library/model/tinygltf/tiny_gltf.h"
-
-//纹理库
-#include "../../library/texture/ktx/khr_df.h"
-#include "../../library/texture/ktx/ktx.h"
-#include "../../library/texture/ktx/ktxvulkan.h"
+#include "../../0_library/3_model/tinygltf/tiny_gltf.h"
 
 //字体库
 #pragma warning(push)
 #pragma warning(disable : 26495)
-#include "../../library/stb/stb_font_consolas_24_latin1.inl"
+#include "../../0_library/4_text/stb/stb_font_consolas_24_latin1.inl"
 #pragma warning(pop)
 
 //音频库

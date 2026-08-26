@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 
 set "COMPILER=.\toktx.exe"
 set "SOURCE_DIR=."
-set "TARGET_DIR=..\image"
+set "TARGET_DIR=..\1_image"
 
 echo 开始转换地形纹理...
 echo ---

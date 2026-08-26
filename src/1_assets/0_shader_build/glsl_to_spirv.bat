@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 
 set "COMPILER=.\glslangValidator.exe"
 set "SOURCE_DIR=."
-set "TARGET_DIR=..\shader"
+set "TARGET_DIR=..\0_shader"
 
 for /r "%SOURCE_DIR%" %%f in (*.vert *.frag *.geom) do (
     set "source_file=%%f"

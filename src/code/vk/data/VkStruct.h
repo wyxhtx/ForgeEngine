@@ -121,129 +121,93 @@ namespace bufferStruct {
         //todo 临时
         imageBufferNode() {}
 
-        //创建 arrayLayer = 1 && mipLevel = 1 的图像
-        imageBufferNode(const VkFormat& format, const VkExtent2D& swapExtent, const VkSampleCountFlagBits& msaa, const VkImageUsageFlags& usage, const VkImageAspectFlags& aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
-            VkImageCreateInfo imageInfo{};
-            imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-            imageInfo.format        = format;
-            imageInfo.extent.width  = swapExtent.width;
-            imageInfo.extent.height = swapExtent.height;
-            imageInfo.extent.depth  = 1;
-            imageInfo.mipLevels     = 1;
-            imageInfo.arrayLayers   = 1;
-            imageInfo.samples       = msaa;
-            imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-            imageInfo.usage         = usage;
-            imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        //创建frame图像
+        imageBufferNode(
+            const bufferEnum::imageBufferId::type& imageBufferType,
+            const VkFormat&                        format,
+            const VkExtent2D&                      imageExtent,
+            const VkSampleCountFlagBits&           msaa,
+            const uint32_t&                        mipLevel,
+            const uint32_t&                        arrayLayer,
+            const VkImageUsageFlags&               usage,
+            const VkImageAspectFlags&              aspectFlags,
+            const VkDevice&                        device,
+            const VmaAllocator&                    memAllocator
+        ) {
+            switch (imageBufferType) {
+            case bufferEnum::imageBufferId::base: {
 
-            VmaAllocationCreateInfo allocInfo{};
-            allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
-            allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-            if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image, &imageMem, nullptr) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "image创建失败");
+                break;
             }
+            case bufferEnum::imageBufferId::array: {
 
-            VkImageViewCreateInfo viewInfo{};
-            viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewInfo.image    = image;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewInfo.format   = format;
-            viewInfo.subresourceRange.aspectMask     = aspectFlags;
-            viewInfo.subresourceRange.baseMipLevel   = 0;
-            viewInfo.subresourceRange.levelCount     = 1;
-            viewInfo.subresourceRange.baseArrayLayer = 0;
-            viewInfo.subresourceRange.layerCount     = 1;
+                break;
+            }
+            case bufferEnum::imageBufferId::text: {
+                //const uint32_t fontWidth = STB_FONT_consolas_24_latin1_BITMAP_WIDTH;
+                //const uint32_t fontHeight = STB_FONT_consolas_24_latin1_BITMAP_HEIGHT;
+                //VkDeviceSize   imageSize = static_cast<VkDeviceSize>(fontWidth) * static_cast<VkDeviceSize>(fontHeight);
+		        const uint32_t fontWidth  = imageExtent.width;
+		        const uint32_t fontHeight = imageExtent.height;
+		        VkDeviceSize   imageSize  = static_cast<VkDeviceSize>(fontWidth) * static_cast<VkDeviceSize>(fontHeight);
 
-            if (vkCreateImageView(device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "view创建失败");
+		        //static unsigned char font24pixels[fontHeight][fontWidth];
+		        //stb_font_consolas_24_latin1(uiText.stbFontData, font24pixels, fontHeight);
+
+
+
+		        //bufferStruct::baseBufferNode cpuBuffer{ &font24pixels[0][0], imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
+		        //createImage(fontWidth, fontHeight, 1, 1, VK_FORMAT_R8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageBuffer.image, imageBuffer.imageMem);
+		        //cmd.copyBufferToImage(Device.device, Device.graphicsQueue, cpuBuffer.buffer, imageBuffer.image, bufferStruct::makeImageCopyRegion(static_cast<uint32_t>(fontWidth), static_cast<uint32_t>(fontHeight)), 1, 1, VK_FORMAT_R8_UNORM);
+		        //createImageView(imageBuffer.image, imageBuffer.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+                //
+		        //cpuBuffer.clear(Device.memAllocator);
+
+                break;
+            }
+            case bufferEnum::imageBufferId::frame: {
+                VkImageCreateInfo imageInfo{};
+                imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+                imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+                imageInfo.format        = format;
+                imageInfo.extent.width  = imageExtent.width;
+                imageInfo.extent.height = imageExtent.height;
+                imageInfo.extent.depth  = 1;
+                imageInfo.mipLevels     = mipLevel;
+                imageInfo.arrayLayers   = arrayLayer;
+                imageInfo.samples       = msaa;
+                imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+                imageInfo.usage         = usage;
+                imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+                imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+                VmaAllocationCreateInfo allocInfo{};
+                allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
+                allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+                if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image, &imageMem, nullptr) != VK_SUCCESS) {
+                    Log::printError(__FILE__, __LINE__, "image创建失败");
+                }
+
+                VkImageViewCreateInfo viewInfo{};
+                viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                viewInfo.image    = image;
+                viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+                viewInfo.format   = format;
+                viewInfo.subresourceRange.aspectMask     = aspectFlags;
+                viewInfo.subresourceRange.baseMipLevel   = 0;
+                viewInfo.subresourceRange.levelCount     = 1;
+                viewInfo.subresourceRange.baseArrayLayer = 0;
+                viewInfo.subresourceRange.layerCount     = 1;
+
+                if (vkCreateImageView(device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
+                    Log::printError(__FILE__, __LINE__, "view创建失败");
+                }
+
+                break;
+            }
             }
         }
-
-        //todo 待续
-        //创建 arrayLayer = n && mipLevel = 1 的图像
-        imageBufferNode(const VkFormat& format, const VkExtent2D& swapExtent, const VkSampleCountFlagBits& msaa, const uint32_t& arrayLayer, const VkImageUsageFlags& usage, const VkImageAspectFlags& aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
-            VkImageCreateInfo imageInfo{};
-            imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-            imageInfo.format        = format;
-            imageInfo.extent.width  = swapExtent.width;
-            imageInfo.extent.height = swapExtent.height;
-            imageInfo.extent.depth  = 1;
-            imageInfo.mipLevels     = 1;
-            imageInfo.arrayLayers   = arrayLayer;
-            imageInfo.samples       = msaa;
-            imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-            imageInfo.usage         = usage;
-            imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-            VmaAllocationCreateInfo allocInfo{};
-            allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
-            allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-            if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image, &imageMem, nullptr) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "image创建失败");
-            }
-
-            VkImageViewCreateInfo viewInfo{};
-            viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewInfo.image    = image;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewInfo.format   = format;
-            viewInfo.subresourceRange.aspectMask     = aspectFlags;
-            viewInfo.subresourceRange.baseMipLevel   = 0;
-            viewInfo.subresourceRange.levelCount     = 1;
-            viewInfo.subresourceRange.baseArrayLayer = 0;
-            viewInfo.subresourceRange.layerCount     = 1;
-
-            if (vkCreateImageView(device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "view创建失败");
-            }
-        }
-
-        //创建 arrayLayer = 1 && mipLevel = n 的图像
-        /*imageBufferNode(const VkFormat& format, const VkExtent2D& swapExtent, const VkSampleCountFlagBits& msaa, const uint32_t& mipLevel, const VkImageUsageFlags& usage, const VkImageAspectFlags& aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
-            VkImageCreateInfo imageInfo{};
-            imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-            imageInfo.format        = format;
-            imageInfo.extent.width  = swapExtent.width;
-            imageInfo.extent.height = swapExtent.height;
-            imageInfo.extent.depth  = 1;
-            imageInfo.mipLevels     = mipLevel;
-            imageInfo.arrayLayers   = 1;
-            imageInfo.samples       = msaa;
-            imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-            imageInfo.usage         = usage;
-            imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-            VmaAllocationCreateInfo allocInfo{};
-            allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
-            allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-            if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image, &imageMem, nullptr) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "image创建失败");
-            }
-
-            VkImageViewCreateInfo viewInfo{};
-            viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewInfo.image    = image;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewInfo.format   = format;
-            viewInfo.subresourceRange.aspectMask     = aspectFlags;
-            viewInfo.subresourceRange.baseMipLevel   = 0;
-            viewInfo.subresourceRange.levelCount     = 1;
-            viewInfo.subresourceRange.baseArrayLayer = 0;
-            viewInfo.subresourceRange.layerCount     = 1;
-
-            if (vkCreateImageView(device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "view创建失败");
-            }
-        }*/
 
 
 
@@ -329,34 +293,81 @@ namespace bufferStruct {
 
         //创建textureArray，使用无损压缩
         textureBufferNode(const char* imageFile, const VkFormat& colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, const VkDevice& device, const VmaAllocator& memAllocator)
-            :/*imageNode(colorFormat, tileExtent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator), */arrayLayer(atlasExtent.width* atlasExtent.height) {
+            :/*imageNode(colorFormat, tileExtent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator), */arrayLayer(atlasExtent.width * atlasExtent.height) {
 
-            ktxTexture2* ktxTexture;
-		    if (ktxTexture2_CreateFromNamedFile(imageFile, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture) != KTX_SUCCESS) {
-		    	Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
-		    }
-
-		    uint32_t   texWidth    = ktxTexture->baseWidth;
-		    uint32_t   texHeight   = ktxTexture->baseHeight;
-		    ktx_size_t textureSize = ktxTexture->dataSize;
-		    mipLevel = ktxTexture->numLevels;
-
-		    bufferStruct::baseBufferNode cpuBuffer{ ktxTexture->pData, textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
-		    
-		    //createImage(textureInfo::terrain::tileWidth, textureInfo::terrain::tileHeight, arrayLayer, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageNode.image, imageNode.imageMem);
-            //
-		    //transitionImageLayout(imageBuffer.image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		    //copyBufferToImageArray(pixel, textureInfo::terrain::tileWidth, textureInfo::terrain::tileHeight, textureInfo::terrain::atlasWidth, textureInfo::terrain::atlasHeight, texWidth, texHeight, arrayLayer, cpuBuffer.buffer, imageBuffer.image);
-		    //transitionImageLayout(imageBuffer.image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            //
-		    //createImageView(imageBuffer.image, imageBuffer.view, arrayLayer, mipLevel, VK_IMAGE_VIEW_TYPE_2D_ARRAY, format, VK_IMAGE_ASPECT_COLOR_BIT);
-
-		    cpuBuffer.clear(memAllocator);
-		    ktxTexture2_Destroy(ktxTexture);
         }
 
         textureBufferNode() = delete;
     };
+
+
+
+    //todo 到时候看看能不能放imageBufferNode里
+    //构建图像拷贝区域（单区域）
+    std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t width, uint32_t height) {
+        VkBufferImageCopy region{};
+
+        region.bufferOffset                    = 0;
+        region.bufferRowLength                 = 0;
+        region.bufferImageHeight               = 0;
+        region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel       = 0;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount     = 1;
+        region.imageOffset                     = { 0, 0, 0 };
+        region.imageExtent                     = { width, height, 1 };
+
+        return { region };
+    }
+
+    //构建图像拷贝区域（图集）
+    std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t tileWidth, uint32_t tileHeight, uint32_t atlasWidth, uint32_t atlasHeight, uint32_t texWidth, uint32_t texHeight, uint32_t arrayLayer) {
+        std::vector<VkBufferImageCopy> regions{ arrayLayer };
+        uint32_t texturePixel = 4;
+        uint32_t wOffset      = tileWidth  * texturePixel;
+        uint32_t hOffset      = atlasWidth * tileWidth * tileHeight * texturePixel;
+
+        for (uint32_t w = 0; w < atlasWidth; w++) {
+            for (uint32_t h = 0; h < atlasHeight; h++) {
+                uint32_t id     = w + h * atlasWidth;
+                uint32_t offset = w * wOffset + h * hOffset;
+
+                regions[id].bufferOffset                    = offset;
+                regions[id].bufferRowLength                 = texWidth;
+                regions[id].bufferImageHeight               = texHeight;
+                regions[id].imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                regions[id].imageSubresource.mipLevel       = 0;
+                regions[id].imageSubresource.baseArrayLayer = id;
+                regions[id].imageSubresource.layerCount     = 1;
+                regions[id].imageOffset                     = { 0, 0, 0 };
+                regions[id].imageExtent                     = { tileWidth, tileHeight, 1 };
+            }
+        }
+
+        return regions;
+    }
+
+    //构建图像拷贝区域（KTX多mip）
+    std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t width, uint32_t height, uint32_t mipLevels, ktxTexture2* ktxTexture) {
+        std::vector<VkBufferImageCopy> regions{ mipLevels };
+
+        for (uint32_t i = 0; i < mipLevels; i++) {
+            ktx_size_t offset;
+            ktxTexture2_GetImageOffset(ktxTexture, i, 0, 0, &offset);
+
+            regions[i].bufferOffset                    = offset;
+            regions[i].bufferRowLength                 = 0;
+            regions[i].bufferImageHeight               = 0;
+            regions[i].imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            regions[i].imageSubresource.mipLevel       = i;
+            regions[i].imageSubresource.baseArrayLayer = 0;
+            regions[i].imageSubresource.layerCount     = 1;
+            regions[i].imageOffset                     = { 0, 0, 0 };
+            regions[i].imageExtent                     = { width >> i, height >> i, 1 };
+        }
+
+        return regions;
+    }
 }
 
 //swapchain结构空间
@@ -903,7 +914,7 @@ namespace renderStruct {
 
 
 
-        void createRenderInstanceNode(const renderStruct::renderTemplateNode& renderTemplate, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkExtent2D& extent, const VkSampleCountFlagBits& msaa, const VkDevice& device, const VmaAllocator& memAllocator) {
+        void createRenderInstanceNode(const renderStruct::renderTemplateNode& renderTemplate, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkExtent2D& imageExtent, const VkSampleCountFlagBits& msaa, const VkDevice& device, const VmaAllocator& memAllocator) {
             switch (renderTemplate.renderAttType) {
             case renderEnum::renderAttId::forward_ra: {
                 clearValueList = { renderInfo::colorClearValue, renderInfo::depthClearValue };
@@ -928,14 +939,14 @@ namespace renderStruct {
 
                 //color、depth
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {colorFormat, extent, msaa, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {depthFormat, extent, msaa, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                                   VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, msaa, 1, 1, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, msaa, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                                   VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
                 };
 
                 //swap
                 frameImageList[renderEnum::renderFrameId::swap_rf].createSwapImageList(swapStruct::swapImageList, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, device);
 
-                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], frameImageList[renderEnum::renderFrameId::swap_rf], renderTemplate.render, extent, device);
+                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], frameImageList[renderEnum::renderFrameId::swap_rf], renderTemplate.render, imageExtent, device);
                 break;
             }
             case renderEnum::renderTemplateId::offScreen_rt: {
@@ -943,12 +954,12 @@ namespace renderStruct {
 
                 //color、depth、view
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {colorFormat, extent, msaa,                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {depthFormat, extent, msaa,                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
-                    {colorFormat, extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, msaa,                  1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, msaa,                  1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
                 };
 
-                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, extent, device);
+                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, imageExtent, device);
                 break;
             }
             case renderEnum::renderTemplateId::deferred_rt: {
@@ -956,13 +967,13 @@ namespace renderStruct {
 
                 //position、normal、albedo、depth
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {renderInfo::dsPosColorFormat, extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {colorFormat,                  extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {colorFormat,                  extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {depthFormat,                  extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, renderInfo::dsPosColorFormat, imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, colorFormat,                  imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, colorFormat,                  imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, depthFormat,                  imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
                 };
 
-                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, extent, device);
+                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, imageExtent, device);
                 break;
             }
             case renderEnum::renderTemplateId::shadowMap_rt: {
@@ -970,10 +981,10 @@ namespace renderStruct {
 
                 //depth
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {depthFormat, extent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
                 };
 
-                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, extent, device);
+                createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, imageExtent, device);
                 break;
             }
             }
@@ -1216,6 +1227,72 @@ namespace pipelineStruct {
         }
     };
 
+    //常驻异步工作线程：单线程任务队列 + 条件变量，替代 detach 线程与忙等
+    struct asyncWorker {
+        std::thread						  thread;
+        std::mutex						  mutex;
+        std::condition_variable			  cv;
+        std::queue<std::function<void()>> tasks;
+        bool							  stop = false;
+        size_t							  running = 0;
+
+
+
+        void start() {
+            thread = std::thread([this] { loop(); });
+        }
+
+        void loop() {
+            for (;;) {
+                std::function<void()> task;
+
+                {
+                    std::unique_lock<std::mutex> lock(mutex);
+                    cv.wait(lock, [this] { return stop || !tasks.empty(); });
+
+                    if (stop && tasks.empty()) { return; }
+
+                    task = std::move(tasks.front());
+                    tasks.pop();
+                    running++;
+                }
+
+                task();
+
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    running--;
+                }
+                cv.notify_all();
+            }
+        }
+
+        void submit(std::function<void()> task) {
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                tasks.push(std::move(task));
+            }
+            cv.notify_one();
+        }
+
+        //等待队列排空且当前任务执行完毕
+        void waitIdle() {
+            std::unique_lock<std::mutex> lock(mutex);
+            cv.wait(lock, [this] { return tasks.empty() && running == 0; });
+        }
+
+        //停止接收、排空队列并退出线程
+        void shutdown() {
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                stop = true;
+            }
+            cv.notify_all();
+
+            if (thread.joinable()) { thread.join(); }
+        }
+    };
+
 
 
     //pipeLayout结点
@@ -1286,103 +1363,28 @@ namespace pipelineStruct {
 namespace cmdStruct {
     //cmd线程结点
     struct cmdThreadNode {
-        std::mutex lock{};      //线程锁
-        int current = 0;        //当前线程
-        int next    = 0;        //下一线程
+        std::mutex lock{};                  //线程锁：保护 flip/swap 的读改写
+        std::atomic<int> current{ 0 };      //当前线程
+        std::atomic<int> next{ 0 };         //下一线程
 
 
 
-        //判断更新
+        //判断更新（无锁读，安全）
         bool isFlip() const {
-            return next != current;
+            return next.load() != current.load();
         }
 
         //进行更新：next切到另一线程
         void flip() {
             std::lock_guard<std::mutex> guard(lock);
-            next = (current + 1) % 2;
+            next.store((current.load() + 1) % 2);
         }
 
         //完成更新：当前线程切到next
         void swap() {
             std::lock_guard<std::mutex> guard(lock);
-            current = next;
+            current.store(next.load());
         }
-    };
-
-    //cmd缓冲结点
-    struct cmdBufferNode {
-        VkCommandPool                pool  = VK_NULL_HANDLE;
-        VkFence                      fence = VK_NULL_HANDLE;    //本线程命令执行完成信号
-        VkCommandBufferAllocateInfo  info{};
-        std::vector<VkCommandBuffer> list{};
-    
-    
-    
-        //创建cmdPool、info、fence
-        cmdBufferNode(const VkDevice& device, const uint32_t& queueFamily, const uint32_t& frameCount) {
-            VkCommandPoolCreateInfo poolInfo{};
-            poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            poolInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-            poolInfo.queueFamilyIndex = queueFamily;
-    
-            if (vkCreateCommandPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "cmdPool创建失败");
-            }
-    
-            info.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            info.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            info.commandPool        = pool;
-            info.commandBufferCount = frameCount;
-    
-            list.resize(frameCount);
-            createCmdList(device);
-    
-            VkFenceCreateInfo fenceInfo{};
-            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    
-            if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "fence创建失败");
-            }
-        }
-    
-        cmdBufferNode() = delete;
-    
-    
-    
-        //创建cmdList
-        void createCmdList(const VkDevice& device) {
-            if (vkAllocateCommandBuffers(device, &info, list.data()) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "cmdList创建失败");
-            }
-        }
-    
-        //重建cmdList
-        void recreateCmdList(const VkDevice& device) {
-            clearCmdList(device);
-            createCmdList(device);
-        }
-
-        //清理cmdPool
-        void clearCmdPool(const VkDevice& device) {
-            vkDestroyFence(device, fence, nullptr);
-            vkDestroyCommandPool(device, pool, nullptr);
-
-            pool  = VK_NULL_HANDLE;
-            fence = VK_NULL_HANDLE;
-        }
-
-        //清理cmdList
-        void clearCmdList(const VkDevice& device) {
-            vkFreeCommandBuffers(device, pool, static_cast<uint32_t>(list.size()), list.data());
-        }
-    
-    
-    
-        //重载
-        VkCommandBuffer& operator[](int frameId) { return list[frameId]; }
-        size_t           size()            const { return list.size(); }
     };
 
     //todo后续写成pipe结点
@@ -1557,69 +1559,256 @@ namespace cmdStruct {
             }
         }
     };
+    
+    //cmd缓冲结点
+    struct cmdBufferNode {
+        VkCommandPool                pool  = VK_NULL_HANDLE;
+        VkFence                      fence = VK_NULL_HANDLE;    //本线程命令执行完成信号
+        VkCommandBufferAllocateInfo  info{};
+        std::vector<VkCommandBuffer> list{};
+    
+    
+    
+        //创建cmdPool、info、fence
+        cmdBufferNode(const VkDevice& device, const uint32_t& queueFamily, const uint32_t& frameCount) {
+            VkCommandPoolCreateInfo poolInfo{};
+            poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            poolInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            poolInfo.queueFamilyIndex = queueFamily;
+    
+            if (vkCreateCommandPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "cmdPool创建失败");
+            }
+    
+            info.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            info.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            info.commandPool        = pool;
+            info.commandBufferCount = frameCount;
+    
+            list.resize(frameCount);
+            createCmdList(device);
+    
+            VkFenceCreateInfo fenceInfo{};
+            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    
+            if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "fence创建失败");
+            }
+        }
+    
+        cmdBufferNode() = delete;
+    
+    
+    
+        //创建cmdList
+        void createCmdList(const VkDevice& device) {
+            if (vkAllocateCommandBuffers(device, &info, list.data()) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "cmdList创建失败");
+            }
+        }
+    
+        //重建cmdList
+        void recreateCmdList(const VkDevice& device) {
+            clearCmdList(device);
+            createCmdList(device);
+        }
+
+        //清理cmdPool
+        void clearCmdPool(const VkDevice& device) {
+            vkDestroyFence(device, fence, nullptr);
+            vkDestroyCommandPool(device, pool, nullptr);
+
+            pool  = VK_NULL_HANDLE;
+            fence = VK_NULL_HANDLE;
+        }
+
+        //清理cmdList
+        void clearCmdList(const VkDevice& device) {
+            vkFreeCommandBuffers(device, pool, static_cast<uint32_t>(list.size()), list.data());
+        }
+    
+    
+    
+        //重载
+        VkCommandBuffer& operator[](int frameId) { return list[frameId]; }
+        size_t           size()            const { return list.size(); }
+    };
 
 
 
     //cmd结点
     struct cmdNode {
-        cmdStruct::cmdThreadNode              thread{};     //线程
-        std::vector<cmdStruct::cmdBufferNode> buffer{};     //缓冲
-        cmdStruct::cmdRecorderNode            recorder{};   //录制
-    
-    
-    
-        cmdNode(const VkDevice& device, const uint32_t& queueFamily, const uint32_t& frameCount) : buffer{ cmdStruct::cmdBufferNode(device, queueFamily, frameCount), cmdStruct::cmdBufferNode(device, queueFamily, frameCount) }{}
-    
+        cmdStruct::cmdThreadNode              thread{};         //线程管理器
+        cmdStruct::cmdRecorderNode            recorder{};       //录制管理器
+
+        std::vector<cmdStruct::cmdBufferNode> renderCmd{};      //渲染命令，双缓冲
+        cmdStruct::cmdBufferNode              transientCmd;     //临时命令，单缓冲
+
+
+
+        cmdNode(const VkDevice& device, const uint32_t& queueFamily, const uint32_t& frameCount) : renderCmd{ cmdStruct::cmdBufferNode(device, queueFamily, frameCount), cmdStruct::cmdBufferNode(device, queueFamily, frameCount) }, transientCmd{ device, queueFamily, 1 } {}
+
         cmdNode() = delete;
-    
+
         void clear(const VkDevice& device) {
-            for (auto& node : buffer) {
+            for (auto& node : renderCmd) {
                 node.clearCmdPool(device);
             }
-        }
-    
-    
 
-        //录制命令
+            transientCmd.clearCmdPool(device);
+        }
+
+
+
+        //拷贝buffer到buffer
+        void copyBufferToBuffer(const VkDevice& device, const VkQueue& graphicsQueue, const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, VkDeviceSize size) {
+            recordTransientCmd();
+
+            VkBufferCopy copyRegion{};
+            copyRegion.srcOffset = 0;
+            copyRegion.dstOffset = 0;
+            copyRegion.size      = size;
+            vkCmdCopyBuffer(transientCmd[0], srcBuffer, dstBuffer, 1, &copyRegion);
+
+            submitTransientCmd(device, graphicsQueue);
+        }
+
+        //拷贝buffer到image，转换→拷贝→转换
+        void copyBufferToImage(const VkDevice& device, const VkQueue& graphicsQueue, const VkBuffer& buffer, const VkImage& image, const std::vector<VkBufferImageCopy>& regions, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format) {
+            recordTransientCmd();
+
+            recordImageLayoutBarrier(image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            vkCmdCopyBufferToImage(transientCmd[0], buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(regions.size()), regions.data());
+            recordImageLayoutBarrier(image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+            submitTransientCmd(device, graphicsQueue);
+        }
+
+
+
+        //录制本线程命令
         template<typename F>
-        void record(int threadId, int frameId, F&& func) {
-            recorder.bind(buffer[threadId][frameId]);
+        void recordCmd(int threadId, int frameId, F&& func) {
+            recorder.bind(renderCmd[threadId][frameId]);
             recorder.reset();
             recorder.begin();
             func(recorder);
             recorder.end();
         }
 
-        //提交单次命令
-        void submitOnce(const VkDevice& device, const VkQueue& graphicsQueue, const VkCommandBuffer& cmd) {
-            std::lock_guard<std::mutex> queueGuard(lockInfo::queueThreadLock);
-            vkEndCommandBuffer(cmd);
-    
+        //等待本线程命令
+        void waitCmd(const VkDevice& device, int threadId) {
+            vkWaitForFences(device, 1, &renderCmd[threadId].fence, VK_TRUE, UINT64_MAX);
+        }
+
+    private:
+        //图像布局转换
+        void transImageLayout(const VkDevice& device, const VkQueue& graphicsQueue, const VkImage& image, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+            recordTransientCmd();
+            recordImageLayoutBarrier(image, arrayLayer, mipLevel, format, oldLayout, newLayout);
+            submitTransientCmd(device, graphicsQueue);
+        }
+
+        //录制图像布局转换屏障
+        void recordImageLayoutBarrier(const VkImage& image, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+            VkImageMemoryBarrier memBarrier{};
+            memBarrier.sType                = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            memBarrier.oldLayout            = oldLayout;
+            memBarrier.newLayout            = newLayout;
+            memBarrier.srcQueueFamilyIndex  = VK_QUEUE_FAMILY_IGNORED;
+            memBarrier.dstQueueFamilyIndex  = VK_QUEUE_FAMILY_IGNORED;
+            memBarrier.image                = image;
+            memBarrier.subresourceRange.baseMipLevel   = 0;
+            memBarrier.subresourceRange.levelCount     = mipLevel;
+            memBarrier.subresourceRange.baseArrayLayer = 0;
+            memBarrier.subresourceRange.layerCount     = arrayLayer;
+
+            if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+                memBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+                if (format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT) {
+                    memBarrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+                }
+            }
+            else {
+                memBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            }
+
+            VkPipelineStageFlags srcPipeStage{};
+            VkPipelineStageFlags dstPipeStage{};
+            if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+                memBarrier.srcAccessMask = 0;
+                memBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                srcPipeStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                dstPipeStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            }
+            else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+                memBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                memBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                srcPipeStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+                dstPipeStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            }
+            else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+                memBarrier.srcAccessMask = 0;
+                memBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                srcPipeStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                dstPipeStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+            }
+            else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+                memBarrier.srcAccessMask = 0;
+                memBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                srcPipeStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                dstPipeStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            }
+            else {
+                Log::printError(__FILE__, __LINE__, "无支持的布局转换");
+            }
+
+            vkCmdPipelineBarrier(transientCmd[0], srcPipeStage, dstPipeStage, 0, 0, nullptr, 0, nullptr, 1, &memBarrier);
+        }
+
+
+        
+        //录制transientCmd
+        void recordTransientCmd() {
+            vkResetCommandBuffer(transientCmd[0], 0);
+
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+            if (vkBeginCommandBuffer(transientCmd[0], &beginInfo) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "transientCmd开始失败");
+            }
+        }
+
+        //提交transientCmd
+        void submitTransientCmd(const VkDevice& device, const VkQueue& graphicsQueue) {
+            vkEndCommandBuffer(transientCmd[0]);
+
             VkSubmitInfo submitInfo{};
             submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
             submitInfo.commandBufferCount = 1;
-            submitInfo.pCommandBuffers    = &cmd;
-    
-            vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-            vkQueueWaitIdle(graphicsQueue);
-            vkFreeCommandBuffers(device, buffer[0].pool, 1, &cmd);
+            submitInfo.pCommandBuffers    = &transientCmd[0];
+
+            {
+                std::lock_guard<std::mutex> queueGuard(lockInfo::queueThreadLock);
+                vkResetFences(device, 1, &transientCmd.fence);
+
+                if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, transientCmd.fence) != VK_SUCCESS) {
+                    Log::printError(__FILE__, __LINE__, "transientCmd提交失败");
+                }
+            }
+
+            vkWaitForFences(device, 1, &transientCmd.fence, VK_TRUE, UINT64_MAX);
+            vkResetFences  (device, 1, &transientCmd.fence);
         }
 
-        //获取当前命令列表
-        std::vector<VkCommandBuffer>& getCmdList() {
-            return buffer[thread.current].list;
-        }
-    
-        //等待本线程命令执行完成
-        void waitFence(const VkDevice& device, int threadId) {
-            vkWaitForFences(device, 1, &buffer[threadId].fence, VK_TRUE, UINT64_MAX);       //等待fence
-        }
-
-
-
+    public:
         bool isFlip() const { return thread.isFlip(); }
-        void swap()        { thread.swap(); }
-        void flip()        { thread.flip(); }
+        void swap()         { thread.swap(); }
+        void flip()         { thread.flip(); }
     };
 }
 

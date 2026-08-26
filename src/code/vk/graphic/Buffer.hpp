@@ -44,6 +44,8 @@ public:
 		}
 	}
 
+
+
 	Device& Device;
 
 	Swapchain InitSwapchain{ Device };
@@ -538,34 +540,22 @@ private:
 
 	//将vertexNode类中的顶点映射到buffer类里对应的VkBuffer
 	void createVertexBuffer(auto& node, bufferStruct::baseBufferNode& vertexBuffer) {
-		//获取顶点数组大小
 		VkDeviceSize bufferSize = sizeof(node[0]) * node.size();
 
-		//创建临时缓冲，方便CPU访问
 		bufferStruct::baseBufferNode cpuBuffer{ node.data(), bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
-
-		//创建顶点缓冲，方便GPU访问
 		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer);
-
-		//临时缓冲拷贝到顶点缓冲
-		copyBuffer(cpuBuffer.buffer, vertexBuffer.buffer, bufferSize);
+		cmd.copyBufferToBuffer(Device.device, Device.graphicsQueue, cpuBuffer.buffer, vertexBuffer.buffer, bufferSize);
 
 		cpuBuffer.clear(Device.memAllocator);
 	}
 
 	//将vertexNode类中的索引映射到buffer类里对应的VkBuffer
 	void createIndexBuffer(std::vector<uint32_t>& node, bufferStruct::baseBufferNode& indexBuffer) {
-		//获取索引数组大小
 		VkDeviceSize bufferSize = sizeof(node[0]) * node.size();
 
-		//创建临时缓冲，方便CPU访问
 		bufferStruct::baseBufferNode cpuBuffer{ node.data(), bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
-
-		//创建索引缓冲，方便GPU访问
 		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer);
-
-		//临时缓冲拷贝到索引缓冲
-		copyBuffer(cpuBuffer.buffer, indexBuffer.buffer, bufferSize);
+		cmd.copyBufferToBuffer(Device.device, Device.graphicsQueue, cpuBuffer.buffer, indexBuffer.buffer, bufferSize);
 
 		cpuBuffer.clear(Device.memAllocator);
 	}
@@ -856,13 +846,8 @@ private:
 		mipLevel = ktxTexture->numLevels;
 
 		bufferStruct::baseBufferNode cpuBuffer{ ktxTexture->pData, textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
-		
 		createImage(textureInfo::terrain::tileWidth, textureInfo::terrain::tileHeight, arrayLayer, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageBuffer.image, imageBuffer.imageMem);
-
-		transitionImageLayout(imageBuffer.image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		copyBufferToImageArray(textureInfo::terrain::tileWidth, textureInfo::terrain::tileHeight, textureInfo::terrain::atlasWidth, textureInfo::terrain::atlasHeight, texWidth, texHeight, arrayLayer, cpuBuffer.buffer, imageBuffer.image);
-		transitionImageLayout(imageBuffer.image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
+		cmd.copyBufferToImage(Device.device, Device.graphicsQueue, cpuBuffer.buffer, imageBuffer.image, bufferStruct::makeImageCopyRegion(textureInfo::terrain::tileWidth, textureInfo::terrain::tileHeight, textureInfo::terrain::atlasWidth, textureInfo::terrain::atlasHeight, texWidth, texHeight, arrayLayer), arrayLayer, mipLevel, format);
 		createImageView(imageBuffer.image, imageBuffer.view, arrayLayer, mipLevel, VK_IMAGE_VIEW_TYPE_2D_ARRAY, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
 		cpuBuffer.clear(Device.memAllocator);
@@ -885,22 +870,15 @@ private:
 			Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
 		}
 
-		uint32_t texWidth = ktxTexture->baseWidth;
-		uint32_t texHeight = ktxTexture->baseHeight;
-		mipLevel = ktxTexture->numLevels;
+		uint32_t   texWidth    = ktxTexture->baseWidth;
+		uint32_t   texHeight   = ktxTexture->baseHeight;
 		ktx_size_t textureSize = ktxTexture->dataSize;
-		VkFormat format = VK_FORMAT_BC7_UNORM_BLOCK;
+		VkFormat   format	   = VK_FORMAT_BC7_UNORM_BLOCK;
+		mipLevel = ktxTexture->numLevels;
 
-		//创建临时缓冲，方便CPU访问
 		bufferStruct::baseBufferNode cpuBuffer{ ktxTexture->pData, textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
-		
-		//创建纹理缓冲，方便GPU访问
 		createImage(texWidth, texHeight, 1, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageBuffer.image, imageBuffer.imageMem);
-
-		transitionImageLayout(imageBuffer.image, 1, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);					//图像格式转换为传送最佳
-		copyBufferToImageKtx(texWidth, texHeight, mipLevel, ktxTexture, cpuBuffer.buffer, imageBuffer.image);												//临时缓冲拷贝到图像缓冲
-		transitionImageLayout(imageBuffer.image, 1, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);	//图像格式转换为采样最佳
-
+		cmd.copyBufferToImage(Device.device, Device.graphicsQueue, cpuBuffer.buffer, imageBuffer.image, bufferStruct::makeImageCopyRegion(texWidth, texHeight, mipLevel, ktxTexture), 1, mipLevel, format);
 		createImageView(imageBuffer.image, imageBuffer.view, 1, mipLevel, VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
 		cpuBuffer.clear(Device.memAllocator);
@@ -909,29 +887,19 @@ private:
 
 	//创建纹理文本结点
 	void createTextNode(bufferStruct::imageBufferNode& imageBuffer) {
-		const uint32_t fontWidth = STB_FONT_consolas_24_latin1_BITMAP_WIDTH;
+		const uint32_t fontWidth  = STB_FONT_consolas_24_latin1_BITMAP_WIDTH;
 		const uint32_t fontHeight = STB_FONT_consolas_24_latin1_BITMAP_HEIGHT;
-		VkDeviceSize imageSize = static_cast<VkDeviceSize>(fontWidth) * static_cast<VkDeviceSize>(fontHeight);
+		VkDeviceSize   imageSize  = static_cast<VkDeviceSize>(fontWidth) * static_cast<VkDeviceSize>(fontHeight);
 
 		static unsigned char font24pixels[fontHeight][fontWidth];
 		stb_font_consolas_24_latin1(uiText.stbFontData, font24pixels, fontHeight);
 
-		//创建临时缓冲，方便CPU访问
 		bufferStruct::baseBufferNode cpuBuffer{ &font24pixels[0][0], imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
-
-		//创建纹理缓冲，方便GPU访问
 		createImage(fontWidth, fontHeight, 1, 1, VK_FORMAT_R8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageBuffer.image, imageBuffer.imageMem);
-
-		//图像格式转换为传送最佳
-		transitionImageLayout(imageBuffer.image, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		//临时缓冲拷贝到图像缓冲
-		copyBufferToImage(static_cast<uint32_t>(fontWidth), static_cast<uint32_t>(fontHeight), cpuBuffer.buffer, imageBuffer.image);
-		//图像格式转换为采样最佳
-		transitionImageLayout(imageBuffer.image, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		cmd.copyBufferToImage(Device.device, Device.graphicsQueue, cpuBuffer.buffer, imageBuffer.image, bufferStruct::makeImageCopyRegion(static_cast<uint32_t>(fontWidth), static_cast<uint32_t>(fontHeight)), 1, 1, VK_FORMAT_R8_UNORM);
+		createImageView(imageBuffer.image, imageBuffer.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 
 		cpuBuffer.clear(Device.memAllocator);
-
-		createImageView(imageBuffer.image, imageBuffer.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 
 
@@ -967,32 +935,6 @@ private:
 		vmaMapMemory(Device.memAllocator, tempMemory, &data);
 		memcpy(data, sourceData, dataSize);
 		vmaUnmapMemory(Device.memAllocator, tempMemory);
-	}
-
-	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-		lockInfo::queueThreadLock.lock();
-		VkCommandBufferAllocateInfo allocInfo{};
-		allocInfo.sType				 = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.level				 = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandPool		 = cmd.buffer[0].pool;
-		allocInfo.commandBufferCount = 1;
-
-		VkCommandBuffer commandBuffer;
-		vkAllocateCommandBuffers(Device.device, &allocInfo, &commandBuffer);
-
-		VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-		VkBufferCopy copyRegion{};
-		copyRegion.srcOffset = 0;
-		copyRegion.dstOffset = 0;
-		copyRegion.size		 = size;
-		vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-		lockInfo::queueThreadLock.unlock();
-
-		cmd.submitOnce(Device.device, Device.graphicsQueue, commandBuffer);
 	}
 
 	void createImage(uint32_t width, uint32_t height, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImage& image, VmaAllocation& allocation) {
@@ -1037,173 +979,11 @@ private:
 		}
 	}
 
-	void transitionImageLayout(VkImage image, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
-		//在图像布局转换之前，我们需要开始一个单次命令缓冲区以确保我们的操作能够被正确提交和执行
-		VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-		//创建图像内存屏障，用于定义布局转换的参数
-		VkImageMemoryBarrier memBarrier{};
-		memBarrier.sType			   = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		memBarrier.oldLayout		   = oldLayout;							//旧的图像布局
-		memBarrier.newLayout		   = newLayout;							//新的图像布局
-		memBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;			//来源队列家族索引
-		memBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;			//目标队列家族索引
-		memBarrier.image			   = image;								//需要进行布局转换的图像
-		memBarrier.subresourceRange.baseMipLevel   = 0;						//子资源的起始mipmap级别
-		memBarrier.subresourceRange.levelCount	   = mipLevel;				//子资源的级别数量
-		memBarrier.subresourceRange.baseArrayLayer = 0;						//子资源的起始数组层
-		memBarrier.subresourceRange.layerCount	   = arrayLayer;			//子资源的数组层数量
-
-		//子资源的掩码
-		if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-			memBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;			//深度掩码
-
-			if (format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT) {
-				memBarrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;	//模板掩码
-			}
-		}
-		else {
-			memBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;			//颜色掩码
-		}
-
-		VkPipelineStageFlags srcPipeStage{};	//上管线阶段
-		VkPipelineStageFlags dstPipeStage{};	//本管线阶段
-
-		if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-			memBarrier.srcAccessMask = 0;
-			memBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-			srcPipeStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			dstPipeStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		}
-		else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-			memBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			memBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-			srcPipeStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-			dstPipeStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-		}
-		else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-			memBarrier.srcAccessMask = 0;
-			memBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-			srcPipeStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			dstPipeStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-		}
-		else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-			memBarrier.srcAccessMask = 0;
-			memBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-			srcPipeStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			dstPipeStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		}
-		else {
-			Log::printError(__FILE__, __LINE__, "无支持的布局转换");
-		}
-
-		//在命令缓冲区中插入图像内存屏障，以实现布局转换
-		vkCmdPipelineBarrier(commandBuffer, srcPipeStage, dstPipeStage, 0, 0, nullptr, 0, nullptr, 1, &memBarrier);
-
-		//结束单次命令缓冲区，提交并执行命令
-		cmd.submitOnce(Device.device, Device.graphicsQueue, commandBuffer);
-	}
-
-	void copyBufferToImageArray(uint32_t tileWidth, uint32_t tileHeight, uint32_t atlasWidth, uint32_t atlasHeight, uint32_t texWidth, uint32_t texHeight, uint32_t arrayLayer, VkBuffer buffer, VkImage image) {
-		VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-		std::vector<VkBufferImageCopy> regions{ arrayLayer };			//vulkan存储方式是从左往右从上往下一个个存入像素点数据，所以按下述方法遍历
-		uint32_t texturePixel = 4;
-		uint32_t wOffset = tileWidth * texturePixel;
-		uint32_t hOffset = atlasWidth * tileWidth * tileHeight * texturePixel;
-
-		for (uint32_t w = 0; w < atlasWidth; w++) {
-			for (uint32_t h = 0; h < atlasHeight; h++) {
-				uint32_t id = w + h * atlasWidth;
-				uint32_t offset = w * wOffset + h * hOffset;
-
-				regions[id].bufferOffset = offset;
-				regions[id].bufferRowLength = texWidth;
-				regions[id].bufferImageHeight = texHeight;
-				regions[id].imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				regions[id].imageSubresource.mipLevel = 0;
-				regions[id].imageSubresource.baseArrayLayer = id;
-				regions[id].imageSubresource.layerCount = 1;
-				regions[id].imageOffset = { 0, 0, 0 };
-				regions[id].imageExtent = { tileWidth, tileHeight, 1 };
-			}
-		}
-
-		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, arrayLayer, regions.data());
-		cmd.submitOnce(Device.device, Device.graphicsQueue, commandBuffer);
-	}
-
-	void copyBufferToImageKtx(uint32_t width, uint32_t height, uint32_t mipLevels, ktxTexture2* ktxTexture, VkBuffer buffer, VkImage image) {
-		VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-		std::vector<VkBufferImageCopy> regions{ mipLevels };
-
-		for (uint32_t i = 0; i < mipLevels; i++) {
-			ktx_size_t offset;
-			ktxTexture2_GetImageOffset(ktxTexture, i, 0, 0, &offset);
-
-			regions[i].bufferOffset = offset;
-			regions[i].bufferRowLength = 0;
-			regions[i].bufferImageHeight = 0;
-			regions[i].imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			regions[i].imageSubresource.mipLevel = i;
-			regions[i].imageSubresource.baseArrayLayer = 0;
-			regions[i].imageSubresource.layerCount = 1;
-			regions[i].imageOffset = { 0, 0, 0 };
-			regions[i].imageExtent = { width >> i, height >> i, 1 };
-		}
-
-		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(regions.size()), regions.data());
-		cmd.submitOnce(Device.device, Device.graphicsQueue, commandBuffer);
-	}
-
-	void copyBufferToImage(uint32_t width, uint32_t height, VkBuffer buffer, VkImage image) {
-		VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-		VkBufferImageCopy region = {};
-
-		region.bufferOffset = 0;
-		region.bufferRowLength = 0;
-		region.bufferImageHeight = 0;
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.mipLevel = 0;
-		region.imageSubresource.baseArrayLayer = 0;
-		region.imageSubresource.layerCount = 1;
-		region.imageOffset = { 0, 0, 0 };
-		region.imageExtent = { width, height, 1 };
-
-		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-		cmd.submitOnce(Device.device, Device.graphicsQueue, commandBuffer);
-	}
-
-
-
-	VkCommandBuffer beginSingleTimeCommands() {
-		std::lock_guard<std::mutex> lock(lockInfo::queueThreadLock);
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandPool = cmd.buffer[0].pool;
-		allocInfo.commandBufferCount = 1;
-
-		VkCommandBuffer commandBuffer;
-		vkAllocateCommandBuffers(Device.device, &allocInfo, &commandBuffer);
-
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-		vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-		return commandBuffer;
-	}
-
 public:
 	//创建cmd
 	void createCmd(int threadId, pipelineList::procPipelineNode& procPipeline) {
-		for (int frameId = 0; frameId < cmd.buffer[threadId].size(); frameId++) {
-			cmd.record(threadId, frameId, [&](cmdStruct::cmdRecorderNode& recorder) {
+		for (int frameId = 0; frameId < cmd.renderCmd[threadId].size(); frameId++) {
+			cmd.recordCmd(threadId, frameId, [&](cmdStruct::cmdRecorderNode& recorder) {
 				/*shadowMap_ri*/
 				{
 					recorder.beginRender(&procRenderPass.getRenderBegin(renderEnum::renderInstanceId::shadowMap_ri));
@@ -1337,7 +1117,7 @@ public:
 
 
 		int layer = plateEnum::terrainLayer::Layer_0;
-		cmd.waitFence(Device.device, threadId);
+		cmd.waitCmd(Device.device, threadId);
 
 		//重建下一线程Lod_0地形管线，RM_0.4.6（8_32：10）
 		if (isNullTerrainMesh(layer)) {
@@ -1373,8 +1153,8 @@ public:
 				vmaDestroyBuffer(Device.memAllocator, terrain.index[threadId][layer].buffer,  terrain.index[threadId][layer].bufferMem);
 				createBuffer(vertexSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[threadId][layer]);
 				createBuffer(indexSize,  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.index[threadId][layer]);
-				copyBuffer(vertexBuffer.buffer, terrain.vertex[threadId][layer].buffer, vertexSize);
-				copyBuffer(indexBuffer.buffer,  terrain.index[threadId][layer].buffer,  indexSize);
+				cmd.copyBufferToBuffer(Device.device, Device.graphicsQueue, vertexBuffer.buffer, terrain.vertex[threadId][layer].buffer, vertexSize);
+				cmd.copyBufferToBuffer(Device.device, Device.graphicsQueue, indexBuffer.buffer,  terrain.index[threadId][layer].buffer,  indexSize);
 
 				//重建下一线程Lod_1地形阴影
 				if (procShadow.isEnable) {
@@ -1394,22 +1174,32 @@ public:
 				}
 
 				lockInfo::queueThreadLock.lock();
-				cmd.buffer[threadId].recreateCmdList(Device.device);
+				cmd.renderCmd[threadId].recreateCmdList(Device.device);
 				createCmd(threadId, procPipeline);
 				cmd.swap();
 				lockInfo::queueThreadLock.unlock();
 				lockInfo::drawFuncLock.unlock();
 
+
+
 				//重建上轮当前线程Lod_1地形管线
 				int tempThreadId = (threadId + 1) % 2;
-				cmd.waitFence(Device.device, tempThreadId);
+				cmd.waitCmd(Device.device, tempThreadId);
 
 				vmaDestroyBuffer(Device.memAllocator, terrain.vertex[tempThreadId][layer].buffer, terrain.vertex[tempThreadId][layer].bufferMem);
 				vmaDestroyBuffer(Device.memAllocator, terrain.index[tempThreadId][layer].buffer,  terrain.index[tempThreadId][layer].bufferMem);
 				createBuffer(vertexSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[tempThreadId][layer]);
 				createBuffer(indexSize,  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.index[tempThreadId][layer]);
-				copyBuffer(vertexBuffer.buffer, terrain.vertex[tempThreadId][layer].buffer, vertexSize);
-				copyBuffer(indexBuffer.buffer,  terrain.index[tempThreadId][layer].buffer,  indexSize);
+				cmd.copyBufferToBuffer(Device.device, Device.graphicsQueue, vertexBuffer.buffer, terrain.vertex[tempThreadId][layer].buffer, vertexSize);
+				cmd.copyBufferToBuffer(Device.device, Device.graphicsQueue, indexBuffer.buffer,  terrain.index[tempThreadId][layer].buffer,  indexSize);
+
+				//重建上轮当前线程Lod_1地形阴影
+				if (procShadow.isEnable) {
+					vmaDestroyBuffer(Device.memAllocator, procShadow.tShadowNode.vertex[tempThreadId][layer].buffer, procShadow.tShadowNode.vertex[tempThreadId][layer].bufferMem);
+
+					shadowVertex::loadTerrainVertexs(layer);
+					createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[tempThreadId][layer]);
+				}
 
 				vertexBuffer.clear(Device.memAllocator);
 				indexBuffer .clear(Device.memAllocator);
@@ -1421,6 +1211,8 @@ public:
 			isEntireRebuild.store(false);
 		}
 
+
+
 		//重建下一线程命令缓冲区，并切换线程
 		lockInfo::drawFuncLock.lock();
 		if (playerInfo::logicOriginPos != plateOriginPos) {
@@ -1431,7 +1223,7 @@ public:
 		}
 
 		lockInfo::queueThreadLock.lock();
-		cmd.buffer[threadId].recreateCmdList(Device.device);
+		cmd.renderCmd[threadId].recreateCmdList(Device.device);
 		createCmd(threadId, procPipeline);
 		cmd.swap();
 		lockInfo::queueThreadLock.unlock();
@@ -1654,8 +1446,8 @@ public:
 	}
 
 	//绘制frame
-	bool drawFrame() {
-		return InitSwapchain.drawFrame(cmd.getCmdList(), cmd.buffer[cmd.thread.current].fence);
+	bool drawFrame(int threadId) {
+		return InitSwapchain.drawFrame(cmd.renderCmd[threadId].list, cmd.renderCmd[threadId].fence);
 	}
 
 
