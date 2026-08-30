@@ -13,7 +13,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # 1. MSVC 全局配置
 # ----------------------------------------------------------------------------
 if(MSVC)
-    # Debug 并行化性能：与 vcpkg triplet 的宏一致，避免 LNK2038
     
     # 源文件已统一 UTF-8；W3 警告级别
     add_compile_options(/utf-8 /W3)
@@ -23,10 +22,10 @@ endif()
 # 2. Vulkan SDK（系统级，不走 vcpkg）
 # ----------------------------------------------------------------------------
 find_package(Vulkan REQUIRED)
-find_program(GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/Bin")
+find_program(GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/Bin" "E:/code/lib/cpp/dynamicLib/VulkanSDK/1.4.321.1/Bin")
 
 if(NOT GLSLANG_VALIDATOR)
-    message(WARNING "未找到 glslangValidator，着色器自动编译将跳过")
+    message(FATAL_ERROR "未找到 glslangValidator（请设 VULKAN_SDK 环境变量）")
 endif()
 
 # ----------------------------------------------------------------------------

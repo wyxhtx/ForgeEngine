@@ -1,6 +1,6 @@
 {
   "name": "fastnoise2",
-  "version-string": "0.10.0-alpha",
+  "version-string": "1.1.1",
   "description": "FastNoise2 modular noise generation library",
   "homepage": "https://github.com/Auburn/FastNoise2",
   "license": "MIT",

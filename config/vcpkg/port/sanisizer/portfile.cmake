@@ -6,14 +6,14 @@ vcpkg_from_git(
 )
 file(COPY "${SOURCE_PATH}/include" DESTINATION "${CURRENT_PACKAGES_DIR}/")
 file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
-file(WRITE "${CURRENT_PACKAGES_DIR}/share/sanisizer/unofficial-sanisizer-config.cmake" [[
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/unofficial-sanisizer/unofficial-sanisizer-config.cmake" [[
 if(NOT TARGET sanisizer)
     add_library(sanisizer INTERFACE IMPORTED)
     set_target_properties(sanisizer PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}/../../include")
 endif()
 ]])
-file(WRITE "${CURRENT_PACKAGES_DIR}/share/sanisizer/unofficial-sanisizer-config-version.cmake" [[
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/unofficial-sanisizer/unofficial-sanisizer-config-version.cmake" [[
 set(PACKAGE_VERSION "0.2.0")
 if(PACKAGE_VERSION VERSION_LESS PACKAGE_FIND_VERSION)
     set(PACKAGE_VERSION_COMPATIBLE FALSE)

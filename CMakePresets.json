@@ -29,8 +29,5 @@
       }
     }
   ],
-  "buildPresets": [
-    { "name": "release",   "configurePreset": "vs", "configuration": "Release" },
-    { "name": "release", "configurePreset": "vs", "configuration": "Release" }
-  ]
+  "buildPresets": [ { "name": "release", "configurePreset": "vs", "configuration": "Release" } ]
 }
