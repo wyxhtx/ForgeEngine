@@ -2,40 +2,40 @@
 
 
 
-//engineĞÅÏ¢
+//engineä¿¡æ¯
 namespace engineInfo {
-    //²ãÆôÓÃ£¬Ä¿Ç°Ö»ÊÊÓÃÓÚ¿ªÆôĞ£Ñé²ã
+    //å±‚å¯ç”¨ï¼Œç›®å‰åªé€‚ç”¨äºå¼€å¯æ ¡éªŒå±‚
     std::vector<const char*> enableLayerList = {
         "VK_LAYER_KHRONOS_validation"
     };
 
-    //InstanceÀ©Õ¹ÆôÓÃ
+    //Instanceæ‰©å±•å¯ç”¨
     std::vector<const char*> enableInstanceExtensionList = {
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME
     };
 
-    //DeviceÀ©Õ¹ÆôÓÃ
+    //Deviceæ‰©å±•å¯ç”¨
     std::vector<const char*> enableDeviceExtensionList = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_EXT_MESH_SHADER_EXTENSION_NAME
     };
 }
 
-//debugĞÅÏ¢£¬È«¾Ö
+//debugä¿¡æ¯ï¼Œå…¨å±€
 namespace debugInfo {
 #ifdef NDEBUG
     //const bool LayerSwitch = false;
     //const bool LogSwitch = false;
 
-    const bool LayerSwitch = true;          //Ğ£Ñé¿ª¹Ø
-    const bool LogSwitch   = true;          //µ÷ÊÔ¿ª¹Ø
+    const bool LayerSwitch = true;          //æ ¡éªŒå¼€å…³
+    const bool LogSwitch   = true;          //è°ƒè¯•å¼€å…³
 #else
-    const bool LayerSwitch = true;          //Ğ£Ñé¿ª¹Ø
-    const bool LogSwitch   = true;          //µ÷ÊÔ¿ª¹Ø
+    const bool LayerSwitch = true;          //æ ¡éªŒå¼€å…³
+    const bool LogSwitch   = true;          //è°ƒè¯•å¼€å…³
 #endif
 }
 
-//windowĞÅÏ¢
+//windowä¿¡æ¯
 namespace windowInfo {
     const uint32_t  width  = 800;
     const uint32_t  height = 450;
@@ -44,34 +44,34 @@ namespace windowInfo {
     const char* gameName   = "Forge";
 
     //const bool resizableEnabled = true;
-    const bool resizableEnabled = false;    //´°¿ÚÀ­ÉìÆôÓÃ±êÊ¶
+    const bool resizableEnabled = false;    //çª—å£æ‹‰ä¼¸å¯ç”¨æ ‡è¯†
 }
 
-//lockĞÅÏ¢
+//lockä¿¡æ¯
 namespace lockInfo {
-    //Ô­×ÓÏß³ÌËø
-    std::mutex queueThreadLock;                         //¶ÓÁĞÏß³ÌËø£¬ÓÃÓÚÔ­×ÓÍ¬²½graphicsQueue¶ÓÁĞ²Ù×÷
-    std::mutex logThreadLock;                           //ÈÕÖ¾Ïß³ÌËø£¬ÓÃÓÚÔ­×ÓÍ¬²½¸÷Ïß³Ìµ÷ÓÃÈÕÖ¾
-    std::atomic<bool> musicThreadLock = false;          //ÒôÀÖÏß³ÌËø£¬ÓÃÓÚÔ­×ÓÍ¬²½ÒôÀÖÏß³Ì
+    //åŸå­çº¿ç¨‹é”
+    std::mutex queueThreadLock;                         //é˜Ÿåˆ—çº¿ç¨‹é”ï¼Œç”¨äºåŸå­åŒæ­¥graphicsQueueé˜Ÿåˆ—æ“ä½œ
+    std::mutex logThreadLock;                           //æ—¥å¿—çº¿ç¨‹é”ï¼Œç”¨äºåŸå­åŒæ­¥å„çº¿ç¨‹è°ƒç”¨æ—¥å¿—
+    std::atomic<bool> musicThreadLock = false;          //éŸ³ä¹çº¿ç¨‹é”ï¼Œç”¨äºåŸå­åŒæ­¥éŸ³ä¹çº¿ç¨‹
 
-    //Ô­×Óº¯ÊıËø
-    std::mutex drawFuncLock;                            //ÓÃÓÚ±ÜÃâInitSwapchain.drawFrame()ºÍInitBuffer.recreateCmd()µÄthreadId = (threadId + 1) % 2ÖØ½¨Í¬Ê±Ö´ĞĞ
-    std::atomic<bool> updatePlateFuncLock = false;      //ÓÃÓÚÊµÏÖ submitUpdatePlate º¯ÊıÔ­×ÓÏß³Ì»¯
-    std::atomic<bool> updateCubeFuncLock  = false;      //ÓÃÓÚÊµÏÖ submitUpdateCube  º¯ÊıÔ­×ÓÏß³Ì»¯
-    std::atomic<bool> recreateCmdFuncLock = false;      //ÓÃÓÚÊµÏÖ submitRecreateCmd º¯ÊıÔ­×ÓÏß³Ì»¯
+    //åŸå­å‡½æ•°é”
+    std::mutex drawFuncLock;                            //ç”¨äºé¿å…InitSwapchain.drawFrame()å’ŒInitBuffer.recreateCmd()çš„threadId = (threadId + 1) % 2é‡å»ºåŒæ—¶æ‰§è¡Œ
+    std::atomic<bool> updatePlateFuncLock = false;      //ç”¨äºå®ç° submitUpdatePlate å‡½æ•°åŸå­çº¿ç¨‹åŒ–
+    std::atomic<bool> updateCubeFuncLock  = false;      //ç”¨äºå®ç° submitUpdateCube  å‡½æ•°åŸå­çº¿ç¨‹åŒ–
+    std::atomic<bool> recreateCmdFuncLock = false;      //ç”¨äºå®ç° submitRecreateCmd å‡½æ•°åŸå­çº¿ç¨‹åŒ–
 
-    //Ô­×ÓÊı¾İËø
-    std::atomic<bool> plateMeshDataLock = false;        //°å¿éÍø¸ñÊı¾İËø£¬ÓÃÓÚÔ­×ÓÍ¬²½¶Ô°å¿éÍø¸ñµÄĞŞ¸Ä²Ù×÷
-    std::atomic<bool> chunkMapDataLock  = false;        //Çø¿éÓ³ÉäÊı¾İËø£¬ÓÃÓÚÔ­×ÓÍ¬²½¶ÔÇø¿éÓ³ÉäµÄĞŞ¸Ä²Ù×÷
+    //åŸå­æ•°æ®é”
+    std::atomic<bool> plateMeshDataLock = false;        //æ¿å—ç½‘æ ¼æ•°æ®é”ï¼Œç”¨äºåŸå­åŒæ­¥å¯¹æ¿å—ç½‘æ ¼çš„ä¿®æ”¹æ“ä½œ
+    std::atomic<bool> chunkMapDataLock  = false;        //åŒºå—æ˜ å°„æ•°æ®é”ï¼Œç”¨äºåŸå­åŒæ­¥å¯¹åŒºå—æ˜ å°„çš„ä¿®æ”¹æ“ä½œ
 
-    //Ô­×ÓÆôÓÃËø
-    std::atomic<bool> logPauseEnableLock = false;       //ÈÕÖ¾ÔİÍ£ÆôÓÃËø£¬ÓÃÓÚĞ£Ñé²ã±¨´íÊ±ÔİÍ£
+    //åŸå­å¯ç”¨é”
+    std::atomic<bool> logPauseEnableLock = false;       //æ—¥å¿—æš‚åœå¯ç”¨é”ï¼Œç”¨äºæ ¡éªŒå±‚æŠ¥é”™æ—¶æš‚åœ
 
 
 
-    //»ñÈ¡ËøÖµ
-    //Èç¹û lock == false£¬ÉèÖÃ lock = true£¬·µ»Ø true
-    //Èç¹û lock == true£¬ ·µ»Ø false
+    //è·å–é”å€¼
+    //å¦‚æœ lock == falseï¼Œè®¾ç½® lock = trueï¼Œè¿”å› true
+    //å¦‚æœ lock == trueï¼Œ è¿”å› false
     bool getLock(std::atomic<bool>& lock) {
         bool isLock = false;
         return lock.compare_exchange_strong(isLock, true);
@@ -80,9 +80,9 @@ namespace lockInfo {
 
 
 
-//vertexĞÅÏ¢
+//vertexä¿¡æ¯
 namespace vertexInfo {
-    //¶¥µãË÷Òı
+    //é¡¶ç‚¹ç´¢å¼•
     const std::vector<glm::vec3> vertexID = {
         //X-----Y-----Z
         {1.0f, 1.0f, 0.0f}, //0
@@ -95,7 +95,7 @@ namespace vertexInfo {
         {1.0f, 0.0f, 1.0f } //7
     };
 
-    //uvË÷Òı
+    //uvç´¢å¼•
     const std::vector<glm::vec2> uvID = {
         { 0.0f, 0.0f },   //0
         { 1.0f, 0.0f },   //1
@@ -103,134 +103,133 @@ namespace vertexInfo {
         { 1.0f, 1.0f }    //3
     };
 
-    //·¨ÏßË÷Òı
+    //æ³•çº¿ç´¢å¼•
     const std::vector<glm::vec3> normalID = {
-        { 0.0f, 1.0f,  0.0f }, //0ÉÏ
-        { 0.0f,-1.0f,  0.0f }, //1ÏÂ
-        {-1.0f, 0.0f,  0.0f }, //2×ó
-        { 1.0f, 0.0f,  0.0f }, //3ÓÒ
-        { 0.0f, 0.0f,  1.0f }, //4Ç°
-        { 0.0f, 0.0f, -1.0f }  //5ºó
+        { 0.0f, 1.0f,  0.0f }, //0ä¸Š
+        { 0.0f,-1.0f,  0.0f }, //1ä¸‹
+        {-1.0f, 0.0f,  0.0f }, //2å·¦
+        { 1.0f, 0.0f,  0.0f }, //3å³
+        { 0.0f, 0.0f,  1.0f }, //4å‰
+        { 0.0f, 0.0f, -1.0f }  //5å
     };
 }
 
-//lightĞÅÏ¢
+//lightä¿¡æ¯
 namespace lightInfo {
-    const glm::vec3 sunLightColor = glm::vec3(1.0f, 1.0f, 1.0f);    //Ì«ÑôÆ½ĞĞ¹âÑÕÉ«
-    const glm::vec3 sunLightDir   = glm::vec3(0.0f,-1.0f, 0.0f);    //Ì«ÑôÆ½ĞĞ¹â·½Ïò
-    const float ambientScale      = 0.8f;                           //»·¾³¹âËõ·Å
-    const float diffuseScale      = 0.8f;                           //Âş·´ÉäËõ·Å
-    const float specularScale     = 1.0f;                           //¾µÃæ·´ÉäËõ·Å
+    const glm::vec3 sunLightColor = glm::vec3(1.0f, 1.0f, 1.0f);    //å¤ªé˜³å¹³è¡Œå…‰é¢œè‰²
+    const glm::vec3 sunLightDir   = glm::vec3(0.0f,-1.0f, 0.0f);    //å¤ªé˜³å¹³è¡Œå…‰æ–¹å‘
+    const float ambientScale      = 0.8f;                           //ç¯å¢ƒå…‰ç¼©æ”¾
+    const float diffuseScale      = 0.8f;                           //æ¼«åå°„ç¼©æ”¾
+    const float specularScale     = 1.0f;                           //é•œé¢åå°„ç¼©æ”¾
 }
 
-//cameraĞÅÏ¢
+//cameraä¿¡æ¯
 namespace cameraInfo {
-    const glm::vec3 worldUp{ 0.0, 1.0, 0.0 };    //yÖá×öÊÀ½ç×ø±êÏµ·¨ÏòÁ¿
+    const glm::vec3 worldUp{ 0.0, 1.0, 0.0 };    //yè½´åšä¸–ç•Œåæ ‡ç³»æ³•å‘é‡
 }
 
-//todo ÊµÏÖ¶ÔÓ¦×Ê²úµÄ¹Ì¶¨¸ùÂ·¾¶
-//fileĞÅÏ¢
+//todo å®ç°å¯¹åº”èµ„äº§çš„å›ºå®šæ ¹è·¯å¾„
+//fileä¿¡æ¯
 namespace fileInfo {
     namespace shader {
-        const std::string terrainTask = "src/1_assets/0_shader/terrain/terrainDeferredTask.spv";
-        const std::string terrainMesh = "src/1_assets/0_shader/terrain/terrainDeferredMesh.spv";
-        const std::string terrainVert = "src/1_assets/0_shader/terrain/terrainDeferredVert.spv";
-        const std::string terrainFrag = "src/1_assets/0_shader/terrain/terrainDeferredFrag.spv";
+        const std::string terrainTask = "src/assets/0_shader/terrain/terrainDeferredTask.spv";
+        const std::string terrainMesh = "src/assets/0_shader/terrain/terrainDeferredMesh.spv";
+        const std::string terrainVert = "src/assets/0_shader/terrain/terrainDeferredVert.spv";
+        const std::string terrainFrag = "src/assets/0_shader/terrain/terrainDeferredFrag.spv";
 
-        const std::string pbrVert     = "src/1_assets/0_shader/model/pbrDeferredVert.spv";
-        const std::string pbrFrag     = "src/1_assets/0_shader/model/pbrDeferredFrag.spv";
+        const std::string pbrVert     = "src/assets/0_shader/model/pbrDeferredVert.spv";
+        const std::string pbrFrag     = "src/assets/0_shader/model/pbrDeferredFrag.spv";
 
-        const std::string skyboxVert  = "src/1_assets/0_shader/skybox/skyboxVert.spv";
-        const std::string skyboxFrag  = "src/1_assets/0_shader/skybox/skyboxFrag.spv";
+        const std::string skyboxVert  = "src/assets/0_shader/skybox/skyboxVert.spv";
+        const std::string skyboxFrag  = "src/assets/0_shader/skybox/skyboxFrag.spv";
 
-        const std::string mineVert    = "src/1_assets/0_shader/mine/mineVert.spv";
-        const std::string mineFrag    = "src/1_assets/0_shader/mine/mineFrag.spv";
+        const std::string mineVert    = "src/assets/0_shader/mine/mineVert.spv";
+        const std::string mineFrag    = "src/assets/0_shader/mine/mineFrag.spv";
 
-        const std::string uitextVert  = "src/1_assets/0_shader/uiText/uitextVert.spv";
-        const std::string uitextFrag  = "src/1_assets/0_shader/uiText/uitextFrag.spv";
+        const std::string uitextVert  = "src/assets/0_shader/uiText/uitextVert.spv";
+        const std::string uitextFrag  = "src/assets/0_shader/uiText/uitextFrag.spv";
 
-        const std::string osMirrorVert = "src/1_assets/0_shader/osMirror/osMirrorVert.spv";
-        const std::string osMirrorFrag = "src/1_assets/0_shader/osMirror/osMirrorFrag.spv";
+        const std::string osMirrorVert = "src/assets/0_shader/osMirror/osMirrorVert.spv";
+        const std::string osMirrorFrag = "src/assets/0_shader/osMirror/osMirrorFrag.spv";
 
-        const std::string osScenceVert = "src/1_assets/0_shader/osScence/osScenceVert.spv";
-        const std::string osScenceFrag = "src/1_assets/0_shader/osScence/osScenceFrag.spv";
+        const std::string osScenceVert = "src/assets/0_shader/osScence/osScenceVert.spv";
+        const std::string osScenceFrag = "src/assets/0_shader/osScence/osScenceFrag.spv";
 
-        const std::string dsScenceVert = "src/1_assets/0_shader/dsScence/dsScenceVert.spv";
-        const std::string dsScenceFrag = "src/1_assets/0_shader/dsScence/dsScenceFrag.spv";
+        const std::string dsScenceVert = "src/assets/0_shader/dsScence/dsScenceVert.spv";
+        const std::string dsScenceFrag = "src/assets/0_shader/dsScence/dsScenceFrag.spv";
 
-        const std::string shadowVert   = "src/1_assets/0_shader/shadow/shadowVert.spv";
-        const std::string shadowFrag   = "src/1_assets/0_shader/shadow/shadowFrag.spv";
+        const std::string shadowVert   = "src/assets/0_shader/shadow/shadowVert.spv";
+        const std::string shadowFrag   = "src/assets/0_shader/shadow/shadowFrag.spv";
     }
 
     namespace image {
-        //todo ´ıÕûºÏ£¬×ÅÉ«Æ÷£¬ÌùÍ¼£¬ÌùÍ¼ĞÅÏ¢
-        const char* cube       = "src/1_assets/1_image/terrain/cube_16_64.ktx2";
+        //todo å¾…æ•´åˆï¼Œç€è‰²å™¨ï¼Œè´´å›¾ï¼Œè´´å›¾ä¿¡æ¯
+        const char* cube       = "src/assets/1_image/terrain/cube_16_64.ktx2";
 
-        const char* temple     = "src/1_assets/1_image/model/temple/baseColor.ktx2";
-        const char* droidBodyC = "src/1_assets/1_image/model/droid/Body_baseColor.ktx2";
-        const char* droidHeadC = "src/1_assets/1_image/model/droid/Head_baseColor.ktx2";
-        const char* droidMiscC = "src/1_assets/1_image/model/droid/Misc_baseColor.ktx2";
-        //const char* droidBodyN = "src/1_assets/1_image/model/droid/Body_normal.ktx2";
-        //const char* droidHeadN = "src/1_assets/1_image/model/droid/Head_normal.ktx2";
-        //const char* droidMiscN = "src/1_assets/1_image/model/droid/Misc_normal.ktx2";
+        const char* temple     = "src/assets/1_image/model/temple/baseColor.ktx2";
+        const char* droidBodyC = "src/assets/1_image/model/droid/Body_baseColor.ktx2";
+        const char* droidHeadC = "src/assets/1_image/model/droid/Head_baseColor.ktx2";
+        const char* droidMiscC = "src/assets/1_image/model/droid/Misc_baseColor.ktx2";
+        //const char* droidBodyN = "src/assets/1_image/model/droid/Body_normal.ktx2";
+        //const char* droidHeadN = "src/assets/1_image/model/droid/Head_normal.ktx2";
+        //const char* droidMiscN = "src/assets/1_image/model/droid/Misc_normal.ktx2";
     }
 
     namespace model {
-        const std::string temple = "src/1_assets/2_model/temple/scene.gltf";
-        const std::string droid  = "src/1_assets/2_model/droid/scene.gltf";
-        //const std::string nextTemp = "src/1_assets/2_model/nextTemp/scene.gltf";
+        const std::string temple = "src/assets/2_model/temple/scene.gltf";
+        const std::string droid  = "src/assets/2_model/droid/scene.gltf";
+        //const std::string nextTemp = "src/assets/2_model/nextTemp/scene.gltf";
     }
 
     namespace music {
-        const char* throughTheMounta = "src/1_assets/3_music/background/Through the Mounta.wav";
+        const char* throughTheMounta = "src/assets/3_music/background/Through the Mounta.wav";
         //const char* throughTheMounta = "src/music/background/Greedy.wav";
     }
 
     namespace storage {
-        const char* fullFile  = "storage/chunk/full";       //È«´æ·¨Çø¿é´æ´¢Â·¾¶
-        const char* deltaFile = "storage/chunk/delta";      //±ä´æ·¨Çø¿é´æ´¢Â·¾¶
+        const char* fullFile  = "storage/chunk/full";       //å…¨å­˜æ³•åŒºå—å­˜å‚¨è·¯å¾„
+        const char* deltaFile = "storage/chunk/delta";      //å˜å­˜æ³•åŒºå—å­˜å‚¨è·¯å¾„
     }
 
 
 
-    const char* dll = ".\\src\\0_library\\dll";               //¶¯Ì¬¿âÂ·¾¶
 }
 
-//textureĞÅÏ¢
+//textureä¿¡æ¯
 namespace textureInfo {
     namespace terrain {
-        //todo ´ıÉ¾³ı
-	    const int tileWidth   = 16;							    //ÎÆÀí¿í¶È
-	    const int tileHeight  = 16;							    //ÎÆÀí¸ß¶È
-	    const int atlasWidth  = 64;							    //Í¼¼¯¿í¼¸¸öÎÆÀí
-	    const int atlasHeight = 32;							    //Í¼¼¯¸ß¼¸¸öÎÆÀí
-	    const uint32_t arrayLayer = atlasWidth * atlasHeight;   //Í¼¼¯²ãÊı
+        //todo å¾…åˆ é™¤
+	    const int tileWidth   = 16;							    //çº¹ç†å®½åº¦
+	    const int tileHeight  = 16;							    //çº¹ç†é«˜åº¦
+	    const int atlasWidth  = 64;							    //å›¾é›†å®½å‡ ä¸ªçº¹ç†
+	    const int atlasHeight = 32;							    //å›¾é›†é«˜å‡ ä¸ªçº¹ç†
+	    const uint32_t arrayLayer = atlasWidth * atlasHeight;   //å›¾é›†å±‚æ•°
 
         //todo
-        const VkFormat   colorFormat = VK_FORMAT_R8G8B8A8_UNORM;    //ÑÕÉ«¸ñÊ½
-        const VkExtent2D tileExtent  = { 16, 16 };                  //ÎÆÀí³ß´ç
-        const VkExtent2D atlasExtent = { 64, 32 };                  //Í¼¼¯³ß´ç
+        const VkFormat   colorFormat = VK_FORMAT_R8G8B8A8_UNORM;    //é¢œè‰²æ ¼å¼
+        const VkExtent2D tileExtent  = { 16, 16 };                  //çº¹ç†å°ºå¯¸
+        const VkExtent2D atlasExtent = { 64, 32 };                  //å›¾é›†å°ºå¯¸
     }
 }
 
 
 
-//renderĞÅÏ¢
+//renderä¿¡æ¯
 namespace renderInfo {
-    const VkFormat   dsPosColorFormat = VK_FORMAT_R32G32B32A32_SFLOAT;      //ÑÓ³ÙäÖÈ¾×ø±êÑÕÉ«¸½¼ş¸ñÊ½
-    const VkExtent2D shadowMapExtent  = { 2048, 2048 };                     //ÒõÓ°Ó³Éä³ß´ç
+    const VkFormat   dsPosColorFormat = VK_FORMAT_R32G32B32A32_SFLOAT;      //å»¶è¿Ÿæ¸²æŸ“åæ ‡é¢œè‰²é™„ä»¶æ ¼å¼
+    const VkExtent2D shadowMapExtent  = { 2048, 2048 };                     //é˜´å½±æ˜ å°„å°ºå¯¸
 
-    const VkClearValue colorClearValue = { .color = {105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f } };      //ÑÕÉ«ÇåÀíÖµ
-    const VkClearValue depthClearValue = { .depthStencil = { 1.0f, 0u } };                                          //Éî¶ÈÇåÀíÖµ
+    const VkClearValue colorClearValue = { .color = {105.0f / 255.f, 105.0f / 255.f, 105.0f / 255.f, 1.0f } };      //é¢œè‰²æ¸…ç†å€¼
+    const VkClearValue depthClearValue = { .depthStencil = { 1.0f, 0u } };                                          //æ·±åº¦æ¸…ç†å€¼
 }
 
-//bufferĞÅÏ¢
+//bufferä¿¡æ¯
 namespace bufferInfo {
-    const int commandThreadCount = 2;           //ÃüÁîÏß³ÌÊı
+    const int commandThreadCount = 2;           //å‘½ä»¤çº¿ç¨‹æ•°
 
-    const uint32_t scenceForwardCount  = 4;     //scenceForwardÃèÊö·û³ØÉÏÏŞ£¬  skybox£¬mine£¬osMirror£¬osScence
-    const uint32_t scenceDeferredCount = 5;     //scenceDeferredÃèÊö·û³ØÉÏÏŞ£¬ terrain£¬m_temple£¬m_droid*3
-    const uint32_t uiTextCount         = 1;     //uiTextÃèÊö·û³ØÉÏÏŞ£¬         uiText
-    const uint32_t dsScenceCount       = 1;     //dsScenceÃèÊö·û³ØÉÏÏŞ£¬       dsScence
-    const uint32_t shadowCount         = 6;     //shadowÃèÊö·û³ØÉÏÏŞ£¬         terrain*2£¬m_temple£¬m_droid*3
+    const uint32_t scenceForwardCount  = 4;     //scenceForwardæè¿°ç¬¦æ± ä¸Šé™ï¼Œ  skyboxï¼Œmineï¼ŒosMirrorï¼ŒosScence
+    const uint32_t scenceDeferredCount = 5;     //scenceDeferredæè¿°ç¬¦æ± ä¸Šé™ï¼Œ terrainï¼Œm_templeï¼Œm_droid*3
+    const uint32_t uiTextCount         = 1;     //uiTextæè¿°ç¬¦æ± ä¸Šé™ï¼Œ         uiText
+    const uint32_t dsScenceCount       = 1;     //dsScenceæè¿°ç¬¦æ± ä¸Šé™ï¼Œ       dsScence
+    const uint32_t shadowCount         = 6;     //shadowæè¿°ç¬¦æ± ä¸Šé™ï¼Œ         terrain*2ï¼Œm_templeï¼Œm_droid*3
 }

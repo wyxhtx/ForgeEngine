@@ -12,11 +12,11 @@ public:
 		procSampler.createTextureSampler(Device.device, terrain.mipLevel, procModel.sModelMip, procModel.dModelMip);
 		createDescriptorSet();
 
-		initUniformBuffer();	//³õÊ¼»¯Uniform
-		drawUIText(0);			//³õÊ¼»¯uiText
+		initUniformBuffer();	//åˆå§‹åŒ–Uniform
+		drawUIText(0);			//åˆå§‹åŒ–uiText
 
 		if (debugInfo::LogSwitch) {
-			Log::printTitle("¡ª¡ª¡ª¡ª¡ª¡ª¡ª¡ªBufferÒÑ´´½¨");
+			Log::printTitle("â€”â€”â€”â€”â€”â€”â€”â€”Bufferå·²åˆ›å»º");
 
 			Log::delimiter();
 		}
@@ -40,7 +40,7 @@ public:
 		if (procShadow.isEnable) { procShadow.clear(Device.device, Device.memAllocator); }
 		
 		if (debugInfo::LogSwitch) {
-			Log::print("BufferÒÑÇå³ı");
+			Log::print("Bufferå·²æ¸…é™¤");
 		}
 	}
 
@@ -55,7 +55,7 @@ public:
 
 	cmdStruct::cmdNode cmd{ Device.device, Device.enableGpu->graphicsQueueFamily.index, uint32_t(swapStruct::swapImageList.size()) };
 
-//todo ÔİÊ±¿ª·ÅÉÏÊö
+//todo æš‚æ—¶å¼€æ”¾ä¸Šè¿°
 private:
 	bufferStruct::terrainBufferNode  terrain	{ true,	 pipelineEnum::procPipelineId::terrain_p,   bufferEnum::procSamplerId::terrain_s, fileInfo::image::cube, textureInfo::terrain::colorFormat, textureInfo::terrain::tileExtent, textureInfo::terrain::atlasExtent, Device.device, Device.memAllocator };
 	bufferList::procModelNode		 procModel	{ false, pipelineEnum::procPipelineId::model_p	    };
@@ -272,7 +272,7 @@ private:
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 				}
 				else {
-					Log::printError(__FILE__, __LINE__, "skybox·ÖÅäÃèÊö·û¼¯Ê§°Ü");
+					Log::printError(__FILE__, __LINE__, "skyboxåˆ†é…æè¿°ç¬¦é›†å¤±è´¥");
 				}
 			}
 
@@ -286,7 +286,7 @@ private:
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 				}
 				else {
-					Log::printError(__FILE__, __LINE__, "mine·ÖÅäÃèÊö·û¼¯Ê§°Ü");
+					Log::printError(__FILE__, __LINE__, "mineåˆ†é…æè¿°ç¬¦é›†å¤±è´¥");
 				}
 			}
 
@@ -302,7 +302,7 @@ private:
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 				}
 				else {
-					Log::printError(__FILE__, __LINE__, "osMirror·ÖÅäÃèÊö·û¼¯Ê§°Ü");
+					Log::printError(__FILE__, __LINE__, "osMirroråˆ†é…æè¿°ç¬¦é›†å¤±è´¥");
 				}
 			}
 
@@ -316,7 +316,7 @@ private:
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 				}
 				else {
-					Log::printError(__FILE__, __LINE__, "osScence·ÖÅäÃèÊö·û¼¯Ê§°Ü");
+					Log::printError(__FILE__, __LINE__, "osScenceåˆ†é…æè¿°ç¬¦é›†å¤±è´¥");
 				}
 			}
 		}
@@ -336,7 +336,7 @@ private:
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 				}
 				else {
-					Log::printError(__FILE__, __LINE__, "terrain·ÖÅäÃèÊö·û¼¯Ê§°Ü");
+					Log::printError(__FILE__, __LINE__, "terrainåˆ†é…æè¿°ç¬¦é›†å¤±è´¥");
 				}
 			}
 
@@ -353,7 +353,7 @@ private:
 						vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 					}
 					else {
-						Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\t·ÖÅäÃèÊö·û¼¯Ê§°Ü");
+						Log::printError(__FILE__, __LINE__, "model-sNode_" + std::to_string(i) + ":\tåˆ†é…æè¿°ç¬¦é›†å¤±è´¥");
 					}
 				}
 
@@ -369,7 +369,7 @@ private:
 							vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 						}
 						else {
-							Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\t·ÖÅäÃèÊö·û¼¯Ê§°Ü");
+							Log::printError(__FILE__, __LINE__, "model-dNode_" + std::to_string(i) + "_" + std::to_string(j) + ":\tåˆ†é…æè¿°ç¬¦é›†å¤±è´¥");
 						}
 					}
 				}
@@ -390,7 +390,7 @@ private:
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 				}
 				else {
-					Log::printError(__FILE__, __LINE__, "uiText·ÖÅäÃèÊö·û¼¯Ê§°Ü");
+					Log::printError(__FILE__, __LINE__, "uiTextåˆ†é…æè¿°ç¬¦é›†å¤±è´¥");
 				}
 			}
 		}
@@ -413,7 +413,7 @@ private:
 				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 			}
 			else {
-				Log::printError(__FILE__, __LINE__, "dsScence·ÖÅäÃèÊö·û¼¯Ê§°Ü");
+				Log::printError(__FILE__, __LINE__, "dsScenceåˆ†é…æè¿°ç¬¦é›†å¤±è´¥");
 			}
 		}
 
@@ -432,7 +432,7 @@ private:
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 				}
 				else {
-					Log::printError(__FILE__, __LINE__, "shadow-terrainÃèÊö·û¼¯·ÖÅäÊ§°Ü");
+					Log::printError(__FILE__, __LINE__, "shadow-terrainæè¿°ç¬¦é›†åˆ†é…å¤±è´¥");
 				}
 			}
 
@@ -448,7 +448,7 @@ private:
 						vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 					}
 					else {
-						Log::printError(__FILE__, __LINE__, "shadow-sNodeÃèÊö·û¼¯·ÖÅäÊ§°Ü");
+						Log::printError(__FILE__, __LINE__, "shadow-sNodeæè¿°ç¬¦é›†åˆ†é…å¤±è´¥");
 					}
 				}
 
@@ -463,7 +463,7 @@ private:
 							vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
 						}
 						else {
-							Log::printError(__FILE__, __LINE__, "shadow-dNodeÃèÊö·û¼¯·ÖÅäÊ§°Ü");
+							Log::printError(__FILE__, __LINE__, "shadow-dNodeæè¿°ç¬¦é›†åˆ†é…å¤±è´¥");
 						}
 					}
 				}
@@ -472,11 +472,11 @@ private:
 	}
 
 	void initUniformBuffer() {
-		//ÉèÖÃÍ¸ÊÓÍ¶Ó°£¬²ÎÊıÒÀ´ÎÊÇÊÓÒ°½Ç¶È¡¢¿í¸ß±È¡¢½ü²Ã¼ôÃæºÍÔ¶²Ã¼ôÃæ£¬ÒÔ¼°proj[1][1] *= -1ÖáÏòĞŞÕı
+		//è®¾ç½®é€è§†æŠ•å½±ï¼Œå‚æ•°ä¾æ¬¡æ˜¯è§†é‡è§’åº¦ã€å®½é«˜æ¯”ã€è¿‘è£å‰ªé¢å’Œè¿œè£å‰ªé¢ï¼Œä»¥åŠproj[1][1] *= -1è½´å‘ä¿®æ­£
 		glm::mat4 perspProj = glm::perspective(glm::radians(45.0f), (float)InitSwapchain.swapExtent.width / (float)InitSwapchain.swapExtent.height, 0.1f, plateInfo::perspSightRange);
 		perspProj[1][1]		*= -1;
 
-		//ÉèÖÃÕı½»Í¶Ó°
+		//è®¾ç½®æ­£äº¤æŠ•å½±
 		glm::mat4 orthoProj = glm::ortho(-plateInfo::orthoSightRange, plateInfo::orthoSightRange, -plateInfo::orthoSightRange, plateInfo::orthoSightRange, 0.1f, plateInfo::perspSightRange);
 		orthoProj[1][1]		*= -1;
 
@@ -538,7 +538,7 @@ private:
 
 
 
-	//½«vertexNodeÀàÖĞµÄ¶¥µãÓ³Éäµ½bufferÀàÀï¶ÔÓ¦µÄVkBuffer
+	//å°†vertexNodeç±»ä¸­çš„é¡¶ç‚¹æ˜ å°„åˆ°bufferç±»é‡Œå¯¹åº”çš„VkBuffer
 	void createVertexBuffer(auto& node, bufferStruct::baseBufferNode& vertexBuffer) {
 		VkDeviceSize bufferSize = sizeof(node[0]) * node.size();
 
@@ -549,7 +549,7 @@ private:
 		cpuBuffer.clear(Device.memAllocator);
 	}
 
-	//½«vertexNodeÀàÖĞµÄË÷ÒıÓ³Éäµ½bufferÀàÀï¶ÔÓ¦µÄVkBuffer
+	//å°†vertexNodeç±»ä¸­çš„ç´¢å¼•æ˜ å°„åˆ°bufferç±»é‡Œå¯¹åº”çš„VkBuffer
 	void createIndexBuffer(std::vector<uint32_t>& node, bufferStruct::baseBufferNode& indexBuffer) {
 		VkDeviceSize bufferSize = sizeof(node[0]) * node.size();
 
@@ -560,7 +560,7 @@ private:
 		cpuBuffer.clear(Device.memAllocator);
 	}
 
-	//¼ÓÔØ¾²Ì¬Ä£ĞÍ
+	//åŠ è½½é™æ€æ¨¡å‹
 	void loadStaticModel(const std::string& filename, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::vector<shadowVertex::vertexNode>& shadowVertexs) {
 		tinygltf::Model model;
 		tinygltf::TinyGLTF loader;
@@ -570,13 +570,13 @@ private:
 
 
 
-		//¼ì²éÎÄ¼şÊÇ·ñ´æÔÚ  
+		//æ£€æŸ¥æ–‡ä»¶æ˜¯å¦å­˜åœ¨  
 		if (!file.good()) {
-			Log::printError(__FILE__, __LINE__, "Ä£ĞÍÎÄ¼ş²»´æÔÚ: \t" + filename);
+			Log::printError(__FILE__, __LINE__, "æ¨¡å‹æ–‡ä»¶ä¸å­˜åœ¨: \t" + filename);
 		}
 		file.close();
 
-		//¼ÓÔØglTFÎÄ¼ş£¨Ö§³Ö¶ş½øÖÆºÍASCII¸ñÊ½£©  
+		//åŠ è½½glTFæ–‡ä»¶ï¼ˆæ”¯æŒäºŒè¿›åˆ¶å’ŒASCIIæ ¼å¼ï¼‰  
 		if (filename.find(".glb") != std::string::npos) {
 			ret = loader.LoadBinaryFromFile(&model, &err, &warn, filename);
 		}
@@ -585,24 +585,24 @@ private:
 		}
 
 		/*if (!warn.empty()) {
-			Log::print("glTF¾¯¸æ: " + warn);	//ÒòÎªÊ¹ÓÃKTX¹ÜÀíÌùÍ¼£¬¹ÊÆÁ±ÎgltfÈ±Ê§ÌùÍ¼µÄ±¨´í
+			Log::print("glTFè­¦å‘Š: " + warn);	//å› ä¸ºä½¿ç”¨KTXç®¡ç†è´´å›¾ï¼Œæ•…å±è”½gltfç¼ºå¤±è´´å›¾çš„æŠ¥é”™
 		}*/
 		if (!ret) {
-			Log::printError(__FILE__, __LINE__, "glTF¼ÓÔØÊ§°Ü:  \t" + err);
+			Log::printError(__FILE__, __LINE__, "glTFåŠ è½½å¤±è´¥:  \t" + err);
 		}
 
-		// ÑéÖ¤»ù±¾½á¹¹  
+		// éªŒè¯åŸºæœ¬ç»“æ„  
 		if (model.meshes.empty()) {
-			Log::printError(__FILE__, __LINE__, "glTFÎÄ¼ş²»°üº¬ÈÎºÎmesh");
+			Log::printError(__FILE__, __LINE__, "glTFæ–‡ä»¶ä¸åŒ…å«ä»»ä½•mesh");
 		}
 
 		if (model.buffers.empty()) {
-			Log::printError(__FILE__, __LINE__, "glTFÎÄ¼ş²»°üº¬ÈÎºÎbufferÊı¾İ");
+			Log::printError(__FILE__, __LINE__, "glTFæ–‡ä»¶ä¸åŒ…å«ä»»ä½•bufferæ•°æ®");
 		}
 
 
 
-		//±éÀúËùÓĞmeshºÍprimitive
+		//éå†æ‰€æœ‰meshå’Œprimitive
 		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
 
 		for (const tinygltf::Mesh& mesh : model.meshes) {
@@ -611,16 +611,16 @@ private:
 
 		if (debugInfo::LogSwitch) {
 			if (vertexs.empty()) {
-				Log::printError(__FILE__, __LINE__, "¼ÓÔØµÄÄ£ĞÍ²»°üº¬ÈÎºÎ¶¥µã");
+				Log::printError(__FILE__, __LINE__, "åŠ è½½çš„æ¨¡å‹ä¸åŒ…å«ä»»ä½•é¡¶ç‚¹");
 			}
 
 			if (indexs.empty()) {
-				Log::printError(__FILE__, __LINE__, "¼ÓÔØµÄÄ£ĞÍ²»°üº¬ÈÎºÎË÷Òı");
+				Log::printError(__FILE__, __LINE__, "åŠ è½½çš„æ¨¡å‹ä¸åŒ…å«ä»»ä½•ç´¢å¼•");
 			}
 		}
 	}
 
-	//¼ÓÔØ¶¯Ì¬Ä£ĞÍ
+	//åŠ è½½åŠ¨æ€æ¨¡å‹
 	void loadDynamicModel(const std::string& filename, std::vector<std::vector<modelVertex::vertexNode>>& vertexsList, std::vector<std::vector<uint32_t>>& indexsList, std::vector<std::vector<shadowVertex::vertexNode>>& shadowVertexsList) {
 		tinygltf::Model model;
 		tinygltf::TinyGLTF loader;
@@ -630,13 +630,13 @@ private:
 
 
 
-		//¼ì²éÎÄ¼şÊÇ·ñ´æÔÚ  
+		//æ£€æŸ¥æ–‡ä»¶æ˜¯å¦å­˜åœ¨  
 		if (!file.good()) {
-			Log::printError(__FILE__, __LINE__, "Ä£ĞÍÎÄ¼ş²»´æÔÚ:  \t" + filename);
+			Log::printError(__FILE__, __LINE__, "æ¨¡å‹æ–‡ä»¶ä¸å­˜åœ¨:  \t" + filename);
 		}
 		file.close();
 
-		//¼ÓÔØglTFÎÄ¼ş£¨Ö§³Ö¶ş½øÖÆºÍASCII¸ñÊ½£©  
+		//åŠ è½½glTFæ–‡ä»¶ï¼ˆæ”¯æŒäºŒè¿›åˆ¶å’ŒASCIIæ ¼å¼ï¼‰  
 		if (filename.find(".glb") != std::string::npos) {
 			ret = loader.LoadBinaryFromFile(&model, &err, &warn, filename);
 		}
@@ -645,23 +645,23 @@ private:
 		}
 
 		/*if (!warn.empty()) {
-			Log::print("glTF¾¯¸æ: " + warn);	//ÒòÎªÊ¹ÓÃKTX¹ÜÀíÌùÍ¼£¬¹ÊÆÁ±ÎgltfÈ±Ê§ÌùÍ¼µÄ±¨´í
+			Log::print("glTFè­¦å‘Š: " + warn);	//å› ä¸ºä½¿ç”¨KTXç®¡ç†è´´å›¾ï¼Œæ•…å±è”½gltfç¼ºå¤±è´´å›¾çš„æŠ¥é”™
 		}*/
 		if (!ret) {
-			Log::printError(__FILE__, __LINE__, "glTF¼ÓÔØÊ§°Ü: \t" + err);
+			Log::printError(__FILE__, __LINE__, "glTFåŠ è½½å¤±è´¥: \t" + err);
 		}
 
 		if (model.meshes.empty()) {
-			Log::printError(__FILE__, __LINE__, "glTFÎÄ¼ş²»°üº¬ÈÎºÎmesh");
+			Log::printError(__FILE__, __LINE__, "glTFæ–‡ä»¶ä¸åŒ…å«ä»»ä½•mesh");
 		}
 
 		if (model.buffers.empty()) {
-			Log::printError(__FILE__, __LINE__, "glTFÎÄ¼ş²»°üº¬ÈÎºÎbufferÊı¾İ");
+			Log::printError(__FILE__, __LINE__, "glTFæ–‡ä»¶ä¸åŒ…å«ä»»ä½•bufferæ•°æ®");
 		}
 
 
 
-		//±éÀúËùÓĞmeshºÍprimitive
+		//éå†æ‰€æœ‰meshå’Œprimitive
 		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
 
 		for (int i = 0; i < model.meshes.size(); i++) {
@@ -669,11 +669,11 @@ private:
 
 			if (debugInfo::LogSwitch) {
 				if (vertexsList[i].empty()) {
-					Log::printError(__FILE__, __LINE__, "¼ÓÔØµÄÄ£ĞÍ²»°üº¬ÈÎºÎ¶¥µã");
+					Log::printError(__FILE__, __LINE__, "åŠ è½½çš„æ¨¡å‹ä¸åŒ…å«ä»»ä½•é¡¶ç‚¹");
 				}
 
 				if (indexsList[i].empty()) {
-					Log::printError(__FILE__, __LINE__, "¼ÓÔØµÄÄ£ĞÍ²»°üº¬ÈÎºÎË÷Òı");
+					Log::printError(__FILE__, __LINE__, "åŠ è½½çš„æ¨¡å‹ä¸åŒ…å«ä»»ä½•ç´¢å¼•");
 				}
 			}
 		}
@@ -681,13 +681,13 @@ private:
 	
 	void loadGltfModel(const tinygltf::Model& model, const tinygltf::Mesh& mesh, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::vector<shadowVertex::vertexNode>& shadowVertexs, std::unordered_map<modelVertex::vertexNode, uint32_t>& uniqueVertices) {
 		for (const auto& primitive : mesh.primitives) {
-			//»ñÈ¡¶¥µãÊı¾İ  
+			//è·å–é¡¶ç‚¹æ•°æ®  
 			const float* positions = nullptr;
 			const float* texCoords = nullptr;
 			const float* normals   = nullptr;
 			size_t vertexCount = 0;
 
-			//»ñÈ¡POSITIONÊôĞÔ  
+			//è·å–POSITIONå±æ€§  
 			if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
 				const auto& accessor = model.accessors[primitive.attributes.at("POSITION")];
 				const auto& bufferView = model.bufferViews[accessor.bufferView];
@@ -697,11 +697,11 @@ private:
 				vertexCount = accessor.count;
 			}
 			else {
-				Log::printWarning(__FILE__, __LINE__, "primitiveÈ±ÉÙPOSITIONÊôĞÔ");
+				Log::printWarning(__FILE__, __LINE__, "primitiveç¼ºå°‘POSITIONå±æ€§");
 				continue;
 			}
 
-			//»ñÈ¡TEXCOORD_0ÊôĞÔ  
+			//è·å–TEXCOORD_0å±æ€§  
 			if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
 				const auto& accessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
 				const auto& bufferView = model.bufferViews[accessor.bufferView];
@@ -710,11 +710,11 @@ private:
 				texCoords = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
 			}
 			else {
-				Log::printWarning(__FILE__, __LINE__, "primitiveÈ±ÉÙTEXCOORD_0ÊôĞÔ");
+				Log::printWarning(__FILE__, __LINE__, "primitiveç¼ºå°‘TEXCOORD_0å±æ€§");
 				texCoords = nullptr;
 			}
 
-			//»ñÈ¡NORMALÊôĞÔ - Ìí¼Ó·¨Ïß¼ÓÔØ
+			//è·å–NORMALå±æ€§ - æ·»åŠ æ³•çº¿åŠ è½½
 			if (primitive.attributes.find("NORMAL") != primitive.attributes.end()) {
 				const auto& accessor = model.accessors[primitive.attributes.at("NORMAL")];
 				const auto& bufferView = model.bufferViews[accessor.bufferView];
@@ -723,44 +723,44 @@ private:
 				normals = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
 			}
 			else {
-				Log::printWarning(__FILE__, __LINE__, "primitiveÈ±ÉÙNORMALÊôĞÔ£¬½«Ê¹ÓÃÄ¬ÈÏ·¨Ïß");
+				Log::printWarning(__FILE__, __LINE__, "primitiveç¼ºå°‘NORMALå±æ€§ï¼Œå°†ä½¿ç”¨é»˜è®¤æ³•çº¿");
 				normals = nullptr;
 			}
 
-			//´æ´¢µ±Ç°primitiveµÄ¶¥µãÓ³Éä  
+			//å­˜å‚¨å½“å‰primitiveçš„é¡¶ç‚¹æ˜ å°„  
 			std::vector<uint32_t> primitiveVertexIndices;
 
 			for (size_t i = 0; i < vertexCount; i++) {
 				modelVertex::vertexNode vertex{};
 
-				//×ø±êÏµ×ª»»£º´ÓglTFµÄYÏòÉÏ×ª»»Îª±¾ÒıÇæµÄZÏòÉÏ
+				//åæ ‡ç³»è½¬æ¢ï¼šä»glTFçš„Yå‘ä¸Šè½¬æ¢ä¸ºæœ¬å¼•æ“çš„Zå‘ä¸Š
 				vertex.position = {
-					positions[i * 3 + 0],     //X±£³Ö²»±ä  
-					positions[i * 3 + 2],     //Z -> Y (½»»»YºÍZ)  
-					-positions[i * 3 + 1]     //-Y -> Z (·­×ªYÖá²¢¸³¸øZ)  
+					positions[i * 3 + 0],     //Xä¿æŒä¸å˜  
+					positions[i * 3 + 2],     //Z -> Y (äº¤æ¢Yå’ŒZ)  
+					-positions[i * 3 + 1]     //-Y -> Z (ç¿»è½¬Yè½´å¹¶èµ‹ç»™Z)  
 				};
 
-				//UV×ø±ê´¦Àí
+				//UVåæ ‡å¤„ç†
 				if (texCoords) {
 					vertex.texCoord = {
 						texCoords[i * 2 + 0],
-						texCoords[i * 2 + 1]      //glTF±ê×¼UV£¬²»·­×ª  
+						texCoords[i * 2 + 1]      //glTFæ ‡å‡†UVï¼Œä¸ç¿»è½¬  
 					};
 				}
 				else {
-					vertex.texCoord = { 0.0f, 0.0f }; //Ä¬ÈÏUV×ø±ê
+					vertex.texCoord = { 0.0f, 0.0f }; //é»˜è®¤UVåæ ‡
 				}
 
-				//·¨Ïß´¦Àí - Ìí¼Ó·¨Ïß¼ÓÔØ
+				//æ³•çº¿å¤„ç† - æ·»åŠ æ³•çº¿åŠ è½½
 				if (normals) {
-					//·¨ÏßÒ²ĞèÒª½øĞĞ×ø±êÏµ×ª»»
+					//æ³•çº¿ä¹Ÿéœ€è¦è¿›è¡Œåæ ‡ç³»è½¬æ¢
 					vertex.normal = {
-						normals[i * 3 + 0],      //X±£³Ö²»±ä
-						normals[i * 3 + 2],      //Z -> Y (½»»»YºÍZ)
-						-normals[i * 3 + 1]      //-Y -> Z (·­×ªYÖá²¢¸³¸øZ)
+						normals[i * 3 + 0],      //Xä¿æŒä¸å˜
+						normals[i * 3 + 2],      //Z -> Y (äº¤æ¢Yå’ŒZ)
+						-normals[i * 3 + 1]      //-Y -> Z (ç¿»è½¬Yè½´å¹¶èµ‹ç»™Z)
 					};
 
-					//±ê×¼»¯·¨Ïß
+					//æ ‡å‡†åŒ–æ³•çº¿
 					float length = std::sqrt(
 						vertex.normal.x * vertex.normal.x +
 						vertex.normal.y * vertex.normal.y +
@@ -774,11 +774,11 @@ private:
 					}
 				}
 				else {
-					//Èç¹ûÃ»ÓĞ·¨ÏßÊı¾İ£¬ÉèÖÃÎªÄ¬ÈÏÉÏ·½Ïò£¨¸ù¾İ×ø±êÏµ×ª»»£©
-					vertex.normal = { 0.0f, 1.0f, 0.0f }; //YÖáÏòÉÏ
+					//å¦‚æœæ²¡æœ‰æ³•çº¿æ•°æ®ï¼Œè®¾ç½®ä¸ºé»˜è®¤ä¸Šæ–¹å‘ï¼ˆæ ¹æ®åæ ‡ç³»è½¬æ¢ï¼‰
+					vertex.normal = { 0.0f, 1.0f, 0.0f }; //Yè½´å‘ä¸Š
 				}
 
-				//Ê¹ÓÃ¶¥µãÈ¥ÖØ
+				//ä½¿ç”¨é¡¶ç‚¹å»é‡
 				if (uniqueVertices.count(vertex) == 0) {
 					uniqueVertices[vertex] = static_cast<uint32_t>(vertexs.size());
 
@@ -786,11 +786,11 @@ private:
 					shadowVertexs.push_back(shadowVertex::vertexNode{ vertex.position });
 				}
 
-				//¼ÇÂ¼Ô­Ê¼¶¥µãµ½È¥ÖØºó¶¥µãµÄÓ³Éä
+				//è®°å½•åŸå§‹é¡¶ç‚¹åˆ°å»é‡åé¡¶ç‚¹çš„æ˜ å°„
 				primitiveVertexIndices.push_back(uniqueVertices[vertex]);
 			}
 
-			//´¦ÀíË÷ÒıÊı¾İ  
+			//å¤„ç†ç´¢å¼•æ•°æ®  
 			if (primitive.indices >= 0) {
 				const auto& accessor = model.accessors[primitive.indices];
 				const auto& bufferView = model.bufferViews[accessor.bufferView];
@@ -819,11 +819,11 @@ private:
 					}
 				}
 				else {
-					Log::printWarning(__FILE__, __LINE__, "²»Ö§³ÖµÄË÷ÒıÀàĞÍ");
+					Log::printWarning(__FILE__, __LINE__, "ä¸æ”¯æŒçš„ç´¢å¼•ç±»å‹");
 				}
 			}
 			else {
-				//Èç¹ûÃ»ÓĞË÷Òı£¬Éú³ÉÈı½ÇĞÎË÷Òı
+				//å¦‚æœæ²¡æœ‰ç´¢å¼•ï¼Œç”Ÿæˆä¸‰è§’å½¢ç´¢å¼•
 				for (size_t i = 0; i < vertexCount; i += 3) {
 					indexs.push_back(primitiveVertexIndices[i]);
 					indexs.push_back(primitiveVertexIndices[i + 1]);
@@ -833,11 +833,11 @@ private:
 		}
 	}
 
-	//´´½¨ÎÆÀíKTXÊı×é½áµã£¬Ê¹ÓÃÎŞËğÑ¹Ëõ
+	//åˆ›å»ºçº¹ç†KTXæ•°ç»„ç»“ç‚¹ï¼Œä½¿ç”¨æ— æŸå‹ç¼©
 	void createTextureKtxArrayNode(const char* imageFile, bufferStruct::imageBufferNode& imageBuffer, uint32_t arrayLayer, uint32_t& mipLevel, VkFormat format) {
 		ktxTexture2* ktxTexture;
 		if (ktxTexture2_CreateFromNamedFile(imageFile, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture) != KTX_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "KTXÌùÍ¼¼ÓÔØÊ§°Ü");
+			Log::printError(__FILE__, __LINE__, "KTXè´´å›¾åŠ è½½å¤±è´¥");
 		}
 
 		uint32_t   texWidth    = ktxTexture->baseWidth;
@@ -854,20 +854,20 @@ private:
 		ktxTexture2_Destroy(ktxTexture);
 	}
 
-	//´´½¨ÎÆÀíKTX½áµã£¬Ê¹ÓÃÎ¢ËğÑ¹Ëõ + mip
+	//åˆ›å»ºçº¹ç†KTXç»“ç‚¹ï¼Œä½¿ç”¨å¾®æŸå‹ç¼© + mip
 	void createTextureKtxNode(const char* imageFile, bufferStruct::imageBufferNode& imageBuffer, uint32_t& mipLevel) {
 		ktxResult result;
 		ktxTexture2* ktxTexture;
 
 		if (!std::filesystem::exists(imageFile)) {
-			Log::printError(__FILE__, __LINE__, "ÌùÍ¼ÎÄ¼ş²»´æÔÚ: " + std::string(imageFile));
+			Log::printError(__FILE__, __LINE__, "è´´å›¾æ–‡ä»¶ä¸å­˜åœ¨: " + std::string(imageFile));
 		}
 
 		result = ktxTexture2_CreateFromNamedFile(imageFile, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
 		result = ktxTexture2_TranscodeBasis(ktxTexture, KTX_TTF_BC7_RGBA, 0);
 
 		if (result != KTX_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "KTXÌùÍ¼¼ÓÔØÊ§°Ü");
+			Log::printError(__FILE__, __LINE__, "KTXè´´å›¾åŠ è½½å¤±è´¥");
 		}
 
 		uint32_t   texWidth    = ktxTexture->baseWidth;
@@ -885,7 +885,7 @@ private:
 		ktxTexture2_Destroy(ktxTexture);
 	}
 
-	//´´½¨ÎÆÀíÎÄ±¾½áµã
+	//åˆ›å»ºçº¹ç†æ–‡æœ¬ç»“ç‚¹
 	void createTextNode(bufferStruct::imageBufferNode& imageBuffer) {
 		const uint32_t fontWidth  = STB_FONT_consolas_24_latin1_BITMAP_WIDTH;
 		const uint32_t fontHeight = STB_FONT_consolas_24_latin1_BITMAP_HEIGHT;
@@ -910,27 +910,27 @@ private:
 		bufferInfo.usage = usage;
 
 		VmaAllocationCreateInfo allocInfo = {};
-		allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN; //Ê¹ÓÃ VMA_MEMORY_USAGE_UNKNOWN ½«ÄÚ´æÊôĞÔ½»ÓÉÊôĞÔ²ÎÊı¿ØÖÆ
-		allocInfo.requiredFlags = properties;		//ÉèÖÃËùĞèµÄÄÚ´æÊôĞÔ
+		allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN; //ä½¿ç”¨ VMA_MEMORY_USAGE_UNKNOWN å°†å†…å­˜å±æ€§äº¤ç”±å±æ€§å‚æ•°æ§åˆ¶
+		allocInfo.requiredFlags = properties;		//è®¾ç½®æ‰€éœ€çš„å†…å­˜å±æ€§
 
 		vmaCreateBuffer(Device.memAllocator, &bufferInfo, &allocInfo, &baseBufferNode.buffer, &baseBufferNode.bufferMem, nullptr);
 	}
 
-	//ÎªcreateUniformBuffer·şÎñµÄ¼òÂÔ°æ
+	//ä¸ºcreateUniformBufferæœåŠ¡çš„ç®€ç•¥ç‰ˆ
 	void createBuffer(VkDeviceSize size, bufferStruct::baseBufferNode& baseBufferNode) {
 		VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferInfo.size = size;
 		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
 		VmaAllocationCreateInfo allocInfo = {};
-		allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN;																//Ê¹ÓÃ VMA_MEMORY_USAGE_UNKNOWN ½«ÄÚ´æÊôĞÔ½»ÓÉÊôĞÔ²ÎÊı¿ØÖÆ
-		allocInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;	//ÉèÖÃËùĞèµÄÄÚ´æÊôĞÔ
+		allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN;																//ä½¿ç”¨ VMA_MEMORY_USAGE_UNKNOWN å°†å†…å­˜å±æ€§äº¤ç”±å±æ€§å‚æ•°æ§åˆ¶
+		allocInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;	//è®¾ç½®æ‰€éœ€çš„å†…å­˜å±æ€§
 
 		vmaCreateBuffer(Device.memAllocator, &bufferInfo, &allocInfo, &baseBufferNode.buffer, &baseBufferNode.bufferMem, nullptr);
 	}
 
 	void createMemMap(VmaAllocation tempMemory, const void* sourceData, size_t dataSize) {
-		//ÄÚ´æÓ³Éä
+		//å†…å­˜æ˜ å°„
 		void* data;
 		vmaMapMemory(Device.memAllocator, tempMemory, &data);
 		memcpy(data, sourceData, dataSize);
@@ -958,7 +958,7 @@ private:
 		allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 		if (vmaCreateImage(Device.memAllocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "Í¼Ïñ´´½¨Ê§°Ü");
+			Log::printError(__FILE__, __LINE__, "å›¾åƒåˆ›å»ºå¤±è´¥");
 		}
 	}
 	
@@ -975,12 +975,12 @@ private:
 		viewInfo.subresourceRange.layerCount	 = arrayLayer;
 
 		if (vkCreateImageView(Device.device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "Í¼ÏñÊÓÍ¼´´½¨Ê§°Ü");
+			Log::printError(__FILE__, __LINE__, "å›¾åƒè§†å›¾åˆ›å»ºå¤±è´¥");
 		}
 	}
 
 public:
-	//´´½¨cmd
+	//åˆ›å»ºcmd
 	void createCmd(int threadId, pipelineList::procPipelineNode& procPipeline) {
 		for (int frameId = 0; frameId < cmd.renderCmd[threadId].size(); frameId++) {
 			cmd.recordCmd(threadId, frameId, [&](cmdStruct::cmdRecorderNode& recorder) {
@@ -1088,7 +1088,7 @@ public:
 
 				/*scScence_ri*/
 				{
-					recorder.barrier();	//´´½¨ÑÓ³ÙäÖÈ¾¹ÜÏßÆÁÕÏ£¬ÓÃÓÚÈ·±£ÑÓ³ÙäÖÈ¾¹ÜÏß×îºóÖ´ĞĞ
+					recorder.barrier();	//åˆ›å»ºå»¶è¿Ÿæ¸²æŸ“ç®¡çº¿å±éšœï¼Œç”¨äºç¡®ä¿å»¶è¿Ÿæ¸²æŸ“ç®¡çº¿æœ€åæ‰§è¡Œ
 					recorder.beginRender(&procRenderPass.getRenderBegin(renderEnum::renderInstanceId::scScence_ri, frameId));
 
 					//osScence
@@ -1107,11 +1107,11 @@ public:
 		}
 	}
 
-	//ÖØ½¨cmd
+	//é‡å»ºcmd
 	void recreateCmd(int threadId, std::atomic<bool>& isEntireRebuild, const glm::dvec3& plateOriginPos, Camera& Camera, pipelineList::procPipelineNode& procPipeline) {
 		if (!terrain.isEnable) { return; }
 		if (debugInfo::LogSwitch && (playerInfo::logicOriginPos != plateOriginPos) && !isEntireRebuild) {
-			Log::printError(__FILE__, __LINE__, "Ô­µãÇ¨ÒÆÊ±isEntireRebuildÎª¼Ù");
+			Log::printError(__FILE__, __LINE__, "åŸç‚¹è¿ç§»æ—¶isEntireRebuildä¸ºå‡");
 		}
 
 
@@ -1119,7 +1119,7 @@ public:
 		int layer = plateEnum::terrainLayer::Layer_0;
 		cmd.waitCmd(Device.device, threadId);
 
-		//ÖØ½¨ÏÂÒ»Ïß³ÌLod_0µØĞÎ¹ÜÏß£¬RM_0.4.6£¨8_32£º10£©
+		//é‡å»ºä¸‹ä¸€çº¿ç¨‹Lod_0åœ°å½¢ç®¡çº¿ï¼ŒRM_0.4.6ï¼ˆ8_32ï¼š10ï¼‰
 		if (isNullTerrainMesh(layer)) {
 			vmaDestroyBuffer(Device.memAllocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMem);
 			vmaDestroyBuffer(Device.memAllocator, terrain.index[threadId][layer].buffer,  terrain.index[threadId][layer].bufferMem);
@@ -1127,7 +1127,7 @@ public:
 			createVertexBuffer(terrainVertex::vertexs[layer], terrain.vertex[threadId][layer]);
 			createIndexBuffer (terrainVertex::indexs[layer],  terrain.index[threadId][layer]);
 
-			//ÖØ½¨ÏÂÒ»Ïß³ÌLod_0µØĞÎÒõÓ°
+			//é‡å»ºä¸‹ä¸€çº¿ç¨‹Lod_0åœ°å½¢é˜´å½±
 			if (procShadow.isEnable) {
 				vmaDestroyBuffer(Device.memAllocator, procShadow.tShadowNode.vertex[threadId][layer].buffer, procShadow.tShadowNode.vertex[threadId][layer].bufferMem);
 
@@ -1136,7 +1136,7 @@ public:
 			}
 		}
 
-		//ÖØ½¨È«²¿Ïß³ÌLod_1µØĞÎ¹ÜÏß£¬RM_0.4.6£¨8_32£º20~50£©
+		//é‡å»ºå…¨éƒ¨çº¿ç¨‹Lod_1åœ°å½¢ç®¡çº¿ï¼ŒRM_0.4.6ï¼ˆ8_32ï¼š20~50ï¼‰
 		if (isEntireRebuild.load()) {
 			layer = plateEnum::terrainLayer::Layer_1;
 
@@ -1148,7 +1148,7 @@ public:
 				bufferStruct::baseBufferNode vertexBuffer{ vertex.data(), vertexSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
 				bufferStruct::baseBufferNode indexBuffer { index.data(),  indexSize,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
 
-				//ÖØ½¨ÏÂÒ»Ïß³ÌLod_1µØĞÎ¹ÜÏß
+				//é‡å»ºä¸‹ä¸€çº¿ç¨‹Lod_1åœ°å½¢ç®¡çº¿
 				vmaDestroyBuffer(Device.memAllocator, terrain.vertex[threadId][layer].buffer, terrain.vertex[threadId][layer].bufferMem);
 				vmaDestroyBuffer(Device.memAllocator, terrain.index[threadId][layer].buffer,  terrain.index[threadId][layer].bufferMem);
 				createBuffer(vertexSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, terrain.vertex[threadId][layer]);
@@ -1156,7 +1156,7 @@ public:
 				cmd.copyBufferToBuffer(Device.device, Device.graphicsQueue, vertexBuffer.buffer, terrain.vertex[threadId][layer].buffer, vertexSize);
 				cmd.copyBufferToBuffer(Device.device, Device.graphicsQueue, indexBuffer.buffer,  terrain.index[threadId][layer].buffer,  indexSize);
 
-				//ÖØ½¨ÏÂÒ»Ïß³ÌLod_1µØĞÎÒõÓ°
+				//é‡å»ºä¸‹ä¸€çº¿ç¨‹Lod_1åœ°å½¢é˜´å½±
 				if (procShadow.isEnable) {
 					vmaDestroyBuffer(Device.memAllocator, procShadow.tShadowNode.vertex[threadId][layer].buffer, procShadow.tShadowNode.vertex[threadId][layer].bufferMem);
 
@@ -1164,13 +1164,13 @@ public:
 					createVertexBuffer(shadowVertex::tVertexs[layer], procShadow.tShadowNode.vertex[threadId][layer]);
 				}
 
-				//ÖØ½¨ÏÂÒ»Ïß³ÌÃüÁî»º³åÇø£¬²¢ÇĞ»»Ïß³Ì
+				//é‡å»ºä¸‹ä¸€çº¿ç¨‹å‘½ä»¤ç¼“å†²åŒºï¼Œå¹¶åˆ‡æ¢çº¿ç¨‹
 				lockInfo::drawFuncLock.lock();
 				if (playerInfo::logicOriginPos != plateOriginPos) {
 					playerInfo::logicOriginPos = plateOriginPos;
 					Camera.updateView();
 
-					Log::print("Ô­µãÇ¨ÒÆ");
+					Log::print("åŸç‚¹è¿ç§»");
 				}
 
 				lockInfo::queueThreadLock.lock();
@@ -1182,7 +1182,7 @@ public:
 
 
 
-				//ÖØ½¨ÉÏÂÖµ±Ç°Ïß³ÌLod_1µØĞÎ¹ÜÏß
+				//é‡å»ºä¸Šè½®å½“å‰çº¿ç¨‹Lod_1åœ°å½¢ç®¡çº¿
 				int tempThreadId = (threadId + 1) % 2;
 				cmd.waitCmd(Device.device, tempThreadId);
 
@@ -1193,7 +1193,7 @@ public:
 				cmd.copyBufferToBuffer(Device.device, Device.graphicsQueue, vertexBuffer.buffer, terrain.vertex[tempThreadId][layer].buffer, vertexSize);
 				cmd.copyBufferToBuffer(Device.device, Device.graphicsQueue, indexBuffer.buffer,  terrain.index[tempThreadId][layer].buffer,  indexSize);
 
-				//ÖØ½¨ÉÏÂÖµ±Ç°Ïß³ÌLod_1µØĞÎÒõÓ°
+				//é‡å»ºä¸Šè½®å½“å‰çº¿ç¨‹Lod_1åœ°å½¢é˜´å½±
 				if (procShadow.isEnable) {
 					vmaDestroyBuffer(Device.memAllocator, procShadow.tShadowNode.vertex[tempThreadId][layer].buffer, procShadow.tShadowNode.vertex[tempThreadId][layer].bufferMem);
 
@@ -1213,13 +1213,13 @@ public:
 
 
 
-		//ÖØ½¨ÏÂÒ»Ïß³ÌÃüÁî»º³åÇø£¬²¢ÇĞ»»Ïß³Ì
+		//é‡å»ºä¸‹ä¸€çº¿ç¨‹å‘½ä»¤ç¼“å†²åŒºï¼Œå¹¶åˆ‡æ¢çº¿ç¨‹
 		lockInfo::drawFuncLock.lock();
 		if (playerInfo::logicOriginPos != plateOriginPos) {
 			playerInfo::logicOriginPos = plateOriginPos;
 			Camera.updateView();
 
-			Log::print("Ô­µãÇ¨ÒÆ");
+			Log::print("åŸç‚¹è¿ç§»");
 		}
 
 		lockInfo::queueThreadLock.lock();
@@ -1230,12 +1230,12 @@ public:
 		lockInfo::drawFuncLock.unlock();
 	}
 
-	//¸üĞÂUniform
+	//æ›´æ–°Uniform
 	void updateUniformBuffer(const glm::dvec3 logicOriginPos, const playerStruct::cameraNode& camera, const playerStruct::selectBoxNode& box) {
-		static std::chrono::steady_clock::time_point time0 = std::chrono::steady_clock::now();	//ÓÎÏ·ÆğÊ¼Ê±¿Ì
-		static std::chrono::steady_clock::time_point time1;										//ÓÎÏ·µ±Ç°Ê±¿Ì
-		static float gameTime;																	//ÓÎÏ·ÔËĞĞÊ±³¤£¬×î¶àÖ§³ÖÁ¬ĞøÔËĞĞ194Ìì£¨ÏÖÊµÊ±¼ä£©
-		static float currentHour;																//µ±Ç°Ğ¡Ê±£¬È¡Öµ·¶Î§[0,24)£¬º¬Ğ¡Êı²¿·Ö
+		static std::chrono::steady_clock::time_point time0 = std::chrono::steady_clock::now();	//æ¸¸æˆèµ·å§‹æ—¶åˆ»
+		static std::chrono::steady_clock::time_point time1;										//æ¸¸æˆå½“å‰æ—¶åˆ»
+		static float gameTime;																	//æ¸¸æˆè¿è¡Œæ—¶é•¿ï¼Œæœ€å¤šæ”¯æŒè¿ç»­è¿è¡Œ194å¤©ï¼ˆç°å®æ—¶é—´ï¼‰
+		static float currentHour;																//å½“å‰å°æ—¶ï¼Œå–å€¼èŒƒå›´[0,24)ï¼Œå«å°æ•°éƒ¨åˆ†
 		glm::vec3 offsetPos = playerInfo::initSpawnPos - logicOriginPos;
 		glm::vec3 playerPos = camera.pos - logicOriginPos;
 
@@ -1259,9 +1259,9 @@ public:
 				procModel.sNode[i].currentWorldPos = camera.pos;
 
 				if (glm::distance(procModel.sNode[i].modelWorldPos, procModel.sNode[i].currentWorldPos) < plateInfo::perspSightRange) {
-					procModel.sNode[i].ubo.model = glm::translate(glm::mat4(1), glm::vec3(procModel.sNode[i].modelWorldPos - logicOriginPos));	//Î»ÒÆ
-					procModel.sNode[i].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));												//Ëõ·Å
-					//procModel.sNode[i].ubo.model	*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), cameraInfo::worldUp);							//Ğı×ª
+					procModel.sNode[i].ubo.model = glm::translate(glm::mat4(1), glm::vec3(procModel.sNode[i].modelWorldPos - logicOriginPos));	//ä½ç§»
+					procModel.sNode[i].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));												//ç¼©æ”¾
+					//procModel.sNode[i].ubo.model	*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), cameraInfo::worldUp);							//æ—‹è½¬
 					procModel.sNode[i].ubo.modelTI = glm::transpose(glm::inverse(procModel.sNode[i].ubo.model));
 					procModel.sNode[i].ubo.view = camera.view;
 
@@ -1280,8 +1280,8 @@ public:
 
 				if (glm::distance(procModel.dNode[i].modelWorldPos, procModel.dNode[i].currentWorldPos) < plateInfo::perspSightRange) {
 					for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-						procModel.dNode[i].node[j].ubo.model = glm::translate(glm::mat4(1), glm::vec3(procModel.dNode[i].modelWorldPos - logicOriginPos));	//Î»ÒÆ
-						procModel.dNode[i].node[j].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));												//Ëõ·Å
+						procModel.dNode[i].node[j].ubo.model = glm::translate(glm::mat4(1), glm::vec3(procModel.dNode[i].modelWorldPos - logicOriginPos));	//ä½ç§»
+						procModel.dNode[i].node[j].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));												//ç¼©æ”¾
 						procModel.dNode[i].node[j].ubo.modelTI = glm::transpose(glm::inverse(procModel.dNode[i].node[j].ubo.model));
 						procModel.dNode[i].node[j].ubo.view = camera.view;
 
@@ -1320,7 +1320,7 @@ public:
 			showUIText.chunkPos = glm::floor(camera.pos / (double)plateInfo::chunkLength);
 			showUIText.minepos  = box.minepos;
 
-			//·½¿éÊı×éÕæÊµ×ø±ê
+			//æ–¹å—æ•°ç»„çœŸå®åæ ‡
 			//showUIText.minepos.x = static_cast<int>(fmod(box.minepos.x, plateInfo::chunkLength));
 			//showUIText.minepos.y = static_cast<int>(fmod(box.minepos.y, plateInfo::chunkLength));
 			//showUIText.minepos.z = static_cast<int>(fmod(box.minepos.z, plateInfo::chunkLength));
@@ -1347,10 +1347,10 @@ public:
 
 		//shadow
 		if (procShadow.isEnable) {
-			float	   hourRad = (currentHour / 24.0f) * 2.0f * glm::pi<float>();															//0~2¦Ğ
-			float	   radius = 32.0f;																										//Ğı×ª°ë¾¶
-			glm::vec3  lightPos = glm::vec3(radius * cos(hourRad), 64.0f, radius * sin(hourRad));											//¹âÔ´ÈÆYÖáĞı×ªµÄ×ø±ê£¬ÎŞĞè¼õÂß¼­Ô­µãÆ«ÒÆ
-			procShadow.shadowVP = procShadow.shadowProj * glm::lookAt(playerPos + lightPos/*ÉãÏñ»ú×ø±ê*/, playerPos/*±»¹Û²â×ø±ê*/, cameraInfo::worldUp);	//ÎªÊµÏÖÒõÓ°¸úËæÍæ¼Ò¹Ê¼ÓÉÏÍæ¼Ò×ø±ê
+			float	   hourRad = (currentHour / 24.0f) * 2.0f * glm::pi<float>();															//0~2Ï€
+			float	   radius = 32.0f;																										//æ—‹è½¬åŠå¾„
+			glm::vec3  lightPos = glm::vec3(radius * cos(hourRad), 64.0f, radius * sin(hourRad));											//å…‰æºç»•Yè½´æ—‹è½¬çš„åæ ‡ï¼Œæ— éœ€å‡é€»è¾‘åŸç‚¹åç§»
+			procShadow.shadowVP = procShadow.shadowProj * glm::lookAt(playerPos + lightPos/*æ‘„åƒæœºåæ ‡*/, playerPos/*è¢«è§‚æµ‹åæ ‡*/, cameraInfo::worldUp);	//ä¸ºå®ç°é˜´å½±è·Ÿéšç©å®¶æ•…åŠ ä¸Šç©å®¶åæ ‡
 
 			//terrain
 			if (terrain.isEnable) {
@@ -1383,25 +1383,25 @@ public:
 
 		//dsScence
 		if (dsScence.isEnable) {
-			dsScence.lightUbo.viewPos	  = glm::vec3{ camera.pos - logicOriginPos };		//Î»ÖÃ
-			dsScence.lightUbo.currentHour = currentHour;								//Ê±¼ä
+			dsScence.lightUbo.viewPos	  = glm::vec3{ camera.pos - logicOriginPos };		//ä½ç½®
+			dsScence.lightUbo.currentHour = currentHour;								//æ—¶é—´
 			
-			//µã¹âÔ´
-			dsScence.lightUbo.pointLightList[0].position = offsetPos;					//Î»ÖÃ
-			dsScence.lightUbo.pointLightList[0].radius	 = 16.0f;						//°ë¾¶
-			dsScence.lightUbo.pointLightList[0].color	 = glm::vec3(1.0f);				//ÑÕÉ«
+			//ç‚¹å…‰æº
+			dsScence.lightUbo.pointLightList[0].position = offsetPos;					//ä½ç½®
+			dsScence.lightUbo.pointLightList[0].radius	 = 16.0f;						//åŠå¾„
+			dsScence.lightUbo.pointLightList[0].color	 = glm::vec3(1.0f);				//é¢œè‰²
 		
-			//Æ½ĞĞ¹â
-			dsScence.lightUbo.dirLightList[0].direction = lightInfo::sunLightDir;		//·½Ïò
-			dsScence.lightUbo.dirLightList[0].scale		= 0.5f;							//Ç¿¶È
-			dsScence.lightUbo.dirLightList[0].color		= lightInfo::sunLightColor;		//ÑÕÉ«
+			//å¹³è¡Œå…‰
+			dsScence.lightUbo.dirLightList[0].direction = lightInfo::sunLightDir;		//æ–¹å‘
+			dsScence.lightUbo.dirLightList[0].scale		= 0.5f;							//å¼ºåº¦
+			dsScence.lightUbo.dirLightList[0].color		= lightInfo::sunLightColor;		//é¢œè‰²
 		
-			//¾Û¹âµÆ
-			dsScence.lightUbo.spotLightList[0].position  = glm::vec3{ camera.pos - logicOriginPos };		//Î»ÖÃ
-			dsScence.lightUbo.spotLightList[0].inner	 = glm::cos(glm::radians(12.5f));			//ÄÚÔ²×¶
-			dsScence.lightUbo.spotLightList[0].color	 = glm::vec3(1.0f);							//ÑÕÉ«
-			dsScence.lightUbo.spotLightList[0].outer	 = glm::cos(glm::radians(14.5f));			//ÍâÔ²×¶
-			dsScence.lightUbo.spotLightList[0].direction = camera.front;							//·½Ïò
+			//èšå…‰ç¯
+			dsScence.lightUbo.spotLightList[0].position  = glm::vec3{ camera.pos - logicOriginPos };		//ä½ç½®
+			dsScence.lightUbo.spotLightList[0].inner	 = glm::cos(glm::radians(12.5f));			//å†…åœ†é”¥
+			dsScence.lightUbo.spotLightList[0].color	 = glm::vec3(1.0f);							//é¢œè‰²
+			dsScence.lightUbo.spotLightList[0].outer	 = glm::cos(glm::radians(14.5f));			//å¤–åœ†é”¥
+			dsScence.lightUbo.spotLightList[0].direction = camera.front;							//æ–¹å‘
 
 			dsScence.shadowUbo.shadowMvp    = procShadow.shadowVP;
 			dsScence.shadowUbo.shadowExtent = glm::vec2{ renderInfo::shadowMapExtent.width, renderInfo::shadowMapExtent.height };
@@ -1411,7 +1411,7 @@ public:
 		}
 	}
 	
-	//»æÖÆuiText
+	//ç»˜åˆ¶uiText
 	void drawUIText(int fps) {
 		static std::ostringstream oss;
 		float width = 5.0;
@@ -1421,23 +1421,23 @@ public:
 
 		uiText.beginTextUpdate(Device.memAllocator);
 
-		//ÊÀ½ç×ø±ê
-		oss << std::fixed << std::setprecision(0);	//ÉèÖÃÊä³öÁ÷µÄ¸ñÊ½,²»±£ÁôĞ¡Êı
+		//ä¸–ç•Œåæ ‡
+		oss << std::fixed << std::setprecision(0);	//è®¾ç½®è¾“å‡ºæµçš„æ ¼å¼,ä¸ä¿ç•™å°æ•°
 		oss << "worldpos:  " << "x:" << std::setw(8) << std::left << showUIText.pos.x << "y:" << std::setw(8) << std::left << showUIText.pos.y << " z:" << std::setw(8) << std::left << showUIText.pos.z;
 		uiText.addText(oss.str(), width, height, bufferEnum::textAlignId::left);
 		oss.str("");
 
-		//Çø¿é×ø±ê
+		//åŒºå—åæ ‡
 		oss << "chunkpos:  " << "x:" << std::setw(8) << std::left << showUIText.chunkPos.x << "y:" << std::setw(8) << std::left << showUIText.chunkPos.y << " z:" << std::setw(8) << std::left << showUIText.chunkPos.z;
 		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::left);
 		oss.str("");
 
-		//Ñ¡Ôñ¿ò×ø±ê
+		//é€‰æ‹©æ¡†åæ ‡
 		oss << "mineboxpos:" << "x:" << std::setw(8) << std::left << showUIText.minepos.x << "y:" << std::setw(8) << std::left << showUIText.minepos.y << " z:" << std::setw(8) << std::left << showUIText.minepos.z;
 		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::left);
 		oss.str("");
 
-		//Ö¡ÂÊ
+		//å¸§ç‡
 		oss << "fps:       " << std::setw(8) << std::left << fps;
 		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::left);
 		oss.str("");
@@ -1445,7 +1445,7 @@ public:
 		uiText.endTextUpdate(Device.memAllocator);
 	}
 
-	//»æÖÆframe
+	//ç»˜åˆ¶frame
 	bool drawFrame(int threadId) {
 		return InitSwapchain.drawFrame(cmd.renderCmd[threadId].list, cmd.renderCmd[threadId].fence);
 	}
@@ -1462,7 +1462,7 @@ public:
 
 
 
-		//ÖØ½¨ÀëÆÁÃèÊö·û£¬ÒòÎª½»»»Á´ÖØ½¨ºóosViewÒ²µÃÖØ½¨
+		//é‡å»ºç¦»å±æè¿°ç¬¦ï¼Œå› ä¸ºäº¤æ¢é“¾é‡å»ºåosViewä¹Ÿå¾—é‡å»º
 		procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceForward_d);
 
 		//osMirror
@@ -1505,7 +1505,7 @@ private:
 
 
 
-	//µØĞÎÍø¸ñÊÇ·ñÎª¿Õ
+	//åœ°å½¢ç½‘æ ¼æ˜¯å¦ä¸ºç©º
 	bool isNullTerrainMesh(int layer) {
 		return terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size();
 	}

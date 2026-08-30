@@ -2,7 +2,7 @@
 
 
 
-//engineÁĞ±í¿Õ¼ä
+//engineåˆ—è¡¨ç©ºé—´
 namespace engineList {
     struct procTickNode {
         std::vector<engineStruct::tickNode> node{};
@@ -22,8 +22,8 @@ namespace engineList {
 
 
 
-//todo ´ıµ½²ğ½âÍê³Éºó¶¼ÒÆÈëpipelineListÏÂ
-//bufferÁĞ±í¿Õ¼ä
+//todo å¾…åˆ°æ‹†è§£å®Œæˆåéƒ½ç§»å…¥pipelineListä¸‹
+//bufferåˆ—è¡¨ç©ºé—´
 namespace bufferList {
     struct procRenderNode {
         std::vector<renderStruct::renderTemplateNode> renderTemplateList{};
@@ -74,17 +74,17 @@ namespace bufferList {
 
 
 
-        //»ñÈ¡frameImage£¬Îª´´½¨ÃèÊö·û·şÎñ
+        //è·å–frameImageï¼Œä¸ºåˆ›å»ºæè¿°ç¬¦æœåŠ¡
         const VkImageView& getFrameImage(const renderEnum::renderInstanceId::type& renderInstanceType, const renderEnum::renderFrameId::type& renderFrameType, int viewId) {
             return renderInstanceList[renderInstanceType].frameImageList[renderFrameType].imageList[viewId].view;
         }
 
-        //»ñÈ¡renderBegin
+        //è·å–renderBegin
         const VkRenderPassBeginInfo& getRenderBegin(const renderEnum::renderInstanceId::type& renderInstanceType) {
             return renderInstanceList[renderInstanceType].frameBufferList[0].renderBegin;
         }
 
-        //»ñÈ¡renderBegin£¬swap°æ
+        //è·å–renderBeginï¼Œswapç‰ˆ
         const VkRenderPassBeginInfo& getRenderBegin(const renderEnum::renderInstanceId::type& renderInstanceType, int frameId) {
             return renderInstanceList[renderInstanceType].frameBufferList[frameId].renderBegin;
         }
@@ -106,35 +106,35 @@ namespace bufferList {
 
             //scenceForward_d
             node[bufferEnum::procDescriptorId::scenceForward_d].config = {
-                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::scenceForwardCount},    //¶¥µãÄ£ĞÍ»º³åÇøÃèÊö·û
-                {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceForwardCount},    //Æ¬¶Î¹âÕÕ»º³åÇøÃèÊö·û
-                {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceForwardCount},    //Æ¬¶ÎÎÆÀí²ÉÑùÆ÷ÃèÊö·û
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::scenceForwardCount},    //é¡¶ç‚¹æ¨¡å‹ç¼“å†²åŒºæè¿°ç¬¦
+                {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceForwardCount},    //ç‰‡æ®µå…‰ç…§ç¼“å†²åŒºæè¿°ç¬¦
+                {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceForwardCount},    //ç‰‡æ®µçº¹ç†é‡‡æ ·å™¨æè¿°ç¬¦
             };
 
             //scenceDeferred_d
             node[bufferEnum::procDescriptorId::scenceDeferred_d].config = {
-                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::scenceDeferredCount},   //¶¥µãÄ£ĞÍ
-                {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceDeferredCount},   //Æ¬¶ÎÎÆÀí
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::scenceDeferredCount},   //é¡¶ç‚¹æ¨¡å‹
+                {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceDeferredCount},   //ç‰‡æ®µçº¹ç†
             };
 
             //uiText_d
             node[bufferEnum::procDescriptorId::uiText_d].config = {
-                {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::uiTextCount}            //Æ¬¶ÎÎÆÀí²ÉÑùÆ÷ÃèÊö·û
+                {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::uiTextCount}            //ç‰‡æ®µçº¹ç†é‡‡æ ·å™¨æè¿°ç¬¦
             };
 
             //dsScence_d
             node[bufferEnum::procDescriptorId::dsScence_d].config = {
-                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //Æ¬¶Î¹âÕÕÍ³Ò»»º³å
-                {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //Æ¬¶ÎÒõÓ°Í³Ò»»º³å
-                {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //Æ¬¶Î×ø±ê
-                {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //Æ¬¶Î·¨Ïß
-                {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //Æ¬¶Î·´Éä
-                {5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount}          //Æ¬¶ÎÒõÓ°
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //ç‰‡æ®µå…‰ç…§ç»Ÿä¸€ç¼“å†²
+                {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //ç‰‡æ®µé˜´å½±ç»Ÿä¸€ç¼“å†²
+                {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //ç‰‡æ®µåæ ‡
+                {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //ç‰‡æ®µæ³•çº¿
+                {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //ç‰‡æ®µåå°„
+                {5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount}          //ç‰‡æ®µé˜´å½±
             };
 
             //shadowMap_d
             node[bufferEnum::procDescriptorId::shadowMap_d].config = {
-                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, bufferInfo::shadowCount}     //¶¥µãÒõÓ°mvpÓ³Éä
+                {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, bufferInfo::shadowCount}     //é¡¶ç‚¹é˜´å½±mvpæ˜ å°„
             };
 
             for (int i = 0; i < bufferEnum::procDescriptorId::count; i++) {
@@ -176,25 +176,25 @@ namespace bufferList {
             {
                 samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 
-                //¹ıÂËÆ÷¼´²ÉÓÃºÎÖÖ·½Ê½¹ıÂËÍ¼Æ¬
+                //è¿‡æ»¤å™¨å³é‡‡ç”¨ä½•ç§æ–¹å¼è¿‡æ»¤å›¾ç‰‡
                 samplerInfo.minFilter = VK_FILTER_LINEAR;
 
-                //Ã¿¸öÖáÏòÊ¹ÓÃµÄÑ°Ö·Ä£Ê½È«²¿²ÉÓÃ¾µÏñÑ­»·
+                //æ¯ä¸ªè½´å‘ä½¿ç”¨çš„å¯»å€æ¨¡å¼å…¨éƒ¨é‡‡ç”¨é•œåƒå¾ªç¯
                 samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
                 samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
                 samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
-                //¸÷ÏòÒìĞÔ¹ıÂËÆ÷
+                //å„å‘å¼‚æ€§è¿‡æ»¤å™¨
                 samplerInfo.anisotropyEnable = VK_TRUE;
                 samplerInfo.maxAnisotropy    = 16.0f;
 
-                //²ÉÑù·¶Î§³¬¹ıÍ¼ÏñÊ±ºò·µ»ØµÄÑÕÉ«
+                //é‡‡æ ·èŒƒå›´è¶…è¿‡å›¾åƒæ—¶å€™è¿”å›çš„é¢œè‰²
                 samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 
-                //Ö¸¶¨Ê¹ÓÃµÄ×ø±êÏµÍ³£¬ÓÃÓÚ·ÃÎÊÍ¼ÏñµÄÎÆËØ
+                //æŒ‡å®šä½¿ç”¨çš„åæ ‡ç³»ç»Ÿï¼Œç”¨äºè®¿é—®å›¾åƒçš„çº¹ç´ 
                 samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
-                //¿ªÆô±È½Ï¹¦ÄÜ£¬ÄÇÃ´ÎÆËØÊ×ÏÈºÍÖµ½øĞĞ±È½Ï£¬²¢ÇÒ±È½ÏºóµÄÖµÓÃÓÚ¹ıÂË²Ù×÷
+                //å¼€å¯æ¯”è¾ƒåŠŸèƒ½ï¼Œé‚£ä¹ˆçº¹ç´ é¦–å…ˆå’Œå€¼è¿›è¡Œæ¯”è¾ƒï¼Œå¹¶ä¸”æ¯”è¾ƒåçš„å€¼ç”¨äºè¿‡æ»¤æ“ä½œ
                 samplerInfo.compareEnable = VK_FALSE;
                 samplerInfo.compareOp     = VK_COMPARE_OP_ALWAYS;
 
@@ -207,40 +207,40 @@ namespace bufferList {
             samplerInfo.magFilter = VK_FILTER_NEAREST;
             samplerInfo.maxLod    = static_cast<float>(terrainMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::terrain_s]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "terrain²ÉÑùÆ÷´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "terrainé‡‡æ ·å™¨åˆ›å»ºå¤±è´¥");
             }
 
             //staticModel_sn
             samplerInfo.magFilter = VK_FILTER_NEAREST;
             samplerInfo.maxLod    = static_cast<float>(sModelMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::staticModel_sn]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "sModelN²ÉÑùÆ÷´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "sModelNé‡‡æ ·å™¨åˆ›å»ºå¤±è´¥");
             }
 
             //staticModel_sl
             samplerInfo.magFilter = VK_FILTER_LINEAR;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::staticModel_sl]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "sModelL²ÉÑùÆ÷´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "sModelLé‡‡æ ·å™¨åˆ›å»ºå¤±è´¥");
             }
 
             //dynamicModel_sn
             samplerInfo.magFilter = VK_FILTER_NEAREST;
             samplerInfo.maxLod    = static_cast<float>(dModelMip);
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::dynamicModel_sn]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "dModelN²ÉÑùÆ÷´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "dModelNé‡‡æ ·å™¨åˆ›å»ºå¤±è´¥");
             }
 
             //dynamicModel_sl
             samplerInfo.magFilter = VK_FILTER_LINEAR;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::dynamicModel_sl]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "dModelL²ÉÑùÆ÷´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "dModelLé‡‡æ ·å™¨åˆ›å»ºå¤±è´¥");
             }
 
             //uiText_s
             samplerInfo.magFilter     = VK_FILTER_LINEAR;
             samplerInfo.maxAnisotropy = 16.0f;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::uiText_s]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "uiText²ÉÑùÆ÷´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "uiTexté‡‡æ ·å™¨åˆ›å»ºå¤±è´¥");
             }
 
             //offScreen_s
@@ -248,7 +248,7 @@ namespace bufferList {
             samplerInfo.maxLod        = 0.0f;
             samplerInfo.maxAnisotropy = 1.0f;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::offScreen_s]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "offScreen²ÉÑùÆ÷´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "offScreené‡‡æ ·å™¨åˆ›å»ºå¤±è´¥");
             }
 
             //shadowMap_s
@@ -263,7 +263,7 @@ namespace bufferList {
             samplerInfo.minLod           = 0.0f;
             samplerInfo.maxLod           = 0.0f;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::shadowMap_s]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "shadow²ÉÑùÆ÷´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "shadowé‡‡æ ·å™¨åˆ›å»ºå¤±è´¥");
             }
         }
 
@@ -280,8 +280,8 @@ namespace bufferList {
         std::vector<bufferStruct::staticModelNode>  sNode{};
         std::vector<bufferStruct::dynamicModelNode> dNode{};
 
-        uint32_t sModelMip = 0;                  //ÔÚ´´½¨textureÊ±¸³Öµ
-        uint32_t dModelMip = 0;                  //ÔÚ´´½¨textureÊ±¸³Öµ
+        uint32_t sModelMip = 0;                  //åœ¨åˆ›å»ºtextureæ—¶èµ‹å€¼
+        uint32_t dModelMip = 0;                  //åœ¨åˆ›å»ºtextureæ—¶èµ‹å€¼
 
         bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
@@ -311,7 +311,7 @@ namespace bufferList {
             for (const bufferStruct::staticModelNode& i : sNode) {
                 sMaxMip.push_back(i.mipLevel);
             }
-            sModelMip = *std::max_element(sMaxMip.begin(), sMaxMip.end());   //Ê¹ÓÃÄ£ĞÍ×î´ómip´´½¨²ÉÑùÆ÷
+            sModelMip = *std::max_element(sMaxMip.begin(), sMaxMip.end());   //ä½¿ç”¨æ¨¡å‹æœ€å¤§mipåˆ›å»ºé‡‡æ ·å™¨
 
             std::vector<uint32_t> dMaxMip;
             for (const bufferStruct::dynamicModelNode& i : dNode) {
@@ -332,15 +332,15 @@ namespace bufferList {
     };
 
     struct procShadowNode {
-        bufferStruct::shadowTerrainBufferNode tShadowNode{};                    //µØĞÎÒõÓ°
-        std::vector<bufferStruct::shadowBufferNode> sShadowNode{};              //¾²Ì¬Ä£ĞÍÒõÓ°
-        std::vector<std::vector<bufferStruct::shadowBufferNode>> dShadowNode{}; //¶¯Ì¬Ä£ĞÍÒõÓ°
+        bufferStruct::shadowTerrainBufferNode tShadowNode{};                    //åœ°å½¢é˜´å½±
+        std::vector<bufferStruct::shadowBufferNode> sShadowNode{};              //é™æ€æ¨¡å‹é˜´å½±
+        std::vector<std::vector<bufferStruct::shadowBufferNode>> dShadowNode{}; //åŠ¨æ€æ¨¡å‹é˜´å½±
 
-        //¸¨ÖúshadowMvp¼ÆËã
+        //è¾…åŠ©shadowMvpè®¡ç®—
         glm::mat4 shadowProj{};
         glm::mat4 shadowVP{};
 
-        //³ÌĞò»¯Ë÷Òı
+        //ç¨‹åºåŒ–ç´¢å¼•
         bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
         bufferEnum::procSamplerId::type samplerId;
@@ -371,7 +371,7 @@ namespace bufferList {
     };
 }
 
-//pipelineÁĞ±í¿Õ¼ä
+//pipelineåˆ—è¡¨ç©ºé—´
 namespace pipelineList {
     struct procPipelineNode {
         std::vector<pipelineStruct::pipeLayoutNode> nodeLayout{};
@@ -380,12 +380,12 @@ namespace pipelineList {
 
 
         procPipelineNode(const VkDevice& device, const std::vector<bufferStruct::descriptorNode>& dstList, const std::vector<renderStruct::renderTemplateNode>& renderList, const VkSampleCountFlagBits& msaa) : nodeLayout(bufferEnum::procDescriptorId::count), node(pipelineEnum::procPipelineId::count) {
-            /*ÅäÖÃnodeLayout*/
+            /*é…ç½®nodeLayout*/
             for (size_t i = 0; i < bufferEnum::procDescriptorId::count; i++) {
                 nodeLayout[i].createPipeLayoutNode(device, dstList[i].layout);
             }
 
-            /*ÅäÖÃnode*/
+            /*é…ç½®node*/
             //node[pipelineEnum::procPipelineId::terrain_p] .createMeshPipelineNode(device, extent, msaa, bufferEnum::procDescriptorId::scenceDeferred_d, fileInfo::shader::terrainTask, fileInfo::shader::terrainMesh, fileInfo::shader::terrainFrag);
             node[pipelineEnum::procPipelineId::terrain_p]  .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag  }, device);
             node[pipelineEnum::procPipelineId::model_p]    .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag      }, device);
@@ -397,34 +397,34 @@ namespace pipelineList {
             node[pipelineEnum::procPipelineId::dsScence_p] .createPipelineNode(msaa,                  renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::dsScence_d],       { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag }, device);
             node[pipelineEnum::procPipelineId::shadowMap_p].createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::shadowMap_rt], nodeLayout[bufferEnum::procDescriptorId::shadowMap_d],      { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   }, device);
 
-            /*ÅäÖÃnode.pipeConfig*/
-            //depthStencil ÊµÏÖÖ»ÔÚ¿Õ°×´¦ÏÔÊ¾
+            /*é…ç½®node.pipeConfig*/
+            //depthStencil å®ç°åªåœ¨ç©ºç™½å¤„æ˜¾ç¤º
             node[pipelineEnum::procPipelineId::skybox_p].pipeConfig.depthStencil.depthWriteEnable = VK_FALSE;
             node[pipelineEnum::procPipelineId::skybox_p].pipeConfig.depthStencil.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-            //primitiveState Ïß¶ÎÍ¼Ôª£¬rasterizer ÏßÌî³ä
+            //primitiveState çº¿æ®µå›¾å…ƒï¼Œrasterizer çº¿å¡«å……
             node[pipelineEnum::procPipelineId::mine_p].pipeConfig.primitiveState.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
             node[pipelineEnum::procPipelineId::mine_p].pipeConfig.rasterizer.polygonMode  = VK_POLYGON_MODE_LINE;
             node[pipelineEnum::procPipelineId::mine_p].pipeConfig.rasterizer.lineWidth    = 1.0f;
 
-            //primitiveState Ìõ´øÍ¼Ôª£¬rasterizer Ë³Ê±Õë£¬depthStencil ÊµÏÖÊ¼ÖÕäÖÈ¾ÔÚ×îÉÏ²ã
+            //primitiveState æ¡å¸¦å›¾å…ƒï¼Œrasterizer é¡ºæ—¶é’ˆï¼ŒdepthStencil å®ç°å§‹ç»ˆæ¸²æŸ“åœ¨æœ€ä¸Šå±‚
             node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.primitiveState.topology       = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
             node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.rasterizer.frontFace          = VK_FRONT_FACE_CLOCKWISE;
             node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.depthStencil.depthTestEnable  = VK_FALSE;
             node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.depthStencil.depthWriteEnable = VK_FALSE;
 
-            //pipeDynamicStageState ¶¯Ì¬ÊÓ¿ÚÓë¶¯Ì¬²Ã¼ô£¬rasterizer ÌŞ³ıÕıÃæ
+            //pipeDynamicStageState åŠ¨æ€è§†å£ä¸åŠ¨æ€è£å‰ªï¼Œrasterizer å‰”é™¤æ­£é¢
             node[pipelineEnum::procPipelineId::osScence_p].pipeConfig.setPipeDynamicStage({ VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR });
             node[pipelineEnum::procPipelineId::osScence_p].pipeConfig.rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
 
-            //pipeDynamicStageState ¶¯Ì¬ÊÓ¿ÚÓë¶¯Ì¬²Ã¼ô£¬rasterizer ÌŞ³ıÕıÃæ
+            //pipeDynamicStageState åŠ¨æ€è§†å£ä¸åŠ¨æ€è£å‰ªï¼Œrasterizer å‰”é™¤æ­£é¢
             node[pipelineEnum::procPipelineId::dsScence_p].pipeConfig.setPipeDynamicStage({ VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR });
             node[pipelineEnum::procPipelineId::dsScence_p].pipeConfig.rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
 
-            //depthStencil ·ÀÖ¹ÕÕÉäÃæ±»ÎóÅĞÎªÒõÓ°
+            //depthStencil é˜²æ­¢ç…§å°„é¢è¢«è¯¯åˆ¤ä¸ºé˜´å½±
             node[pipelineEnum::procPipelineId::shadowMap_p].pipeConfig.depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-            /*´´½¨pipeCache*/
+            /*åˆ›å»ºpipeCache*/
             createPipelineCache(device);
         }
 
@@ -432,10 +432,10 @@ namespace pipelineList {
 
         
 
-        //´´½¨¹ÜÏß
+        //åˆ›å»ºç®¡çº¿
         template<typename VertexType>
         void createPipeline(const VkDevice& device, pipelineEnum::procPipelineId::type id, const VkExtent2D& extent) {
-            //ÅäÖÃvertInputStage
+            //é…ç½®vertInputStage
             auto binding   = VertexType::getBindingDescription();
             auto attribute = VertexType::getAttributeDescriptions();
 
@@ -446,16 +446,16 @@ namespace pipelineList {
             vertInputStage.pVertexBindingDescriptions      = binding.data();
             vertInputStage.pVertexAttributeDescriptions    = attribute.data();
 
-            //ÅäÖÃpipeConfig
+            //é…ç½®pipeConfig
             pipelineStruct::pipeConfigNode& pipeConfig = node[id].pipeConfig;
             pipeConfig.viewport.width  = (float)extent.width;
             pipeConfig.viewport.height = (float)extent.height;
             pipeConfig.scissor.extent  = extent;
             pipeConfig.pipeInfo.pVertexInputState = &vertInputStage;
 
-            //´´½¨pipeline
+            //åˆ›å»ºpipeline
             if (vkCreateGraphicsPipelines(device, pipeCache, 1, &pipeConfig.pipeInfo, nullptr, &node[id].pipeline) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "¹ÜÏß´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "ç®¡çº¿åˆ›å»ºå¤±è´¥");
             }
         }
         
@@ -484,13 +484,13 @@ namespace pipelineList {
 
 
 
-        //´´½¨pipeCache
+        //åˆ›å»ºpipeCache
         void createPipelineCache(const VkDevice& device){
             VkPipelineCacheCreateInfo pipeCacheInfo{};
             pipeCacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 
             if (vkCreatePipelineCache(device, &pipeCacheInfo, nullptr, &pipeCache)) {
-                Log::printError(__FILE__, __LINE__, "¹ÜÏß»º´æ´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "ç®¡çº¿ç¼“å­˜åˆ›å»ºå¤±è´¥");
             }
         }
 

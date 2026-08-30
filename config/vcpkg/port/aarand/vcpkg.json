@@ -1,0 +1,7 @@
+{
+  "name": "aarand",
+  "version-string": "1.1.0",
+  "description": "Random number generators with a simple interface (libscran ecosystem)",
+  "homepage": "https://github.com/LTLA/aarand",
+  "license": "MIT"
+}

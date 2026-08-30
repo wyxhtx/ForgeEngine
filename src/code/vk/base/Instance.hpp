@@ -12,7 +12,7 @@ public:
         createInstance();
 
         if (debugInfo::LogSwitch) {
-            Log::printTitle("¡ª¡ª¡ª¡ª¡ª¡ª¡ª¡ªInstanceÒÑ´´½¨");
+            Log::printTitle("â€”â€”â€”â€”â€”â€”â€”â€”Instanceå·²åˆ›å»º");
 
             Log::delimiter();
         }
@@ -30,28 +30,28 @@ public:
        vkDestroyInstance(instance, nullptr);
 
        if (debugInfo::LogSwitch) {
-           Log::print("InstanceÒÑÇå³ı");
+           Log::print("Instanceå·²æ¸…é™¤");
        }
     }
 
 private:
-    VkDebugUtilsMessengerEXT debugCallback;            //Ğ£Ñé²ã»Øµ÷
+    VkDebugUtilsMessengerEXT debugCallback;            //æ ¡éªŒå±‚å›è°ƒ
 
     
 
-    //³õÊ¼»¯Instance
+    //åˆå§‹åŒ–Instance
     void createInstance() {
-        //vulkan°æ±¾ºÅ
-        uint32_t apiVersion = VK_API_VERSION_1_0;       //Ä¬ÈÏ¸³Öµ1.0
-        vkEnumerateInstanceVersion(&apiVersion);        //»ñÈ¡Êµ¼Ê°æ±¾ºÅ
+        //vulkanç‰ˆæœ¬å·
+        uint32_t apiVersion = VK_API_VERSION_1_0;       //é»˜è®¤èµ‹å€¼1.0
+        vkEnumerateInstanceVersion(&apiVersion);        //è·å–å®é™…ç‰ˆæœ¬å·
 
         if (debugInfo::LogSwitch) {
-            Log::printTitle("Vulkan API °æ±¾ºÅ");
+            Log::printTitle("Vulkan API ç‰ˆæœ¬å·");
             std::cout << "\t" << VK_API_VERSION_MAJOR(apiVersion) << "." << VK_API_VERSION_MINOR(apiVersion) << "." << VK_API_VERSION_PATCH(apiVersion) << std::endl;
             Log::delimiter();
         }
 
-        //Ó¦ÓÃĞÅÏ¢
+        //åº”ç”¨ä¿¡æ¯
         VkApplicationInfo appInfo{};
         appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         appInfo.pNext              = nullptr;
@@ -61,20 +61,20 @@ private:
         appInfo.engineVersion      = VK_MAKE_API_VERSION(0, 0, 0, 1);
         appInfo.apiVersion         = apiVersion;
 
-        //instance´´½¨ĞÅÏ¢
+        //instanceåˆ›å»ºä¿¡æ¯
         VkInstanceCreateInfo createInfo{};
         createInfo.sType            = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         createInfo.flags            = 0;
         createInfo.pApplicationInfo = &appInfo;
         
-        //debugCallbackÅäÖÃ
+        //debugCallbacké…ç½®
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
         debugCreateInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
         debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
         debugCreateInfo.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
         debugCreateInfo.pfnUserCallback = debugCallbackFunc;
 
-        //ÆôÓÃ²ã
+        //å¯ç”¨å±‚
         if (debugInfo::LayerSwitch) {
             enableLayerListSupport(engineInfo::enableLayerList);
             createInfo.pNext               = &debugCreateInfo;
@@ -87,36 +87,36 @@ private:
             createInfo.ppEnabledLayerNames = nullptr;
         }
 
-        //ÆôÓÃÀ©Õ¹
+        //å¯ç”¨æ‰©å±•
         std::vector<const char*> extensionList = enableInstanceExtensionListSupport(engineInfo::enableInstanceExtensionList);
         createInfo.enabledExtensionCount       = (uint32_t)extensionList.size();
         createInfo.ppEnabledExtensionNames     = extensionList.data();
 
-        //´´½¨instance
+        //åˆ›å»ºinstance
         if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-            Log::printError(__FILE__, __LINE__, "instance´´½¨Ê§°Ü");
+            Log::printError(__FILE__, __LINE__, "instanceåˆ›å»ºå¤±è´¥");
         }
 
-        //»ñÈ¡instanceÀ©Õ¹º¯Êı
+        //è·å–instanceæ‰©å±•å‡½æ•°
         if (debugInfo::LayerSwitch) {
             PFN_vkCreateDebugUtilsMessengerEXT debugCallbackInfo = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
 
             if (debugCallbackInfo == nullptr) {
-                Log::printError(__FILE__, __LINE__, "vkCreateDebugUtilsMessengerEXT»ñÈ¡Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "vkCreateDebugUtilsMessengerEXTè·å–å¤±è´¥");
             }
             else if (debugCallbackInfo(instance, &debugCreateInfo, nullptr, &debugCallback) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "debugCallback´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "debugCallbackåˆ›å»ºå¤±è´¥");
             }
         }
     }
 
 
 
-    //»Øµ÷´¦Àí
+    //å›è°ƒå¤„ç†
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallbackFunc(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-        std::cerr << "Ğ£Ñé²ã: " << std::endl << pCallbackData->pMessage << std::endl << "------" << std::endl;
+        std::cerr << "æ ¡éªŒå±‚: " << std::endl << pCallbackData->pMessage << std::endl << "------" << std::endl;
 
-        //PipelineÉúÃüÖÜÆÚÖĞ£¬Ğ£Ñé²ã±¨´íÊ±ÔİÍ£
+        //Pipelineç”Ÿå‘½å‘¨æœŸä¸­ï¼Œæ ¡éªŒå±‚æŠ¥é”™æ—¶æš‚åœ
         while (lockInfo::logPauseEnableLock.load()) {
             std::this_thread::yield();
         };
@@ -124,19 +124,19 @@ private:
         return VK_FALSE;
     }
 
-    //enableLayerListÖ§³Ö
+    //enableLayerListæ”¯æŒ
     void enableLayerListSupport(const std::vector<const char*>& enableLayerList) {
-        //Ö§³Ö²ãÊıÁ¿
+        //æ”¯æŒå±‚æ•°é‡
         uint32_t supportLayerCount;
         vkEnumerateInstanceLayerProperties(&supportLayerCount, nullptr);
 
-        //Ö§³Ö²ãĞÅÏ¢
+        //æ”¯æŒå±‚ä¿¡æ¯
         std::vector<VkLayerProperties> supportLayerList(supportLayerCount);
         vkEnumerateInstanceLayerProperties(&supportLayerCount, supportLayerList.data());
 
-        //Êä³öÖ§³Ö²ãÓëÆôÓÃ²ã
+        //è¾“å‡ºæ”¯æŒå±‚ä¸å¯ç”¨å±‚
         if (debugInfo::LogSwitch) {
-            //Log::printTitle("Vulkan Instance Ö§³Ö²ã");
+            //Log::printTitle("Vulkan Instance æ”¯æŒå±‚");
             //for (const auto& supportLayerNode : supportLayerList) {
             //    Log::print(supportLayerNode.layerName);
             //    Log::print(supportLayerNode.description);
@@ -144,16 +144,16 @@ private:
             //}
             //Log::delimiter();
 
-            Log::printTitle("Vulkan Instance ÆôÓÃ²ã");
+            Log::printTitle("Vulkan Instance å¯ç”¨å±‚");
             for (const auto& enableLayerNode : enableLayerList) {
                 Log::print(enableLayerNode);
             }
             Log::delimiter();
         }
 
-        //ÆôÓÃ²ãÖ§³Ö²éÑ¯
+        //å¯ç”¨å±‚æ”¯æŒæŸ¥è¯¢
         for (const auto& enableLayerNode : enableLayerList) {
-            bool isSupport = false;     //Ö§³Ö±êÊ¶
+            bool isSupport = false;     //æ”¯æŒæ ‡è¯†
 
             for (const auto& supportLayerNode : supportLayerList) {
                 if (std::strcmp(enableLayerNode, supportLayerNode.layerName) == 0) {
@@ -164,48 +164,48 @@ private:
 
             if (!isSupport) {
                 Log::print(enableLayerNode);
-                Log::printError(__FILE__, __LINE__, "È±ÉÙÆôÓÃ²ãÖ§³Ö");
+                Log::printError(__FILE__, __LINE__, "ç¼ºå°‘å¯ç”¨å±‚æ”¯æŒ");
             }
         }
     }
 
-    //enableInstanceExtensionListÖ§³Ö
+    //enableInstanceExtensionListæ”¯æŒ
     std::vector<const char*> enableInstanceExtensionListSupport(const std::vector<const char*>& enableInstanceExtensionList) {
-        uint32_t                 platformExtensionCount;                                                                            //Æ½Ì¨À©Õ¹ÊıÁ¿
-        const char**             platformExtensionInfo = glfwGetRequiredInstanceExtensions(&platformExtensionCount);                //Æ½Ì¨À©Õ¹ĞÅÏ¢
-        std::vector<const char*> platformExtensionList(platformExtensionInfo, platformExtensionInfo + platformExtensionCount);      //Æ½Ì¨À©Õ¹ÁĞ±í
+        uint32_t                 platformExtensionCount;                                                                            //å¹³å°æ‰©å±•æ•°é‡
+        const char**             platformExtensionInfo = glfwGetRequiredInstanceExtensions(&platformExtensionCount);                //å¹³å°æ‰©å±•ä¿¡æ¯
+        std::vector<const char*> platformExtensionList(platformExtensionInfo, platformExtensionInfo + platformExtensionCount);      //å¹³å°æ‰©å±•åˆ—è¡¨
     
         if (debugInfo::LayerSwitch) {
             platformExtensionList.insert(platformExtensionList.end(), enableInstanceExtensionList.begin(), enableInstanceExtensionList.end());
         }
 
-        //Ö§³ÖinstanceÀ©Õ¹ÊıÁ¿
+        //æ”¯æŒinstanceæ‰©å±•æ•°é‡
         uint32_t supportExtensionCount;
         vkEnumerateInstanceExtensionProperties(nullptr, &supportExtensionCount, nullptr);
     
-        //Ö§³ÖinstanceÀ©Õ¹ĞÅÏ¢
+        //æ”¯æŒinstanceæ‰©å±•ä¿¡æ¯
         std::vector<VkExtensionProperties> supportExtensionList(supportExtensionCount);
         vkEnumerateInstanceExtensionProperties(nullptr, &supportExtensionCount, supportExtensionList.data());
     
-        //Êä³öÖ§³ÖÀ©Õ¹ÓëÆôÓÃÀ©Õ¹
+        //è¾“å‡ºæ”¯æŒæ‰©å±•ä¸å¯ç”¨æ‰©å±•
         if (debugInfo::LogSwitch) {
-            //Log::printTitle("Vulkan Instance Ö§³ÖÀ©Õ¹");
+            //Log::printTitle("Vulkan Instance æ”¯æŒæ‰©å±•");
             //for (const auto& supportExtensionNode : supportExtensionList) {
             //    Log::print(supportExtensionNode.extensionName);
             //    Log::print("------");
             //}
             //Log::delimiter();
     
-            Log::printTitle("Vulkan Instance ÆôÓÃÀ©Õ¹");
+            Log::printTitle("Vulkan Instance å¯ç”¨æ‰©å±•");
             for (const auto& platformExtensionNode : platformExtensionList) {
                 Log::print(platformExtensionNode);
             }
             Log::delimiter();
         }
     
-        //ÆôÓÃÀ©Õ¹Ö§³Ö²éÑ¯
+        //å¯ç”¨æ‰©å±•æ”¯æŒæŸ¥è¯¢
         for (const auto& platformExtensionNode : platformExtensionList) {
-            bool isSupport = false;     //Ö§³Ö±êÊ¶
+            bool isSupport = false;     //æ”¯æŒæ ‡è¯†
     
             for (const auto& supportExtensionNode : supportExtensionList) {
                 if (std::strcmp(platformExtensionNode, supportExtensionNode.extensionName) == 0) {
@@ -216,7 +216,7 @@ private:
     
             if (!isSupport) {
                 Log::print(platformExtensionNode);
-                Log::printError(__FILE__, __LINE__, "È±ÉÙÆôÓÃinstanceÀ©Õ¹Ö§³Ö");
+                Log::printError(__FILE__, __LINE__, "ç¼ºå°‘å¯ç”¨instanceæ‰©å±•æ”¯æŒ");
             }
         }
 

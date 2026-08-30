@@ -1,0 +1,7 @@
+{
+  "name": "subpar",
+  "version-string": "0.5.0",
+  "description": "Header-only parallelism utilities (libscran ecosystem)",
+  "homepage": "https://github.com/LTLA/subpar",
+  "license": "MIT"
+}

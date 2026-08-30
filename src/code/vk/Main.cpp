@@ -3,35 +3,34 @@
 
 
 int main() {
-    //·ÀÖ¹Í¬Ò»Ê±¼äÆôÓÃ¶à¸öÓÎÏ·½ø³Ì
+    SetConsoleOutputCP(CP_UTF8);   // æ§åˆ¶å°æŒ‰ UTF-8 è¾“å‡ºï¼Œé¿å…ä¸­æ–‡ä¹±ç 
+    //é˜²æ­¢åŒä¸€æ—¶é—´å¯ç”¨å¤šä¸ªæ¸¸æˆè¿›ç¨‹
     HANDLE hMutex = CreateMutexA(nullptr, TRUE, windowInfo::gameName);
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
-        Log::printError(__FILE__, __LINE__, "Í¬Ò»Ê±¼äÖ»ÄÜÆôÓÃÒ»¸öÓÎÏ·½ø³Ì");
+        Log::printError(__FILE__, __LINE__, "åŒä¸€æ—¶é—´åªèƒ½å¯ç”¨ä¸€ä¸ªæ¸¸æˆè¿›ç¨‹");
         return 0;
     }
 
-    //¼ÓÔØdll
-    SetDllDirectoryA(fileInfo::dll);
 
-    //system("cd src\\image_build && png_to_ktx2.bat");   //±àÒëÎÆÀí
-    //system("cd src\\shader_build && glsl_to_spirv.bat"); //±àÒë×ÅÉ«Æ÷
-    //system("cd src\\shader_build && dsScence_gts.bat"); //±àÒëÑÓ³Ù×ÅÉ«Æ÷
-    //system("cd src\\shader_build && terrain_gts.bat");  //±àÒëµØĞÎ×ÅÉ«Æ÷
-    //system("cd src\\shader_build && model_gts.bat");    //±àÒëÄ£ĞÍ×ÅÉ«Æ÷
+    //system("cd src\\image_build && png_to_ktx2.bat");   //ç¼–è¯‘çº¹ç†
+    //system("cd src\\shader_build && glsl_to_spirv.bat"); //ç¼–è¯‘ç€è‰²å™¨
+    //system("cd src\\shader_build && dsScence_gts.bat"); //ç¼–è¯‘å»¶è¿Ÿç€è‰²å™¨
+    //system("cd src\\shader_build && terrain_gts.bat");  //ç¼–è¯‘åœ°å½¢ç€è‰²å™¨
+    //system("cd src\\shader_build && model_gts.bat");    //ç¼–è¯‘æ¨¡å‹ç€è‰²å™¨
 
 
 
-    //Music    InitMusic{};                       //¼ÓÔØÒôÀÖÏß³ÌºÄÊ±³¤£¬ËùÒÔÏÈÉùÃ÷
+    //Music    InitMusic{};                       //åŠ è½½éŸ³ä¹çº¿ç¨‹è€—æ—¶é•¿ï¼Œæ‰€ä»¥å…ˆå£°æ˜
     Window   InitWindow{};
     Device   InitDevice{ InitWindow.window };
     Pipeline InitPipeline{ InitDevice };
 
 
 
-    //Ëø¶¨ÒôÀÖ¶ÓÁĞ
+    //é”å®šéŸ³ä¹é˜Ÿåˆ—
     while (lockInfo::musicThreadLock.exchange(true)) { std::this_thread::yield(); }
 
-    //vulkanÖ÷Ñ­»·
+    //vulkanä¸»å¾ªç¯
     while (!glfwWindowShouldClose(InitWindow.window)) {
         glfwPollEvents(); 
 
@@ -44,7 +43,7 @@ int main() {
         }
     }
 
-    //ÊÍ·ÅËø¶¨ÒôÀÖ¶ÓÁĞ
+    //é‡Šæ”¾é”å®šéŸ³ä¹é˜Ÿåˆ—
     lockInfo::musicThreadLock.store(false);
 
 
@@ -52,7 +51,7 @@ int main() {
     while (lockInfo::updatePlateFuncLock.load()) { std::this_thread::yield(); }
     while (lockInfo::recreateCmdFuncLock.load()) { std::this_thread::yield(); }
     std::lock_guard<std::mutex> lock(lockInfo::queueThreadLock);
-    vkDeviceWaitIdle(InitDevice.device);    //µÈ´ıËùÓĞGPU¹¤×÷Íê³É
+    vkDeviceWaitIdle(InitDevice.device);    //ç­‰å¾…æ‰€æœ‰GPUå·¥ä½œå®Œæˆ
 
     return 0;
 }

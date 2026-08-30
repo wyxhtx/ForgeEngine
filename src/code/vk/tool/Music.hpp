@@ -8,7 +8,7 @@ public:
         std::thread(&Music::createBackgroundMusic, this).detach();
 
         if (debugInfo::LogSwitch) {
-            Log::printTitle("¡ª¡ª¡ª¡ª¡ª¡ª¡ª¡ªMusicÒÑ´´½¨");
+            Log::printTitle("â€”â€”â€”â€”â€”â€”â€”â€”Musicå·²åˆ›å»º");
 
             Log::delimiter();
         }
@@ -16,38 +16,38 @@ public:
 
     ~Music() {
         if (debugInfo::LogSwitch) {
-            Log::print("MusicÒÑÇå³ı");
+            Log::print("Musicå·²æ¸…é™¤");
         }
     }
 
 private:
     void createBackgroundMusic() {
-        alutInit(NULL, 0);                                                              //³õÊ¼»¯ALUT
-        ALuint buffer = alutCreateBufferFromFile(fileInfo::music::throughTheMounta);    //¼ÓÔØÒôÆµÎÄ¼ş
+        alutInit(NULL, 0);                                                              //åˆå§‹åŒ–ALUT
+        ALuint buffer = alutCreateBufferFromFile(fileInfo::music::throughTheMounta);    //åŠ è½½éŸ³é¢‘æ–‡ä»¶
         if (buffer == AL_NONE) {
-            Log::printError(__FILE__, __LINE__, "ÒôÆµÎÄ¼ş¼ÓÔØÊ§°Ü");
+            Log::printError(__FILE__, __LINE__, "éŸ³é¢‘æ–‡ä»¶åŠ è½½å¤±è´¥");
             alutExit();
             return;
         }
 
-        ALuint source;                              //´´½¨ÒôÆµÔ´
+        ALuint source;                              //åˆ›å»ºéŸ³é¢‘æº
         alGenSources(1, &source);
         alSourcei(source, AL_BUFFER, buffer);
-        alSourcei(source, AL_LOOPING, AL_TRUE);     //ÉèÖÃÒôÆµÔ´Ñ­»·²¥·Å
+        alSourcei(source, AL_LOOPING, AL_TRUE);     //è®¾ç½®éŸ³é¢‘æºå¾ªç¯æ’­æ”¾
 
 
 
-        while (!lockInfo::musicThreadLock.load()) { std::this_thread::yield(); }        //È·±£Ö÷Ïß³Ì³õÊ¼»¯Íê³Éºó²¥·ÅÒôÀÖ
-        ALint source_state;                                                             //µÈ´ıÒôÆµ²¥·ÅÍê³É²¢¼ÌĞøÑ­»·
-        alSourcePlay(source);                                                           //²¥·ÅÒôÆµ
+        while (!lockInfo::musicThreadLock.load()) { std::this_thread::yield(); }        //ç¡®ä¿ä¸»çº¿ç¨‹åˆå§‹åŒ–å®Œæˆåæ’­æ”¾éŸ³ä¹
+        ALint source_state;                                                             //ç­‰å¾…éŸ³é¢‘æ’­æ”¾å®Œæˆå¹¶ç»§ç»­å¾ªç¯
+        alSourcePlay(source);                                                           //æ’­æ”¾éŸ³é¢‘
 
         while (lockInfo::musicThreadLock.load()) {
             alGetSourcei(source, AL_SOURCE_STATE, &source_state);
-            if (source_state != AL_PLAYING) { alSourcePlay(source); }                   //Èç¹ûÒôÆµÍ£Ö¹£¬ÖØĞÂ²¥·Å
-            alutSleep(0.1f);                                                            //±ÜÃâ½ôÑ­»·
+            if (source_state != AL_PLAYING) { alSourcePlay(source); }                   //å¦‚æœéŸ³é¢‘åœæ­¢ï¼Œé‡æ–°æ’­æ”¾
+            alutSleep(0.1f);                                                            //é¿å…ç´§å¾ªç¯
         }
 
-        //ÇåÀí×ÊÔ´
+        //æ¸…ç†èµ„æº
         alDeleteSources(1, &source);
         alDeleteBuffers(1, &buffer);
         alutExit();

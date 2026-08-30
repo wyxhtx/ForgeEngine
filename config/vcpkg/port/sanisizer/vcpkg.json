@@ -1,0 +1,7 @@
+{
+  "name": "sanisizer",
+  "version-string": "0.2.0",
+  "description": "Sanity-checking utilities (libscran ecosystem)",
+  "homepage": "https://github.com/LTLA/sanisizer",
+  "license": "MIT"
+}

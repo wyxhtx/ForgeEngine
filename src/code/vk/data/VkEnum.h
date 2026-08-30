@@ -2,14 +2,14 @@
 
 
 
-//engineÃ¶¾Ù¿Õ¼ä
+//engineæšä¸¾ç©ºé—´
 namespace engineEnum {
     namespace tickEnum {
         enum type {
-            key,        //°´¼ü»ñÈ¡Ë¢ĞÂÂÊ
-            uiText,     //ÎÄ±¾UIË¢ĞÂÂÊ
-            plate,      //°å¿é¸üĞÂË¢ĞÂÂÊ
-            cube,       //·½¿é¸üĞÂË¢ĞÂÂÊ
+            key,        //æŒ‰é”®è·å–åˆ·æ–°ç‡
+            uiText,     //æ–‡æœ¬UIåˆ·æ–°ç‡
+            plate,      //æ¿å—æ›´æ–°åˆ·æ–°ç‡
+            cube,       //æ–¹å—æ›´æ–°åˆ·æ–°ç‡
 
             count
         };
@@ -18,78 +18,78 @@ namespace engineEnum {
 
 
 
-//bufferÃ¶¾Ù¿Õ¼ä
+//bufferæšä¸¾ç©ºé—´
 namespace bufferEnum {
-    //imageBufferÃ¶¾Ù
+    //imageBufferæšä¸¾
     namespace imageBufferId {
         enum type {
-            base,       //»ù´¡Í¼Ïñ£¬array = 1, mip = n£¬model
-            array,      //Êı×éÍ¼Ïñ£¬array = n, mip = 1£¬terrain
-            text,       //ÎÄ±¾Í¼Ïñ£¬array = 1, mip = 1£¬uiText
-            frame,      //Ö¡Í¼Ïñ£¬  array = 1, mip = 1
+            base,       //åŸºç¡€å›¾åƒï¼Œarray = 1, mip = nï¼Œmodel
+            array,      //æ•°ç»„å›¾åƒï¼Œarray = n, mip = 1ï¼Œterrain
+            text,       //æ–‡æœ¬å›¾åƒï¼Œarray = 1, mip = 1ï¼ŒuiText
+            frame,      //å¸§å›¾åƒï¼Œ  array = 1, mip = 1
 
             count
         };
     }
 }
 
-//renderÃ¶¾Ù¿Õ¼ä
+//renderæšä¸¾ç©ºé—´
 namespace renderEnum {
-    //render¸½¼şÃ¶¾Ù
+    //renderé™„ä»¶æšä¸¾
     namespace renderAttId {
         enum type {
-            forward_ra,     //Ç°ÏòäÖÈ¾¸½¼ş
-            deferred_ra,    //ÑÓ³ÙäÖÈ¾¸½¼ş
-            shadowMap_ra,   //ÒõÓ°Ó³Éä¸½¼ş
+            forward_ra,     //å‰å‘æ¸²æŸ“é™„ä»¶
+            deferred_ra,    //å»¶è¿Ÿæ¸²æŸ“é™„ä»¶
+            shadowMap_ra,   //é˜´å½±æ˜ å°„é™„ä»¶
 
             count
         };
     }
 
-    //renderÖ¡Í¼ÏñÃ¶¾Ù
+    //renderå¸§å›¾åƒæšä¸¾
     namespace renderFrameId {
         enum type {
-            conv_rf,        //³£¹æ£ºÑÕÉ«¡¢Éî¶È¡¢ÊÓÍ¼
-            swap_rf,        //½»»»Á´
+            conv_rf,        //å¸¸è§„ï¼šé¢œè‰²ã€æ·±åº¦ã€è§†å›¾
+            swap_rf,        //äº¤æ¢é“¾
 
             count
         };
     }
 
-    //renderÄ£°åÃ¶¾Ù
+    //renderæ¨¡æ¿æšä¸¾
     namespace renderTemplateId {
         enum type {
-            swapChain_rt,   //½»»»Á´
-            offScreen_rt,   //ÀëÆÁ
-            deferred_rt,    //ÑÓ³ÙäÖÈ¾
-            shadowMap_rt,   //ÒõÓ°Ó³Éä
+            swapChain_rt,   //äº¤æ¢é“¾
+            offScreen_rt,   //ç¦»å±
+            deferred_rt,    //å»¶è¿Ÿæ¸²æŸ“
+            shadowMap_rt,   //é˜´å½±æ˜ å°„
 
             count
         };
     }
 
-    //renderÊµÀıÃ¶¾Ù
+    //renderå®ä¾‹æšä¸¾
     namespace renderInstanceId {
         enum type {
-            scScence_ri,    //½»»»Á´³¡¾°
-            osScence_ri,    //ÀëÆÁ³¡¾°
-            osMirror_ri,    //ÀëÆÁ¾µÃæ
-            dsScence_ri,    //ÑÓ³ÙäÖÈ¾³¡¾°
-            shadowMap_ri,   //ÒõÓ°Ó³Éä
+            scScence_ri,    //äº¤æ¢é“¾åœºæ™¯
+            osScence_ri,    //ç¦»å±åœºæ™¯
+            osMirror_ri,    //ç¦»å±é•œé¢
+            dsScence_ri,    //å»¶è¿Ÿæ¸²æŸ“åœºæ™¯
+            shadowMap_ri,   //é˜´å½±æ˜ å°„
 
             count
         };
     }
 }
 
-//pipelineÃ¶¾Ù¿Õ¼ä
+//pipelineæšä¸¾ç©ºé—´
 namespace pipelineEnum {
-    //shader½áµãÃ¶¾Ù
+    //shaderç»“ç‚¹æšä¸¾
     namespace shaderNodeId {
         namespace vert {
             enum type {
-                vert,   //¶¥µã×ÅÉ«Æ÷
-                frag,   //Æ¬¶Î×ÅÉ«Æ÷
+                vert,   //é¡¶ç‚¹ç€è‰²å™¨
+                frag,   //ç‰‡æ®µç€è‰²å™¨
 
                 count
             };
@@ -97,21 +97,21 @@ namespace pipelineEnum {
 
         namespace mesh {
             enum type {
-                task,   //ÈÎÎñ×ÅÉ«Æ÷
-                mesh,   //Íø¸ñ×ÅÉ«Æ÷
-                frag,   //Æ¬¶Î×ÅÉ«Æ÷
+                task,   //ä»»åŠ¡ç€è‰²å™¨
+                mesh,   //ç½‘æ ¼ç€è‰²å™¨
+                frag,   //ç‰‡æ®µç€è‰²å™¨
 
                 count
             };
         }
     }
 
-    //cmdDrawÃ¶¾Ù
+    //cmdDrawæšä¸¾
     namespace cmdDrawId {
         enum type {
-            indexed,        //Ë÷Òı»æÖÆ
-            fullscreen,     //È«ÆÁÈı½ÇĞÎ
-            text,           //UIÎÄ±¾
+            indexed,        //ç´¢å¼•ç»˜åˆ¶
+            fullscreen,     //å…¨å±ä¸‰è§’å½¢
+            text,           //UIæ–‡æœ¬
 
             count
         };
@@ -119,18 +119,18 @@ namespace pipelineEnum {
 
 
 
-    //pipelineÊµÀıÃ¶¾Ù
+    //pipelineå®ä¾‹æšä¸¾
     namespace procPipelineId {
         enum type {
-            terrain_p,      //µØĞÎ
-            model_p,        //Ä£ĞÍ
-            skybox_p,       //Ìì¿ÕºĞ
-            mine_p,         //Ñ¡Ôñ¿ò
-            uiText_p,       //ÎÄ±¾ui
-            osMirror_p,     //ÀëÆÁ¾µÃæ
-            osScence_p,     //ÀëÆÁ³¡¾°
-            dsScence_p,	    //ÑÓ³ÙäÖÈ¾³¡¾°
-            shadowMap_p,    //ÒõÓ°Ó³Éä
+            terrain_p,      //åœ°å½¢
+            model_p,        //æ¨¡å‹
+            skybox_p,       //å¤©ç©ºç›’
+            mine_p,         //é€‰æ‹©æ¡†
+            uiText_p,       //æ–‡æœ¬ui
+            osMirror_p,     //ç¦»å±é•œé¢
+            osScence_p,     //ç¦»å±åœºæ™¯
+            dsScence_p,	    //å»¶è¿Ÿæ¸²æŸ“åœºæ™¯
+            shadowMap_p,    //é˜´å½±æ˜ å°„
 
             count
         };
@@ -139,8 +139,8 @@ namespace pipelineEnum {
 
 
 
-//todo ºóĞøÂıÂı²ğ·Ö
-//bufferÃ¶¾Ù¿Õ¼ä
+//todo åç»­æ…¢æ…¢æ‹†åˆ†
+//bufferæšä¸¾ç©ºé—´
 namespace bufferEnum {
     namespace textAlignId {
         enum type {
@@ -152,11 +152,11 @@ namespace bufferEnum {
 
     namespace procDescriptorId {
         enum type {
-            scenceForward_d,    //³¡¾°Ç°ÏòÃèÊö·û
-            scenceDeferred_d,   //³¡¾°ÑÓ³ÙÃèÊö·û£¬ÓÃÓÚ½«ÎÆÀíÌùÍ¼ºÍ·¨ÏßÌùÍ¼×ª»»Îª3´ó¸½¼ş
-            uiText_d,           //ÎÄ±¾ÃèÊö·û
-            dsScence_d,         //ÑÓ³ÙäÖÈ¾ÃèÊö·û£¬ÓÃÓÚ½«3´ó¸½¼şºÍ¹âÕÕ´¦Àí³É×îÖÕ½á¹û
-            shadowMap_d,        //ÒõÓ°Ó³ÉäÃèÊö·û
+            scenceForward_d,    //åœºæ™¯å‰å‘æè¿°ç¬¦
+            scenceDeferred_d,   //åœºæ™¯å»¶è¿Ÿæè¿°ç¬¦ï¼Œç”¨äºå°†çº¹ç†è´´å›¾å’Œæ³•çº¿è´´å›¾è½¬æ¢ä¸º3å¤§é™„ä»¶
+            uiText_d,           //æ–‡æœ¬æè¿°ç¬¦
+            dsScence_d,         //å»¶è¿Ÿæ¸²æŸ“æè¿°ç¬¦ï¼Œç”¨äºå°†3å¤§é™„ä»¶å’Œå…‰ç…§å¤„ç†æˆæœ€ç»ˆç»“æœ
+            shadowMap_d,        //é˜´å½±æ˜ å°„æè¿°ç¬¦
 
             count
         };
@@ -164,14 +164,14 @@ namespace bufferEnum {
 
     namespace procSamplerId {
         enum type {
-            terrain_s,          //µØĞÎ²ÉÑùÆ÷
-            staticModel_sn,     //¾²Ì¬Ä£ĞÍÁÚ½ü²ÉÑùÆ÷
-            staticModel_sl,     //¾²Ì¬Ä£ĞÍÏßĞÔ²ÉÑùÆ÷
-            dynamicModel_sn,    //¶¯Ì¬Ä£ĞÍÁÚ½ü²ÉÑùÆ÷
-            dynamicModel_sl,    //¶¯Ì¬Ä£ĞÍÏßĞÔ²ÉÑùÆ÷
-            uiText_s,           //ÎÄ±¾²ÉÑùÆ÷
-            offScreen_s,        //ÀëÆÁäÖÈ¾²ÉÑùÆ÷
-            shadowMap_s,        //ÒõÓ°Ó³Éä²ÉÑùÆ÷
+            terrain_s,          //åœ°å½¢é‡‡æ ·å™¨
+            staticModel_sn,     //é™æ€æ¨¡å‹é‚»è¿‘é‡‡æ ·å™¨
+            staticModel_sl,     //é™æ€æ¨¡å‹çº¿æ€§é‡‡æ ·å™¨
+            dynamicModel_sn,    //åŠ¨æ€æ¨¡å‹é‚»è¿‘é‡‡æ ·å™¨
+            dynamicModel_sl,    //åŠ¨æ€æ¨¡å‹çº¿æ€§é‡‡æ ·å™¨
+            uiText_s,           //æ–‡æœ¬é‡‡æ ·å™¨
+            offScreen_s,        //ç¦»å±æ¸²æŸ“é‡‡æ ·å™¨
+            shadowMap_s,        //é˜´å½±æ˜ å°„é‡‡æ ·å™¨
 
             count
         };
@@ -179,7 +179,7 @@ namespace bufferEnum {
 
     namespace procStaticModelId {
         enum type {
-            temple_m,   //ÉñÃí
+            temple_m,   //ç¥åº™
 
             count
         };
@@ -187,7 +187,7 @@ namespace bufferEnum {
 
     namespace procDynamicModelId {
         enum type {
-            droid_m,		//»úÆ÷ÈË
+            droid_m,		//æœºå™¨äºº
 
             count
         };

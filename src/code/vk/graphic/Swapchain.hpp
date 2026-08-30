@@ -4,10 +4,10 @@
 
 class Swapchain {
 public:
-    VkFormat colorFormat;           //ÑÕÉ«¸ñÊ½
-    VkFormat depthFormat;           //Éî¶È¸ñÊ½
-    VkExtent2D swapExtent;          //»æÖÆÇøÓò
-    VkSampleCountFlagBits msaa;     //¶àÖØ²ÉÑù
+    VkFormat colorFormat;           //é¢œè‰²æ ¼å¼
+    VkFormat depthFormat;           //æ·±åº¦æ ¼å¼
+    VkExtent2D swapExtent;          //ç»˜åˆ¶åŒºåŸŸ
+    VkSampleCountFlagBits msaa;     //å¤šé‡é‡‡æ ·
 
 
 
@@ -19,7 +19,7 @@ public:
         createSwapImageList();
 
         if (debugInfo::LogSwitch) {
-            Log::printTitle("¡ª¡ª¡ª¡ª¡ª¡ª¡ª¡ªSwapchainÒÑ´´½¨");
+            Log::printTitle("â€”â€”â€”â€”â€”â€”â€”â€”Swapchainå·²åˆ›å»º");
 
             Log::delimiter();
         }
@@ -34,23 +34,23 @@ public:
         }
 
         if (debugInfo::LogSwitch) {
-            Log::print("SwapchainÒÑÇå³ı");
+            Log::print("Swapchainå·²æ¸…é™¤");
         }
 	}
 
 private:
     Device& Device;
 
-    swapStruct::swapSupportNode swapSupport;        //½»»»Á´Ö§³Ö
-    VkSwapchainKHR swapchain;                       //½»»»Á´
+    swapStruct::swapSupportNode swapSupport;        //äº¤æ¢é“¾æ”¯æŒ
+    VkSwapchainKHR swapchain;                       //äº¤æ¢é“¾
 
-    std::vector<VkSemaphore> imageDone;             //Í¼ÏñÍê³É£¬¿ªÊ¼äÖÈ¾
-    std::vector<VkSemaphore> renderDone;            //äÖÈ¾Íê³É£¬¿ªÊ¼³ÊÏÖ
+    std::vector<VkSemaphore> imageDone;             //å›¾åƒå®Œæˆï¼Œå¼€å§‹æ¸²æŸ“
+    std::vector<VkSemaphore> renderDone;            //æ¸²æŸ“å®Œæˆï¼Œå¼€å§‹å‘ˆç°
     size_t currentFrame = 0;
 
 
 
-    //´´½¨½»»»Á´Ö§³Ö½áµã
+    //åˆ›å»ºäº¤æ¢é“¾æ”¯æŒç»“ç‚¹
     void createSwapSupport() {
         swapSupport.createSwapSupport(Device.enableGpu->gpu, Device.presentSurface);
         swapSupport.createSwapCreateInfo(Device.presentSurface);
@@ -61,21 +61,21 @@ private:
         msaa        = swapSupport.getMsaa(Device.enableGpu->gpu);
 
         if (debugInfo::LogSwitch) {
-            Log::print("×î´ó²ÉÑù´ÎÊı:\t" + std::to_string(msaa));
+            Log::print("æœ€å¤§é‡‡æ ·æ¬¡æ•°:\t" + std::to_string(msaa));
             Log::delimiter();
         }
     }
 
-    //´´½¨½»»»Á´
+    //åˆ›å»ºäº¤æ¢é“¾
     void createSwapChain() {
         if (vkCreateSwapchainKHR(Device.device, &swapSupport.swapCreateInfo, nullptr, &swapchain) != VK_SUCCESS) {
-            Log::printError(__FILE__, __LINE__, "½»»»Á´´´½¨Ê§°Ü");
+            Log::printError(__FILE__, __LINE__, "äº¤æ¢é“¾åˆ›å»ºå¤±è´¥");
         }
     }
 
 
 
-    //´´½¨ĞÅºÅÁ¿
+    //åˆ›å»ºä¿¡å·é‡
     void createSyncObjects() {
         imageDone .resize(swapSupport.swapCreateInfo.minImageCount);
         renderDone.resize(swapSupport.swapCreateInfo.minImageCount);
@@ -86,12 +86,12 @@ private:
         for (size_t i = 0; i < swapSupport.swapCreateInfo.minImageCount; i++) {
             if (vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &imageDone[i]) != VK_SUCCESS ||
                 vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &renderDone[i]) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "ĞÅºÅÁ¿´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "ä¿¡å·é‡åˆ›å»ºå¤±è´¥");
             }
         }
     }
 
-    //´´½¨½»»»Á´Í¼ÏñÁĞ±í
+    //åˆ›å»ºäº¤æ¢é“¾å›¾åƒåˆ—è¡¨
     void createSwapImageList() {
         uint32_t swapImageCount = 0;
         vkGetSwapchainImagesKHR(Device.device, swapchain, &swapImageCount, nullptr);
@@ -106,22 +106,22 @@ public:
         vkWaitForFences(Device.device, 1, &cmdFence, VK_TRUE, std::numeric_limits<uint64_t>::max());
         vkResetFences  (Device.device, 1, &cmdFence);
     
-        //´Ó½»»»Á´ÖĞ»ñÈ¡Í¼Ïñ
+        //ä»äº¤æ¢é“¾ä¸­è·å–å›¾åƒ
         uint32_t imageIndex = 0;
         switch (vkAcquireNextImageKHR(Device.device, swapchain, UINT64_MAX, imageDone[currentFrame], VK_NULL_HANDLE, &imageIndex)) {
-        case VK_SUCCESS:                //Õı³£
-        case VK_SUBOPTIMAL_KHR:         //Õı³£
+        case VK_SUCCESS:                //æ­£å¸¸
+        case VK_SUBOPTIMAL_KHR:         //æ­£å¸¸
             break;
-        case VK_ERROR_OUT_OF_DATE_KHR:  //ÖØ½¨
+        case VK_ERROR_OUT_OF_DATE_KHR:  //é‡å»º
             return true;
-        default:                        //±¨´í
-            Log::printError(__FILE__, __LINE__, "»ñÈ¡½»»»Á´Ó³ÏñÊ§°Ü");
+        default:                        //æŠ¥é”™
+            Log::printError(__FILE__, __LINE__, "è·å–äº¤æ¢é“¾æ˜ åƒå¤±è´¥");
             break;
         }
     
 
 
-        //¶ÓÁĞÌá½»
+        //é˜Ÿåˆ—æäº¤
         lockInfo::queueThreadLock.lock();
         VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         VkSubmitInfo submitInfo{};
@@ -135,10 +135,10 @@ public:
         submitInfo.pSignalSemaphores    = &renderDone[currentFrame];
     
         if (vkQueueSubmit(Device.graphicsQueue, 1, &submitInfo, cmdFence) != VK_SUCCESS) {
-            Log::printError(__FILE__, __LINE__, "ÃüÁîÌá½»Ê§°Ü");
+            Log::printError(__FILE__, __LINE__, "å‘½ä»¤æäº¤å¤±è´¥");
         }
     
-        //¶ÓÁĞ³ÊÏÖ
+        //é˜Ÿåˆ—å‘ˆç°
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
@@ -149,14 +149,14 @@ public:
         presentInfo.pResults           = nullptr;
     
         switch (vkQueuePresentKHR(Device.graphicsQueue, &presentInfo)) {
-        case VK_ERROR_OUT_OF_DATE_KHR:      //swapchainÓëDevice.presentSurface²»¼æÈİ
-        case VK_SUBOPTIMAL_KHR:             //²»ÊÇ×îÓÅÅäÖÃ
+        case VK_ERROR_OUT_OF_DATE_KHR:      //swapchainä¸Device.presentSurfaceä¸å…¼å®¹
+        case VK_SUBOPTIMAL_KHR:             //ä¸æ˜¯æœ€ä¼˜é…ç½®
             lockInfo::queueThreadLock.unlock();
             return true;
-        case VK_SUCCESS:                    //Õı³£
+        case VK_SUCCESS:                    //æ­£å¸¸
             break;
-        default:                            //±¨´í
-            Log::printError(__FILE__, __LINE__, "Í¼Ïñ³ÊÏÖÊ§°Ü");
+        default:                            //æŠ¥é”™
+            Log::printError(__FILE__, __LINE__, "å›¾åƒå‘ˆç°å¤±è´¥");
             break;
         }
         lockInfo::queueThreadLock.unlock();
@@ -175,7 +175,7 @@ public:
 
         VkSwapchainKHR tempSwapchain;
         if (vkCreateSwapchainKHR(Device.device, &swapSupport.swapCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
-            Log::printError(__FILE__, __LINE__, "ÖØ½¨½»»»Á´´´½¨Ê§°Ü");
+            Log::printError(__FILE__, __LINE__, "é‡å»ºäº¤æ¢é“¾åˆ›å»ºå¤±è´¥");
         }
 
         vkDestroySwapchainKHR(Device.device, swapchain, nullptr);

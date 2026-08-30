@@ -1,3 +1,4 @@
-﻿/.vs
-/bin
-/storage
+.vs/
+build/
+vcpkg_installed/
+storage/chunk/

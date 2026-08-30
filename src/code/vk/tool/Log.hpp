@@ -2,64 +2,64 @@
 
 
 
-//Ç°ÏòÉùÃ÷logThreadLock
+//å‰å‘å£°æ˜logThreadLock
 namespace lockInfo {
-    extern std::mutex logThreadLock;       //ÈÕÖ¾Ïß³ÌËø£¬ÓÃÓÚÔ­×ÓÍ¬²½¸÷Ïß³Ìµ÷ÓÃÈÕÖ¾
+    extern std::mutex logThreadLock;       //æ—¥å¿—çº¿ç¨‹é”ï¼Œç”¨äºåŸå­åŒæ­¥å„çº¿ç¨‹è°ƒç”¨æ—¥å¿—
 }
 
 namespace Log {
-    //Êä³ö±êÌâ
+    //è¾“å‡ºæ ‡é¢˜
     void printTitle(auto text) {
         std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
         std::cout << text << ":" << std::endl;
     }
 
-    //²»Ê¹ÓÃ¿ÆÑ§¼ÆÊı·¨£¬Ê¹ÓÃ¹Ì¶¨·¨Êä³öĞ¡Êı
+    //ä¸ä½¿ç”¨ç§‘å­¦è®¡æ•°æ³•ï¼Œä½¿ç”¨å›ºå®šæ³•è¾“å‡ºå°æ•°
     void printFixed(auto text) {
         std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
         std::cout << "\t" << std::fixed << text << std::endl;
     }
 
-    //Êä³ö×ø±ê
+    //è¾“å‡ºåæ ‡
     void printPos(glm::vec3 text) {
         std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
         std::cout << "\t" << text.x << "\t" << text.y << "\t" << text.z << std::endl;
     }
 
-    //Êä³ö±¨´íºóÔİÍ£
+    //è¾“å‡ºæŠ¥é”™åæš‚åœ
     void printError(std::string file, int line, std::string text) {
         std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
         std::cerr << std::endl
-            << "------" << "´íÎó" << std::endl
+            << "------" << "é”™è¯¯" << std::endl
             << "------" << file << std::endl 
             << "------" << line << std::endl 
             << "------" << text << std::endl;
         while (true);
     }
 
-    //Êä³ö¾¯¸æ
+    //è¾“å‡ºè­¦å‘Š
     void printWarning(std::string file, int line, std::string text) {
         std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
         std::cerr << std::endl
-            << "------" << "¾¯¸æ" << std::endl
+            << "------" << "è­¦å‘Š" << std::endl
             << "------" << file << std::endl
             << "------" << line << std::endl
             << "------" << text << std::endl;
     }
 
-    //Êä³ö
+    //è¾“å‡º
     void print(auto text) {
         std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
         std::cout << "\t" << text << std::endl;
     }
 
-    //Êä³öĞĞ¼ä¼ä¸ô
+    //è¾“å‡ºè¡Œé—´é—´éš”
     void delimiter() {
         std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
         std::cout << std::endl << std::endl << std::endl;
     }
 
-    //ÇåÆÁ
+    //æ¸…å±
     void clear() {
         std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
         std::cout << "\033c";

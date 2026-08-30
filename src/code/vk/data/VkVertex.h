@@ -5,9 +5,9 @@
 //terrain
 namespace terrainVertex {
     struct vertexNode {
-        glm::vec3 position;     //×ø±ê
-        glm::vec3 texCoord;     //uv£¬xyÓÃÓÚÑ­»·Æ½ÆÌ£¬zÓÃÓÚÎÆÀíÊı×éË÷Òı
-        glm::vec3 normal;       //·¨Ïß
+        glm::vec3 position;     //åæ ‡
+        glm::vec3 texCoord;     //uvï¼Œxyç”¨äºå¾ªç¯å¹³é“ºï¼Œzç”¨äºçº¹ç†æ•°ç»„ç´¢å¼•
+        glm::vec3 normal;       //æ³•çº¿
 
         static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
             std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
@@ -40,16 +40,16 @@ namespace terrainVertex {
         }
     };
 
-    std::vector<vertexNode> vertexs[plateEnum::terrainLayer::count];  //¶¥µãÊı×é
-    std::vector<uint32_t> indexs[plateEnum::terrainLayer::count];     //Ë÷ÒıÊı×é
+    std::vector<vertexNode> vertexs[plateEnum::terrainLayer::count];  //é¡¶ç‚¹æ•°ç»„
+    std::vector<uint32_t> indexs[plateEnum::terrainLayer::count];     //ç´¢å¼•æ•°ç»„
 }
 
 //model
 namespace modelVertex {
     struct vertexNode {
-        glm::vec3 position;     //×ø±ê
+        glm::vec3 position;     //åæ ‡
         glm::vec2 texCoord;     //uv
-        glm::vec3 normal;       //·¨Ïß
+        glm::vec3 normal;       //æ³•çº¿
 
         static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
             std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
@@ -81,22 +81,22 @@ namespace modelVertex {
             return attributeDescriptions;
         }
 
-        //·şÎñloadModel
+        //æœåŠ¡loadModel
         bool operator==(const vertexNode& other) const {
             return position == other.position && texCoord == other.texCoord && normal == other.normal;
         }
     };
 
-    //¾²Ì¬Ä£ĞÍÍø¸ñ
+    //é™æ€æ¨¡å‹ç½‘æ ¼
     std::vector<vertexNode> sVertexs[bufferEnum::procStaticModelId::count];
     std::vector<uint32_t>   sIndexs[bufferEnum::procStaticModelId::count];
 
-    //¶¯Ì¬Ä£ĞÍÍø¸ñ
+    //åŠ¨æ€æ¨¡å‹ç½‘æ ¼
     std::vector<std::vector<vertexNode>> dVertexs[bufferEnum::procDynamicModelId::count];
     std::vector<std::vector<uint32_t>>   dIndexs[bufferEnum::procDynamicModelId::count];
 }
 
-//·şÎñÓÚmodel¼ÓÔØ
+//æœåŠ¡äºmodelåŠ è½½
 namespace std {
     template<> struct hash<modelVertex::vertexNode> {
         size_t operator()(modelVertex::vertexNode const& vertex) const {
@@ -108,7 +108,7 @@ namespace std {
 //skybox
 namespace skyboxVertex {
     struct vertexNode {
-        glm::vec3 position;     //×ø±ê
+        glm::vec3 position;     //åæ ‡
 
         static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
             std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
@@ -131,7 +131,7 @@ namespace skyboxVertex {
         }
     };
 
-    //¶¥µãÊı×é
+    //é¡¶ç‚¹æ•°ç»„
     std::vector<vertexNode> vertexs = {
         {glm::vec3{ 16.0f, 16.0f,-16.0f}},
         {glm::vec3{-16.0f, 16.0f,-16.0f}},
@@ -144,7 +144,7 @@ namespace skyboxVertex {
         {glm::vec3{ 16.0f,-16.0f, 16.0f}}
     };
 
-    //Ë÷ÒıÊı×é
+    //ç´¢å¼•æ•°ç»„
     std::vector<uint32_t> indexs = {
         1,4,5,0,4,1,
         6,3,2,7,3,6,
@@ -158,7 +158,7 @@ namespace skyboxVertex {
 //mine
 namespace mineVertex {
     struct vertexNode {
-        glm::vec3 position;     //×ø±ê
+        glm::vec3 position;     //åæ ‡
 
         static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
             std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
@@ -180,7 +180,7 @@ namespace mineVertex {
         }
     };
 
-    //¶¥µãÊı×é
+    //é¡¶ç‚¹æ•°ç»„
     std::vector<vertexNode> vertexs = { 
         {vertexInfo::vertexID[0]},
         {vertexInfo::vertexID[1]},
@@ -193,7 +193,7 @@ namespace mineVertex {
         {vertexInfo::vertexID[7]}
     };
 
-    //Ë÷ÒıÊı×é Ãæ
+    //ç´¢å¼•æ•°ç»„ é¢
     /*std::vector<uint32_t> indexs = {
         5,4,1,1,4,0,
         2,3,6,6,3,7,
@@ -203,7 +203,7 @@ namespace mineVertex {
         1,0,2,2,0,3
     };*/
 
-    //Ë÷ÒıÊı×é Ïß
+    //ç´¢å¼•æ•°ç»„ çº¿
     std::vector<uint32_t> indexs = {
         0,1,1,5,5,4,4,0,
         6,2,2,3,3,7,7,6,
@@ -217,7 +217,7 @@ namespace mineVertex {
 //uiText
 namespace uiTextVertex {
     struct vertexNode {
-        //°ó¶¨ÃèÊö
+        //ç»‘å®šæè¿°
         static std::array<VkVertexInputBindingDescription, 2> getBindingDescription() {
             std::array<VkVertexInputBindingDescription, 2> vertexInputBindings = {};
 
@@ -234,7 +234,7 @@ namespace uiTextVertex {
             return vertexInputBindings;
         }
 
-        //ÊôĞÔÃèÊö
+        //å±æ€§æè¿°
         static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
             std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributes = {};
 
@@ -279,7 +279,7 @@ namespace osMirrorVertex {
         }
     };
 
-    //¶¥µãÊı×é
+    //é¡¶ç‚¹æ•°ç»„
     std::vector<vertexNode> vertexs = {
         {vertexInfo::vertexID[0]},
         {vertexInfo::vertexID[1]},
@@ -292,7 +292,7 @@ namespace osMirrorVertex {
         {vertexInfo::vertexID[7]}
     };
 
-    //Ë÷ÒıÊı×é Ãæ
+    //ç´¢å¼•æ•°ç»„ é¢
     std::vector<uint32_t> indexs = {
         4,5,7,7,5,6,
     };
@@ -314,7 +314,7 @@ namespace offScreenVertex {
 //shadow
 namespace shadowVertex {
     struct vertexNode {
-        glm::vec3 position;     //×ø±ê
+        glm::vec3 position;     //åæ ‡
 
         static std::array<VkVertexInputBindingDescription, 1> getBindingDescription() {
             std::array<VkVertexInputBindingDescription, 1> bindingDescription = {};
@@ -336,13 +336,13 @@ namespace shadowVertex {
         }
     };
 
-    //µØĞÎÍø¸ñ
+    //åœ°å½¢ç½‘æ ¼
     std::vector<vertexNode> tVertexs[plateEnum::terrainLayer::count];
 
-    //¾²Ì¬Ä£ĞÍÍø¸ñ
+    //é™æ€æ¨¡å‹ç½‘æ ¼
     std::vector<vertexNode> sVertexs[bufferEnum::procStaticModelId::count];
 
-    //¶¯Ì¬Ä£ĞÍÍø¸ñ
+    //åŠ¨æ€æ¨¡å‹ç½‘æ ¼
     std::vector<std::vector<vertexNode>> dVertexs[bufferEnum::procDynamicModelId::count];
 
 

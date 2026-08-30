@@ -1,0 +1,8 @@
+{
+  "name": "kmeans",
+  "version-string": "1.0.0",
+  "description": "Header-only k-means clustering (kmeans++ / Hartigan-Wong / Lloyd / MiniBatch)",
+  "homepage": "https://github.com/libscran/kmeans",
+  "license": "MIT",
+  "dependencies": [ "aarand", "sanisizer", "subpar" ]
+}

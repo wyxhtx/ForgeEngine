@@ -7,56 +7,56 @@ public:
 	Camera InitCamera{};
 
 	GLFWwindow* window;
-	bool isMin = true;			//ÊÇ·ñ×îĞ¡»¯
+	bool isMin = true;			//æ˜¯å¦æœ€å°åŒ–
 
 
 
 	Window() {
-		glfwInit();														//³õÊ¼»¯ GLFW ¿â
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);					//ÉèÖÃ´°¿ÚµÄ¿Í»§¶Ë API ÎªÎŞÍ¼ĞÎ API
-		glfwWindowHint(GLFW_RESIZABLE, windowInfo::resizableEnabled);	//ÉèÖÃ´°¿ÚÊÇ·ñ¿Éµ÷Õû´óĞ¡£¬¸ù¾İ windowInfo::resizableEnabled ÖµÀ´¾ö¶¨
+		glfwInit();														//åˆå§‹åŒ– GLFW åº“
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);					//è®¾ç½®çª—å£çš„å®¢æˆ·ç«¯ API ä¸ºæ— å›¾å½¢ API
+		glfwWindowHint(GLFW_RESIZABLE, windowInfo::resizableEnabled);	//è®¾ç½®çª—å£æ˜¯å¦å¯è°ƒæ•´å¤§å°ï¼Œæ ¹æ® windowInfo::resizableEnabled å€¼æ¥å†³å®š
 
-		monitor = glfwGetPrimaryMonitor();								//»ñÈ¡Ö÷ÏÔÊ¾Æ÷£¨¼´ÏµÍ³µÄÖ÷ÏÔÊ¾Æ÷£©
-		mode = glfwGetVideoMode(monitor);								//»ñÈ¡Ö÷ÏÔÊ¾Æ÷µÄµ±Ç°ÏÔÊ¾Ä£Ê½£¨·Ö±æÂÊµÈĞÅÏ¢£©
+		monitor = glfwGetPrimaryMonitor();								//è·å–ä¸»æ˜¾ç¤ºå™¨ï¼ˆå³ç³»ç»Ÿçš„ä¸»æ˜¾ç¤ºå™¨ï¼‰
+		mode = glfwGetVideoMode(monitor);								//è·å–ä¸»æ˜¾ç¤ºå™¨çš„å½“å‰æ˜¾ç¤ºæ¨¡å¼ï¼ˆåˆ†è¾¨ç‡ç­‰ä¿¡æ¯ï¼‰
 
-		//¼ÆËã´°¿ÚÔÚÆÁÄ»ÉÏµÄÎ»ÖÃ£¨¾ÓÖĞ£©
+		//è®¡ç®—çª—å£åœ¨å±å¹•ä¸Šçš„ä½ç½®ï¼ˆå±…ä¸­ï¼‰
 		windowX = (mode->width - windowInfo::width) / 2;
 		windowY = (mode->height - windowInfo::height) / 2;
 
-		window = glfwCreateWindow(width, height, windowInfo::engineName, nullptr, nullptr);	//´´½¨´°¿Ú£¬´«ÈëÖ¸¶¨µÄ¿í¶È¡¢¸ß¶ÈºÍÃû³Æ£¬ÇÒ²»ÓëÈÎºÎ API ÉÏÏÂÎÄ¹ØÁª
-		glfwSetWindowPos(window, windowX, windowY);											//ÉèÖÃ´°¿ÚÎ»ÖÃµ½ÆÁÄ»ÖĞĞÄ
-		glfwSetCursorPos(window, windowInfo::width / 2.0, windowInfo::height / 2.0);		//ÉèÖÃÊó±ê¹â±êµÄÎ»ÖÃµ½´°¿ÚÖĞĞÄ
+		window = glfwCreateWindow(width, height, windowInfo::engineName, nullptr, nullptr);	//åˆ›å»ºçª—å£ï¼Œä¼ å…¥æŒ‡å®šçš„å®½åº¦ã€é«˜åº¦å’Œåç§°ï¼Œä¸”ä¸ä¸ä»»ä½• API ä¸Šä¸‹æ–‡å…³è”
+		glfwSetWindowPos(window, windowX, windowY);											//è®¾ç½®çª—å£ä½ç½®åˆ°å±å¹•ä¸­å¿ƒ
+		glfwSetCursorPos(window, windowInfo::width / 2.0, windowInfo::height / 2.0);		//è®¾ç½®é¼ æ ‡å…‰æ ‡çš„ä½ç½®åˆ°çª—å£ä¸­å¿ƒ
 
-		//½ûÓÃÊó±êĞü¸¡Ä£Ê½£¬Ç¿ÖÆ½«Êó±êÒş²ØÔÚ´°¿ÚÄÚ²¢Ëø¶¨
+		//ç¦ç”¨é¼ æ ‡æ‚¬æµ®æ¨¡å¼ï¼Œå¼ºåˆ¶å°†é¼ æ ‡éšè—åœ¨çª—å£å†…å¹¶é”å®š
 		glfwSetWindowUserPointer(window, this);
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-		GetKeyboardLayoutName(keyboardLayout);												//»ñÈ¡Ô­Ê¼¼üÅÌ²¼¾Ö
-		LoadKeyboardLayout(L"00000409", KLF_ACTIVATE);										//ÉèÖÃÃÀÊ½¼üÅÌ²¼¾Ö
+		GetKeyboardLayoutName(keyboardLayout);												//è·å–åŸå§‹é”®ç›˜å¸ƒå±€
+		LoadKeyboardLayout(L"00000409", KLF_ACTIVATE);										//è®¾ç½®ç¾å¼é”®ç›˜å¸ƒå±€
 
-		glfwSetKeyCallback(window, keyCallback);											//¼üÅÌ»Øµ÷
-		glfwSetCursorPosCallback(window, mouseCallback);									//Êó±ê»Øµ÷
-		glfwSetScrollCallback(window, scrollCallback);										//¹öÂÖ»Øµ÷
-		glfwSetFramebufferSizeCallback(window, windowCallback);								//´°¿Ú»Øµ÷
+		glfwSetKeyCallback(window, keyCallback);											//é”®ç›˜å›è°ƒ
+		glfwSetCursorPosCallback(window, mouseCallback);									//é¼ æ ‡å›è°ƒ
+		glfwSetScrollCallback(window, scrollCallback);										//æ»šè½®å›è°ƒ
+		glfwSetFramebufferSizeCallback(window, windowCallback);								//çª—å£å›è°ƒ
 
 		if (debugInfo::LogSwitch) {
-			std::cout << "\tµ±Ç°¼üÅÌ²¼¾Ö" << ":";
+			std::cout << "\tå½“å‰é”®ç›˜å¸ƒå±€" << ":";
 			std::wcout << L"" << keyboardLayout << std::endl;
 
-			Log::printTitle("¡ª¡ª¡ª¡ª¡ª¡ª¡ª¡ªWindowÒÑ´´½¨");
+			Log::printTitle("â€”â€”â€”â€”â€”â€”â€”â€”Windowå·²åˆ›å»º");
 
 			Log::delimiter();
 		}
 	}
 
 	~Window(){
-		LoadKeyboardLayout(keyboardLayout, KLF_ACTIVATE);								//»Ö¸´Ô­Ê¼¼üÅÌ²¼¾Ö
+		LoadKeyboardLayout(keyboardLayout, KLF_ACTIVATE);								//æ¢å¤åŸå§‹é”®ç›˜å¸ƒå±€
 
 		glfwDestroyWindow(window);
 		glfwTerminate();
 
 		if (debugInfo::LogSwitch) {
-			Log::print("WindowÒÑÇå³ı");
+			Log::print("Windowå·²æ¸…é™¤");
 		}
 	}
 
@@ -64,28 +64,28 @@ private:
 	GLFWmonitor* monitor;
 	const GLFWvidmode* mode;
 
-	//´°¿Ú³õÊ¼´óĞ¡
+	//çª—å£åˆå§‹å¤§å°
 	int width = windowInfo::width;
 	int height = windowInfo::height;
 
-	//´°¿ÚÊµ¼Ê´óĞ¡
+	//çª—å£å®é™…å¤§å°
 	int windowX;
 	int windowY;
 
-	//Ô­Ê¼¼üÅÌ²¼¾Ö
+	//åŸå§‹é”®ç›˜å¸ƒå±€
 	WCHAR keyboardLayout[KL_NAMELENGTH];
 
 
 
-	//°´¼ü»Øµ÷
+	//æŒ‰é”®å›è°ƒ
 	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-		Window* instance = static_cast<Window*>(glfwGetWindowUserPointer(window));		//´ÓWindowÖ¸ÕëÖĞ»ñÈ¡ÊµÀıÖ¸Õë
+		Window* instance = static_cast<Window*>(glfwGetWindowUserPointer(window));		//ä»WindowæŒ‡é’ˆä¸­è·å–å®ä¾‹æŒ‡é’ˆ
 		if (instance) {
-			instance->keyHandle(window, key, scancode, action, mods);					//µ÷ÓÃÊµÀıµÄ³ÉÔ±º¯Êı´¦Àí¼üÅÌÊÂ¼ş
+			instance->keyHandle(window, key, scancode, action, mods);					//è°ƒç”¨å®ä¾‹çš„æˆå‘˜å‡½æ•°å¤„ç†é”®ç›˜äº‹ä»¶
 		}
 	}
 
-	//Êó±ê»Øµ÷
+	//é¼ æ ‡å›è°ƒ
 	static void mouseCallback(GLFWwindow* window, double xPos, double yPos) {
 		Window* instance = static_cast<Window*>(glfwGetWindowUserPointer(window));
 		if (instance) {
@@ -93,7 +93,7 @@ private:
 		}
 	}
 
-	//¹öÂÖ»Øµ÷
+	//æ»šè½®å›è°ƒ
 	static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset) {
 		Window* instance = static_cast<Window*>(glfwGetWindowUserPointer(window));
 		if (instance) {
@@ -101,7 +101,7 @@ private:
 		}
 	}
 
-	//´°¿Ú´óĞ¡»Øµ÷
+	//çª—å£å¤§å°å›è°ƒ
 	static void windowCallback(GLFWwindow* window, int width, int height) {
 		Window* instance = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 
@@ -117,30 +117,30 @@ private:
 
 
 
-	//°´¼ü»Øµ÷´¦Àí£¬Ö»ÊÊÓÃÓÚ²»ĞèÒª³¤°´µÄ°´Å¥
+	//æŒ‰é”®å›è°ƒå¤„ç†ï¼Œåªé€‚ç”¨äºä¸éœ€è¦é•¿æŒ‰çš„æŒ‰é’®
 	void keyHandle(GLFWwindow* window, int key, int scancode, int action, int mods) {
 		if (action == GLFW_PRESS) {
 			switch (key) {
-			case GLFW_KEY_F11:																			//È«ÆÁ
+			case GLFW_KEY_F11:																			//å…¨å±
 				glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
 				break;
-			case GLFW_KEY_ESCAPE:																		//ÍË³öÈ«ÆÁ
+			case GLFW_KEY_ESCAPE:																		//é€€å‡ºå…¨å±
 				glfwSetWindowMonitor(window, nullptr, windowX, windowY, windowInfo::width, windowInfo::height, mode->refreshRate);
 				break;
-			case GLFW_KEY_END:																			//½áÊøÓÎÏ·£¬Ê¹ÓÃ±Ê¼Ç±¾Ê±µÃºÍfn×éºÏÊ¹ÓÃ
+			case GLFW_KEY_END:																			//ç»“æŸæ¸¸æˆï¼Œä½¿ç”¨ç¬”è®°æœ¬æ—¶å¾—å’Œfnç»„åˆä½¿ç”¨
 				glfwSetWindowShouldClose(window, GLFW_TRUE);
 				break;
 			}
 		}
 	}
 
-	//Êó±ê»Øµ÷´¦Àí
+	//é¼ æ ‡å›è°ƒå¤„ç†
 	void mouseHandle(GLFWwindow* window, float xPos, float yPos) {
-		//Êó±êÒÆ¶¯Î»ÖÃ
+		//é¼ æ ‡ç§»åŠ¨ä½ç½®
 		static float lastX = windowInfo::width / 2;
 		static float lastY = windowInfo::height / 2;
 
-		//¼ÆËãÎ»ÒÆ
+		//è®¡ç®—ä½ç§»
 		static float deltaX;
 		static float deltaY;
 
@@ -156,7 +156,7 @@ private:
 	}
 
 public:
-	//»ñÈ¡¼üÅÌ°´¼ü£¬ÊÊÓÃÓÚĞèÒª³¤°´µÄ°´Å¥
+	//è·å–é”®ç›˜æŒ‰é”®ï¼Œé€‚ç”¨äºéœ€è¦é•¿æŒ‰çš„æŒ‰é’®
 	void getKey(float deltaTime) {
 		glm::vec3 velocity{ 0.f };
 
@@ -182,11 +182,11 @@ public:
 		}
 
 		if (glm::length(velocity) != 0.f) {
-			//²Î¿¼¹«Ê½£ºdeltaX = V * deltaTime
+			//å‚è€ƒå…¬å¼ï¼šdeltaX = V * deltaTime
 			InitCamera.keyHandle(velocity * deltaTime);
 		}
 
-		//×ó¼ü¼ì²â
+		//å·¦é”®æ£€æµ‹
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 			playerInfo::mouseButtonLeft.store(true);
 		}
@@ -194,7 +194,7 @@ public:
 			playerInfo::mouseButtonLeft.store(false);
 		}
 
-		//ÓÒ¼ü¼ì²â
+		//å³é”®æ£€æµ‹
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
 			if (!playerInfo::mouseButtonRight.load()) {
 				playerInfo::mouseButtonRightJust.store(true);

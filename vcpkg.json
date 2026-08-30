@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "forge",
+  "version": "1.0.0",
+  "description": "ForgeEngine",
+  "dependencies": [
+    "glfw3",
+    "glm",
+    "vulkan-headers",
+    "vulkan-memory-allocator",
+    {
+      "name": "ktx",
+      "features": [
+        "vulkan"
+      ]
+    },
+    "tinygltf",
+    "stb",
+    "openal-soft",
+    "freealut",
+    "kmeans",
+    "fastnoise2",
+    "forge-stb-font"
+  ],
+  "builtin-baseline": "61d43ee6f0cc440dc97983d36e0c85e80fe429d4"
+}

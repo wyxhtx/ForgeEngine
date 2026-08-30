@@ -2,7 +2,7 @@
 
 
 
-//engine½á¹¹¿Õ¼ä
+//engineç»“æ„ç©ºé—´
 namespace engineStruct {
     struct tickNode {
         double time0 = glfwGetTime();
@@ -14,7 +14,7 @@ namespace engineStruct {
             fps = tempFps;
         }
 
-        //ÊÇ·ñ¸üĞÂ
+        //æ˜¯å¦æ›´æ–°
         bool isUpdate() {
             time1 = glfwGetTime();
 
@@ -43,34 +43,34 @@ namespace engineStruct {
     };
 }
 
-//device½á¹¹¿Õ¼ä
+//deviceç»“æ„ç©ºé—´
 namespace deviceStruct {
-    //¶ÓÁĞ×å½áµã
+    //é˜Ÿåˆ—æ—ç»“ç‚¹
     struct queueFamilyNode {
-        uint32_t index = VK_QUEUE_FAMILY_IGNORED;               //¶ÓÁĞ×åÄÚ¶ÓÁĞË÷Òı£¬³õÊ¼ÖµÎªºöÂÔ
-        uint32_t count = 0;                                     //¶ÓÁĞ×åÄÚ¶ÓÁĞÊıÁ¿£¬³õÊ¼ÖµÎª0
-        float priority = 1.0f;                                  //¶ÓÁĞ×åÄÚ¶ÓÁĞÓÅÏÈ¼¶£¬ÔİÊ±ÎŞÓÃ
+        uint32_t index = VK_QUEUE_FAMILY_IGNORED;               //é˜Ÿåˆ—æ—å†…é˜Ÿåˆ—ç´¢å¼•ï¼Œåˆå§‹å€¼ä¸ºå¿½ç•¥
+        uint32_t count = 0;                                     //é˜Ÿåˆ—æ—å†…é˜Ÿåˆ—æ•°é‡ï¼Œåˆå§‹å€¼ä¸º0
+        float priority = 1.0f;                                  //é˜Ÿåˆ—æ—å†…é˜Ÿåˆ—ä¼˜å…ˆçº§ï¼Œæš‚æ—¶æ— ç”¨
     };
 
-    //ÎïÀíÉè±¸½áµã
+    //ç‰©ç†è®¾å¤‡ç»“ç‚¹
     struct gpuNode {
-        VkPhysicalDevice gpu;                                   //ÎïÀíÉè±¸£¬Ò»°ãÊÇÏÔ¿¨
-        deviceStruct::queueFamilyNode graphicsQueueFamily{};    //Í¼ĞÎ¶ÓÁĞ×å
+        VkPhysicalDevice gpu;                                   //ç‰©ç†è®¾å¤‡ï¼Œä¸€èˆ¬æ˜¯æ˜¾å¡
+        deviceStruct::queueFamilyNode graphicsQueueFamily{};    //å›¾å½¢é˜Ÿåˆ—æ—
     };
 }
 
 
 
-//buffer½á¹¹¿Õ¼ä
+//bufferç»“æ„ç©ºé—´
 namespace bufferStruct {
-    //baseBuffer½áµã
+    //baseBufferç»“ç‚¹
     struct baseBufferNode {
         VkBuffer      buffer{};
         VmaAllocation bufferMem{};
 
 
 
-        //´´½¨cpuBuffer
+        //åˆ›å»ºcpuBuffer
         baseBufferNode(const void* bufferData, const VkDeviceSize& bufferSize, const VkBufferUsageFlags& bufferUsage, const VkMemoryPropertyFlags& memProperty, const VmaAllocator& memAllocator) {
             createBuffer(bufferSize, bufferUsage, memProperty, memAllocator);
             createMemMap(bufferData, bufferSize, memAllocator);
@@ -86,7 +86,7 @@ namespace bufferStruct {
         }
 
     private:
-        //´´½¨buffer
+        //åˆ›å»ºbuffer
         void createBuffer(const VkDeviceSize& bufferSize, const VkBufferUsageFlags& bufferUsage, const VkMemoryPropertyFlags& memProperty, const VmaAllocator& memAllocator) {
             VkBufferCreateInfo bufferInfo{};
             bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -94,13 +94,13 @@ namespace bufferStruct {
             bufferInfo.usage = bufferUsage;
 
             VmaAllocationCreateInfo memInfo{};
-            memInfo.usage         = VMA_MEMORY_USAGE_UNKNOWN;       //Ê¹ÓÃ VMA_MEMORY_USAGE_UNKNOWN ½«ÄÚ´æÊôĞÔ½»ÓÉÊôĞÔ²ÎÊı¿ØÖÆ
-            memInfo.requiredFlags = memProperty;		            //ÉèÖÃËùĞèµÄÄÚ´æÊôĞÔ
+            memInfo.usage         = VMA_MEMORY_USAGE_UNKNOWN;       //ä½¿ç”¨ VMA_MEMORY_USAGE_UNKNOWN å°†å†…å­˜å±æ€§äº¤ç”±å±æ€§å‚æ•°æ§åˆ¶
+            memInfo.requiredFlags = memProperty;		            //è®¾ç½®æ‰€éœ€çš„å†…å­˜å±æ€§
 
             vmaCreateBuffer(memAllocator, &bufferInfo, &memInfo, &buffer, &bufferMem, nullptr);
         }
 
-        //´´½¨memMap
+        //åˆ›å»ºmemMap
         void createMemMap(const void* bufferData, const VkDeviceSize& bufferSize, const VmaAllocator& memAllocator) {
             void* memMap{};
 
@@ -110,18 +110,18 @@ namespace bufferStruct {
         }
     };
 
-    //imageBuffer½áµã
+    //imageBufferç»“ç‚¹
     struct imageBufferNode {
-        VkImage       image{};          //ÔÚrenderEnum::renderFrameId::swap_rfÀàĞÍÏÂÎŞÓÃ
+        VkImage       image{};          //åœ¨renderEnum::renderFrameId::swap_rfç±»å‹ä¸‹æ— ç”¨
         VmaAllocation imageMem{};
         VkImageView   view{};
 
 
 
-        //todo ÁÙÊ±
+        //todo ä¸´æ—¶
         imageBufferNode() {}
 
-        //´´½¨frameÍ¼Ïñ
+        //åˆ›å»ºframeå›¾åƒ
         imageBufferNode(
             const bufferEnum::imageBufferId::type& imageBufferType,
             const VkFormat&                        format,
@@ -186,7 +186,7 @@ namespace bufferStruct {
                 allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
                 if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image, &imageMem, nullptr) != VK_SUCCESS) {
-                    Log::printError(__FILE__, __LINE__, "image´´½¨Ê§°Ü");
+                    Log::printError(__FILE__, __LINE__, "imageåˆ›å»ºå¤±è´¥");
                 }
 
                 VkImageViewCreateInfo viewInfo{};
@@ -201,7 +201,7 @@ namespace bufferStruct {
                 viewInfo.subresourceRange.layerCount     = 1;
 
                 if (vkCreateImageView(device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
-                    Log::printError(__FILE__, __LINE__, "view´´½¨Ê§°Ü");
+                    Log::printError(__FILE__, __LINE__, "viewåˆ›å»ºå¤±è´¥");
                 }
 
                 break;
@@ -211,13 +211,13 @@ namespace bufferStruct {
 
 
 
-        //ÍêÕûÇåÀí
+        //å®Œæ•´æ¸…ç†
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             vkDestroyImageView(device, view, nullptr);
             vmaDestroyImage(memAllocator, image, imageMem);
         }
 
-        //viewÇåÀí
+        //viewæ¸…ç†
         void clearView(const VkDevice& device) {
             vkDestroyImageView(device, view, nullptr);
         }
@@ -225,13 +225,13 @@ namespace bufferStruct {
     private:
     };
 
-    //imageBufferList½áµã
+    //imageBufferListç»“ç‚¹
     struct imageBufferListNode {
         std::vector<bufferStruct::imageBufferNode> imageList{};
 
 
 
-        //´´½¨swapÍ¼ÏñÁĞ±í
+        //åˆ›å»ºswapå›¾åƒåˆ—è¡¨
         void createSwapImageList(std::vector<VkImage>& swapImageList, const VkFormat& format, const VkImageAspectFlags& aspectFlags, const VkDevice& device) {
             VkImageViewCreateInfo viewInfo{};
             viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -250,12 +250,12 @@ namespace bufferStruct {
                 viewInfo.image = swapImageList[i];
 
                 if (vkCreateImageView(device, &viewInfo, nullptr, &imageList[i].view) != VK_SUCCESS) {
-                    Log::printError(__FILE__, __LINE__, "view´´½¨Ê§°Ü");
+                    Log::printError(__FILE__, __LINE__, "viewåˆ›å»ºå¤±è´¥");
                 }
             }
         }
 
-        //»ñÈ¡viewÁĞ±í
+        //è·å–viewåˆ—è¡¨
         std::vector<VkImageView> getViewList() const {
             std::vector<VkImageView> viewList{};
 
@@ -268,14 +268,14 @@ namespace bufferStruct {
 
 
 
-        //ÍêÕûÇåÀí
+        //å®Œæ•´æ¸…ç†
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             for (bufferStruct::imageBufferNode& node : imageList) {
                 node.clear(device, memAllocator);
             }
         }
 
-        //viewÇåÀí
+        //viewæ¸…ç†
         void clearView(const VkDevice& device) {
             for (bufferStruct::imageBufferNode& node : imageList) {
                 node.clearView(device);
@@ -283,15 +283,15 @@ namespace bufferStruct {
         }
     };
 
-    //textureBuffer½áµã
+    //textureBufferç»“ç‚¹
     struct textureBufferNode {
-        bufferStruct::imageBufferNode imageNode{};  //Í¼Ïñ»º³å½áµã
-        uint32_t arrayLayer = 1;                    //ÎÆÀíÊı×é²ãÊı
-        uint32_t mipLevel   = 1;                    //mip¼¶±ğ
+        bufferStruct::imageBufferNode imageNode{};  //å›¾åƒç¼“å†²ç»“ç‚¹
+        uint32_t arrayLayer = 1;                    //çº¹ç†æ•°ç»„å±‚æ•°
+        uint32_t mipLevel   = 1;                    //mipçº§åˆ«
 
 
 
-        //´´½¨textureArray£¬Ê¹ÓÃÎŞËğÑ¹Ëõ
+        //åˆ›å»ºtextureArrayï¼Œä½¿ç”¨æ— æŸå‹ç¼©
         textureBufferNode(const char* imageFile, const VkFormat& colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, const VkDevice& device, const VmaAllocator& memAllocator)
             :/*imageNode(colorFormat, tileExtent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator), */arrayLayer(atlasExtent.width * atlasExtent.height) {
 
@@ -302,8 +302,8 @@ namespace bufferStruct {
 
 
 
-    //todo µ½Ê±ºò¿´¿´ÄÜ²»ÄÜ·ÅimageBufferNodeÀï
-    //¹¹½¨Í¼Ïñ¿½±´ÇøÓò£¨µ¥ÇøÓò£©
+    //todo åˆ°æ—¶å€™çœ‹çœ‹èƒ½ä¸èƒ½æ”¾imageBufferNodeé‡Œ
+    //æ„å»ºå›¾åƒæ‹·è´åŒºåŸŸï¼ˆå•åŒºåŸŸï¼‰
     std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t width, uint32_t height) {
         VkBufferImageCopy region{};
 
@@ -320,7 +320,7 @@ namespace bufferStruct {
         return { region };
     }
 
-    //¹¹½¨Í¼Ïñ¿½±´ÇøÓò£¨Í¼¼¯£©
+    //æ„å»ºå›¾åƒæ‹·è´åŒºåŸŸï¼ˆå›¾é›†ï¼‰
     std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t tileWidth, uint32_t tileHeight, uint32_t atlasWidth, uint32_t atlasHeight, uint32_t texWidth, uint32_t texHeight, uint32_t arrayLayer) {
         std::vector<VkBufferImageCopy> regions{ arrayLayer };
         uint32_t texturePixel = 4;
@@ -347,7 +347,7 @@ namespace bufferStruct {
         return regions;
     }
 
-    //¹¹½¨Í¼Ïñ¿½±´ÇøÓò£¨KTX¶àmip£©
+    //æ„å»ºå›¾åƒæ‹·è´åŒºåŸŸï¼ˆKTXå¤šmipï¼‰
     std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t width, uint32_t height, uint32_t mipLevels, ktxTexture2* ktxTexture) {
         std::vector<VkBufferImageCopy> regions{ mipLevels };
 
@@ -370,7 +370,7 @@ namespace bufferStruct {
     }
 }
 
-//swapchain½á¹¹¿Õ¼ä
+//swapchainç»“æ„ç©ºé—´
 namespace swapStruct {
     struct swapSupportNode {
         VkSurfaceCapabilitiesKHR        capabilitie{};
@@ -390,29 +390,29 @@ namespace swapStruct {
             swapCreateInfo.oldSwapchain     = VK_NULL_HANDLE;
         }
 
-        //ÉèÖÃ½»»»Á´Ö§³Ö½áµã
+        //è®¾ç½®äº¤æ¢é“¾æ”¯æŒç»“ç‚¹
         void createSwapSupport(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentSurface) {
-            //±íÃæ¹¦ÄÜ²éÑ¯
+            //è¡¨é¢åŠŸèƒ½æŸ¥è¯¢
             if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, presentSurface, &capabilitie)) {
-                Log::printError(__FILE__, __LINE__, "±íÃæ¹¦ÄÜ»ñÈ¡Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "è¡¨é¢åŠŸèƒ½è·å–å¤±è´¥");
             }
 
 
-            //±íÃæ¸ñÊ½²éÑ¯
+            //è¡¨é¢æ ¼å¼æŸ¥è¯¢
             uint32_t formatCount;
             vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, presentSurface, &formatCount, nullptr);
             if (formatCount == 0) {
-                Log::printError(__FILE__, __LINE__, "±íÃæ¸ñÊ½»ñÈ¡Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "è¡¨é¢æ ¼å¼è·å–å¤±è´¥");
             }
             swapFormat.resize(formatCount);
             vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, presentSurface, &formatCount, swapFormat.data());
 
 
-            //³ÊÏÖÄ£Ê½²éÑ¯
+            //å‘ˆç°æ¨¡å¼æŸ¥è¯¢
             uint32_t presentModeCount;
             vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, presentSurface, &presentModeCount, nullptr);
             if (presentModeCount == 0) {
-                Log::printError(__FILE__, __LINE__, "³ÊÏÖÄ£Ê½»ñÈ¡Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "å‘ˆç°æ¨¡å¼è·å–å¤±è´¥");
             }
             presentMode.resize(presentModeCount);
             vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, presentSurface, &presentModeCount, presentMode.data());
@@ -420,19 +420,19 @@ namespace swapStruct {
 
 
             if (debugInfo::LogSwitch) {
-                Log::printTitle("½»»»Á´ÅäÖÃ");
+                Log::printTitle("äº¤æ¢é“¾é…ç½®");
 
-                Log::print("×îĞ¡Í¼ÏñÊıÁ¿:\t" + std::to_string(capabilitie.minImageCount));
-                Log::print("×î´óÍ¼ÏñÊıÁ¿:\t" + std::to_string(capabilitie.maxImageCount));
+                Log::print("æœ€å°å›¾åƒæ•°é‡:\t" + std::to_string(capabilitie.minImageCount));
+                Log::print("æœ€å¤§å›¾åƒæ•°é‡:\t" + std::to_string(capabilitie.maxImageCount));
                 Log::print("");
 
-                Log::print("Ö§³Ö¸ñÊ½:");
+                Log::print("æ”¯æŒæ ¼å¼:");
                 for (auto format : swapFormat) {
                     std::cout << "\t" << "format: " << format.format << ", colorSpace: " << format.colorSpace << std::endl;
                 }
                 Log::print("");
 
-                Log::print("³ÊÏÖÄ£Ê½:");
+                Log::print("å‘ˆç°æ¨¡å¼:");
                 for (auto mode : presentMode) {
                     std::cout << "\t" << "mode: " << mode << std::endl;
                 }
@@ -441,7 +441,7 @@ namespace swapStruct {
             }
         }
 
-        //ÉèÖÃswapCreateInfo
+        //è®¾ç½®swapCreateInfo
         void createSwapCreateInfo(const VkSurfaceKHR& presentSurface) {
             VkSurfaceFormatKHR SwapFormat = getSwapFormat();
             swapCreateInfo.surface                = presentSurface;
@@ -458,9 +458,9 @@ namespace swapStruct {
         }
 
     private:
-        //»ñÈ¡½»»»Á´»æÖÆ·¶Î§
+        //è·å–äº¤æ¢é“¾ç»˜åˆ¶èŒƒå›´
         VkExtent2D getSwapExtent() {
-            //VulkanÌØÊâÔ¼¶¨£¬Èç¹ûcurrentExtent.widthÎª×î´óÖµ£¬±íÊ¾³ß´çÓÉÓ¦ÓÃ³ÌĞò¾ö¶¨£¬·´Ö®Ê¹ÓÃÏµÍ³Ö¸¶¨µÄ³ß´ç
+            //Vulkanç‰¹æ®Šçº¦å®šï¼Œå¦‚æœcurrentExtent.widthä¸ºæœ€å¤§å€¼ï¼Œè¡¨ç¤ºå°ºå¯¸ç”±åº”ç”¨ç¨‹åºå†³å®šï¼Œåä¹‹ä½¿ç”¨ç³»ç»ŸæŒ‡å®šçš„å°ºå¯¸
             if (capabilitie.currentExtent.width == std::numeric_limits<uint32_t>::max()) {
                 VkExtent2D actualExtent = { windowInfo::width, windowInfo::height };
 
@@ -474,14 +474,14 @@ namespace swapStruct {
             }
         }
 
-        //»ñÈ¡½»»»Á´¸ñÊ½
+        //è·å–äº¤æ¢é“¾æ ¼å¼
         VkSurfaceFormatKHR getSwapFormat() {
-            //Ö»ÓĞÒ»¸öÎ´¶¨Òå¸ñÊ½Ê±£¬·µ»ØÖ¸¶¨¸ñÊ½
+            //åªæœ‰ä¸€ä¸ªæœªå®šä¹‰æ ¼å¼æ—¶ï¼Œè¿”å›æŒ‡å®šæ ¼å¼
             if (swapFormat.size() == 1 && swapFormat[0].format == VK_FORMAT_UNDEFINED) {
                 return { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
             }
 
-            //º¬ÓĞ¶à¸ö¸ñÊ½Ö§³ÖÊ±£¬´ÓÖĞÌôÑ¡·µ»Ø
+            //å«æœ‰å¤šä¸ªæ ¼å¼æ”¯æŒæ—¶ï¼Œä»ä¸­æŒ‘é€‰è¿”å›
             for (VkSurfaceFormatKHR availableFormat : swapFormat) {
                 if (availableFormat.format == VK_FORMAT_R8G8B8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
                     return availableFormat;
@@ -491,13 +491,13 @@ namespace swapStruct {
             return swapFormat[0];
         }
 
-        //»ñÈ¡½»»»Á´ºÏÊÊµÄ³ÊÏÖÄ£Ê½
+        //è·å–äº¤æ¢é“¾åˆé€‚çš„å‘ˆç°æ¨¡å¼
         VkPresentModeKHR getSwapPresentMode() {
             for (auto availablePresentMode : presentMode) {
                 if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
 
                     if (debugInfo::LogSwitch) {
-                        Log::print("½»»»Á´Ñ¡ÔñÈı»º´æ³ÊÏÖÄ£Ê½");
+                        Log::print("äº¤æ¢é“¾é€‰æ‹©ä¸‰ç¼“å­˜å‘ˆç°æ¨¡å¼");
 
                         Log::delimiter();
                     }
@@ -506,7 +506,7 @@ namespace swapStruct {
                 }
                 else if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
                     if (debugInfo::LogSwitch) {
-                        Log::print("½»»»Á´Ñ¡ÔñÁ¢¼´³ÊÏÖÄ£Ê½");
+                        Log::print("äº¤æ¢é“¾é€‰æ‹©ç«‹å³å‘ˆç°æ¨¡å¼");
 
                         Log::delimiter();
                     }
@@ -516,7 +516,7 @@ namespace swapStruct {
             }
 
             if (debugInfo::LogSwitch) {
-                Log::print("½»»»Á´Ñ¡Ôñ´¹Ö±ÖĞ¶Ï³ÊÏÖÄ£Ê½");
+                Log::print("äº¤æ¢é“¾é€‰æ‹©å‚ç›´ä¸­æ–­å‘ˆç°æ¨¡å¼");
 
                 Log::delimiter();
             }
@@ -525,29 +525,29 @@ namespace swapStruct {
         }
 
     public:
-        //»ñÈ¡Éî¶È¸ñÊ½
+        //è·å–æ·±åº¦æ ¼å¼
         VkFormat getDepthFormat(const VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
             for (VkFormat format : candidates) {
-                //»ñÈ¡µ±Ç°¸ñÊ½µÄÊôĞÔĞÅÏ¢
+                //è·å–å½“å‰æ ¼å¼çš„å±æ€§ä¿¡æ¯
                 VkFormatProperties props;
                 vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
 
-                //¼ì²éµ±Ç°¸ñÊ½ÊÇ·ñÖ§³ÖËùĞèµÄÌØĞÔºÍÆ½ÆÌ·½Ê½
+                //æ£€æŸ¥å½“å‰æ ¼å¼æ˜¯å¦æ”¯æŒæ‰€éœ€çš„ç‰¹æ€§å’Œå¹³é“ºæ–¹å¼
                 if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
-                    //Èç¹ûµ±Ç°¸ñÊ½Ö§³Ö×î¼ÑÆ½ÆÌ²¢ÇÒÂú×ãÌØĞÔÒªÇó£¬Ôò·µ»Ø¸Ã¸ñÊ½
+                    //å¦‚æœå½“å‰æ ¼å¼æ”¯æŒæœ€ä½³å¹³é“ºå¹¶ä¸”æ»¡è¶³ç‰¹æ€§è¦æ±‚ï¼Œåˆ™è¿”å›è¯¥æ ¼å¼
                     return format;
                 }
                 else if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
-                    //Èç¹ûµ±Ç°¸ñÊ½Ö§³ÖÏßĞÔÆ½ÆÌ²¢ÇÒÂú×ãÌØĞÔÒªÇó£¬Ôò·µ»Ø¸Ã¸ñÊ½
+                    //å¦‚æœå½“å‰æ ¼å¼æ”¯æŒçº¿æ€§å¹³é“ºå¹¶ä¸”æ»¡è¶³ç‰¹æ€§è¦æ±‚ï¼Œåˆ™è¿”å›è¯¥æ ¼å¼
                     return format;
                 }
             }
 
-            Log::printError(__FILE__, __LINE__, "Éî¶È¸ñÊ½»ñÈ¡Ê§°Ü");
+            Log::printError(__FILE__, __LINE__, "æ·±åº¦æ ¼å¼è·å–å¤±è´¥");
             return VK_FORMAT_UNDEFINED;
         }
 
-        //»ñÈ¡¶àÖØ²ÉÑù
+        //è·å–å¤šé‡é‡‡æ ·
         VkSampleCountFlagBits getMsaa(const VkPhysicalDevice& physicalDevice) {
             VkPhysicalDeviceProperties physicalDeviceProperties;
             vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
@@ -565,10 +565,10 @@ namespace swapStruct {
 
 
 
-        //ÖØ½¨swapExtent
+        //é‡å»ºswapExtent
         void recreateSwapCreateInfo(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentSurface, const VkSwapchainKHR& swapchain) {
             if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, presentSurface, &capabilitie)) {
-                Log::printError(__FILE__, __LINE__, "ÖØ½¨½»»»Á´Ê±±íÃæ¹¦ÄÜ»ñÈ¡Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "é‡å»ºäº¤æ¢é“¾æ—¶è¡¨é¢åŠŸèƒ½è·å–å¤±è´¥");
             }
 
             swapCreateInfo.imageExtent = getSwapExtent();
@@ -576,23 +576,23 @@ namespace swapStruct {
         }
     };
 
-    //½»»»Á´Í¼ÏñÁĞ±í£¬·şÎñÓÚrenderFrameNode
+    //äº¤æ¢é“¾å›¾åƒåˆ—è¡¨ï¼ŒæœåŠ¡äºrenderFrameNode
     std::vector<VkImage> swapImageList{};
 }
 
-//render½á¹¹¿Õ¼ä
+//renderç»“æ„ç©ºé—´
 namespace renderStruct {
-    //render¸½¼ş½áµã
+    //renderé™„ä»¶ç»“ç‚¹
     struct renderAttachmentNode {
-        std::vector<VkAttachmentDescription>              attDescList{};    //äÖÈ¾¸½¼şÃèÊöÁĞ±í
-        std::array<std::vector<VkAttachmentReference>, 3> attRefList{};     //äÖÈ¾¸½¼şÒıÓÃÁĞ±í£¬0 ÑÕÉ«¡¢1 Éî¶È¡¢2 ½âÎö
+        std::vector<VkAttachmentDescription>              attDescList{};    //æ¸²æŸ“é™„ä»¶æè¿°åˆ—è¡¨
+        std::array<std::vector<VkAttachmentReference>, 3> attRefList{};     //æ¸²æŸ“é™„ä»¶å¼•ç”¨åˆ—è¡¨ï¼Œ0 é¢œè‰²ã€1 æ·±åº¦ã€2 è§£æ
 
         
 
         renderAttachmentNode(const renderEnum::renderAttId::type& renderAttType, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaa = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM, const VkImageLayout& finalLayout = VK_IMAGE_LAYOUT_MAX_ENUM) {
             switch (renderAttType) {
             case renderEnum::renderAttId::forward_ra: {
-                //Ç°ÏòäÖÈ¾¸½¼şÁĞ±í£ºÑÕÉ«¡¢Éî¶È¡¢½âÎö
+                //å‰å‘æ¸²æŸ“é™„ä»¶åˆ—è¡¨ï¼šé¢œè‰²ã€æ·±åº¦ã€è§£æ
                 attDescList = {
                     createAttachmentDesc(colorFormat, msaa,                  VK_ATTACHMENT_LOAD_OP_CLEAR,     VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL),
                     createAttachmentDesc(depthFormat, msaa,                  VK_ATTACHMENT_LOAD_OP_CLEAR,     VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL),
@@ -608,7 +608,7 @@ namespace renderStruct {
                 break;
             }
             case renderEnum::renderAttId::deferred_ra: {
-                //ÑÓ³ÙäÖÈ¾¸½¼şÁĞ±í£º×ø±êÑÕÉ«¡¢·¨ÏßÑÕÉ«¡¢Âş·´ÉäÑÕÉ«¡¢ÒõÓ°Éî¶È
+                //å»¶è¿Ÿæ¸²æŸ“é™„ä»¶åˆ—è¡¨ï¼šåæ ‡é¢œè‰²ã€æ³•çº¿é¢œè‰²ã€æ¼«åå°„é¢œè‰²ã€é˜´å½±æ·±åº¦
                 attDescList = {
                     createAttachmentDesc(renderInfo::dsPosColorFormat, VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                     createAttachmentDesc(colorFormat, VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
@@ -625,7 +625,7 @@ namespace renderStruct {
                 break;
             }
             case renderEnum::renderAttId::shadowMap_ra: {
-                //ÒõÓ°Ó³Éä¸½¼şÁĞ±í£ºÒõÓ°Éî¶È
+                //é˜´å½±æ˜ å°„é™„ä»¶åˆ—è¡¨ï¼šé˜´å½±æ·±åº¦
                 attDescList = {
                     createAttachmentDesc(depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                 };
@@ -644,49 +644,49 @@ namespace renderStruct {
         renderAttachmentNode() = delete;
 
     private:
-        uint32_t refIndex = 0;      //refListµÄË÷Òı
+        uint32_t refIndex = 0;      //refListçš„ç´¢å¼•
 
 
 
-        //´´½¨äÖÈ¾¸½¼şÃèÊö
+        //åˆ›å»ºæ¸²æŸ“é™„ä»¶æè¿°
         VkAttachmentDescription createAttachmentDesc(const VkFormat& format, const VkSampleCountFlagBits& msaa, const VkAttachmentLoadOp& loadOp, const VkAttachmentStoreOp& storeOp, const VkImageLayout& finalLayout) {
             return {
-                .format         = format,                            //¸½¼şµÄÍ¼Ïñ¸ñÊ½
-                .samples        = msaa,                              //¶àÖØ²ÉÑùµÄÊıÁ¿
-                .loadOp         = loadOp,                            //äÖÈ¾Ç°ÑÕÉ«ÓëÉî¶ÈµÄ¼ÓÔØ²Ù×÷
-                .storeOp        = storeOp,                           //äÖÈ¾ºóÑÕÉ«ÓëÉî¶ÈµÄ´æ´¢²Ù×÷
-                .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,   //äÖÈ¾Ç°Ä£°åµÄ¼ÓÔØ²Ù×÷
-                .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,  //äÖÈ¾ºóÄ£°åµÄ´æ´¢²Ù×÷
-                .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,         //äÖÈ¾Ç°Í¼ÏñµÄ²¼¾Ö
-                .finalLayout    = finalLayout,                       //äÖÈ¾ºóÍ¼ÏñµÄ²¼¾Ö
+                .format         = format,                            //é™„ä»¶çš„å›¾åƒæ ¼å¼
+                .samples        = msaa,                              //å¤šé‡é‡‡æ ·çš„æ•°é‡
+                .loadOp         = loadOp,                            //æ¸²æŸ“å‰é¢œè‰²ä¸æ·±åº¦çš„åŠ è½½æ“ä½œ
+                .storeOp        = storeOp,                           //æ¸²æŸ“åé¢œè‰²ä¸æ·±åº¦çš„å­˜å‚¨æ“ä½œ
+                .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,   //æ¸²æŸ“å‰æ¨¡æ¿çš„åŠ è½½æ“ä½œ
+                .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,  //æ¸²æŸ“åæ¨¡æ¿çš„å­˜å‚¨æ“ä½œ
+                .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,         //æ¸²æŸ“å‰å›¾åƒçš„å¸ƒå±€
+                .finalLayout    = finalLayout,                       //æ¸²æŸ“åå›¾åƒçš„å¸ƒå±€
             };
         }
 
-        //´´½¨äÖÈ¾¸½¼şÒıÓÃ
+        //åˆ›å»ºæ¸²æŸ“é™„ä»¶å¼•ç”¨
         VkAttachmentReference createAttachmentRef(const VkImageLayout& layout) {
             return{
-                .attachment = refIndex++,   //¸½¼şµÄË÷Òı
-                .layout     = layout,       //¸½¼şµÄÍ¼Ïñ²¼¾Ö
+                .attachment = refIndex++,   //é™„ä»¶çš„ç´¢å¼•
+                .layout     = layout,       //é™„ä»¶çš„å›¾åƒå¸ƒå±€
             };
         }
     };
 
-    //render×ÓÍ¨µÀ½áµã
+    //renderå­é€šé“ç»“ç‚¹
     struct renderSubpassNode {
         /*
-        Ê¾ÀıÁ´£ºÉÏ½×¶Î    ¡ú ±¾½×¶Î
-        ÒÀÀµ 0£ºÍâ²¿      ¡ú subpass 0     £¨¿ªÊ¼äÖÈ¾£©
-        ÒÀÀµ 1£ºsubpass 0 ¡ú subpass 1     £¨×ÓÍ¨µÀ¼äÍ¬²½£©
-        ÒÀÀµ 2£ºsubpass 1 ¡ú subpass 2     £¨×ÓÍ¨µÀ¼äÍ¬²½£©
-        ÒÀÀµ 3£ºsubpass 2 ¡ú Íâ²¿          £¨½áÊøäÖÈ¾£©
+        ç¤ºä¾‹é“¾ï¼šä¸Šé˜¶æ®µ    â†’ æœ¬é˜¶æ®µ
+        ä¾èµ– 0ï¼šå¤–éƒ¨      â†’ subpass 0     ï¼ˆå¼€å§‹æ¸²æŸ“ï¼‰
+        ä¾èµ– 1ï¼šsubpass 0 â†’ subpass 1     ï¼ˆå­é€šé“é—´åŒæ­¥ï¼‰
+        ä¾èµ– 2ï¼šsubpass 1 â†’ subpass 2     ï¼ˆå­é€šé“é—´åŒæ­¥ï¼‰
+        ä¾èµ– 3ï¼šsubpass 2 â†’ å¤–éƒ¨          ï¼ˆç»“æŸæ¸²æŸ“ï¼‰
 
-        µ±Ç°Á´£ºÉÏ½×¶Î    ¡ú ±¾½×¶Î
-        ÒÀÀµ 0£ºÍâ²¿      ¡ú subpass 0     £¨¿ªÊ¼äÖÈ¾£©
-        ÒÀÀµ 1£ºsubpass 0 ¡ú Íâ²¿          £¨½áÊøäÖÈ¾£©
+        å½“å‰é“¾ï¼šä¸Šé˜¶æ®µ    â†’ æœ¬é˜¶æ®µ
+        ä¾èµ– 0ï¼šå¤–éƒ¨      â†’ subpass 0     ï¼ˆå¼€å§‹æ¸²æŸ“ï¼‰
+        ä¾èµ– 1ï¼šsubpass 0 â†’ å¤–éƒ¨          ï¼ˆç»“æŸæ¸²æŸ“ï¼‰
         */
 
-        std::vector<VkSubpassDescription> subpassList{};        //äÖÈ¾×ÓÍ¨µÀÁĞ±í
-        std::vector<VkSubpassDependency>  dependencyList{};     //äÖÈ¾×ÓÍ¨µÀÒÀÀµÁĞ±í£¬±ÈsubpassList¶àÒ»¸ö£¬¾ßÌå²Î¿¼ÉÏÊöÊ¾Àı
+        std::vector<VkSubpassDescription> subpassList{};        //æ¸²æŸ“å­é€šé“åˆ—è¡¨
+        std::vector<VkSubpassDependency>  dependencyList{};     //æ¸²æŸ“å­é€šé“ä¾èµ–åˆ—è¡¨ï¼Œæ¯”subpassListå¤šä¸€ä¸ªï¼Œå…·ä½“å‚è€ƒä¸Šè¿°ç¤ºä¾‹
 
 
 
@@ -698,12 +698,12 @@ namespace renderStruct {
             switch (renderTemplateType) {
             case renderEnum::renderTemplateId::swapChain_rt: {
                 dependencyList = {
-                    //ÒÀÀµ 0£ºÍâ²¿ ¡ú subpass 0£¬µÈÉÏÒ»Ö¡ÑÕÉ«ºÍÉî¶ÈĞ´Íê²ÅÄÜ¿ªÊ¼¶ÁĞ´
+                    //ä¾èµ– 0ï¼šå¤–éƒ¨ â†’ subpass 0ï¼Œç­‰ä¸Šä¸€å¸§é¢œè‰²å’Œæ·±åº¦å†™å®Œæ‰èƒ½å¼€å§‹è¯»å†™
                     createSubpassDependency(
                         VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                         0,                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,                                             VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
                     ),
-                    //ÒÀÀµ 1£ºsubpass 0 ¡ú Íâ²¿£¬È·±£±¾Ö¡ÑÕÉ«ºÍÉî¶ÈĞ´Íê²Å±»ÏÂÒ»Ö¡¶ÁÈ¡
+                    //ä¾èµ– 1ï¼šsubpass 0 â†’ å¤–éƒ¨ï¼Œç¡®ä¿æœ¬å¸§é¢œè‰²å’Œæ·±åº¦å†™å®Œæ‰è¢«ä¸‹ä¸€å¸§è¯»å–
                     createSubpassDependency(
                         0,                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,                                              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                         VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,                                                  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
@@ -714,12 +714,12 @@ namespace renderStruct {
             }
             case renderEnum::renderTemplateId::offScreen_rt: {
                 dependencyList = {
-                    //ÒÀÀµ 0£ºÍâ²¿ ¡ú subpass 0£¬µÈÉÏÒ»Ö¡Æ¬¶Î×ÅÉ«Æ÷½áÊø£¬¿ªÊ¼ÑÕÉ«Éî¶È¶ÁĞ´
+                    //ä¾èµ– 0ï¼šå¤–éƒ¨ â†’ subpass 0ï¼Œç­‰ä¸Šä¸€å¸§ç‰‡æ®µç€è‰²å™¨ç»“æŸï¼Œå¼€å§‹é¢œè‰²æ·±åº¦è¯»å†™
                     createSubpassDependency(
                         VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,                                                                                                  VK_ACCESS_NONE,
                         0,                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
                     ),
-                    //ÒÀÀµ 1£ºsubpass 0 ¡ú Íâ²¿£¬µÈÑÕÉ«Éî¶ÈĞ´Íê£¬Æ¬¶Î×ÅÉ«Æ÷²ÅÄÜ¶Á
+                    //ä¾èµ– 1ï¼šsubpass 0 â†’ å¤–éƒ¨ï¼Œç­‰é¢œè‰²æ·±åº¦å†™å®Œï¼Œç‰‡æ®µç€è‰²å™¨æ‰èƒ½è¯»
                     createSubpassDependency(
                         0,                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                         VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,                                                                                                  VK_ACCESS_SHADER_READ_BIT
@@ -730,12 +730,12 @@ namespace renderStruct {
             }
             case renderEnum::renderTemplateId::deferred_rt: {
                 dependencyList = {
-                    //ÒÀÀµ 0£ºÍâ²¿ ¡ú subpass 0£¬µÈÉÏÒ»Ö¡ÑÕÉ«Ğ´Íê£¬±¾Ö¡¿ªÊ¼¶ÁĞ´ÑÕÉ«¸½¼ş
+                    //ä¾èµ– 0ï¼šå¤–éƒ¨ â†’ subpass 0ï¼Œç­‰ä¸Šä¸€å¸§é¢œè‰²å†™å®Œï¼Œæœ¬å¸§å¼€å§‹è¯»å†™é¢œè‰²é™„ä»¶
                     createSubpassDependency(
                         VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                         0,                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
                     ),
-                    //ÒÀÀµ 1£ºsubpass 0 ¡ú Íâ²¿£¬µÈ±¾Ö¡ÑÕÉ«Ğ´Íê£¬Æ¬¶Î×ÅÉ«Æ÷²ÅÄÜ¶Á£¨¹©¹âÕÕ½×¶Î²ÉÑù£©
+                    //ä¾èµ– 1ï¼šsubpass 0 â†’ å¤–éƒ¨ï¼Œç­‰æœ¬å¸§é¢œè‰²å†™å®Œï¼Œç‰‡æ®µç€è‰²å™¨æ‰èƒ½è¯»ï¼ˆä¾›å…‰ç…§é˜¶æ®µé‡‡æ ·ï¼‰
                     createSubpassDependency(
                         0,                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                         VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,         VK_ACCESS_SHADER_READ_BIT
@@ -746,12 +746,12 @@ namespace renderStruct {
             }
             case renderEnum::renderTemplateId::shadowMap_rt: {
                 dependencyList = {
-                    //ÒÀÀµ 0£ºÍâ²¿ ¡ú subpass 0£¬µÈÉÏÒ»Ö¡Éî¶ÈĞ´Íê£¬±¾Ö¡¿ªÊ¼Éî¶È¶ÁĞ´
+                    //ä¾èµ– 0ï¼šå¤–éƒ¨ â†’ subpass 0ï¼Œç­‰ä¸Šä¸€å¸§æ·±åº¦å†™å®Œï¼Œæœ¬å¸§å¼€å§‹æ·±åº¦è¯»å†™
                     createSubpassDependency(
                         VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                         0,                   VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
                     ),
-                    //ÒÀÀµ 1£ºsubpass 0 ¡ú Íâ²¿£¬µÈÉî¶ÈĞ´Íê£¬Æ¬¶Î×ÅÉ«Æ÷²ÅÄÜ¶ÁÒõÓ°ÌùÍ¼
+                    //ä¾èµ– 1ï¼šsubpass 0 â†’ å¤–éƒ¨ï¼Œç­‰æ·±åº¦å†™å®Œï¼Œç‰‡æ®µç€è‰²å™¨æ‰èƒ½è¯»é˜´å½±è´´å›¾
                     createSubpassDependency(
                         0,                   VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                         VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,                                                  VK_ACCESS_SHADER_READ_BIT
@@ -766,35 +766,35 @@ namespace renderStruct {
         renderSubpassNode() = delete;
 
     private:
-        //´´½¨subpass
+        //åˆ›å»ºsubpass
         VkSubpassDescription createSubpass(const VkPipelineBindPoint& pipeType, const std::array<std::vector<VkAttachmentReference>, 3>& attRefList) {
             return{
-                .pipelineBindPoint       = pipeType,                        //¹ÜÏßÀàĞÍ£¨Í¼ĞÎ¡¢¼ÆËã¡¢¹â×·µÈµÈ£©
-                .colorAttachmentCount    = (uint32_t)attRefList[0].size(),  //ÑÕÉ«¸½¼şÊıÁ¿
-                .pColorAttachments       = attRefList[0].data(),            //ÑÕÉ«¸½¼şÒıÓÃ
-                .pResolveAttachments     = attRefList[2].data(),            //½âÎö¸½¼şÒıÓÃ
-                .pDepthStencilAttachment = attRefList[1].data(),            //Éî¶È¸½¼şÒıÓÃ
+                .pipelineBindPoint       = pipeType,                        //ç®¡çº¿ç±»å‹ï¼ˆå›¾å½¢ã€è®¡ç®—ã€å…‰è¿½ç­‰ç­‰ï¼‰
+                .colorAttachmentCount    = (uint32_t)attRefList[0].size(),  //é¢œè‰²é™„ä»¶æ•°é‡
+                .pColorAttachments       = attRefList[0].data(),            //é¢œè‰²é™„ä»¶å¼•ç”¨
+                .pResolveAttachments     = attRefList[2].data(),            //è§£æé™„ä»¶å¼•ç”¨
+                .pDepthStencilAttachment = attRefList[1].data(),            //æ·±åº¦é™„ä»¶å¼•ç”¨
             };
         }
 
-        //´´½¨subpassÒÀÀµ
+        //åˆ›å»ºsubpassä¾èµ–
         VkSubpassDependency createSubpassDependency(const uint32_t& srcSubpass, const VkPipelineStageFlags& srcStageMask, const VkAccessFlags& srcAccessMask, const uint32_t& dstSubpass, const VkPipelineStageFlags& dstStageMask, const VkAccessFlags& dstAccessMask) {
             return {
-                .srcSubpass      = srcSubpass,                      //ÉÏ½×¶ÎÒÑÍê³ÉµÄ×ÓÍ¨µÀ£¬£¨VK_SUBPASS_EXTERNAL£ºÍâ²¿¡¢0/1/2£ºµÚn¸ö×ÓÍ¨µÀ£©
-                .dstSubpass      = dstSubpass,                      //±¾½×¶ÎÒªÖ´ĞĞµÄ×ÓÍ¨µÀ£¬£¨VK_SUBPASS_EXTERNAL£ºÍâ²¿¡¢0/1/2£ºµÚn¸ö×ÓÍ¨µÀ£©
-                .srcStageMask    = srcStageMask,                    //ÉÏ½×¶ÎÒÑÍê³ÉµÄ¹ÜÏß½×¶Î£¬£¨ÑÕÉ«¡¢Éî¶È¡¢×ÅÉ«Æ÷¡¢È«²¿£©
-                .dstStageMask    = dstStageMask,                    //±¾½×¶ÎÒªÖ´ĞĞµÄ¹ÜÏß½×¶Î£¬£¨ÑÕÉ«¡¢Éî¶È¡¢×ÅÉ«Æ÷¡¢È«²¿£©
-                .srcAccessMask   = srcAccessMask,                   //ÉÏ½×¶Î¶Ô¸½¼şµÄÄÚ´æÈ¨ÏŞ£¬£¨ÑÕÉ«¶ÁĞ´¡¢Éî¶È¶ÁĞ´¡¢×ÅÉ«Æ÷¶ÁĞ´¡¢ÄÚ´æ¶ÁĞ´¡¢ÎŞÈ¨ÏŞ£©
-                .dstAccessMask   = dstAccessMask,                   //±¾½×¶Î¶Ô¸½¼şµÄÄÚ´æÈ¨ÏŞ£¬£¨ÑÕÉ«¶ÁĞ´¡¢Éî¶È¶ÁĞ´¡¢×ÅÉ«Æ÷¶ÁĞ´¡¢ÄÚ´æ¶ÁĞ´¡¢ÎŞÈ¨ÏŞ£©
-                .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,     //ÒÀÀµÀàĞÍ£¬£¨Í¬Ò»ÇøÓòµÄÏñËØ´®ĞĞ£¬²»Í¬ÇøÓòµÄÏñËØ¿É²¢ĞĞ£©
+                .srcSubpass      = srcSubpass,                      //ä¸Šé˜¶æ®µå·²å®Œæˆçš„å­é€šé“ï¼Œï¼ˆVK_SUBPASS_EXTERNALï¼šå¤–éƒ¨ã€0/1/2ï¼šç¬¬nä¸ªå­é€šé“ï¼‰
+                .dstSubpass      = dstSubpass,                      //æœ¬é˜¶æ®µè¦æ‰§è¡Œçš„å­é€šé“ï¼Œï¼ˆVK_SUBPASS_EXTERNALï¼šå¤–éƒ¨ã€0/1/2ï¼šç¬¬nä¸ªå­é€šé“ï¼‰
+                .srcStageMask    = srcStageMask,                    //ä¸Šé˜¶æ®µå·²å®Œæˆçš„ç®¡çº¿é˜¶æ®µï¼Œï¼ˆé¢œè‰²ã€æ·±åº¦ã€ç€è‰²å™¨ã€å…¨éƒ¨ï¼‰
+                .dstStageMask    = dstStageMask,                    //æœ¬é˜¶æ®µè¦æ‰§è¡Œçš„ç®¡çº¿é˜¶æ®µï¼Œï¼ˆé¢œè‰²ã€æ·±åº¦ã€ç€è‰²å™¨ã€å…¨éƒ¨ï¼‰
+                .srcAccessMask   = srcAccessMask,                   //ä¸Šé˜¶æ®µå¯¹é™„ä»¶çš„å†…å­˜æƒé™ï¼Œï¼ˆé¢œè‰²è¯»å†™ã€æ·±åº¦è¯»å†™ã€ç€è‰²å™¨è¯»å†™ã€å†…å­˜è¯»å†™ã€æ— æƒé™ï¼‰
+                .dstAccessMask   = dstAccessMask,                   //æœ¬é˜¶æ®µå¯¹é™„ä»¶çš„å†…å­˜æƒé™ï¼Œï¼ˆé¢œè‰²è¯»å†™ã€æ·±åº¦è¯»å†™ã€ç€è‰²å™¨è¯»å†™ã€å†…å­˜è¯»å†™ã€æ— æƒé™ï¼‰
+                .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,     //ä¾èµ–ç±»å‹ï¼Œï¼ˆåŒä¸€åŒºåŸŸçš„åƒç´ ä¸²è¡Œï¼Œä¸åŒåŒºåŸŸçš„åƒç´ å¯å¹¶è¡Œï¼‰
             };
         }
     };
     
-    //renderÖ¡½áµã
+    //renderå¸§ç»“ç‚¹
     struct renderFrameNode {
-        VkFramebuffer         frameBuffer{};    //Ö¡»º³å
-        VkRenderPassBeginInfo renderBegin{};    //äÖÈ¾Í¨µÀ¿ªÊ¼ĞÅÏ¢
+        VkFramebuffer         frameBuffer{};    //å¸§ç¼“å†²
+        VkRenderPassBeginInfo renderBegin{};    //æ¸²æŸ“é€šé“å¼€å§‹ä¿¡æ¯
 
 
 
@@ -809,7 +809,7 @@ namespace renderStruct {
             framebufferInfo.layers          = 1;
 
             if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &frameBuffer) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "frameBuffer´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "frameBufferåˆ›å»ºå¤±è´¥");
             }
 
             renderBegin.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -830,12 +830,12 @@ namespace renderStruct {
 
 
 
-    //renderÄ£°å½áµã
+    //renderæ¨¡æ¿ç»“ç‚¹
     struct renderTemplateNode {
         renderEnum::renderAttId::type      renderAttType      = renderEnum::renderAttId::count;
         renderEnum::renderTemplateId::type renderTemplateType = renderEnum::renderTemplateId::count;
 
-        VkRenderPass render{};      //äÖÈ¾Í¨µÀ
+        VkRenderPass render{};      //æ¸²æŸ“é€šé“
 
 
 
@@ -847,7 +847,7 @@ namespace renderStruct {
                 renderStruct::renderAttachmentNode renderAttachment{ renderAttType, colorFormat, depthFormat, msaa, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR };
                 renderStruct::renderSubpassNode    renderSubpass   { tRenderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
 
-                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "½»»»Á´");
+                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "äº¤æ¢é“¾");
 
                 break;
             }
@@ -857,7 +857,7 @@ namespace renderStruct {
                 renderStruct::renderAttachmentNode renderAttachment{ renderAttType, colorFormat, depthFormat, msaa, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
                 renderStruct::renderSubpassNode    renderSubpass   { tRenderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
 
-                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "ÀëÆÁ");
+                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "ç¦»å±");
 
                 break;
             }
@@ -867,7 +867,7 @@ namespace renderStruct {
                 renderStruct::renderAttachmentNode renderAttachment{ renderAttType, colorFormat, depthFormat };
                 renderStruct::renderSubpassNode    renderSubpass   { tRenderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
 
-                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "ÑÓ³Ù×ÅÉ«");
+                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "å»¶è¿Ÿç€è‰²");
 
                 break;
             }
@@ -877,7 +877,7 @@ namespace renderStruct {
                 renderStruct::renderAttachmentNode renderAttachment{ renderAttType, VK_FORMAT_MAX_ENUM, depthFormat };
                 renderStruct::renderSubpassNode    renderSubpass   { tRenderTemplateType, VK_PIPELINE_BIND_POINT_GRAPHICS, renderAttachment.attRefList };
 
-                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "ÒõÓ°Ó³Éä");
+                createRender(renderAttachment.attDescList, renderSubpass.subpassList, renderSubpass.dependencyList, device, "é˜´å½±æ˜ å°„");
 
                 break;
             }
@@ -902,15 +902,15 @@ namespace renderStruct {
             createInfo.pDependencies   = dependencyList.data();
 
             if (vkCreateRenderPass(device, &createInfo, nullptr, &render) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, std::string(name) + "äÖÈ¾Í¨µÀ´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, std::string(name) + "æ¸²æŸ“é€šé“åˆ›å»ºå¤±è´¥");
             }
         }
     };
 
-    //renderÊµÀı½áµã
+    //renderå®ä¾‹ç»“ç‚¹
     struct renderInstanceNode {
-        std::vector<bufferStruct::imageBufferListNode> frameImageList{};        //Ö¡Í¼ÏñÁĞ±í
-        std::vector<renderStruct::renderFrameNode>     frameBufferList{};       //Ö¡»º³åÁĞ±í
+        std::vector<bufferStruct::imageBufferListNode> frameImageList{};        //å¸§å›¾åƒåˆ—è¡¨
+        std::vector<renderStruct::renderFrameNode>     frameBufferList{};       //å¸§ç¼“å†²åˆ—è¡¨
 
 
 
@@ -937,7 +937,7 @@ namespace renderStruct {
             case renderEnum::renderTemplateId::swapChain_rt: {
                 frameImageList.resize(renderEnum::renderFrameId::count);
 
-                //color¡¢depth
+                //colorã€depth
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
                     {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, msaa, 1, 1, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
                     {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, msaa, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                                   VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
@@ -952,7 +952,7 @@ namespace renderStruct {
             case renderEnum::renderTemplateId::offScreen_rt: {
                 frameImageList.resize(1);
 
-                //color¡¢depth¡¢view
+                //colorã€depthã€view
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
                     {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, msaa,                  1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
                     {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, msaa,                  1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
@@ -965,7 +965,7 @@ namespace renderStruct {
             case renderEnum::renderTemplateId::deferred_rt: {
                 frameImageList.resize(1);
 
-                //position¡¢normal¡¢albedo¡¢depth
+                //positionã€normalã€albedoã€depth
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
                     {bufferEnum::imageBufferId::frame, renderInfo::dsPosColorFormat, imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
                     {bufferEnum::imageBufferId::frame, colorFormat,                  imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
@@ -991,7 +991,7 @@ namespace renderStruct {
         }
 
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            //ÇåÀíframeImageList
+            //æ¸…ç†frameImageList
             frameImageList[renderEnum::renderFrameId::conv_rf].clear(device, memAllocator);
 
             if (frameImageList.size() > renderEnum::renderFrameId::swap_rf) {
@@ -999,7 +999,7 @@ namespace renderStruct {
             }
             frameImageList.clear();
 
-            //ÇåÀíframeBufferList
+            //æ¸…ç†frameBufferList
             for (int i = 0; i < frameBufferList.size(); i++) {
                 frameBufferList[i].clear(device);
             }
@@ -1007,21 +1007,21 @@ namespace renderStruct {
         }
 
     private:
-        std::vector<VkClearValue> clearValueList{};     //ÇåÀíÖµÁĞ±í
+        std::vector<VkClearValue> clearValueList{};     //æ¸…ç†å€¼åˆ—è¡¨
 
         
 
-        //´´½¨frameBufferList
+        //åˆ›å»ºframeBufferList
         void createFrameBufferList(const bufferStruct::imageBufferListNode& conv, const VkRenderPass& render, const VkExtent2D& extent, const VkDevice& device) {
             frameBufferList = {
                 {render, conv.getViewList(), clearValueList, extent, device}
             };
         }
 
-        //´´½¨frameBufferList£¬swap°æ
+        //åˆ›å»ºframeBufferListï¼Œswapç‰ˆ
         void createFrameBufferList(const bufferStruct::imageBufferListNode& conv, const bufferStruct::imageBufferListNode& swap, const VkRenderPass& render, const VkExtent2D& extent, const VkDevice& device) {
             std::vector<VkImageView> viewList = conv.getViewList();
-            viewList.push_back({});     //Ô¤Áô swap ²ÛÎ»
+            viewList.push_back({});     //é¢„ç•™ swap æ§½ä½
 
             for (int i = 0; i < swap.imageList.size(); i++) {
                 viewList.back() = swap.imageList[i].view;
@@ -1031,40 +1031,40 @@ namespace renderStruct {
     };
 }
 
-//pipeline½á¹¹¿Õ¼ä
+//pipelineç»“æ„ç©ºé—´
 namespace pipelineStruct {
-    //shader½áµã
+    //shaderç»“ç‚¹
     struct shaderNode {
-        VkShaderModule shader{};                            //×ÅÉ«Æ÷
-        VkPipelineShaderStageCreateInfo shaderStage{};      //×ÅÉ«Æ÷×´Ì¬
+        VkShaderModule shader{};                            //ç€è‰²å™¨
+        VkPipelineShaderStageCreateInfo shaderStage{};      //ç€è‰²å™¨çŠ¶æ€
 
 
 
-        //´´½¨×ÅÉ«Æ÷½áµã
+        //åˆ›å»ºç€è‰²å™¨ç»“ç‚¹
         void createShaderNode(const VkDevice& device, const std::string& filename, const VkShaderStageFlagBits& stage) {
-            //¶ÁÈ¡×ÅÉ«Æ÷ÎÄ¼ş
+            //è¯»å–ç€è‰²å™¨æ–‡ä»¶
             std::ifstream fileData(filename, std::ios::ate | std::ios::binary);
             if (!fileData.is_open()) {
-                Log::printError(__FILE__, __LINE__, "×ÅÉ«Æ÷ÎÄ¼ş´ò¿ªÊ§°Ü");
+                Log::printError(__FILE__, __LINE__, "ç€è‰²å™¨æ–‡ä»¶æ‰“å¼€å¤±è´¥");
             }
 
-            //´´½¨×ÅÉ«Æ÷´úÂë
+            //åˆ›å»ºç€è‰²å™¨ä»£ç 
             size_t fileSize = (size_t)fileData.tellg();
             std::vector<char> shaderCode(fileSize);
             fileData.seekg(0);
             fileData.read(shaderCode.data(), fileSize);
             fileData.close();
 
-            //´´½¨×ÅÉ«Æ÷
+            //åˆ›å»ºç€è‰²å™¨
             VkShaderModuleCreateInfo createInfo{};
             createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
             createInfo.codeSize = shaderCode.size();
             createInfo.pCode    = reinterpret_cast<const uint32_t*>(shaderCode.data());
             if (vkCreateShaderModule(device, &createInfo, nullptr, &shader) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "×ÅÉ«Æ÷´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "ç€è‰²å™¨åˆ›å»ºå¤±è´¥");
             }
 
-            //ÅäÖÃ×ÅÉ«Æ÷×´Ì¬
+            //é…ç½®ç€è‰²å™¨çŠ¶æ€
             shaderStage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shaderStage.pName  = "main";
             shaderStage.stage  = stage;
@@ -1076,38 +1076,38 @@ namespace pipelineStruct {
         }
     };
 
-    //pipeConfig½áµã
+    //pipeConfigç»“ç‚¹
     struct pipeConfigNode {
-        std::vector<VkPipelineShaderStageCreateInfo>     shaderStageList{};         //×ÅÉ«½×¶ÎÁĞ±í£¨¶¥µãÄ£Ê½¡¢Íø¸ñÄ£Ê½£©
-        VkPipelineVertexInputStateCreateInfo             vertInputStage{};          //¶¥µãÅäÖÃ
-        VkPipelineInputAssemblyStateCreateInfo			 primitiveState{};	        //Í¼ÔªÅäÖÃ
-        VkViewport										 viewport{};			    //ÊÓ¿ÚÇøÓò
-        VkRect2D										 scissor{};				    //²Ã¼ôÇøÓò
-        VkPipelineViewportStateCreateInfo				 viewportState{};		    //ÊÓ¿ÚÅäÖÃ
-        VkPipelineRasterizationStateCreateInfo			 rasterizer{};			    //¹âÕ¤»¯
-        VkPipelineMultisampleStateCreateInfo			 multisampling{};		    //¶àÖØ²ÉÑù
-        VkPipelineDepthStencilStateCreateInfo			 depthStencil{};		    //Éî¶ÈºÍÄ£°å
-        std::vector<VkPipelineColorBlendAttachmentState> colorAttachmentList{};     //ÑÕÉ«¸½¼şÁĞ±í£¨Ç°ÏòÄ£Ê½¡¢ÑÓ³ÙÄ£Ê½¡¢ÒõÓ°Ä£Ê½£©
-        VkPipelineColorBlendStateCreateInfo				 colorAttachmentState{};    //ÑÕÉ«¸½¼şÅäÖÃ
-        std::vector<VkDynamicState>                      pipeDynamicStageList{};    //¹ÜÏß¶¯Ì¬½×¶ÎÁĞ±í£¨Vulkan 1.4 ¹² 48 ¸ö£©
-        VkPipelineDynamicStateCreateInfo                 pipeDynamicStageState{};   //¹ÜÏß¶¯Ì¬½×¶ÎÅäÖÃ
-        VkGraphicsPipelineCreateInfo					 pipeInfo{};			    //¹ÜÏßĞÅÏ¢
+        std::vector<VkPipelineShaderStageCreateInfo>     shaderStageList{};         //ç€è‰²é˜¶æ®µåˆ—è¡¨ï¼ˆé¡¶ç‚¹æ¨¡å¼ã€ç½‘æ ¼æ¨¡å¼ï¼‰
+        VkPipelineVertexInputStateCreateInfo             vertInputStage{};          //é¡¶ç‚¹é…ç½®
+        VkPipelineInputAssemblyStateCreateInfo			 primitiveState{};	        //å›¾å…ƒé…ç½®
+        VkViewport										 viewport{};			    //è§†å£åŒºåŸŸ
+        VkRect2D										 scissor{};				    //è£å‰ªåŒºåŸŸ
+        VkPipelineViewportStateCreateInfo				 viewportState{};		    //è§†å£é…ç½®
+        VkPipelineRasterizationStateCreateInfo			 rasterizer{};			    //å…‰æ …åŒ–
+        VkPipelineMultisampleStateCreateInfo			 multisampling{};		    //å¤šé‡é‡‡æ ·
+        VkPipelineDepthStencilStateCreateInfo			 depthStencil{};		    //æ·±åº¦å’Œæ¨¡æ¿
+        std::vector<VkPipelineColorBlendAttachmentState> colorAttachmentList{};     //é¢œè‰²é™„ä»¶åˆ—è¡¨ï¼ˆå‰å‘æ¨¡å¼ã€å»¶è¿Ÿæ¨¡å¼ã€é˜´å½±æ¨¡å¼ï¼‰
+        VkPipelineColorBlendStateCreateInfo				 colorAttachmentState{};    //é¢œè‰²é™„ä»¶é…ç½®
+        std::vector<VkDynamicState>                      pipeDynamicStageList{};    //ç®¡çº¿åŠ¨æ€é˜¶æ®µåˆ—è¡¨ï¼ˆVulkan 1.4 å…± 48 ä¸ªï¼‰
+        VkPipelineDynamicStateCreateInfo                 pipeDynamicStageState{};   //ç®¡çº¿åŠ¨æ€é˜¶æ®µé…ç½®
+        VkGraphicsPipelineCreateInfo					 pipeInfo{};			    //ç®¡çº¿ä¿¡æ¯
 
 
 
         void createPipeConfigNode(const std::vector<pipelineStruct::shaderNode>& shaderList, const VkSampleCountFlagBits& msaa, const renderEnum::renderAttId::type& renderAttType, const VkRenderPass& render, const VkPipelineLayout& pipeLayout) {
-            //×ÅÉ«½×¶ÎÁĞ±í
+            //ç€è‰²é˜¶æ®µåˆ—è¡¨
             shaderStageList.resize(shaderList.size());
             for (int i = 0; i < shaderList.size(); i++) {
                 shaderStageList[i] = shaderList[i].shaderStage;
             }
 
-            //Í¼ÔªÅäÖÃ
+            //å›¾å…ƒé…ç½®
 			primitiveState.sType					 = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-			primitiveState.topology				 = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;		//Í¼Ôª×°Åä·½Ê½
+			primitiveState.topology				 = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;		//å›¾å…ƒè£…é…æ–¹å¼
 			primitiveState.primitiveRestartEnable = VK_FALSE;
 
-            //ÊÓ¿ÚÇøÓò
+            //è§†å£åŒºåŸŸ
 			viewport.x		  = 0.0f;
 			viewport.y		  = 0.0f;
 			//viewport.width    = (float)extent.width;
@@ -1115,31 +1115,31 @@ namespace pipelineStruct {
 			viewport.minDepth = 0.0f;
 			viewport.maxDepth = 1.0f;
 
-            //²Ã¼ôÇøÓò
+            //è£å‰ªåŒºåŸŸ
 			scissor.offset = { 0, 0 };
 			//scissor.extent = extent;
 
-            //ÊÓ¿ÚÅäÖÃ
+            //è§†å£é…ç½®
 			viewportState.sType			= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 			viewportState.viewportCount = 1;
 			viewportState.pViewports	= &viewport;
 			viewportState.scissorCount	= 1;
 			viewportState.pScissors		= &scissor;
 
-            //¹âÕ¤»¯
+            //å…‰æ …åŒ–
 			rasterizer.sType				   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 			rasterizer.depthClampEnable		   = VK_FALSE;
 			rasterizer.rasterizerDiscardEnable = VK_FALSE;
-			rasterizer.polygonMode			   = VK_POLYGON_MODE_FILL;				//¾ö¶¨¼¸ºÎ²úÉúÍ¼Æ¬µÄÄÚÈİ
+			rasterizer.polygonMode			   = VK_POLYGON_MODE_FILL;				//å†³å®šå‡ ä½•äº§ç”Ÿå›¾ç‰‡çš„å†…å®¹
 			rasterizer.lineWidth			   = 1.0f;
-			rasterizer.cullMode				   = VK_CULL_MODE_BACK_BIT;				//ÃæÌŞ³ı
-			rasterizer.frontFace			   = VK_FRONT_FACE_COUNTER_CLOCKWISE;	//ÃæµÄ¼ÓÔØË³Ğò
-			rasterizer.depthBiasEnable		   = VK_TRUE;							//ÆôÓÃÉî¶ÈÆ«ÒÆ£¬ÈÃmineÄÜ¸²¸Ç·½¿é
-			rasterizer.depthBiasConstantFactor = 1.0f;								//³£Á¿Æ«ÒÆÁ¿
-			rasterizer.depthBiasClamp		   = 0.0f;								//²»ÏŞÖÆ×îĞ¡Æ«ÒÆ
-			rasterizer.depthBiasSlopeFactor    = 1.0f;								//»ùÓÚĞ±ÂÊµÄÉî¶ÈÆ«ÒÆ
+			rasterizer.cullMode				   = VK_CULL_MODE_BACK_BIT;				//é¢å‰”é™¤
+			rasterizer.frontFace			   = VK_FRONT_FACE_COUNTER_CLOCKWISE;	//é¢çš„åŠ è½½é¡ºåº
+			rasterizer.depthBiasEnable		   = VK_TRUE;							//å¯ç”¨æ·±åº¦åç§»ï¼Œè®©mineèƒ½è¦†ç›–æ–¹å—
+			rasterizer.depthBiasConstantFactor = 1.0f;								//å¸¸é‡åç§»é‡
+			rasterizer.depthBiasClamp		   = 0.0f;								//ä¸é™åˆ¶æœ€å°åç§»
+			rasterizer.depthBiasSlopeFactor    = 1.0f;								//åŸºäºæ–œç‡çš„æ·±åº¦åç§»
 
-            //¶àÖØ²ÉÑù
+            //å¤šé‡é‡‡æ ·
 			multisampling.sType					= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 			multisampling.sampleShadingEnable	= VK_FALSE;
 			multisampling.rasterizationSamples	= msaa;
@@ -1148,19 +1148,19 @@ namespace pipelineStruct {
 			multisampling.alphaToCoverageEnable = VK_FALSE;											
 			multisampling.alphaToOneEnable		= VK_FALSE;												
 
-            //Éî¶ÈºÍÄ£°å
+            //æ·±åº¦å’Œæ¨¡æ¿
 			depthStencil.sType				   = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-			depthStencil.depthTestEnable	   = VK_TRUE;							//Ö¸¶¨ÊÇ·ñÓ¦¸Ã½«ĞÂµÄÉî¶È»º³åÇøÓëÉî¶È»º³åÇø½øĞĞ±È½Ï£¬ÒÔÈ·ÈÏÊÇ·ñÓ¦¸Ã±»¶ªÆú
-			depthStencil.depthWriteEnable	   = VK_TRUE;							//Ö¸¶¨Í¨¹ıÉî¶È²âÊÔµÄĞÂµÄÆ¬¶ÎÉî¶ÈÊÇ·ñÓ¦¸Ã±»Êµ¼ÊĞ´ÈëÉî¶È»º³åÇø
-			depthStencil.depthCompareOp		   = VK_COMPARE_OP_LESS;				//Ö¸¶¨Ö´ĞĞ±£Áô»òÕß¶ªÆúÆ¬¶ÎµÄ±È½ÏÏ¸½Ú
-			depthStencil.depthBoundsTestEnable = VK_FALSE;							//depthBoundsTestEnable, minDepthBounds ºÍ maxDepthBounds ×Ö¶ÎÓÃÓÚ¿ÉÑ¡ÔñµÄÓÅ»¯Éî¶È°ó¶¨²âÊÔ
+			depthStencil.depthTestEnable	   = VK_TRUE;							//æŒ‡å®šæ˜¯å¦åº”è¯¥å°†æ–°çš„æ·±åº¦ç¼“å†²åŒºä¸æ·±åº¦ç¼“å†²åŒºè¿›è¡Œæ¯”è¾ƒï¼Œä»¥ç¡®è®¤æ˜¯å¦åº”è¯¥è¢«ä¸¢å¼ƒ
+			depthStencil.depthWriteEnable	   = VK_TRUE;							//æŒ‡å®šé€šè¿‡æ·±åº¦æµ‹è¯•çš„æ–°çš„ç‰‡æ®µæ·±åº¦æ˜¯å¦åº”è¯¥è¢«å®é™…å†™å…¥æ·±åº¦ç¼“å†²åŒº
+			depthStencil.depthCompareOp		   = VK_COMPARE_OP_LESS;				//æŒ‡å®šæ‰§è¡Œä¿ç•™æˆ–è€…ä¸¢å¼ƒç‰‡æ®µçš„æ¯”è¾ƒç»†èŠ‚
+			depthStencil.depthBoundsTestEnable = VK_FALSE;							//depthBoundsTestEnable, minDepthBounds å’Œ maxDepthBounds å­—æ®µç”¨äºå¯é€‰æ‹©çš„ä¼˜åŒ–æ·±åº¦ç»‘å®šæµ‹è¯•
 			depthStencil.minDepthBounds		   = 0.0f;
 			depthStencil.maxDepthBounds		   = 1.0f;
-			depthStencil.stencilTestEnable	   = VK_FALSE;							//ÓÃÓÚÅäÖÃÄ£°æ»º³åÇøµÄ²Ù×÷
+			depthStencil.stencilTestEnable	   = VK_FALSE;							//ç”¨äºé…ç½®æ¨¡ç‰ˆç¼“å†²åŒºçš„æ“ä½œ
 			depthStencil.front				   = {};
 			depthStencil.back				   = {};
 
-            //ÑÕÉ«¸½¼şÁĞ±í
+            //é¢œè‰²é™„ä»¶åˆ—è¡¨
             VkPipelineColorBlendAttachmentState colorAttachmentNode{
                 .blendEnable         = VK_FALSE,
                 .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
@@ -1182,11 +1182,11 @@ namespace pipelineStruct {
                 colorAttachmentList.push_back(colorAttachmentNode);
                 break;
             case renderEnum::renderAttId::shadowMap_ra:
-                //ÒõÓ°¹ÜÏßÎŞĞèÑÕÉ«¸½¼ş
+                //é˜´å½±ç®¡çº¿æ— éœ€é¢œè‰²é™„ä»¶
                 break;
             }
 
-            //ÑÕÉ«¸½¼şÅäÖÃ
+            //é¢œè‰²é™„ä»¶é…ç½®
 			colorAttachmentState.sType			   = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 			colorAttachmentState.logicOpEnable	   = VK_FALSE;
 			colorAttachmentState.logicOp		   = VK_LOGIC_OP_COPY;		
@@ -1197,7 +1197,7 @@ namespace pipelineStruct {
 			colorAttachmentState.blendConstants[2] = 0.0f;				
 			colorAttachmentState.blendConstants[3] = 0.0f;				
 
-            //¹ÜÏßĞÅÏ¢
+            //ç®¡çº¿ä¿¡æ¯
 			pipeInfo.sType				 = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
             pipeInfo.stageCount          = (uint32_t)shaderStageList.size();
             pipeInfo.pStages             = shaderStageList.data();
@@ -1216,7 +1216,7 @@ namespace pipelineStruct {
 			pipeInfo.basePipelineIndex	 = -1;
 		}
     
-        //ÉèÖÃ¹ÜÏß¶¯Ì¬´¦ÀíµÄ½×¶Î
+        //è®¾ç½®ç®¡çº¿åŠ¨æ€å¤„ç†çš„é˜¶æ®µ
         void setPipeDynamicStage(const std::vector<VkDynamicState>& list) {
             pipeDynamicStageList                    = list;
             pipeDynamicStageState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -1227,7 +1227,7 @@ namespace pipelineStruct {
         }
     };
 
-    //³£×¤Òì²½¹¤×÷Ïß³Ì£ºµ¥Ïß³ÌÈÎÎñ¶ÓÁĞ + Ìõ¼ş±äÁ¿£¬Ìæ´ú detach Ïß³ÌÓëÃ¦µÈ
+    //å¸¸é©»å¼‚æ­¥å·¥ä½œçº¿ç¨‹ï¼šå•çº¿ç¨‹ä»»åŠ¡é˜Ÿåˆ— + æ¡ä»¶å˜é‡ï¼Œæ›¿ä»£ detach çº¿ç¨‹ä¸å¿™ç­‰
     struct asyncWorker {
         std::thread						  thread;
         std::mutex						  mutex;
@@ -1275,13 +1275,13 @@ namespace pipelineStruct {
             cv.notify_one();
         }
 
-        //µÈ´ı¶ÓÁĞÅÅ¿ÕÇÒµ±Ç°ÈÎÎñÖ´ĞĞÍê±Ï
+        //ç­‰å¾…é˜Ÿåˆ—æ’ç©ºä¸”å½“å‰ä»»åŠ¡æ‰§è¡Œå®Œæ¯•
         void waitIdle() {
             std::unique_lock<std::mutex> lock(mutex);
             cv.wait(lock, [this] { return tasks.empty() && running == 0; });
         }
 
-        //Í£Ö¹½ÓÊÕ¡¢ÅÅ¿Õ¶ÓÁĞ²¢ÍË³öÏß³Ì
+        //åœæ­¢æ¥æ”¶ã€æ’ç©ºé˜Ÿåˆ—å¹¶é€€å‡ºçº¿ç¨‹
         void shutdown() {
             {
                 std::lock_guard<std::mutex> lock(mutex);
@@ -1295,9 +1295,9 @@ namespace pipelineStruct {
 
 
 
-    //pipeLayout½áµã
+    //pipeLayoutç»“ç‚¹
     struct pipeLayoutNode {
-        VkPipelineLayout pipeLayout{};      //¹ÜÏß²¼¾Ö
+        VkPipelineLayout pipeLayout{};      //ç®¡çº¿å¸ƒå±€
 
 
 
@@ -1310,7 +1310,7 @@ namespace pipelineStruct {
             pipelineLayoutInfo.pSetLayouts            = &dstLayout;
 
             if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipeLayout) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "¹ÜÏß²¼¾Ö´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "ç®¡çº¿å¸ƒå±€åˆ›å»ºå¤±è´¥");
             }
         }
 
@@ -1319,27 +1319,27 @@ namespace pipelineStruct {
         }
     };
 
-    //pipe½áµã
+    //pipeç»“ç‚¹
     struct pipelineNode {
-        std::vector<pipelineStruct::shaderNode> shaderList{};   //×ÅÉ«Æ÷ÁĞ±í
-        pipelineStruct::pipeConfigNode          pipeConfig{};   //¹ÜÏßÅäÖÃ
-        VkPipeline                              pipeline{};     //¹ÜÏß
+        std::vector<pipelineStruct::shaderNode> shaderList{};   //ç€è‰²å™¨åˆ—è¡¨
+        pipelineStruct::pipeConfigNode          pipeConfig{};   //ç®¡çº¿é…ç½®
+        VkPipeline                              pipeline{};     //ç®¡çº¿
 
 
 
-        //´´½¨¶¥µã¹ÜÏß½áµã
+        //åˆ›å»ºé¡¶ç‚¹ç®¡çº¿ç»“ç‚¹
         void createPipelineNode(const VkSampleCountFlagBits& msaa, const renderStruct::renderTemplateNode& renderTemplateNode, const pipelineStruct::pipeLayoutNode& pipeLayoutNode, const std::vector<std::string>& shaderFileList, const VkDevice& device) {
-            //´´½¨shaderList
+            //åˆ›å»ºshaderList
             shaderList.resize(shaderFileList.size());
             if (shaderFileList.size() == pipelineEnum::shaderNodeId::vert::count) {
                 shaderList[pipelineEnum::shaderNodeId::vert::vert].createShaderNode(device, shaderFileList[0], VK_SHADER_STAGE_VERTEX_BIT);
                 shaderList[pipelineEnum::shaderNodeId::vert::frag].createShaderNode(device, shaderFileList[1], VK_SHADER_STAGE_FRAGMENT_BIT);
             }
             else if (shaderFileList.size() == pipelineEnum::shaderNodeId::mesh::count) {
-                //todo ´ıĞ´Íø¸ñ×ÅÉ«
+                //todo å¾…å†™ç½‘æ ¼ç€è‰²
             }
 
-            //´´½¨pipeConfig
+            //åˆ›å»ºpipeConfig
             pipeConfig.createPipeConfigNode(shaderList, msaa, renderTemplateNode.renderAttType, renderTemplateNode.render, pipeLayoutNode.pipeLayout);
         }
 
@@ -1359,36 +1359,36 @@ namespace pipelineStruct {
     };
 }
 
-//cmd½á¹¹¿Õ¼ä
+//cmdç»“æ„ç©ºé—´
 namespace cmdStruct {
-    //cmdÏß³Ì½áµã
+    //cmdçº¿ç¨‹ç»“ç‚¹
     struct cmdThreadNode {
-        std::mutex lock{};                  //Ïß³ÌËø£º±£»¤ flip/swap µÄ¶Á¸ÄĞ´
-        std::atomic<int> current{ 0 };      //µ±Ç°Ïß³Ì
-        std::atomic<int> next{ 0 };         //ÏÂÒ»Ïß³Ì
+        std::mutex lock{};                  //çº¿ç¨‹é”ï¼šä¿æŠ¤ flip/swap çš„è¯»æ”¹å†™
+        std::atomic<int> current{ 0 };      //å½“å‰çº¿ç¨‹
+        std::atomic<int> next{ 0 };         //ä¸‹ä¸€çº¿ç¨‹
 
 
 
-        //ÅĞ¶Ï¸üĞÂ£¨ÎŞËø¶Á£¬°²È«£©
+        //åˆ¤æ–­æ›´æ–°ï¼ˆæ— é”è¯»ï¼Œå®‰å…¨ï¼‰
         bool isFlip() const {
             return next.load() != current.load();
         }
 
-        //½øĞĞ¸üĞÂ£ºnextÇĞµ½ÁíÒ»Ïß³Ì
+        //è¿›è¡Œæ›´æ–°ï¼šnextåˆ‡åˆ°å¦ä¸€çº¿ç¨‹
         void flip() {
             std::lock_guard<std::mutex> guard(lock);
             next.store((current.load() + 1) % 2);
         }
 
-        //Íê³É¸üĞÂ£ºµ±Ç°Ïß³ÌÇĞµ½next
+        //å®Œæˆæ›´æ–°ï¼šå½“å‰çº¿ç¨‹åˆ‡åˆ°next
         void swap() {
             std::lock_guard<std::mutex> guard(lock);
             current.store(next.load());
         }
     };
 
-    //todoºóĞøĞ´³Épipe½áµã
-    //cmdÅäÖÃ½áµã
+    //todoåç»­å†™æˆpipeç»“ç‚¹
+    //cmdé…ç½®ç»“ç‚¹
     struct cmdConfigNode {
         VkPipeline       pipe        = VK_NULL_HANDLE;
         VkPipelineLayout layout      = VK_NULL_HANDLE;
@@ -1398,7 +1398,7 @@ namespace cmdStruct {
 
 
 
-        //ÖØÖÃ
+        //é‡ç½®
         void reset() {
             pipe        = VK_NULL_HANDLE;
             layout      = VK_NULL_HANDLE;
@@ -1408,17 +1408,17 @@ namespace cmdStruct {
         }
     };
 
-    //cmdÂ¼ÖÆ½áµã
+    //cmdå½•åˆ¶ç»“ç‚¹
     struct cmdRecorderNode {
-        VkCommandBuffer           cmd = VK_NULL_HANDLE;     //ÃüÁî
-        VkCommandBufferBeginInfo  cmdBegin{};               //ÃüÁî¿ªÊ¼
-        cmdStruct::cmdConfigNode  cmdConfig{};              //ÃüÁîÅäÖÃ
+        VkCommandBuffer           cmd = VK_NULL_HANDLE;     //å‘½ä»¤
+        VkCommandBufferBeginInfo  cmdBegin{};               //å‘½ä»¤å¼€å§‹
+        cmdStruct::cmdConfigNode  cmdConfig{};              //å‘½ä»¤é…ç½®
 
-        VkViewport                viewport{};               //ÊÓ¿Ú
-        VkRect2D                  scissor{};                //²Ã¼ô
+        VkViewport                viewport{};               //è§†å£
+        VkRect2D                  scissor{};                //è£å‰ª
 
-        std::vector<VkDeviceSize> vertOffset{ 0 };          //¶¥µãÆ«ÒÆ
-        VkMemoryBarrier           memBarrier{};             //ÄÚ´æÆÁÕÏ
+        std::vector<VkDeviceSize> vertOffset{ 0 };          //é¡¶ç‚¹åç§»
+        VkMemoryBarrier           memBarrier{};             //å†…å­˜å±éšœ
 
 
 
@@ -1439,49 +1439,49 @@ namespace cmdStruct {
             memBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         }
 
-        //°ó¶¨cmd
+        //ç»‘å®šcmd
         void bind(const VkCommandBuffer& tCmd) {
             cmd = tCmd;
             cmdConfig.reset();
         }
 
-        //ÖØÖÃcmd
+        //é‡ç½®cmd
         void reset() {
             if (vkResetCommandBuffer(cmd, 0) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "cmdÖØÖÃÊ§°Ü");
+                Log::printError(__FILE__, __LINE__, "cmdé‡ç½®å¤±è´¥");
             }
         }
 
-        //¿ªÊ¼cmd
+        //å¼€å§‹cmd
         void begin() {
             if (vkBeginCommandBuffer(cmd, &cmdBegin) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "cmd¿ªÊ¼Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "cmdå¼€å§‹å¤±è´¥");
             }
         }
 
-        //½áÊøcmd
+        //ç»“æŸcmd
         void end() {
             vertOffset = std::vector<VkDeviceSize>{ 0 };
 
             if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "cmd½áÊøÊ§°Ü");
+                Log::printError(__FILE__, __LINE__, "cmdç»“æŸå¤±è´¥");
             }
         }
 
-        //¿ªÊ¼äÖÈ¾
+        //å¼€å§‹æ¸²æŸ“
         void beginRender(const VkRenderPassBeginInfo* info) {
             cmdConfig.reset();
             vkCmdBeginRenderPass(cmd, info, VK_SUBPASS_CONTENTS_INLINE);
         }
 
-        //½áÊøäÖÈ¾
+        //ç»“æŸæ¸²æŸ“
         void endRender() {
             vkCmdEndRenderPass(cmd);
         }
 
 
 
-        //»æÖÆ
+        //ç»˜åˆ¶
         void draw(const pipelineEnum::cmdDrawId::type& cmdDrawType, const VkPipeline& tPipe, const VkPipelineLayout& tLayout, const VkDescriptorSet& tDesc, const VkBuffer& tVertBuffer = VK_NULL_HANDLE, const VkBuffer& tIndexBuffer = VK_NULL_HANDLE, uint32_t tCount = 0, const VkExtent2D& tExtent = {}) {
             switch (cmdDrawType) {
             case pipelineEnum::cmdDrawId::indexed: {
@@ -1520,13 +1520,13 @@ namespace cmdStruct {
             }
         }
 
-        //¹ÜÏßÆÁÕÏ
+        //ç®¡çº¿å±éšœ
         void barrier() {
             vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, &memBarrier, 0, nullptr, 0, nullptr);
         }
 
     private:
-        //°ó¶¨pipe
+        //ç»‘å®špipe
         void bindPipe(const VkPipeline& tPipe) {
             if (cmdConfig.pipe != tPipe) {
                 cmdConfig.pipe = tPipe;
@@ -1534,7 +1534,7 @@ namespace cmdStruct {
             }
         }
 
-        //°ó¶¨layout¡¢desc£¨API ÒªÇóÍ¬Ê±¸ø£©
+        //ç»‘å®šlayoutã€descï¼ˆAPI è¦æ±‚åŒæ—¶ç»™ï¼‰
         void bindLayoutDesc(const VkPipelineLayout& tLayout, const VkDescriptorSet& tDesc) {
             if (cmdConfig.layout != tLayout || cmdConfig.desc != tDesc) {
                 cmdConfig.layout = tLayout;
@@ -1543,7 +1543,7 @@ namespace cmdStruct {
             }
         }
 
-        //°ó¶¨vert
+        //ç»‘å®švert
         void bindVert(const VkBuffer& tVertBuffer) {
             if (cmdConfig.vertBuffer != tVertBuffer) {
                 cmdConfig.vertBuffer = tVertBuffer;
@@ -1551,7 +1551,7 @@ namespace cmdStruct {
             }
         }
 
-        //°ó¶¨index
+        //ç»‘å®šindex
         void bindIndex(const VkBuffer& tIndexBuffer) {
             if (cmdConfig.indexBuffer != tIndexBuffer) {
                 cmdConfig.indexBuffer = tIndexBuffer;
@@ -1560,16 +1560,16 @@ namespace cmdStruct {
         }
     };
     
-    //cmd»º³å½áµã
+    //cmdç¼“å†²ç»“ç‚¹
     struct cmdBufferNode {
         VkCommandPool                pool  = VK_NULL_HANDLE;
-        VkFence                      fence = VK_NULL_HANDLE;    //±¾Ïß³ÌÃüÁîÖ´ĞĞÍê³ÉĞÅºÅ
+        VkFence                      fence = VK_NULL_HANDLE;    //æœ¬çº¿ç¨‹å‘½ä»¤æ‰§è¡Œå®Œæˆä¿¡å·
         VkCommandBufferAllocateInfo  info{};
         std::vector<VkCommandBuffer> list{};
     
     
     
-        //´´½¨cmdPool¡¢info¡¢fence
+        //åˆ›å»ºcmdPoolã€infoã€fence
         cmdBufferNode(const VkDevice& device, const uint32_t& queueFamily, const uint32_t& frameCount) {
             VkCommandPoolCreateInfo poolInfo{};
             poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -1577,7 +1577,7 @@ namespace cmdStruct {
             poolInfo.queueFamilyIndex = queueFamily;
     
             if (vkCreateCommandPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "cmdPool´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "cmdPoolåˆ›å»ºå¤±è´¥");
             }
     
             info.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1593,7 +1593,7 @@ namespace cmdStruct {
             fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     
             if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "fence´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "fenceåˆ›å»ºå¤±è´¥");
             }
         }
     
@@ -1601,20 +1601,20 @@ namespace cmdStruct {
     
     
     
-        //´´½¨cmdList
+        //åˆ›å»ºcmdList
         void createCmdList(const VkDevice& device) {
             if (vkAllocateCommandBuffers(device, &info, list.data()) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "cmdList´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "cmdListåˆ›å»ºå¤±è´¥");
             }
         }
     
-        //ÖØ½¨cmdList
+        //é‡å»ºcmdList
         void recreateCmdList(const VkDevice& device) {
             clearCmdList(device);
             createCmdList(device);
         }
 
-        //ÇåÀícmdPool
+        //æ¸…ç†cmdPool
         void clearCmdPool(const VkDevice& device) {
             vkDestroyFence(device, fence, nullptr);
             vkDestroyCommandPool(device, pool, nullptr);
@@ -1623,27 +1623,27 @@ namespace cmdStruct {
             fence = VK_NULL_HANDLE;
         }
 
-        //ÇåÀícmdList
+        //æ¸…ç†cmdList
         void clearCmdList(const VkDevice& device) {
             vkFreeCommandBuffers(device, pool, static_cast<uint32_t>(list.size()), list.data());
         }
     
     
     
-        //ÖØÔØ
+        //é‡è½½
         VkCommandBuffer& operator[](int frameId) { return list[frameId]; }
         size_t           size()            const { return list.size(); }
     };
 
 
 
-    //cmd½áµã
+    //cmdç»“ç‚¹
     struct cmdNode {
-        cmdStruct::cmdThreadNode              thread{};         //Ïß³Ì¹ÜÀíÆ÷
-        cmdStruct::cmdRecorderNode            recorder{};       //Â¼ÖÆ¹ÜÀíÆ÷
+        cmdStruct::cmdThreadNode              thread{};         //çº¿ç¨‹ç®¡ç†å™¨
+        cmdStruct::cmdRecorderNode            recorder{};       //å½•åˆ¶ç®¡ç†å™¨
 
-        std::vector<cmdStruct::cmdBufferNode> renderCmd{};      //äÖÈ¾ÃüÁî£¬Ë«»º³å
-        cmdStruct::cmdBufferNode              transientCmd;     //ÁÙÊ±ÃüÁî£¬µ¥»º³å
+        std::vector<cmdStruct::cmdBufferNode> renderCmd{};      //æ¸²æŸ“å‘½ä»¤ï¼ŒåŒç¼“å†²
+        cmdStruct::cmdBufferNode              transientCmd;     //ä¸´æ—¶å‘½ä»¤ï¼Œå•ç¼“å†²
 
 
 
@@ -1661,7 +1661,7 @@ namespace cmdStruct {
 
 
 
-        //¿½±´bufferµ½buffer
+        //æ‹·è´bufferåˆ°buffer
         void copyBufferToBuffer(const VkDevice& device, const VkQueue& graphicsQueue, const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, VkDeviceSize size) {
             recordTransientCmd();
 
@@ -1674,7 +1674,7 @@ namespace cmdStruct {
             submitTransientCmd(device, graphicsQueue);
         }
 
-        //¿½±´bufferµ½image£¬×ª»»¡ú¿½±´¡ú×ª»»
+        //æ‹·è´bufferåˆ°imageï¼Œè½¬æ¢â†’æ‹·è´â†’è½¬æ¢
         void copyBufferToImage(const VkDevice& device, const VkQueue& graphicsQueue, const VkBuffer& buffer, const VkImage& image, const std::vector<VkBufferImageCopy>& regions, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format) {
             recordTransientCmd();
 
@@ -1687,7 +1687,7 @@ namespace cmdStruct {
 
 
 
-        //Â¼ÖÆ±¾Ïß³ÌÃüÁî
+        //å½•åˆ¶æœ¬çº¿ç¨‹å‘½ä»¤
         template<typename F>
         void recordCmd(int threadId, int frameId, F&& func) {
             recorder.bind(renderCmd[threadId][frameId]);
@@ -1697,20 +1697,20 @@ namespace cmdStruct {
             recorder.end();
         }
 
-        //µÈ´ı±¾Ïß³ÌÃüÁî
+        //ç­‰å¾…æœ¬çº¿ç¨‹å‘½ä»¤
         void waitCmd(const VkDevice& device, int threadId) {
             vkWaitForFences(device, 1, &renderCmd[threadId].fence, VK_TRUE, UINT64_MAX);
         }
 
     private:
-        //Í¼Ïñ²¼¾Ö×ª»»
+        //å›¾åƒå¸ƒå±€è½¬æ¢
         void transImageLayout(const VkDevice& device, const VkQueue& graphicsQueue, const VkImage& image, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
             recordTransientCmd();
             recordImageLayoutBarrier(image, arrayLayer, mipLevel, format, oldLayout, newLayout);
             submitTransientCmd(device, graphicsQueue);
         }
 
-        //Â¼ÖÆÍ¼Ïñ²¼¾Ö×ª»»ÆÁÕÏ
+        //å½•åˆ¶å›¾åƒå¸ƒå±€è½¬æ¢å±éšœ
         void recordImageLayoutBarrier(const VkImage& image, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
             VkImageMemoryBarrier memBarrier{};
             memBarrier.sType                = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1762,7 +1762,7 @@ namespace cmdStruct {
                 dstPipeStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             }
             else {
-                Log::printError(__FILE__, __LINE__, "ÎŞÖ§³ÖµÄ²¼¾Ö×ª»»");
+                Log::printError(__FILE__, __LINE__, "æ— æ”¯æŒçš„å¸ƒå±€è½¬æ¢");
             }
 
             vkCmdPipelineBarrier(transientCmd[0], srcPipeStage, dstPipeStage, 0, 0, nullptr, 0, nullptr, 1, &memBarrier);
@@ -1770,7 +1770,7 @@ namespace cmdStruct {
 
 
         
-        //Â¼ÖÆtransientCmd
+        //å½•åˆ¶transientCmd
         void recordTransientCmd() {
             vkResetCommandBuffer(transientCmd[0], 0);
 
@@ -1779,11 +1779,11 @@ namespace cmdStruct {
             beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
             if (vkBeginCommandBuffer(transientCmd[0], &beginInfo) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "transientCmd¿ªÊ¼Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "transientCmdå¼€å§‹å¤±è´¥");
             }
         }
 
-        //Ìá½»transientCmd
+        //æäº¤transientCmd
         void submitTransientCmd(const VkDevice& device, const VkQueue& graphicsQueue) {
             vkEndCommandBuffer(transientCmd[0]);
 
@@ -1797,7 +1797,7 @@ namespace cmdStruct {
                 vkResetFences(device, 1, &transientCmd.fence);
 
                 if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, transientCmd.fence) != VK_SUCCESS) {
-                    Log::printError(__FILE__, __LINE__, "transientCmdÌá½»Ê§°Ü");
+                    Log::printError(__FILE__, __LINE__, "transientCmdæäº¤å¤±è´¥");
                 }
             }
 
@@ -1814,9 +1814,9 @@ namespace cmdStruct {
 
 
 
-//buffer½á¹¹¿Õ¼ä£¬ todoºóĞøÂıÂı²ğ·Ö
+//bufferç»“æ„ç©ºé—´ï¼Œ todoåç»­æ…¢æ…¢æ‹†åˆ†
 namespace bufferStruct {
-    //uiĞÅÏ¢½áµã
+    //uiä¿¡æ¯ç»“ç‚¹
     struct uiTextInfoNode {
         glm::dvec3 pos;
         glm::dvec3 chunkPos;
@@ -1825,97 +1825,97 @@ namespace bufferStruct {
 
 
 
-    //µã¹âÔ´½áµã
+    //ç‚¹å…‰æºç»“ç‚¹
     struct pointLightNode {
-        glm::vec3 position;     //Î»ÖÃ
-        float radius;           //°ë¾¶
+        glm::vec3 position;     //ä½ç½®
+        float radius;           //åŠå¾„
 
-        glm::vec3 color;        //ÑÕÉ«
-        float placeholder;      //Õ¼Î»·û
+        glm::vec3 color;        //é¢œè‰²
+        float placeholder;      //å ä½ç¬¦
     };
 
-    //Æ½ĞĞ¹â½áµã
+    //å¹³è¡Œå…‰ç»“ç‚¹
     struct dirLightNode {
-        glm::vec3 direction;    //·½Ïò
-        float scale;            //Ç¿¶È
+        glm::vec3 direction;    //æ–¹å‘
+        float scale;            //å¼ºåº¦
 
-        glm::vec3 color;        //ÑÕÉ«
-        float placeholder;      //Õ¼Î»·û
+        glm::vec3 color;        //é¢œè‰²
+        float placeholder;      //å ä½ç¬¦
     };
 
-    //¾Û¹âµÆ½áµã
+    //èšå…‰ç¯ç»“ç‚¹
     struct spotLightNode {
-        glm::vec3 position;     //Î»ÖÃ
-        float inner;            //ÄÚÔ²×¶
+        glm::vec3 position;     //ä½ç½®
+        float inner;            //å†…åœ†é”¥
 
-        glm::vec3 color;        //ÑÕÉ«
-        float outer;            //ÍâÔ²×¶
+        glm::vec3 color;        //é¢œè‰²
+        float outer;            //å¤–åœ†é”¥
 
-        glm::vec3 direction;    //·½Ïò
-        float placeholder;      //Õ¼Î»·û
+        glm::vec3 direction;    //æ–¹å‘
+        float placeholder;      //å ä½ç¬¦
     };
 
-    //mvpÍ³Ò»½áµã
+    //mvpç»Ÿä¸€ç»“ç‚¹
     struct mvpUBO {
-        glm::mat4 model;            //Ä£ĞÍ¾ØÕó£¬ÓÃÓÚ½«Ä£ĞÍ±ä»»µ½ÊÀ½ç×ø±êÏµ
-        glm::mat4 modelTI;          //Ä£ĞÍ×ªÖÃÄæ¾ØÕó£¬ÓÃÓÚ¼ÆËã¹âÕÕ·¨Ïß
-        glm::mat4 view;             //ÊÓÍ¼¾ØÕó£¬ÓÃÓÚ½«ÊÀ½ç×ø±êÏµ±ä»»µ½¹Û²ìÕß×ø±êÏµ
-        glm::mat4 proj;             //Í¶Ó°¾ØÕó£¬ÓÃÓÚ½«¹Û²ìÕß×ø±êÏµ±ä»»µ½²Ã¼ô×ø±êÏµ
+        glm::mat4 model;            //æ¨¡å‹çŸ©é˜µï¼Œç”¨äºå°†æ¨¡å‹å˜æ¢åˆ°ä¸–ç•Œåæ ‡ç³»
+        glm::mat4 modelTI;          //æ¨¡å‹è½¬ç½®é€†çŸ©é˜µï¼Œç”¨äºè®¡ç®—å…‰ç…§æ³•çº¿
+        glm::mat4 view;             //è§†å›¾çŸ©é˜µï¼Œç”¨äºå°†ä¸–ç•Œåæ ‡ç³»å˜æ¢åˆ°è§‚å¯Ÿè€…åæ ‡ç³»
+        glm::mat4 proj;             //æŠ•å½±çŸ©é˜µï¼Œç”¨äºå°†è§‚å¯Ÿè€…åæ ‡ç³»å˜æ¢åˆ°è£å‰ªåæ ‡ç³»
     };
 
-    //Ç°Ïò¹âÕÕÍ³Ò»½áµã
+    //å‰å‘å…‰ç…§ç»Ÿä¸€ç»“ç‚¹
     struct forwardLightUBO {
-        glm::vec3 viewPos;          //¹Û²ìÕß×ø±ê£¬ÓÃÓÚ¼ÆËã¾µÃæ·´Éä
-        float currentHour;          //µ±Ç°Ğ¡Ê±£¬Í¨¹ıgameTime(ÓÎÏ·ÔËĞĞÊ±³¤)%24µÃµ½£¬ÓÃÓÚÖÜÆÚĞÔĞ§¹û
+        glm::vec3 viewPos;          //è§‚å¯Ÿè€…åæ ‡ï¼Œç”¨äºè®¡ç®—é•œé¢åå°„
+        float currentHour;          //å½“å‰å°æ—¶ï¼Œé€šè¿‡gameTime(æ¸¸æˆè¿è¡Œæ—¶é•¿)%24å¾—åˆ°ï¼Œç”¨äºå‘¨æœŸæ€§æ•ˆæœ
 
-        glm::vec3 gLightColor;      //È«¾Ö¹âÕÕÑÕÉ«£¬¾ö¶¨»·¾³¹âºÍÂş·´Éä»ù´¡ÑÕÉ«
-        float ambientScale;         //»·¾³¹âËõ·Å£¬¾ö¶¨»·¾³¹âÇ¿¶È
+        glm::vec3 gLightColor;      //å…¨å±€å…‰ç…§é¢œè‰²ï¼Œå†³å®šç¯å¢ƒå…‰å’Œæ¼«åå°„åŸºç¡€é¢œè‰²
+        float ambientScale;         //ç¯å¢ƒå…‰ç¼©æ”¾ï¼Œå†³å®šç¯å¢ƒå…‰å¼ºåº¦
 
-        glm::vec3 gLightPos;        //È«¾Ö¹âÕÕ×ø±ê£¬µã¹âÔ´×ø±ê£¬¾ö¶¨Âş·´ÉäĞ§¹û
-        float diffuseScale;         //Âş·´ÉäËõ·Å£¬¾ö¶¨Âş·´ÉäÇ¿¶È
+        glm::vec3 gLightPos;        //å…¨å±€å…‰ç…§åæ ‡ï¼Œç‚¹å…‰æºåæ ‡ï¼Œå†³å®šæ¼«åå°„æ•ˆæœ
+        float diffuseScale;         //æ¼«åå°„ç¼©æ”¾ï¼Œå†³å®šæ¼«åå°„å¼ºåº¦
 
-        glm::vec3 gLightDir;        //È«¾Ö¹âÕÕ·½Ïò£¬Æ½ĞĞ¹â×ø±ê£¬¾ö¶¨Âş·´ÉäĞ§¹û
-        float specularScale;        //¾µÃæ·´ÉäËõ·Å£¬¾ö¶¨¾µÃæ·´ÉäÇ¿¶È
+        glm::vec3 gLightDir;        //å…¨å±€å…‰ç…§æ–¹å‘ï¼Œå¹³è¡Œå…‰åæ ‡ï¼Œå†³å®šæ¼«åå°„æ•ˆæœ
+        float specularScale;        //é•œé¢åå°„ç¼©æ”¾ï¼Œå†³å®šé•œé¢åå°„å¼ºåº¦
 
-        glm::vec3 flashPos;         //¾Û¹âµÆ×ø±ê
-        float flashCutOff;          //¾Û¹âµÆÄÚÔ²×¶
+        glm::vec3 flashPos;         //èšå…‰ç¯åæ ‡
+        float flashCutOff;          //èšå…‰ç¯å†…åœ†é”¥
 
-        glm::vec3 flashDir;         //¾Û¹âµÆ·½Ïò
-        float outerCutOff;          //¾Û¹âµÆÍâÔ²×¶
+        glm::vec3 flashDir;         //èšå…‰ç¯æ–¹å‘
+        float outerCutOff;          //èšå…‰ç¯å¤–åœ†é”¥
     };
 
-    //ÑÓ³Ù¹âÕÕÍ³Ò»½áµã
+    //å»¶è¿Ÿå…‰ç…§ç»Ÿä¸€ç»“ç‚¹
     struct deferredLightUBO {
-        glm::vec3 viewPos;          //¹Û²ìÕß×ø±ê£¬ÓÃÓÚ¼ÆËã¾µÃæ·´Éä
-        float currentHour;          //µ±Ç°Ğ¡Ê±£¬Í¨¹ıgameTime(ÓÎÏ·ÔËĞĞÊ±³¤)%24µÃµ½£¬ÓÃÓÚÖÜÆÚĞÔĞ§¹û
+        glm::vec3 viewPos;          //è§‚å¯Ÿè€…åæ ‡ï¼Œç”¨äºè®¡ç®—é•œé¢åå°„
+        float currentHour;          //å½“å‰å°æ—¶ï¼Œé€šè¿‡gameTime(æ¸¸æˆè¿è¡Œæ—¶é•¿)%24å¾—åˆ°ï¼Œç”¨äºå‘¨æœŸæ€§æ•ˆæœ
         
-        float ambientScale;         //»·¾³¹âÇ¿¶È
-        float diffuseScale;         //Âş·´ÉäÇ¿¶È
-        float specularScale;        //¾µÃæ·´ÉäÇ¿¶È
-        float placeholder;          //Õ¼Î»·û
+        float ambientScale;         //ç¯å¢ƒå…‰å¼ºåº¦
+        float diffuseScale;         //æ¼«åå°„å¼ºåº¦
+        float specularScale;        //é•œé¢åå°„å¼ºåº¦
+        float placeholder;          //å ä½ç¬¦
         
         pointLightNode pointLightList[1];
         dirLightNode   dirLightList[1];
         spotLightNode  spotLightList[1];
     };
 
-    //ÑÓ³ÙÒõÓ°Í³Ò»½áµã
+    //å»¶è¿Ÿé˜´å½±ç»Ÿä¸€ç»“ç‚¹
     struct deferredShadowUBO {
-        glm::mat4 shadowMvp;        //ÒõÓ°mvp
-        glm::vec2 shadowExtent;     //ÒõÓ°ÌùÍ¼´óĞ¡
+        glm::mat4 shadowMvp;        //é˜´å½±mvp
+        glm::vec2 shadowExtent;     //é˜´å½±è´´å›¾å¤§å°
     };
 
-    //ÒõÓ°mvpÍ³Ò»½áµã
+    //é˜´å½±mvpç»Ÿä¸€ç»“ç‚¹
     struct shadowMvpUBO {
-        glm::mat4 mvp;              //ÒõÓ°mvp±ä»»
+        glm::mat4 mvp;              //é˜´å½±mvpå˜æ¢
     };
 
 
 
-    /*¹ÜÏß»º³åÇø*/
+    /*ç®¡çº¿ç¼“å†²åŒº*/
     struct terrainBufferNode {
         //todo
-        textureBufferNode temp_texture;                                                                  //ÎÆÀí½áµã£¬¹¹ÔìÊ±³õÊ¼»¯
+        textureBufferNode temp_texture;                                                                  //çº¹ç†ç»“ç‚¹ï¼Œæ„é€ æ—¶åˆå§‹åŒ–
 
 
 
@@ -1931,34 +1931,34 @@ namespace bufferStruct {
 
 
         //---
-        //todo baseBufferNode    mesh[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];     //Íø¸ñ½áµã
+        //todo baseBufferNode    mesh[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];     //ç½‘æ ¼ç»“ç‚¹
         baseBufferNode vertex[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
         baseBufferNode index[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
 
-        //ÎÆÀí»º³å
+        //çº¹ç†ç¼“å†²
         const char* textureFile;
         imageBufferNode texture;
 
-        //ÎÆÀí²ÎÊı
+        //çº¹ç†å‚æ•°
         uint32_t arrayLayer;
         uint32_t mipLevel = 1;
 
-        //Í³Ò»»º³å
+        //ç»Ÿä¸€ç¼“å†²
         baseBufferNode uniform;
         mvpUBO ubo;
 
-        //ÃèÊö»º³å
+        //æè¿°ç¼“å†²
         VkDescriptorSet descriptorSet;
 
-        //³ÌĞò»¯Ë÷Òı
+        //ç¨‹åºåŒ–ç´¢å¼•
         bool isEnable;
-        //todo ¸Ä³Étype
-        pipelineEnum::procPipelineId::type pipeType;  //¹ÜÏßË÷Òı
-        bufferEnum::procSamplerId::type samplerType;  //²ÉÑùË÷Òı
+        //todo æ”¹æˆtype
+        pipelineEnum::procPipelineId::type pipeType;  //ç®¡çº¿ç´¢å¼•
+        bufferEnum::procSamplerId::type samplerType;  //é‡‡æ ·ç´¢å¼•
 
 
 
-        //ÇåÀí½á¹¹Ìå£¬descriptorSetÓÉÃèÊö·û³Ø¹ÜÀí£¬ÎŞĞèÊÖ¶¯ÇåÀí
+        //æ¸…ç†ç»“æ„ä½“ï¼ŒdescriptorSetç”±æè¿°ç¬¦æ± ç®¡ç†ï¼Œæ— éœ€æ‰‹åŠ¨æ¸…ç†
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
                 for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
@@ -1975,36 +1975,36 @@ namespace bufferStruct {
     };
 
     struct staticModelNode {
-        //Ä£ĞÍÎÄ¼ş
+        //æ¨¡å‹æ–‡ä»¶
         std::string modelFile;
 
-        //Íø¸ñ»º³å
+        //ç½‘æ ¼ç¼“å†²
         baseBufferNode vertex;
         baseBufferNode index;
 
-        //ÎÆÀí»º³å
+        //çº¹ç†ç¼“å†²
         const char* textureFile;
         imageBufferNode texture;
         //const char* normalFile;
         //imageBufferNode normal;
 
-        //ÎÆÀí²ÎÊı
-        uint32_t mipLevel;                  //ÔÚ´´½¨textureÊ±¸³Öµ
+        //çº¹ç†å‚æ•°
+        uint32_t mipLevel;                  //åœ¨åˆ›å»ºtextureæ—¶èµ‹å€¼
 
-        //Í³Ò»»º³å
+        //ç»Ÿä¸€ç¼“å†²
         baseBufferNode uniform;
         mvpUBO ubo;
 
-        //ÃèÊö»º³å
+        //æè¿°ç¼“å†²
         VkDescriptorSet descriptorSet;
 
-        //³ÌĞò»¯Ë÷Òı
+        //ç¨‹åºåŒ–ç´¢å¼•
         bufferEnum::procSamplerId::type samplerId;
 
-        //ÓÃÓÚÆÁ±Î³¬³öÊÓ¾õ·¶Î§Ä£ĞÍµÄÃüÁîÌá½»ºÍÍ³Ò»»º³å¸üĞÂ
-        glm::dvec3 modelWorldPos;           //Ä£ĞÍÊÀ½ç×ø±ê£¨dÊÀ½ç×ø±êÏµ£©£¬ÔÚ³õÊ¼»¯Ê±¸³Öµ
-        glm::dvec3 currentWorldPos;         //µ±Ç°ÊÀ½ç×ø±ê£¨dÊÀ½ç×ø±êÏµ£©£¬ÔÚ¸üĞÂÍ³Ò»»º³åÊ±¸³Öµ
-        bool isVisible = true;              //Ä£ĞÍ¿É¼û±êÊ¶£¬ÔÚÌá½»ÃüÁîÊ±¸³Öµ
+        //ç”¨äºå±è”½è¶…å‡ºè§†è§‰èŒƒå›´æ¨¡å‹çš„å‘½ä»¤æäº¤å’Œç»Ÿä¸€ç¼“å†²æ›´æ–°
+        glm::dvec3 modelWorldPos;           //æ¨¡å‹ä¸–ç•Œåæ ‡ï¼ˆdä¸–ç•Œåæ ‡ç³»ï¼‰ï¼Œåœ¨åˆå§‹åŒ–æ—¶èµ‹å€¼
+        glm::dvec3 currentWorldPos;         //å½“å‰ä¸–ç•Œåæ ‡ï¼ˆdä¸–ç•Œåæ ‡ç³»ï¼‰ï¼Œåœ¨æ›´æ–°ç»Ÿä¸€ç¼“å†²æ—¶èµ‹å€¼
+        bool isVisible = true;              //æ¨¡å‹å¯è§æ ‡è¯†ï¼Œåœ¨æäº¤å‘½ä»¤æ—¶èµ‹å€¼
 
 
 
@@ -2031,21 +2031,21 @@ namespace bufferStruct {
     };
 
     struct dynamicModelSubNode {
-        //Íø¸ñ»º³å
+        //ç½‘æ ¼ç¼“å†²
         baseBufferNode vertex;
         baseBufferNode index;
 
-        //ÎÆÀí»º³å
+        //çº¹ç†ç¼“å†²
         const char* textureFile;
         imageBufferNode texture;
         //const char* normalFile;
         //imageBufferNode normal;
 
-        //Í³Ò»»º³å
+        //ç»Ÿä¸€ç¼“å†²
         baseBufferNode uniform;
         mvpUBO ubo;
 
-        //ÃèÊö»º³å
+        //æè¿°ç¼“å†²
         VkDescriptorSet descriptorSet;
 
 
@@ -2065,22 +2065,22 @@ namespace bufferStruct {
     };
 
     struct dynamicModelNode {
-        //Ä£ĞÍÎÄ¼ş
+        //æ¨¡å‹æ–‡ä»¶
         std::string modelFile;
 
-        //¶¯Ì¬Ä£ĞÍ½áµãÁĞ±í
+        //åŠ¨æ€æ¨¡å‹ç»“ç‚¹åˆ—è¡¨
         std::vector<dynamicModelSubNode> node;
 
-        //ÎÆÀí²ÎÊı
+        //çº¹ç†å‚æ•°
         uint32_t mipLevel;
 
-        //³ÌĞò»¯Ë÷Òı
+        //ç¨‹åºåŒ–ç´¢å¼•
         bufferEnum::procSamplerId::type samplerId;
 
-        //ÓÃÓÚÆÁ±Î³¬³öÊÓ¾õ·¶Î§Ä£ĞÍµÄÃüÁîÌá½»ºÍÍ³Ò»»º³å¸üĞÂ
-        glm::dvec3 modelWorldPos;           //Ä£ĞÍÊÀ½ç×ø±ê£¨dÊÀ½ç×ø±êÏµ£©£¬ÔÚ³õÊ¼»¯Ê±¸³Öµ
-        glm::dvec3 currentWorldPos;         //µ±Ç°ÊÀ½ç×ø±ê£¨dÊÀ½ç×ø±êÏµ£©£¬ÔÚ¸üĞÂÍ³Ò»»º³åÊ±¸³Öµ
-        bool isVisible = true;              //Ä£ĞÍ¿É¼û±êÊ¶£¬ÔÚÌá½»ÃüÁîÊ±¸³Öµ
+        //ç”¨äºå±è”½è¶…å‡ºè§†è§‰èŒƒå›´æ¨¡å‹çš„å‘½ä»¤æäº¤å’Œç»Ÿä¸€ç¼“å†²æ›´æ–°
+        glm::dvec3 modelWorldPos;           //æ¨¡å‹ä¸–ç•Œåæ ‡ï¼ˆdä¸–ç•Œåæ ‡ç³»ï¼‰ï¼Œåœ¨åˆå§‹åŒ–æ—¶èµ‹å€¼
+        glm::dvec3 currentWorldPos;         //å½“å‰ä¸–ç•Œåæ ‡ï¼ˆdä¸–ç•Œåæ ‡ç³»ï¼‰ï¼Œåœ¨æ›´æ–°ç»Ÿä¸€ç¼“å†²æ—¶èµ‹å€¼
+        bool isVisible = true;              //æ¨¡å‹å¯è§æ ‡è¯†ï¼Œåœ¨æäº¤å‘½ä»¤æ—¶èµ‹å€¼
 
 
 
@@ -2105,20 +2105,20 @@ namespace bufferStruct {
     };
 
     struct skyboxBufferNode {
-        //Íø¸ñ»º³å
+        //ç½‘æ ¼ç¼“å†²
         baseBufferNode vertex;
         baseBufferNode index;
 
-        //Í³Ò»»º³å
+        //ç»Ÿä¸€ç¼“å†²
         baseBufferNode uniform;
         mvpUBO ubo;
         baseBufferNode lightUniform;
         forwardLightUBO lightUbo;
 
-        //ÃèÊö»º³å
+        //æè¿°ç¼“å†²
         VkDescriptorSet descriptorSet;
 
-        //³ÌĞò»¯Ë÷Òı
+        //ç¨‹åºåŒ–ç´¢å¼•
         bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
 
@@ -2141,18 +2141,18 @@ namespace bufferStruct {
     };
 
     struct mineBufferNode {
-        //Íø¸ñ»º³å
+        //ç½‘æ ¼ç¼“å†²
         baseBufferNode vertex;
         baseBufferNode index;
 
-        //Í³Ò»»º³å
+        //ç»Ÿä¸€ç¼“å†²
         baseBufferNode uniform;
         mvpUBO ubo;
 
-        //ÃèÊö»º³å
+        //æè¿°ç¼“å†²
         VkDescriptorSet descriptorSet;
 
-        //³ÌĞò»¯Ë÷Òı
+        //ç¨‹åºåŒ–ç´¢å¼•
         bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
 
@@ -2174,21 +2174,21 @@ namespace bufferStruct {
     };
 
     struct uiTextBufferNode {
-        //Íø¸ñ»º³å
+        //ç½‘æ ¼ç¼“å†²
         baseBufferNode vertex;
 
-        //ÎÆÀí»º³å
+        //çº¹ç†ç¼“å†²
         imageBufferNode texture;
-        stb_fontchar* stbFontData = new stb_fontchar[STB_FONT_consolas_24_latin1_NUM_CHARS];    //×Ö·ûÊı¾İ
+        stb_fontchar* stbFontData = new stb_fontchar[STB_FONT_consolas_24_latin1_NUM_CHARS];    //å­—ç¬¦æ•°æ®
 
-        //ÎÆÀí²ÎÊı
+        //çº¹ç†å‚æ•°
         glm::vec4* mapped = nullptr;
         uint32_t numLetters;
 
-        //ÃèÊö»º³å
+        //æè¿°ç¼“å†²
         VkDescriptorSet descriptorSet;
 
-        //³ÌĞò»¯Ë÷Òı
+        //ç¨‹åºåŒ–ç´¢å¼•
         bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
         bufferEnum::procSamplerId::type samplerId;
@@ -2209,25 +2209,25 @@ namespace bufferStruct {
         }
 
         void addText(std::string texts, float x, float y, bufferEnum::textAlignId::type align) {
-            // ×Ö·ûµÄÆğÊ¼Ë÷Òı
+            // å­—ç¬¦çš„èµ·å§‹ç´¢å¼•
             const uint32_t firstChar = STB_FONT_consolas_24_latin1_FIRST_CHAR;
 
-            // ÒÔ´°¿Ú´óĞ¡Îªµ¥Î»£¬¼ÆËã×Ö·û¿í¶ÈºÍ¸ß¶È
+            // ä»¥çª—å£å¤§å°ä¸ºå•ä½ï¼Œè®¡ç®—å­—ç¬¦å®½åº¦å’Œé«˜åº¦
             const float charW = 1.5f * 1.0f / windowInfo::width;
             const float charH = 1.5f * 1.0f / windowInfo::height;
 
-            // ´°¿ÚµÄ¿í¶ÈºÍ¸ß¶È
+            // çª—å£çš„å®½åº¦å’Œé«˜åº¦
             x = (x / windowInfo::width * 2.0f) - 1.0f;
             y = (y / windowInfo::height * 2.0f) - 1.0f;
 
-            // ¼ÆËãÎÄ±¾¿í¶È
+            // è®¡ç®—æ–‡æœ¬å®½åº¦
             float textWidth = 0;
             for (char letter : texts) {
                 stb_fontchar* charData = &stbFontData[(uint32_t)letter - firstChar];
                 textWidth += charData->advance * charW;
             }
 
-            // ¸ù¾İ¶ÔÆë·½Ê½µ÷Õûx×ø±ê
+            // æ ¹æ®å¯¹é½æ–¹å¼è°ƒæ•´xåæ ‡
             switch (align) {
             case bufferEnum::textAlignId::right:
                 x -= textWidth;
@@ -2239,12 +2239,12 @@ namespace bufferStruct {
                 break;
             }
 
-            // ÎªÃ¿¸ö×Ö·ûÉú³ÉuvÓ³ÉäµÄËÄ±ßĞÎ
+            // ä¸ºæ¯ä¸ªå­—ç¬¦ç”Ÿæˆuvæ˜ å°„çš„å››è¾¹å½¢
             for (char letter : texts) {
-                // ´´½¨Ò»¸öÖ¸Ïòstb_fontcharÀàĞÍÊı¾İµÄÖ¸Õë
+                // åˆ›å»ºä¸€ä¸ªæŒ‡å‘stb_fontcharç±»å‹æ•°æ®çš„æŒ‡é’ˆ
                 stb_fontchar* charData = &stbFontData[(uint32_t)letter - firstChar];
 
-                // ÉèÖÃËÄ±ßĞÎµÄuv×ø±êºÍÎ»ÖÃ
+                // è®¾ç½®å››è¾¹å½¢çš„uvåæ ‡å’Œä½ç½®
                 mapped->x = (x + (float)charData->x0 * charW);
                 mapped->y = (y + (float)charData->y0 * charH);
                 mapped->z = charData->s0;
@@ -2289,20 +2289,20 @@ namespace bufferStruct {
     };
 
     struct osMirrorBufferNode {
-        //Íø¸ñ»º³å
+        //ç½‘æ ¼ç¼“å†²
         baseBufferNode vertex;
         baseBufferNode index;
 
-        //Í³Ò»»º³å
+        //ç»Ÿä¸€ç¼“å†²
         baseBufferNode uniform;
         mvpUBO ubo;
         baseBufferNode lightUniform;
         forwardLightUBO lightUbo;
 
-        //ÃèÊö»º³å
+        //æè¿°ç¼“å†²
         VkDescriptorSet descriptorSet;
 
-        //³ÌĞò»¯Ë÷Òı
+        //ç¨‹åºåŒ–ç´¢å¼•
         bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
         bufferEnum::procSamplerId::type samplerId;
@@ -2327,10 +2327,10 @@ namespace bufferStruct {
     };
 
     struct osScenceBufferNode {
-        //ÃèÊö»º³å
+        //æè¿°ç¼“å†²
         VkDescriptorSet descriptorSet;
 
-        //³ÌĞò»¯Ë÷Òı
+        //ç¨‹åºåŒ–ç´¢å¼•
         bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
         bufferEnum::procSamplerId::type samplerId;
@@ -2351,16 +2351,16 @@ namespace bufferStruct {
     };
 
     struct dsScenceBufferNode {
-        //Í³Ò»»º³å
+        //ç»Ÿä¸€ç¼“å†²
         baseBufferNode lightUniform;
         deferredLightUBO lightUbo;
         baseBufferNode shadowUniform;
         deferredShadowUBO shadowUbo;
 
-        //ÃèÊö»º³å
+        //æè¿°ç¼“å†²
         VkDescriptorSet descriptorSet;
 
-        //³ÌĞò»¯Ë÷Òı
+        //ç¨‹åºåŒ–ç´¢å¼•
         bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
         bufferEnum::procSamplerId::type samplerId;
@@ -2382,14 +2382,14 @@ namespace bufferStruct {
     };
 
     struct shadowTerrainBufferNode {
-        //Íø¸ñ»º³å£¬Ë÷ÒıÖ±½ÓÓÃÔ´Íø¸ñµÄ
+        //ç½‘æ ¼ç¼“å†²ï¼Œç´¢å¼•ç›´æ¥ç”¨æºç½‘æ ¼çš„
         baseBufferNode vertex[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
 
-        //Í³Ò»»º³å
+        //ç»Ÿä¸€ç¼“å†²
         baseBufferNode shadowMvpUniform;
         shadowMvpUBO shadowMvpUbo;
 
-        //ÃèÊö»º³å
+        //æè¿°ç¼“å†²
         VkDescriptorSet descriptorSet;
 
 
@@ -2406,14 +2406,14 @@ namespace bufferStruct {
     };
 
     struct shadowBufferNode {
-        //Íø¸ñ»º³å£¬Ë÷ÒıÖ±½ÓÓÃÔ´Íø¸ñµÄ
+        //ç½‘æ ¼ç¼“å†²ï¼Œç´¢å¼•ç›´æ¥ç”¨æºç½‘æ ¼çš„
         baseBufferNode vertex;
 
-        //Í³Ò»»º³å
+        //ç»Ÿä¸€ç¼“å†²
         baseBufferNode shadowMvpUniform;
         shadowMvpUBO shadowMvpUbo;
 
-        //ÃèÊö»º³å
+        //æè¿°ç¼“å†²
         VkDescriptorSet descriptorSet;
 
 
@@ -2484,8 +2484,8 @@ namespace bufferStruct {
     struct descriptorNode {
         std::vector<bufferStruct::descriptorConfigNode> config{};
 
-        VkDescriptorPool pool{};            //ÃèÊö·û³Ø
-        VkDescriptorSetLayout layout{};     //ÃèÊö·û²¼¾Ö
+        VkDescriptorPool pool{};            //æè¿°ç¬¦æ± 
+        VkDescriptorSetLayout layout{};     //æè¿°ç¬¦å¸ƒå±€
 
 
 
@@ -2514,7 +2514,7 @@ namespace bufferStruct {
             };
 
             if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "ÃèÊö·û³Ø´´½¨Ê§°Ü");
+                Log::printError(__FILE__, __LINE__, "æè¿°ç¬¦æ± åˆ›å»ºå¤±è´¥");
             }
         }
 
@@ -2532,7 +2532,7 @@ namespace bufferStruct {
             };
 
             if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
-                Log::printError(__FILE__, __LINE__, "ÃèÊö·û²¼¾ÖÅäÖÃÊ§°Ü");
+                Log::printError(__FILE__, __LINE__, "æè¿°ç¬¦å¸ƒå±€é…ç½®å¤±è´¥");
             }
         }
     };

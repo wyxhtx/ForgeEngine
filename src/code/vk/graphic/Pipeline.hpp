@@ -14,23 +14,23 @@ public:
 		lockInfo::logPauseEnableLock.store(false);
 
 		if (debugInfo::LogSwitch) {
-			Log::printTitle("¡ª¡ª¡ª¡ª¡ª¡ª¡ª¡ªPipelineÒÑ´´½¨");
+			Log::printTitle("â€”â€”â€”â€”â€”â€”â€”â€”Pipelineå·²åˆ›å»º");
 
 			Log::delimiter();
 		}
 	}
 
 	~Pipeline() {
-		plateWorker.shutdown();		//ÅÅ¿Õ°å¿é¶ÓÁĞ²¢ÍË³ö
-		cubeWorker .shutdown();		//ÅÅ¿Õ·½¿é¶ÓÁĞ²¢ÍË³ö
-		cmdWorker  .shutdown();		//ÅÅ¿ÕÃüÁî¶ÓÁĞ²¢ÍË³ö
+		plateWorker.shutdown();		//æ’ç©ºæ¿å—é˜Ÿåˆ—å¹¶é€€å‡º
+		cubeWorker .shutdown();		//æ’ç©ºæ–¹å—é˜Ÿåˆ—å¹¶é€€å‡º
+		cmdWorker  .shutdown();		//æ’ç©ºå‘½ä»¤é˜Ÿåˆ—å¹¶é€€å‡º
 
 		procPipeline.clear(Device.device);
 
 		lockInfo::logPauseEnableLock.store(false);
 
 		if (debugInfo::LogSwitch) {
-			Log::print("PipelineÒÑÇå³ı");
+			Log::print("Pipelineå·²æ¸…é™¤");
 		}
 	}
 
@@ -42,13 +42,13 @@ private:
 
 	pipelineList::procPipelineNode procPipeline{ Device.device, InitBuffer.getDstList(), InitBuffer.getRenderList(), InitBuffer.getMsaa() };
 
-	pipelineStruct::asyncWorker plateWorker{};		//°å¿é¸üĞÂ×¨ÓÃ worker
-	pipelineStruct::asyncWorker cubeWorker{};		//·½¿é¸üĞÂ×¨ÓÃ worker
-	pipelineStruct::asyncWorker cmdWorker{};		//ÃüÁîÖØ½¨×¨ÓÃ worker
+	pipelineStruct::asyncWorker plateWorker{};		//æ¿å—æ›´æ–°ä¸“ç”¨ worker
+	pipelineStruct::asyncWorker cubeWorker{};		//æ–¹å—æ›´æ–°ä¸“ç”¨ worker
+	pipelineStruct::asyncWorker cmdWorker{};		//å‘½ä»¤é‡å»ºä¸“ç”¨ worker
 
 
 
-	//´´½¨Í¼ĞÎ¹ÜÏß
+	//åˆ›å»ºå›¾å½¢ç®¡çº¿
 	void createPipeline() {
 		const VkExtent2D& extent = InitBuffer.getSwapExtent();
 
@@ -73,19 +73,19 @@ private:
 public:
 	void drawFrame(Camera& Camera) {
 		static playerStruct::selectBoxNode selectBox = InitPlate.getSelectBox(playerInfo::logicOriginPos, Camera.node);
-		static int uiDeltaFrame = 0;							//UIÖ¡ÔöÁ¿
-		const bool cmdIsFlip    = InitBuffer.cmd.isFlip();		//Ïß³ÌÊÇ·ñ·­×ª
+		static int uiDeltaFrame = 0;							//UIå¸§å¢é‡
+		const bool cmdIsFlip    = InitBuffer.cmd.isFlip();		//çº¿ç¨‹æ˜¯å¦ç¿»è½¬
 
 
 
-		//¸üĞÂuiText
+		//æ›´æ–°uiText
 		uiDeltaFrame++;
 		if (engineList::procTick.node[engineEnum::tickEnum::uiText].isUpdate()) {
 			InitBuffer.drawUIText((int)(uiDeltaFrame / engineList::procTick.node[engineEnum::tickEnum::uiText].dt));
 			uiDeltaFrame = 0;
 		}
 
-		//¸üĞÂ°å¿é£¬ÒòÍæ¼ÒÒÆ¶¯ºó¸üĞÂ°å¿éÍø¸ñ
+		//æ›´æ–°æ¿å—ï¼Œå› ç©å®¶ç§»åŠ¨åæ›´æ–°æ¿å—ç½‘æ ¼
 		if (engineList::procTick.node[engineEnum::tickEnum::plate].isUpdate() && !cmdIsFlip) {
 			static glm::dvec3 pos0 = glm::floor(playerInfo::initSpawnPos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
 			glm::dvec3		  pos1 = glm::floor(Camera.node.pos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
@@ -96,12 +96,12 @@ public:
 			}
 		}
 
-		//¸üĞÂ·½¿é£¬Òò·ÅÖÃ/ÆÆ»µ·½¿éºó¸üĞÂ°å¿éÍø¸ñ£¬ÃüÁî»º³åÇøÏß³ÌÎ´±ä & ·½¿é±ä¸üÁĞ±í·Ç¿Õ & ·½¿é¸üĞÂÎ´Èë¶Ó
+		//æ›´æ–°æ–¹å—ï¼Œå› æ”¾ç½®/ç ´åæ–¹å—åæ›´æ–°æ¿å—ç½‘æ ¼ï¼Œå‘½ä»¤ç¼“å†²åŒºçº¿ç¨‹æœªå˜ & æ–¹å—å˜æ›´åˆ—è¡¨éç©º & æ–¹å—æ›´æ–°æœªå…¥é˜Ÿ
 		if (engineList::procTick.node[engineEnum::tickEnum::cube].isUpdate() && !cmdIsFlip && InitPlate.isHandleChangeCubeList() && !lockInfo::updateCubeFuncLock.exchange(true)) {
 			submitUpdateCube();
 		}
 
-		//¸ü»»ÃüÁî»º³åÇøºóÖØ½¨ÃüÁî»º³åÇø£¬r=1Ê±¸üĞÂ°å¿é»á°ÑÍø¸ñÊı×éÇå¿Õ
+		//æ›´æ¢å‘½ä»¤ç¼“å†²åŒºåé‡å»ºå‘½ä»¤ç¼“å†²åŒºï¼Œr=1æ—¶æ›´æ–°æ¿å—ä¼šæŠŠç½‘æ ¼æ•°ç»„æ¸…ç©º
 		if (cmdIsFlip && !lockInfo::recreateCmdFuncLock.exchange(true)) {
 			submitRecreateCmd(Camera);
 		}
@@ -109,10 +109,10 @@ public:
 
 
 		lockInfo::drawFuncLock.lock();
-		const int currentThread = InitBuffer.cmd.thread.current.load();						//±ØĞëÔÚ drawFuncLock ÄÚ¶Á£¬ºÍcmd.thread.swap()»¥³â
+		const int currentThread = InitBuffer.cmd.thread.current.load();						//å¿…é¡»åœ¨ drawFuncLock å†…è¯»ï¼Œå’Œcmd.thread.swap()äº’æ–¥
 
 		if (lockInfo::getLock(lockInfo::chunkMapDataLock)) {
-			selectBox = InitPlate.getSelectBox(playerInfo::logicOriginPos, Camera.node);	//µ±Ç°Ö¡»ñÈ¡µÄ·½¿é¸üĞÂÁĞ±íÔÚÏÂÒ»Ö¡¸üĞÂ
+			selectBox = InitPlate.getSelectBox(playerInfo::logicOriginPos, Camera.node);	//å½“å‰å¸§è·å–çš„æ–¹å—æ›´æ–°åˆ—è¡¨åœ¨ä¸‹ä¸€å¸§æ›´æ–°
 			lockInfo::chunkMapDataLock.store(false);
 		}
 
@@ -126,7 +126,7 @@ public:
 	}
 
 private:
-	//Ìá½»°å¿é¸üĞÂÈÎÎñ£¬plateWorkerÖ´ĞĞ
+	//æäº¤æ¿å—æ›´æ–°ä»»åŠ¡ï¼ŒplateWorkeræ‰§è¡Œ
 	void submitUpdatePlate(glm::dvec3 playerPos) {
 		plateWorker.submit([this, playerPos] {
 			engineStruct::timeNode time{};
@@ -134,12 +134,12 @@ private:
 			InitPlate.updatePlate(playerInfo::logicOriginPos, playerPos);
 			InitBuffer.cmd.flip();
 
-			Log::print("°å¿éË¢ĞÂÓÃÊ±:\t" + time.end());
+			Log::print("æ¿å—åˆ·æ–°ç”¨æ—¶:\t" + time.end());
 			lockInfo::updatePlateFuncLock.store(false);
 		});
 	}
 
-	//Ìá½»·½¿é¸üĞÂÈÎÎñ£¬cubeWorkerÖ´ĞĞ
+	//æäº¤æ–¹å—æ›´æ–°ä»»åŠ¡ï¼ŒcubeWorkeræ‰§è¡Œ
 	void submitUpdateCube() {
 		cubeWorker.submit([this] {
 			if (lockInfo::getLock(lockInfo::plateMeshDataLock)) {
@@ -155,7 +155,7 @@ private:
 		});
 	}
 
-	//Ìá½»ÃüÁî»º³åÇøÖØ½¨ÈÎÎñ£¬cmdWorkerÖ´ĞĞ
+	//æäº¤å‘½ä»¤ç¼“å†²åŒºé‡å»ºä»»åŠ¡ï¼ŒcmdWorkeræ‰§è¡Œ
 	void submitRecreateCmd(Camera& Camera) {
 		cmdWorker.submit([this, &Camera] {
 			if (lockInfo::getLock(lockInfo::plateMeshDataLock)) {
@@ -168,11 +168,11 @@ private:
 	}
 
 	void recreateSwapChain(Camera& Camera) {
-		plateWorker.waitIdle();					//µÈ°å¿éÈÎÎñÅÅ¿Õ
-		cubeWorker .waitIdle();					//µÈ·½¿éÈÎÎñÅÅ¿Õ
-		cmdWorker  .waitIdle();					//µÈÃüÁîÈÎÎñÅÅ¿Õ
+		plateWorker.waitIdle();					//ç­‰æ¿å—ä»»åŠ¡æ’ç©º
+		cubeWorker .waitIdle();					//ç­‰æ–¹å—ä»»åŠ¡æ’ç©º
+		cmdWorker  .waitIdle();					//ç­‰å‘½ä»¤ä»»åŠ¡æ’ç©º
 
-		lockInfo::queueThreadLock.lock();		//recreateSwapChainÀï¶ÓÁĞÃüÁî²Ù×÷Ì«¶àÁË°¤¸ö¸ôÀëÌ«Âé·³£¬¸É´àÈ«²¿¸ôÀë
+		lockInfo::queueThreadLock.lock();		//recreateSwapChainé‡Œé˜Ÿåˆ—å‘½ä»¤æ“ä½œå¤ªå¤šäº†æŒ¨ä¸ªéš”ç¦»å¤ªéº»çƒ¦ï¼Œå¹²è„†å…¨éƒ¨éš”ç¦»
 		vkDeviceWaitIdle(Device.device);
 
 		InitBuffer  .clearSwapChain();
@@ -184,6 +184,6 @@ private:
 
 		InitBuffer.cmd.flip();
 		InitBuffer.recreateCmd(InitBuffer.cmd.thread.next.load(), InitPlate.isEntireRebuild, InitPlate.originPos, Camera, procPipeline);
-		Log::print("ÖØ½¨½»»»Á´");
+		Log::print("é‡å»ºäº¤æ¢é“¾");
 	}
 };

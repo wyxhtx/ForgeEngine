@@ -9,23 +9,23 @@ public:
 
 
     Camera() {
-        node.view = glm::lookAt(glm::vec3(0)/*ÉãÏñ»ú×ø±ê*/, glm::vec3(0)/*±»¹Û²â×ø±ê*/, cameraInfo::worldUp);
+        node.view = glm::lookAt(glm::vec3(0)/*æ‘„åƒæœºåæ ‡*/, glm::vec3(0)/*è¢«è§‚æµ‹åæ ‡*/, cameraInfo::worldUp);
         node.rota = { 1.0f, 0.0f, 0.0f, 0.0f };
-        node.pos = playerInfo::initSpawnPos;       //ÉèÖÃÏà»ú×ø±ê
+        node.pos = playerInfo::initSpawnPos;       //è®¾ç½®ç›¸æœºåæ ‡
         node.front = { 0.0f, 0.0f, 0.0f };
 
-        mouseHandle(0, 0);                //²»³õÊ¼»¯µÄ»°£¬¿ª¾Ö²»ÒÆ¶¯Ã»»­Ãæ
+        mouseHandle(0, 0);                //ä¸åˆå§‹åŒ–çš„è¯ï¼Œå¼€å±€ä¸ç§»åŠ¨æ²¡ç”»é¢
     }
 
 private:
-    float minKeySpeed = 8.0f;       //×îĞ¡Î»ÒÆËÙÂÊ
-    float maxKeySpeed = 128.0f;     //×î´óÎ»ÒÆËÙÂÊ
-    float keySpeed    = 128.0f;     //Î»ÒÆËÙÂÊ
-    float xMouseSpeed = 0.1f;       //Êó±êÒÆ¶¯XËÙÂÊ
-    float yMouseSpeed = 0.1f;       //Êó±êÒÆ¶¯YËÙÂÊ
+    float minKeySpeed = 8.0f;       //æœ€å°ä½ç§»é€Ÿç‡
+    float maxKeySpeed = 128.0f;     //æœ€å¤§ä½ç§»é€Ÿç‡
+    float keySpeed    = 128.0f;     //ä½ç§»é€Ÿç‡
+    float xMouseSpeed = 0.1f;       //é¼ æ ‡ç§»åŠ¨Xé€Ÿç‡
+    float yMouseSpeed = 0.1f;       //é¼ æ ‡ç§»åŠ¨Yé€Ÿç‡
 
 public:
-    //¼üÅÌ´¦Àí
+    //é”®ç›˜å¤„ç†
     void keyHandle(glm::vec3 direction) {
         static glm::vec3 xAxis{ -1.0f, 0.0f, 0.0f };
 
@@ -34,11 +34,11 @@ public:
         updateView();
     }
 
-    //Êó±ê´¦Àí
+    //é¼ æ ‡å¤„ç†
     void mouseHandle(float deltaX, float deltaY) {
         static glm::quat initRota = { 1.0f, 0.0f, 0.0f, 0.0f };
-        static glm::vec2 rota_ang = { 0.0f, 0.0f };     //Ğı×ª½Ç¶È
-        static glm::vec2 rota_rad = { 0.0f, 0.0f };     //Ğı×ª»¡¶È
+        static glm::vec2 rota_ang = { 0.0f, 0.0f };     //æ—‹è½¬è§’åº¦
+        static glm::vec2 rota_rad = { 0.0f, 0.0f };     //æ—‹è½¬å¼§åº¦
 
         static glm::vec3 xAxis{ 1.0f, 0.0f, 0.0f };
         static glm::vec3 yAxis{ 0.0f, 1.0f, 0.0f };
@@ -57,7 +57,7 @@ public:
         updateView();
     }
 
-    //¹öÂÖ´¦Àí
+    //æ»šè½®å¤„ç†
     void scrollHandle(float scrollOffset) {
         keySpeed += scrollOffset * 10.0f;
         keySpeed = glm::clamp(keySpeed, minKeySpeed, maxKeySpeed);

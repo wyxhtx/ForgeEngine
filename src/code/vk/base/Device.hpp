@@ -4,23 +4,23 @@
 
 class Device {
 public:
-    VkSurfaceKHR presentSurface;                                //³ÊÏÖ±íÃæ£¬vulkanºÍ²Ù×÷ÏµÍ³´°¿ÚÖ®¼äµÄÇÅÁº£¬ÈÃGPUÖªµÀ»­µ½ÄÄÀïÈ¥
+    VkSurfaceKHR presentSurface;                                //å‘ˆç°è¡¨é¢ï¼Œvulkanå’Œæ“ä½œç³»ç»Ÿçª—å£ä¹‹é—´çš„æ¡¥æ¢ï¼Œè®©GPUçŸ¥é“ç”»åˆ°å“ªé‡Œå»
 
-    std::vector<deviceStruct::gpuNode> gpuCandidateList{};      //gpuºòÑ¡ÁĞ±í
-    int enableGpuIndex = -1;                                    //ÆôÓÃgpuË÷Òı
-    deviceStruct::gpuNode* enableGpu = nullptr;                 //ÆôÓÃgpu
+    std::vector<deviceStruct::gpuNode> gpuCandidateList{};      //gpuå€™é€‰åˆ—è¡¨
+    int enableGpuIndex = -1;                                    //å¯ç”¨gpuç´¢å¼•
+    deviceStruct::gpuNode* enableGpu = nullptr;                 //å¯ç”¨gpu
 
-    VkDevice device;                                            //Âß¼­Éè±¸£¬vulkanºÍgpuÖ®¼äµÄapi½Ó¿Ú
-    VkQueue graphicsQueue;                                      //äÖÈ¾¶ÓÁĞ
+    VkDevice device;                                            //é€»è¾‘è®¾å¤‡ï¼Œvulkanå’Œgpuä¹‹é—´çš„apiæ¥å£
+    VkQueue graphicsQueue;                                      //æ¸²æŸ“é˜Ÿåˆ—
 
-    VmaAllocator memAllocator;                                  //ÄÚ´æ·ÖÅäÆ÷
+    VmaAllocator memAllocator;                                  //å†…å­˜åˆ†é…å™¨
 
 
 
     Device(GLFWwindow* window) {
-        //´´½¨´°¿Ú±íÃæ
+        //åˆ›å»ºçª—å£è¡¨é¢
         if (glfwCreateWindowSurface(InitInstance.instance, window, nullptr, &presentSurface) != VK_SUCCESS) {
-            Log::printError(__FILE__, __LINE__, "´°¿Ú±íÃæ´´½¨Ê§°Ü");
+            Log::printError(__FILE__, __LINE__, "çª—å£è¡¨é¢åˆ›å»ºå¤±è´¥");
         }
 
         getGpuIndex();
@@ -29,7 +29,7 @@ public:
         createVMA();
 
         if (debugInfo::LogSwitch) {
-            Log::printTitle("¡ª¡ª¡ª¡ª¡ª¡ª¡ª¡ªDeviceÒÑ´´½¨");
+            Log::printTitle("â€”â€”â€”â€”â€”â€”â€”â€”Deviceå·²åˆ›å»º");
 
             Log::delimiter();
         }
@@ -42,7 +42,7 @@ public:
         vkDestroySurfaceKHR(InitInstance.instance, presentSurface, nullptr);
 
         if (debugInfo::LogSwitch) {
-            Log::print("DeviceÒÑÇå³ı");
+            Log::print("Deviceå·²æ¸…é™¤");
         }
     }
 
@@ -51,30 +51,30 @@ private:
 
 
 
-    //»ñÈ¡×îÓÅÏÔ¿¨
+    //è·å–æœ€ä¼˜æ˜¾å¡
     void getGpuIndex() {
-        //ÏÔ¿¨ÊıÁ¿
+        //æ˜¾å¡æ•°é‡
         uint32_t gpuCount = 0;
         vkEnumeratePhysicalDevices(InitInstance.instance, &gpuCount, nullptr);
 
         if (gpuCount == 0) {
-            Log::printError(__FILE__, __LINE__, "ÎŞ¿ÉÓÃÏÔ¿¨");
+            Log::printError(__FILE__, __LINE__, "æ— å¯ç”¨æ˜¾å¡");
         }
 
-        //ÏÔ¿¨ÁĞ±í
+        //æ˜¾å¡åˆ—è¡¨
         std::vector<VkPhysicalDevice> gpuList(gpuCount);
         vkEnumeratePhysicalDevices(InitInstance.instance, &gpuCount, gpuList.data());
 
-        //gpuCandidateList¸³Öµ
+        //gpuCandidateListèµ‹å€¼
         gpuCandidateList.resize(gpuCount);
         for (uint32_t i = 0; i < gpuCount; i++) {
             gpuCandidateList[i].gpu = gpuList[i];
         }
         
-        //ÏÔ¿¨ĞÅÏ¢ÁĞ±í
-        std::vector<VkPhysicalDeviceProperties> gpuInfoList(gpuCount);          //todo µ½Ê±ºò¿´¿´ÄÜ²»ÄÜ·â×°½øLogSwitchÀïÃæ
+        //æ˜¾å¡ä¿¡æ¯åˆ—è¡¨
+        std::vector<VkPhysicalDeviceProperties> gpuInfoList(gpuCount);          //todo åˆ°æ—¶å€™çœ‹çœ‹èƒ½ä¸èƒ½å°è£…è¿›LogSwitché‡Œé¢
         if (debugInfo::LogSwitch) {
-            Log::printTitle("¿ÉÓÃÏÔ¿¨");
+            Log::printTitle("å¯ç”¨æ˜¾å¡");
             for (uint32_t i = 0; i < gpuCount; i++) {
                 vkGetPhysicalDeviceProperties(gpuCandidateList[i].gpu, &gpuInfoList[i]);
                 Log::print(gpuInfoList[i].deviceName);
@@ -82,13 +82,13 @@ private:
             Log::delimiter();
         }
 
-        //¶ÓÁĞ×åË÷Òı
+        //é˜Ÿåˆ—æ—ç´¢å¼•
         for (uint32_t i = 0; i < gpuCount; i++) {
             getQueueFamilyIndex(gpuCandidateList[i], gpuInfoList[i], presentSurface);
         }
 
-        //»ñÈ¡×îÓÅÏÔ¿¨
-        uint32_t maxGraphicsQueueCount = 0;     //×î´óäÖÈ¾¶ÓÁĞÊıÁ¿
+        //è·å–æœ€ä¼˜æ˜¾å¡
+        uint32_t maxGraphicsQueueCount = 0;     //æœ€å¤§æ¸²æŸ“é˜Ÿåˆ—æ•°é‡
         for (uint32_t i = 0; i < gpuCount; i++) {
             if (maxGraphicsQueueCount < gpuCandidateList[i].graphicsQueueFamily.count) {
                 maxGraphicsQueueCount = gpuCandidateList[i].graphicsQueueFamily.count;
@@ -97,40 +97,40 @@ private:
         }
         enableGpu = &gpuCandidateList[enableGpuIndex];
 
-        //ÏÔ¿¨Ö§³Ö¼ì²â
+        //æ˜¾å¡æ”¯æŒæ£€æµ‹
         gpuSupportCheck(enableGpu->gpu, engineInfo::enableDeviceExtensionList);
         if (debugInfo::LogSwitch) {
-            Log::printTitle("Ñ¡ÔñÏÔ¿¨");
+            Log::printTitle("é€‰æ‹©æ˜¾å¡");
             Log::print(gpuInfoList[enableGpuIndex].deviceName);
             Log::delimiter();
         }
     }
 
-    //´´½¨Âß¼­Éè±¸
+    //åˆ›å»ºé€»è¾‘è®¾å¤‡
     void createDevice(const std::vector<const char*>& enableDeviceExtensionList) {
-        //¶ÓÁĞ´´½¨ĞÅÏ¢
+        //é˜Ÿåˆ—åˆ›å»ºä¿¡æ¯
         VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queueCreateInfo.queueCount       = 1;
         queueCreateInfo.queueFamilyIndex = enableGpu->graphicsQueueFamily.index;
         queueCreateInfo.pQueuePriorities = &enableGpu->graphicsQueueFamily.priority;
 
-        //Íø¸ñ×ÅÉ«Æ÷ÌØĞÔ£¬ÓÉgpuFeatures2×Ô¶¯Ìî³ä
-        //°üº¬taskShader£¨ÈÎÎñ×ÅÉ«Æ÷£©¡¢meshShader£¨Íø¸ñ×ÅÉ«Æ÷£©¡¢multiviewMeshShader£¨¶àÊÓÍ¼Íø¸ñ×ÅÉ«Æ÷£¬ÓÃÓÚVRË«ÊÓ½ÇäÖÈ¾£©¡¢primitiveFragmentShadingRateMeshShader£¨ÖğÍ¼Ôª¿É±ä×ÅÉ«ÂÊÍø¸ñ×ÅÉ«Æ÷£¬ÓÃÓÚmeshShaderÊä³öµÄÃ¿¸öÍ¼ÔªÖ¸¶¨²»Í¬×ÅÉ«ÂÊ£©¡¢meshShaderQueries£¨Íø¸ñ×ÅÉ«Æ÷²éÑ¯£¬ÓÃÓÚGPUĞÔÄÜ·ÖÎö£©
+        //ç½‘æ ¼ç€è‰²å™¨ç‰¹æ€§ï¼Œç”±gpuFeatures2è‡ªåŠ¨å¡«å……
+        //åŒ…å«taskShaderï¼ˆä»»åŠ¡ç€è‰²å™¨ï¼‰ã€meshShaderï¼ˆç½‘æ ¼ç€è‰²å™¨ï¼‰ã€multiviewMeshShaderï¼ˆå¤šè§†å›¾ç½‘æ ¼ç€è‰²å™¨ï¼Œç”¨äºVRåŒè§†è§’æ¸²æŸ“ï¼‰ã€primitiveFragmentShadingRateMeshShaderï¼ˆé€å›¾å…ƒå¯å˜ç€è‰²ç‡ç½‘æ ¼ç€è‰²å™¨ï¼Œç”¨äºmeshShaderè¾“å‡ºçš„æ¯ä¸ªå›¾å…ƒæŒ‡å®šä¸åŒç€è‰²ç‡ï¼‰ã€meshShaderQueriesï¼ˆç½‘æ ¼ç€è‰²å™¨æŸ¥è¯¢ï¼Œç”¨äºGPUæ€§èƒ½åˆ†æï¼‰
         VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{};
         meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
 
-        //»ñÈ¡gpuÌØĞÔÖ§³Ö
+        //è·å–gpuç‰¹æ€§æ”¯æŒ
         VkPhysicalDeviceFeatures2 gpuFeatures2{};
         gpuFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         gpuFeatures2.pNext = &meshShaderFeatures;
         vkGetPhysicalDeviceFeatures2(enableGpu->gpu, &gpuFeatures2);
         
-        //¹Ø±ÕÎŞĞègpuÌØĞÔ
-        meshShaderFeatures.multiviewMeshShader                    = VK_FALSE;   //¶àÊÓÍ¼Íø¸ñ×ÅÉ«Æ÷£¬ÓÃÓÚVRË«ÊÓ½ÇäÖÈ¾
-        meshShaderFeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;   //ÖğÍ¼Ôª¿É±ä×ÅÉ«ÂÊÍø¸ñ×ÅÉ«Æ÷£¬ÓÃÓÚmeshShaderÊä³öµÄÃ¿¸öÍ¼ÔªÖ¸¶¨²»Í¬×ÅÉ«ÂÊ
+        //å…³é—­æ— éœ€gpuç‰¹æ€§
+        meshShaderFeatures.multiviewMeshShader                    = VK_FALSE;   //å¤šè§†å›¾ç½‘æ ¼ç€è‰²å™¨ï¼Œç”¨äºVRåŒè§†è§’æ¸²æŸ“
+        meshShaderFeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;   //é€å›¾å…ƒå¯å˜ç€è‰²ç‡ç½‘æ ¼ç€è‰²å™¨ï¼Œç”¨äºmeshShaderè¾“å‡ºçš„æ¯ä¸ªå›¾å…ƒæŒ‡å®šä¸åŒç€è‰²ç‡
 
-        //´´½¨device
+        //åˆ›å»ºdevice
         VkDeviceCreateInfo deviceCreateInfo{};
         deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         deviceCreateInfo.queueCreateInfoCount    = 1;
@@ -139,14 +139,14 @@ private:
         deviceCreateInfo.ppEnabledExtensionNames = enableDeviceExtensionList.data();
         deviceCreateInfo.pNext                   = &gpuFeatures2;
         if (vkCreateDevice(enableGpu->gpu, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS) {
-            Log::printError(__FILE__, __LINE__, "Éè±¸´´½¨Ê§°Ü");
+            Log::printError(__FILE__, __LINE__, "è®¾å¤‡åˆ›å»ºå¤±è´¥");
         }
 
-        //´´½¨graphicsQueue
+        //åˆ›å»ºgraphicsQueue
         vkGetDeviceQueue(device, enableGpu->graphicsQueueFamily.index, 0, &graphicsQueue);
     }
 
-    //´´½¨ÄÚ´æ¹ÜÀí
+    //åˆ›å»ºå†…å­˜ç®¡ç†
     void createVMA() {
         VmaAllocatorCreateInfo allocatorInfo{};
         allocatorInfo.physicalDevice = enableGpu->gpu;
@@ -157,37 +157,37 @@ private:
 
 
 
-    //»ñÈ¡×îÓÅ¶ÓÁĞ×å
+    //è·å–æœ€ä¼˜é˜Ÿåˆ—æ—
     void getQueueFamilyIndex(deviceStruct::gpuNode& node, const VkPhysicalDeviceProperties& gpuInfo, const VkSurfaceKHR& presentSurface) {
-        //¶ÓÁĞ×åÊıÁ¿
+        //é˜Ÿåˆ—æ—æ•°é‡
         uint32_t queueFamilyCount = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(node.gpu, &queueFamilyCount, nullptr);
 
         if (queueFamilyCount == 0) {
-            Log::printError(__FILE__, __LINE__, "ÎŞ¿ÉÓÃ¶ÓÁĞ×å");
+            Log::printError(__FILE__, __LINE__, "æ— å¯ç”¨é˜Ÿåˆ—æ—");
         }
 
-        //¶ÓÁĞ×åĞÅÏ¢
+        //é˜Ÿåˆ—æ—ä¿¡æ¯
         std::vector<VkQueueFamilyProperties> queueFamilieList(queueFamilyCount);
         vkGetPhysicalDeviceQueueFamilyProperties(node.gpu, &queueFamilyCount, queueFamilieList.data());
 
         if (debugInfo::LogSwitch) {
             Log::printTitle(gpuInfo.deviceName);
-            Log::printTitle("¶ÓÁĞ×åÖ§³Ö²Ù×÷");
+            Log::printTitle("é˜Ÿåˆ—æ—æ”¯æŒæ“ä½œ");
 
             struct { VkQueueFlags flag; const char* name; } flagTable[] = {
-                { VK_QUEUE_GRAPHICS_BIT,         "Í¼ĞÎ" },
-                { VK_QUEUE_COMPUTE_BIT,          "¼ÆËã" },
-                { VK_QUEUE_TRANSFER_BIT,         "´«Êä" },
-                { VK_QUEUE_SPARSE_BINDING_BIT,   "Ï¡Êè" },
-                { VK_QUEUE_PROTECTED_BIT,        "±£»¤" },
-                { VK_QUEUE_VIDEO_DECODE_BIT_KHR, "ÊÓÆµ½âÂë" },
-                { VK_QUEUE_OPTICAL_FLOW_BIT_NV,  "¹âÁ÷¼ÆËã" },
+                { VK_QUEUE_GRAPHICS_BIT,         "å›¾å½¢" },
+                { VK_QUEUE_COMPUTE_BIT,          "è®¡ç®—" },
+                { VK_QUEUE_TRANSFER_BIT,         "ä¼ è¾“" },
+                { VK_QUEUE_SPARSE_BINDING_BIT,   "ç¨€ç–" },
+                { VK_QUEUE_PROTECTED_BIT,        "ä¿æŠ¤" },
+                { VK_QUEUE_VIDEO_DECODE_BIT_KHR, "è§†é¢‘è§£ç " },
+                { VK_QUEUE_OPTICAL_FLOW_BIT_NV,  "å…‰æµè®¡ç®—" },
             };
 
             for (uint32_t i = 0; i < queueFamilyCount; i++) {
                 VkQueueFamilyProperties queueFamilyInfo = queueFamilieList[i];
-                std::cout << std::left << "\t" << "×å: " << std::setw(5) << i << "ÊıÁ¿: " << std::setw(5) << queueFamilyInfo.queueCount << "ÑÚÂë: " << std::setw(5) << queueFamilyInfo.queueFlags;
+                std::cout << std::left << "\t" << "æ—: " << std::setw(5) << i << "æ•°é‡: " << std::setw(5) << queueFamilyInfo.queueCount << "æ©ç : " << std::setw(5) << queueFamilyInfo.queueFlags;
 
                 for (const auto& entry : flagTable) {
                     if (queueFamilyInfo.queueFlags & entry.flag) {
@@ -199,21 +199,21 @@ private:
             }
         }
 
-        //»ñÈ¡×îÓÅ¶ÓÁĞ×å
+        //è·å–æœ€ä¼˜é˜Ÿåˆ—æ—
         for (uint32_t i = 0; i < queueFamilyCount; i++) {
             VkQueueFamilyProperties queueFamilyInfo = queueFamilieList[i];
 
             if (queueFamilyInfo.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
                 VkBool32 isSupport = false;
-                vkGetPhysicalDeviceSurfaceSupportKHR(node.gpu, i, presentSurface, &isSupport);  //¼ì²â¶ÓÁĞ×åÄÜ·ñÏò´°¿Ú³ÊÏÖÍ¼Ïñ
+                vkGetPhysicalDeviceSurfaceSupportKHR(node.gpu, i, presentSurface, &isSupport);  //æ£€æµ‹é˜Ÿåˆ—æ—èƒ½å¦å‘çª—å£å‘ˆç°å›¾åƒ
 
                 if (isSupport) {
                     node.graphicsQueueFamily.index = i;
                     node.graphicsQueueFamily.count = queueFamilyInfo.queueCount;
 
                     if (debugInfo::LogSwitch) {
-                        Log::printTitle("´ıÑ¡¶ÓÁĞ");
-                        std::cout << std::left << "\t" << "×å: " << std::setw(5) << node.graphicsQueueFamily.index << "ÊıÁ¿: " << std::setw(5) << node.graphicsQueueFamily.count << std::endl;
+                        Log::printTitle("å¾…é€‰é˜Ÿåˆ—");
+                        std::cout << std::left << "\t" << "æ—: " << std::setw(5) << node.graphicsQueueFamily.index << "æ•°é‡: " << std::setw(5) << node.graphicsQueueFamily.count << std::endl;
                         Log::delimiter();
                     }
 
@@ -222,38 +222,38 @@ private:
             }
         }
 
-        Log::printError(__FILE__, __LINE__, "ÎŞÊÊÅä¶ÓÁĞ×å");
+        Log::printError(__FILE__, __LINE__, "æ— é€‚é…é˜Ÿåˆ—æ—");
     }
 
-    //ÏÔ¿¨Ö§³Ö¼ì²â
+    //æ˜¾å¡æ”¯æŒæ£€æµ‹
     void gpuSupportCheck(const VkPhysicalDevice& gpu, const std::vector<const char*>& enableDeviceExtensionList) {
-        //Ö§³ÖdeviceÀ©Õ¹ÊıÁ¿
+        //æ”¯æŒdeviceæ‰©å±•æ•°é‡
         uint32_t supportExtensionCount;
         vkEnumerateDeviceExtensionProperties(gpu, nullptr, &supportExtensionCount, nullptr);
 
-        //Ö§³ÖdeviceÀ©Õ¹ĞÅÏ¢
+        //æ”¯æŒdeviceæ‰©å±•ä¿¡æ¯
         std::vector<VkExtensionProperties> supportExtensionList(supportExtensionCount);
         vkEnumerateDeviceExtensionProperties(gpu, nullptr, &supportExtensionCount, supportExtensionList.data());
 
         if (debugInfo::LogSwitch) {
-            //Ì«³¤ÁËËùÒÔ×¢ÊÍµô
-            //Log::printTitle("Vulkan Device Ö§³ÖÀ©Õ¹");
+            //å¤ªé•¿äº†æ‰€ä»¥æ³¨é‡Šæ‰
+            //Log::printTitle("Vulkan Device æ”¯æŒæ‰©å±•");
             //for (const auto& supportExtensionNode : supportExtensionList) {
             //    Log::print(supportExtensionNode.extensionName);
             //    Log::print("------");
             //}
             //Log::delimiter();
 
-            Log::printTitle("Vulkan Device ÆôÓÃÀ©Õ¹");
+            Log::printTitle("Vulkan Device å¯ç”¨æ‰©å±•");
             for (const auto& enableDeviceExtensionNode : enableDeviceExtensionList) {
                 Log::print(enableDeviceExtensionNode);
             }
             Log::delimiter();
         }
 
-        //ÆôÓÃÀ©Õ¹Ö§³Ö²éÑ¯
+        //å¯ç”¨æ‰©å±•æ”¯æŒæŸ¥è¯¢
         for (const auto& enableDeviceExtensionNode : enableDeviceExtensionList) {
-            bool isSupport = false;     //Ö§³Ö±êÊ¶
+            bool isSupport = false;     //æ”¯æŒæ ‡è¯†
 
             for (const auto& supportExtensionNode : supportExtensionList) {
                 if (std::strcmp(enableDeviceExtensionNode, supportExtensionNode.extensionName) == 0) {
@@ -264,17 +264,17 @@ private:
 
             if (!isSupport) {
                 Log::print(enableDeviceExtensionNode);
-                Log::printError(__FILE__, __LINE__, "È±ÉÙÆôÓÃdeviceÀ©Õ¹Ö§³Ö");
+                Log::printError(__FILE__, __LINE__, "ç¼ºå°‘å¯ç”¨deviceæ‰©å±•æ”¯æŒ");
             }
         }
 
-        //ÏÔ¿¨¹¦ÄÜÖ§³Ö
+        //æ˜¾å¡åŠŸèƒ½æ”¯æŒ
         VkPhysicalDeviceFeatures gpuFeaturesSupported;
         vkGetPhysicalDeviceFeatures(gpu, &gpuFeaturesSupported);
 
-        //¼¸ºÎ×ÅÉ«Æ÷Ö§³Ö¼ì²â
+        //å‡ ä½•ç€è‰²å™¨æ”¯æŒæ£€æµ‹
         if (!gpuFeaturesSupported.geometryShader) {
-            Log::printError(__FILE__, __LINE__, "Éè±¸²»Ö§³Ö¼¸ºÎ×ÅÉ«Æ÷");
+            Log::printError(__FILE__, __LINE__, "è®¾å¤‡ä¸æ”¯æŒå‡ ä½•ç€è‰²å™¨");
         }
     }
 };

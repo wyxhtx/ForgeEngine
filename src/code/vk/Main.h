@@ -2,14 +2,14 @@
 
 
 
-/*±àÒëÅäÖÃ*/
-//±ÜÃâDebugÏÂ²¢ĞĞ»¯Ææ¿¨ÎŞ±È
-#define _ITERATOR_DEBUG_LEVEL 1		//STL»ù±¾¼ì²é
-#define _HAS_ITERATOR_DEBUGGING 0	//²»ÊÕ¼¯STLµ÷ÊÔĞÅÏ¢
+/*ç¼–è¯‘é…ç½®*/
+//é¿å…Debugä¸‹å¹¶è¡ŒåŒ–å¥‡å¡æ— æ¯”
+#define _ITERATOR_DEBUG_LEVEL 1		//STLåŸºæœ¬æ£€æŸ¥
+#define _HAS_ITERATOR_DEBUGGING 0	//ä¸æ”¶é›†STLè°ƒè¯•ä¿¡æ¯
 
 
 
-/*ÏµÍ³¿âÎÄ¼ş*/
+/*ç³»ç»Ÿåº“æ–‡ä»¶*/
 #include <array>
 #include <cmath>
 #include <execution>
@@ -27,12 +27,12 @@
 
 
 
-/*Íâ²¿¿âÎÄ¼ş*/
-//glfw¿ò¼Ü¿â£¬ÆäÄÚ×Ô´øvulkanÍ·ÎÄ¼ş
+/*å¤–éƒ¨åº“æ–‡ä»¶*/
+//glfwæ¡†æ¶åº“ï¼Œå…¶å†…è‡ªå¸¦vulkanå¤´æ–‡ä»¶
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-//glmÊıÑ§¿â
+//glmæ•°å­¦åº“
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_ENABLE_EXPERIMENTAL
@@ -41,14 +41,14 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-//Ëã·¨¿â
-#include "../../0_library/0_algorithm/kmeans/Kmeans.hpp"	//¾ÛÀàËã·¨£¬»®·ÖÇø¿éËùÊôÇøÓò£¬ÈÃÓòÄÚÇø¿é¾ÛºÏ£¬¼õÉÙÓòÍâÁ´½á¹¹
+//ç®—æ³•åº“
+#include <kmeans/kmeans.hpp>	//èšç±»ç®—æ³•ï¼Œåˆ’åˆ†åŒºå—æ‰€å±åŒºåŸŸï¼Œè®©åŸŸå†…åŒºå—èšåˆï¼Œå‡å°‘åŸŸå¤–é“¾ç»“æ„
 
-//ÔëÒô¿â
+//å™ªéŸ³åº“
 #include <FastNoise/FastNoise.h>
 #include <FastNoise/Metadata.h>
 
-//ÄÚ´æ¿â
+//å†…å­˜åº“
 #define VMA_IMPLEMENTATION
 #define VMA_DEBUG_INITIALIZE_ALLOCATIONS 1
 #define VMA_DETECT_CORRUPTION 1
@@ -58,43 +58,43 @@
 #pragma warning(disable : 26110)
 #pragma warning(disable : 26495)
 #pragma warning(disable : 26819)
-#include "../../0_library/1_memory/vma/vk_mem_alloc.h"
+#include <vk_mem_alloc.h>
 #pragma warning(pop)
 
-//ÎÆÀí¿â
-#include "../../0_library/2_texture/ktx/khr_df.h"
-#include "../../0_library/2_texture/ktx/ktx.h"
-#include "../../0_library/2_texture/ktx/ktxvulkan.h"
+//çº¹ç†åº“
+#include <KHR/khr_df.h>
+#include <ktx.h>
+#include <ktxvulkan.h>
 
-//Ä£ĞÍ¿â
+//æ¨¡å‹åº“
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION  
 #define TINYGLTF_NO_STB_IMAGE_WRITE
-#include "../../0_library/3_model/tinygltf/tiny_gltf.h"
+#include <tiny_gltf.h>
 
-//×ÖÌå¿â
+//æ–‡æœ¬åº“
 #pragma warning(push)
 #pragma warning(disable : 26495)
-#include "../../0_library/4_text/stb/stb_font_consolas_24_latin1.inl"
+#include <stb/stb_font_consolas_24_latin1.inl>
 #pragma warning(pop)
 
-//ÒôÆµ¿â
+//éŸ³é¢‘åº“
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <alut.h>
 
 
 
-/*ÄÚ²¿¿âÎÄ¼ş*/
+/*å†…éƒ¨åº“æ–‡ä»¶*/
 #include "tool/Log.hpp"
 
-#include "../game/data/GameEnum.h"
-#include "../game/data/GameInfo.h"
+#include "../forge/data/ForgeEnum.h"
+#include "../forge/data/ForgeInfo.h"
 #pragma warning(push)
 #pragma warning(disable: 26495)
-#include "../game/data/GameStruct.h"
+#include "../forge/data/ForgeStruct.h"
 #pragma warning(pop)
-#include "../game/data/GameList.h"
+#include "../forge/data/ForgeList.h"
 
 #include "data/VkEnum.h"
 #include "data/VkInfo.h"
@@ -110,11 +110,11 @@
 
 
 
-#include "../game/base/Loop.hpp"
-#include "../game/world/Chunk.hpp"
-#include "../game/world/Storage.hpp"
-#include "../game/base/Debug.hpp"
-#include "../game/world/Plate.hpp"
+#include "../forge/base/Loop.hpp"
+#include "../forge/world/Chunk.hpp"
+#include "../forge/world/Storage.hpp"
+#include "../forge/base/Debug.hpp"
+#include "../forge/world/Plate.hpp"
 
 #include "base/Window.hpp"
 #pragma warning(push)
