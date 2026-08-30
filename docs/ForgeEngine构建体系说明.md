@@ -1,4 +1,4 @@
-# Forge 构建体系说明（vcpkg + CMake）
+# ForgeEngine 构建体系说明（vcpkg + CMake）
 
 > 版本：迁移完成版（2026）
 > 作用：ForgeEngine 依赖管理与构建的一站式说明
@@ -153,9 +153,11 @@ set(VCPKG_CXX_FLAGS_DEBUG "${VCPKG_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=1")
 
 ```cmake
 # CMakeLists.txt
-find_package(unofficial-kmeans CONFIG REQUIRED)   # 目标 kmeans
-find_package(FastNoise2 CONFIG REQUIRED)          # 目标 FastNoise2::FastNoise（注意不是 unofficial-）
-find_package(unofficial-forgeengine-stb-font CONFIG REQUIRED)  # 目标 forgeengine-stb-font
+find_path(KMEANS_INCLUDE_DIRS "kmeans/Details.hpp")           # 目标 ForgeKmeans（INTERFACE）
+find_path(FASTNOISE2_INCLUDE_DIR FastNoise/FastNoise.h)       # 目标 ForgeFastNoise（INTERFACE IMPORTED）
+find_library(FASTNOISE2_LIBRARY_RELEASE NAMES FastNoise)
+find_library(FASTNOISE2_LIBRARY_DEBUG NAMES FastNoiseD)
+find_path(FORGE_STB_FONT_INCLUDE_DIRS "stb/stb_font_consolas_24_latin1.inl")  # 目标 ForgeStbFont
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)      # 目标 GPUOpen::VulkanMemoryAllocator（VMA）
 find_package(FreeALUT CONFIG REQUIRED)                   # 目标 FreeALUT::alut（freealut）
 ```
