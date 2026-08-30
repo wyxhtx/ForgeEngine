@@ -2,3 +2,5 @@
 build/
 vcpkg_installed/
 storage/chunk/
+src/assets/0_shader/
+src/assets/0_shader/

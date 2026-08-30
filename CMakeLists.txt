@@ -14,10 +14,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # ----------------------------------------------------------------------------
 if(MSVC)
     # Debug 并行化性能：与 vcpkg triplet 的宏一致，避免 LNK2038
-    add_compile_definitions(
-        
-        
-    )
+    
     # 源文件已统一 UTF-8；W3 警告级别
     add_compile_options(/utf-8 /W3)
 endif()
@@ -101,7 +98,7 @@ set_property(TARGET Forge PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG
 
 target_include_directories(Forge PRIVATE
     src/code/vk
-    src/code/game
+    src/code/forge
 )
 
 target_link_libraries(Forge PRIVATE

@@ -30,7 +30,7 @@
     }
   ],
   "buildPresets": [
-    { "name": "debug",   "configurePreset": "vs", "configuration": "Debug" },
+    { "name": "release",   "configurePreset": "vs", "configuration": "Release" },
     { "name": "release", "configurePreset": "vs", "configuration": "Release" }
   ]
 }
