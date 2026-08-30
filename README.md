@@ -11,7 +11,9 @@ cd 进项目自动加载（cmd\.forge.ps1），完整指令表见 docs/调试指
 常用：`f-br` 构建+运行 · `f-config` 配置速览 · `f-st` git 状态
 
 ## 目录
-- config/ 构建配置（cmake/vcpkg 端口）· 命令脚本（cmd）· 文档（docs）
+- config/ 构建配置（cmake/vcpkg 端口）
+- cmd/ 调试指令脚本（cd 进项目自动加载）
+- docs/ 文档（构建体系/调试速查/端口说明）
 - src/assets 资源（shader/image/model/music + *_src 源）
 - src/code 源码（forge 游戏层 / vk 渲染层）
 - build/ 构建产物（忽略）· storage/ 运行数据（忽略）

@@ -27,6 +27,9 @@ Forge\
 ├─ CMakePresets.json          preset 配置（入口，必须根目录）
 ├─ CMakeLists.txt             构建定义（入口，必须根目录）
 ├─ .gitignore
+├─ cmd
+│  ├─ .forge.ps1
+│  └─ config-view.ps1
 ├─ config\
 │  ├─ cmake\
 │  │  └─ ForgeShader.cmake    22 个着色器编译规则（替代原 bat）
@@ -83,18 +86,17 @@ Forge\
   - `VCPKG_OVERLAY_TRIPLETS` / `VCPKG_OVERLAY_PORTS`：自定义目录
   - `VCPKG_INSTALLED_DIR`：`build\vcpkg_installed`（依赖统一位置，不进项目根）
 
-### 3.3 CMakeLists.txt —— 构建定义（8 个区块）
+### 3.3 CMakeLists.txt —— 构建定义（7 个区块）
 
 | 区块 | 内容 |
 |---|---|
 | 1 MSVC 全局 | `_ITERATOR_DEBUG_LEVEL=1`（与 triplet 一致防 LNK2038）+ `/utf-8`（源码已转码） |
 | 2 Vulkan SDK | `find_package(Vulkan)` + glslangValidator 查找 |
 | 3 vcpkg 官方包 | find_package（VMA 用 VulkanMemoryAllocator） |
-| 4 freealut 兼容层 | 官方 config 缺失时手动组装 `ALUT::ALUT` |
-| 5 自定义库 | `unofficial-kmeans` / `FastNoise2` / `unofficial-forge-stb-font` |
-| 6 主程序 | `add_executable(Forge src/code/vk/Main.cpp)` + 链接全部依赖 |
-| 7 调试工作目录 | `VS_DEBUGGER_WORKING_DIRECTORY` = 项目根（资源相对路径可解析） |
-| 8 着色器 | include ForgeShader.cmake + `add_dependencies(Forge ForgeShader)` |
+| 4 自定义库 | `unofficial-kmeans` / `FastNoise2` / `unofficial-forge-stb-font` |
+| 5 主程序 | `add_executable(Forge src/code/vk/Main.cpp)` + 链接全部依赖 |
+| 6 调试工作目录 | `VS_DEBUGGER_WORKING_DIRECTORY` = 项目根（资源相对路径可解析） |
+| 7 着色器 | include ForgeShader.cmake + `add_dependencies(Forge ForgeShader)` |
 
 ### 3.4 triplet —— 库编译的统一配置
 
@@ -168,7 +170,7 @@ find_package(FreeALUT CONFIG REQUIRED)                   # 目标 FreeALUT::alut
 | 编译 Release | `cmake --build --preset release` |
 | 备用 Ninja 构建 | `cmake --preset ninja` |
 | 调试运行 | VS 打开 `build\vs\Forge.sln` → F5（工作目录自动=项目根） |
-| 命令行运行 | `cd E:\code\graphicsAPI\vulkan\Forge` + `.\build\vs\Debug\Forge.exe` |
+| 命令行运行 | `cd E:\code\graphicsAPI\vulkan\Forge` + `.\build\vs\bin\output\x64\Debug\Forge.exe` |
 
 ## 六、日常维护
 
@@ -189,5 +191,5 @@ find_package(FreeALUT CONFIG REQUIRED)                   # 目标 FreeALUT::alut
 3. **fastnoise2 目标名是 `FastNoise2::FastNoise`**，find_package 用 `FastNoise2`
 4. **源文件编码 UTF-8**（已全量转码），CMake 用 `/utf-8` 匹配；改源码保持 UTF-8 保存
 5. **triplet 的 C/CXX_FLAGS_DEBUG 必须成对设置**（vcpkg 要求）
-6. **`.gitignore`**：bin/ build/ .vs/ vcpkg_installed/ storage/chunk/（生成物不提交）
+6. **`.gitignore`**：.vs/ build/ vcpkg_installed/ storage/chunk/ src/assets/shader/ CMakeUserPresets.json *.vcxproj.user（生成物不提交）
 7. **Vulkan SDK 是系统级依赖**（不进 vcpkg）：glfw3 探测、校验层、glslangValidator 都靠它
