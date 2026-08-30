@@ -90,10 +90,10 @@ ForgeEngine\
 
 | 区块 | 内容 |
 |---|---|
-| 1 MSVC 全局 | `_ITERATOR_DEBUG_LEVEL=1`（与 triplet 一致防 LNK2038）+ `/utf-8`（源码已转码） |
+| 1 MSVC 全局 | `/utf-8 /W3`（源码已转码；_ITERATOR_DEBUG_LEVEL 在 triplet 设，防 LNK2038） |
 | 2 Vulkan SDK | `find_package(Vulkan)` + glslangValidator 查找 |
 | 3 vcpkg 官方包 | find_package（VMA 用 VulkanMemoryAllocator） |
-| 4 自定义库 | `unofficial-kmeans` / `FastNoise2` / `unofficial-forgeengine-stb-font` |
+| 4 自定义库 | find_path 手工目标（ForgeKmeans / ForgeFastNoise / ForgeStbFont） |
 | 5 主程序 | `add_executable(ForgeEngine src/code/vk/Main.cpp)` + 链接全部依赖 |
 | 6 调试工作目录 | `VS_DEBUGGER_WORKING_DIRECTORY` = 项目根（资源相对路径可解析） |
 | 7 着色器 | include ForgeShader.cmake + `add_dependencies(ForgeEngine ForgeShader)` |

@@ -1,6 +1,6 @@
 # ============================================================================
 #  ForgeShader：编译全部管线着色器（GLSL → SPIR-V）
-#  替代旧工程 0_shader_build 下的 *.bat 脚本
+#  替代旧工程的 *.bat 编译脚本
 # ============================================================================
 set(FORGE_SHADER_BUILD_DIR "${CMAKE_SOURCE_DIR}/src/assets/shader_src")
 set(FORGE_SHADER_OUT_DIR   "${CMAKE_SOURCE_DIR}/src/assets/shader")
