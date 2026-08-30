@@ -1,8 +1,10 @@
 ﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $root  = Get-Location
-$fixed = @("vcpkg.json","CMakePresets.json","CMakeLists.txt",".gitignore") |
+$fixed = @("vcpkg.json","CMakePresets.json","CMakeLists.txt",".gitignore","README.md") |
     ForEach-Object { Join-Path $root $_ }
 $auto = @()
+$auto += Get-ChildItem "cmd"    -File -Filter *.ps1 -ErrorAction SilentlyContinue
+$auto += Get-ChildItem "docs"   -File -Filter *.md  -ErrorAction SilentlyContinue
 $auto += Get-ChildItem "config\cmake"         -File -Filter *.cmake -ErrorAction SilentlyContinue
 $auto += Get-ChildItem "config\vcpkg\triplet" -File -Filter *.cmake -ErrorAction SilentlyContinue
 $auto += Get-ChildItem "config\vcpkg\port" -Recurse -File -Include "portfile.cmake","vcpkg.json","*.patch","*.diff" -ErrorAction SilentlyContinue
