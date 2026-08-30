@@ -15,8 +15,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(MSVC)
     # Debug 并行化性能：与 vcpkg triplet 的宏一致，避免 LNK2038
     add_compile_definitions(
-        _ITERATOR_DEBUG_LEVEL=1
-        _HAS_ITERATOR_DEBUGGING=0
+        
+        
     )
     # 源文件已统一 UTF-8；W3 警告级别
     add_compile_options(/utf-8 /W3)
@@ -88,6 +88,7 @@ add_executable(Forge src/code/vk/Main.cpp)
 target_compile_definitions(Forge PRIVATE UNICODE _UNICODE)
 # 单 TU 包含全部实现（VMA/tinygltf/stb/引擎），节数超限，旧工程同样带 /bigobj
 target_compile_options(Forge PRIVATE /bigobj)
+target_compile_options(Forge PRIVATE $<$<NOT:$<CONFIG:Debug>>:/U_DEBUG>)   # 非Debug强制撤销_DEBUG，杜绝IDL串味
 # 让 VS 解决方案资源管理器按磁盘目录显示源码树（纯显示，不影响编译）
 file(GLOB_RECURSE FORGE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/code/*.h"

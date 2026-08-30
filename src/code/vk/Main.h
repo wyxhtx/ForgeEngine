@@ -4,8 +4,10 @@
 
 /*编译配置*/
 //避免Debug下并行化奇卡无比
+#ifdef _DEBUG
 #define _ITERATOR_DEBUG_LEVEL 1		//STL基本检查
-#define _HAS_ITERATOR_DEBUGGING 0	//不收集STL调试信息
+#define _HAS_ITERATOR_DEBUGGING 0
+#endif	//不收集STL调试信息
 
 
 
