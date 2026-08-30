@@ -12,11 +12,6 @@ int main() {
     }
 
 
-    //system("cd src\\image_build && png_to_ktx2.bat");   //编译纹理
-    //system("cd src\\shader_build && glsl_to_spirv.bat"); //编译着色器
-    //system("cd src\\shader_build && dsScence_gts.bat"); //编译延迟着色器
-    //system("cd src\\shader_build && terrain_gts.bat");  //编译地形着色器
-    //system("cd src\\shader_build && model_gts.bat");    //编译模型着色器
 
 
 

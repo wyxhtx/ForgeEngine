@@ -23,10 +23,10 @@ function global:f-br {              # 构建 + 运行（最常用）
     if ($LASTEXITCODE -eq 0) { f-run }
 }
 function global:f-config {          # 打印全部构建配置文件（带行号）
-    .\config-view.ps1
+    .\cmd\config-view.ps1
 }
 function global:f-config-k {        # 只看 ktx 端口相关
-    $Pattern = "ktx"; .\config-view.ps1; Remove-Variable Pattern
+    $Pattern = "ktx"; .\cmd\config-view.ps1; Remove-Variable Pattern
 }
 function global:f-ports {           # 已安装端口列表
     & "$env:VCPKG_ROOT\vcpkg.exe" list --x-install-root=.\build\vcpkg_installed

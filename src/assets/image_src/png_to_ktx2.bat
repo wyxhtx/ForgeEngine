@@ -3,24 +3,24 @@ setlocal enabledelayedexpansion
 
 set "COMPILER=.\toktx.exe"
 set "SOURCE_DIR=."
-set "TARGET_DIR=..\1_image"
+set "TARGET_DIR=..\image"
 
-echo ¿ªÊ¼×ª»»µØÐÎÎÆÀí...
+echo ï¿½ï¿½Ê¼×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½...
 echo ---
 
-::´¦ÀíµØÐÎÎÆÀí
+::ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 for /r "%SOURCE_DIR%\terrain" %%f in (*.png *.jpeg *.jpg) do (
     set "source_file=%%f"
     set "source_path=%%~dpf"
     
-    ::¼ÆËãÏà¶ÔÂ·¾¶
+    ::ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½
     set "relative_path=!source_path:%CD%\=!"
     set "relative_path=!relative_path:~0,-1!"
     
-    ::»ñÈ¡ÎÄ¼þÃû
+    ::ï¿½ï¿½È¡ï¿½Ä¼ï¿½ï¿½ï¿½
     set "filename=%%~nf"
     
-    ::ÅÐ¶ÏÊÇ·ñÎª¸ß¹âÌùÍ¼
+    ::ï¿½Ð¶ï¿½ï¿½Ç·ï¿½Îªï¿½ß¹ï¿½ï¿½ï¿½Í¼
     echo !filename! | findstr /i "specular" >nul
     if !errorlevel! equ 0 (
         set "toktx_params=--t2 --zcmp 22 --assign_primaries bt709 --assign_oetf linear"
@@ -28,57 +28,57 @@ for /r "%SOURCE_DIR%\terrain" %%f in (*.png *.jpeg *.jpg) do (
         set "toktx_params=--t2 --zcmp 22 --assign_primaries bt709 --assign_oetf srgb"
     )
     
-    ::¹¹½¨Ä¿±êÂ·¾¶ - Ê¹ÓÃÑÓ³ÙÀ©Õ¹±ÜÃâ±äÁ¿ÎÛÈ¾
+    ::ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½Â·ï¿½ï¿½ - Ê¹ï¿½ï¿½ï¿½Ó³ï¿½ï¿½ï¿½Õ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¾
     set "target_path=!TARGET_DIR!\!relative_path!\!filename!.ktx2"
     set "target_dir_temp=!TARGET_DIR!\!relative_path!"
     
-    ::´´½¨Ä¿Â¼²¢×ª»»
+    ::ï¿½ï¿½ï¿½ï¿½Ä¿Â¼ï¿½ï¿½×ªï¿½ï¿½
     if not exist "!target_dir_temp!" (
-        echo ´´½¨Ä¿Â¼: !target_dir_temp!
+        echo ï¿½ï¿½ï¿½ï¿½Ä¿Â¼: !target_dir_temp!
         mkdir "!target_dir_temp!"
     )
     
-    echo ×ª»»: !relative_path!\!filename!%%~xf ¡ú !target_path!
+    echo ×ªï¿½ï¿½: !relative_path!\!filename!%%~xf ï¿½ï¿½ !target_path!
     "%COMPILER%" !toktx_params! "!target_path!" "%%f" >nul 2>&1
     if not !errorlevel! equ 0 (
-        echo Ê§°Ü
+        echo Ê§ï¿½ï¿½
     )
     echo ---
 )
 
 echo.
-echo ¿ªÊ¼×ª»»Ä£ÐÍÎÆÀí...
+echo ï¿½ï¿½Ê¼×ªï¿½ï¿½Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½...
 echo ---
 
-::´¦ÀíÄ£ÐÍÎÆÀí
+::ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 for /r "%SOURCE_DIR%\model" %%f in (*.png *.jpeg *.jpg) do (
     set "source_file=%%f"
     set "source_path=%%~dpf"
     
-    ::¼ÆËãÏà¶ÔÂ·¾¶
+    ::ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½
     set "relative_path=!source_path:%CD%\=!"
     set "relative_path=!relative_path:~0,-1!"
     
-    ::»ñÈ¡ÎÄ¼þÃû
+    ::ï¿½ï¿½È¡ï¿½Ä¼ï¿½ï¿½ï¿½
     set "filename=%%~nf"
     
-    ::Ä£ÐÍÎÆÀíÊ¹ÓÃ¹Ì¶¨²ÎÊý
+    ::Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½Ã¹Ì¶ï¿½ï¿½ï¿½ï¿½ï¿½
     set "toktx_params=--t2 --encode uastc --zcmp 22 --genmipmap --assign_primaries bt709 --assign_oetf srgb"
     
-    ::¹¹½¨Ä¿±êÂ·¾¶
+    ::ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½Â·ï¿½ï¿½
     set "target_path=%TARGET_DIR%\!relative_path!\!filename!.ktx2"
     set "target_dir=%TARGET_DIR%\!relative_path!"
     
-    ::´´½¨Ä¿Â¼²¢×ª»»
+    ::ï¿½ï¿½ï¿½ï¿½Ä¿Â¼ï¿½ï¿½×ªï¿½ï¿½
     if not exist "!target_dir!" (
-        echo ´´½¨Ä¿Â¼: !target_dir!
+        echo ï¿½ï¿½ï¿½ï¿½Ä¿Â¼: !target_dir!
         mkdir "!target_dir!"
     )
     
-    echo ×ª»»: !relative_path!\!filename!%%~xf ¡ú !target_path!
+    echo ×ªï¿½ï¿½: !relative_path!\!filename!%%~xf ï¿½ï¿½ !target_path!
     "%COMPILER%" !toktx_params! "!target_path!" "%%f" >nul 2>&1
     if not !errorlevel! equ 0 (
-        echo Ê§°Ü
+        echo Ê§ï¿½ï¿½
     )
     echo ---
 )

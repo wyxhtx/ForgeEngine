@@ -132,57 +132,57 @@ namespace cameraInfo {
 //file信息
 namespace fileInfo {
     namespace shader {
-        const std::string terrainTask = "src/assets/0_shader/terrain/terrainDeferredTask.spv";
-        const std::string terrainMesh = "src/assets/0_shader/terrain/terrainDeferredMesh.spv";
-        const std::string terrainVert = "src/assets/0_shader/terrain/terrainDeferredVert.spv";
-        const std::string terrainFrag = "src/assets/0_shader/terrain/terrainDeferredFrag.spv";
+        const std::string terrainTask = "src/assets/shader/terrain/terrainDeferredTask.spv";
+        const std::string terrainMesh = "src/assets/shader/terrain/terrainDeferredMesh.spv";
+        const std::string terrainVert = "src/assets/shader/terrain/terrainDeferredVert.spv";
+        const std::string terrainFrag = "src/assets/shader/terrain/terrainDeferredFrag.spv";
 
-        const std::string pbrVert     = "src/assets/0_shader/model/pbrDeferredVert.spv";
-        const std::string pbrFrag     = "src/assets/0_shader/model/pbrDeferredFrag.spv";
+        const std::string pbrVert     = "src/assets/shader/model/pbrDeferredVert.spv";
+        const std::string pbrFrag     = "src/assets/shader/model/pbrDeferredFrag.spv";
 
-        const std::string skyboxVert  = "src/assets/0_shader/skybox/skyboxVert.spv";
-        const std::string skyboxFrag  = "src/assets/0_shader/skybox/skyboxFrag.spv";
+        const std::string skyboxVert  = "src/assets/shader/skybox/skyboxVert.spv";
+        const std::string skyboxFrag  = "src/assets/shader/skybox/skyboxFrag.spv";
 
-        const std::string mineVert    = "src/assets/0_shader/mine/mineVert.spv";
-        const std::string mineFrag    = "src/assets/0_shader/mine/mineFrag.spv";
+        const std::string mineVert    = "src/assets/shader/mine/mineVert.spv";
+        const std::string mineFrag    = "src/assets/shader/mine/mineFrag.spv";
 
-        const std::string uitextVert  = "src/assets/0_shader/uiText/uitextVert.spv";
-        const std::string uitextFrag  = "src/assets/0_shader/uiText/uitextFrag.spv";
+        const std::string uitextVert  = "src/assets/shader/uiText/uitextVert.spv";
+        const std::string uitextFrag  = "src/assets/shader/uiText/uitextFrag.spv";
 
-        const std::string osMirrorVert = "src/assets/0_shader/osMirror/osMirrorVert.spv";
-        const std::string osMirrorFrag = "src/assets/0_shader/osMirror/osMirrorFrag.spv";
+        const std::string osMirrorVert = "src/assets/shader/osMirror/osMirrorVert.spv";
+        const std::string osMirrorFrag = "src/assets/shader/osMirror/osMirrorFrag.spv";
 
-        const std::string osScenceVert = "src/assets/0_shader/osScence/osScenceVert.spv";
-        const std::string osScenceFrag = "src/assets/0_shader/osScence/osScenceFrag.spv";
+        const std::string osScenceVert = "src/assets/shader/osScence/osScenceVert.spv";
+        const std::string osScenceFrag = "src/assets/shader/osScence/osScenceFrag.spv";
 
-        const std::string dsScenceVert = "src/assets/0_shader/dsScence/dsScenceVert.spv";
-        const std::string dsScenceFrag = "src/assets/0_shader/dsScence/dsScenceFrag.spv";
+        const std::string dsScenceVert = "src/assets/shader/dsScence/dsScenceVert.spv";
+        const std::string dsScenceFrag = "src/assets/shader/dsScence/dsScenceFrag.spv";
 
-        const std::string shadowVert   = "src/assets/0_shader/shadow/shadowVert.spv";
-        const std::string shadowFrag   = "src/assets/0_shader/shadow/shadowFrag.spv";
+        const std::string shadowVert   = "src/assets/shader/shadow/shadowVert.spv";
+        const std::string shadowFrag   = "src/assets/shader/shadow/shadowFrag.spv";
     }
 
     namespace image {
         //todo 待整合，着色器，贴图，贴图信息
-        const char* cube       = "src/assets/1_image/terrain/cube_16_64.ktx2";
+        const char* cube       = "src/assets/image/terrain/cube_16_64.ktx2";
 
-        const char* temple     = "src/assets/1_image/model/temple/baseColor.ktx2";
-        const char* droidBodyC = "src/assets/1_image/model/droid/Body_baseColor.ktx2";
-        const char* droidHeadC = "src/assets/1_image/model/droid/Head_baseColor.ktx2";
-        const char* droidMiscC = "src/assets/1_image/model/droid/Misc_baseColor.ktx2";
-        //const char* droidBodyN = "src/assets/1_image/model/droid/Body_normal.ktx2";
-        //const char* droidHeadN = "src/assets/1_image/model/droid/Head_normal.ktx2";
-        //const char* droidMiscN = "src/assets/1_image/model/droid/Misc_normal.ktx2";
+        const char* temple     = "src/assets/image/model/temple/baseColor.ktx2";
+        const char* droidBodyC = "src/assets/image/model/droid/Body_baseColor.ktx2";
+        const char* droidHeadC = "src/assets/image/model/droid/Head_baseColor.ktx2";
+        const char* droidMiscC = "src/assets/image/model/droid/Misc_baseColor.ktx2";
+        //const char* droidBodyN = "src/assets/image/model/droid/Body_normal.ktx2";
+        //const char* droidHeadN = "src/assets/image/model/droid/Head_normal.ktx2";
+        //const char* droidMiscN = "src/assets/image/model/droid/Misc_normal.ktx2";
     }
 
     namespace model {
-        const std::string temple = "src/assets/2_model/temple/scene.gltf";
-        const std::string droid  = "src/assets/2_model/droid/scene.gltf";
-        //const std::string nextTemp = "src/assets/2_model/nextTemp/scene.gltf";
+        const std::string temple = "src/assets/model/temple/scene.gltf";
+        const std::string droid  = "src/assets/model/droid/scene.gltf";
+        //const std::string nextTemp = "src/assets/model/nextTemp/scene.gltf";
     }
 
     namespace music {
-        const char* throughTheMounta = "src/assets/3_music/background/Through the Mounta.wav";
+        const char* throughTheMounta = "src/assets/music/background/Through the Mounta.wav";
         //const char* throughTheMounta = "src/music/background/Greedy.wav";
     }
 

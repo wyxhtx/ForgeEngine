@@ -1,4 +1,4 @@
-﻿# Forge 构建体系说明（vcpkg + CMake）
+# Forge 构建体系说明（vcpkg + CMake）
 
 > 版本：迁移完成版（2026）
 > 作用：ForgeEngine 依赖管理与构建的一站式说明
