@@ -101,17 +101,17 @@ target_include_directories(Forge PRIVATE
 )
 
 target_link_libraries(Forge PRIVATE
-    glfw                                    # GLFW 窗口
-    glm::glm                                # glm 数学（header-only）
-    Vulkan::Vulkan                          # Vulkan loader
-    GPUOpen::VulkanMemoryAllocator          # VMA（header-only）
-    KTX::ktx                                # KTX 纹理
-    ForgeTinygltf                      # glTF 模型加载
-    OpenAL::OpenAL                          # OpenAL 音频
-    FreeALUT::alut                          # freealut（官方或 fallback）
-    ForgeKmeans                                  # 聚类（INTERFACE）
-    ForgeFastNoise                   # 噪音（INTERFACE）
-    ForgeStbFont                          # 字体数据（INTERFACE）
+    glfw                                        # GLFW 窗口
+    glm::glm                                    # glm 数学（header-only）
+    Vulkan::Vulkan                              # Vulkan loader
+    GPUOpen::VulkanMemoryAllocator              # VMA（header-only）
+    KTX::ktx                                    # KTX 纹理
+    ForgeTinygltf                               # glTF 模型加载
+    OpenAL::OpenAL                              # OpenAL 音频
+    FreeALUT::alut                              # freealut（官方或 fallback）
+    ForgeKmeans                                 # 聚类（INTERFACE）
+    ForgeFastNoise                              # 噪音（INTERFACE）
+    ForgeStbFont                                # 字体数据（INTERFACE）
 )
 
 # ----------------------------------------------------------------------------
