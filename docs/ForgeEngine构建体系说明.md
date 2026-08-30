@@ -13,7 +13,7 @@ vcpkg（下载 + 锁定版本 + 编译 + 安装）
    ↓ 装到 build\vcpkg_installed\
 CMakeLists.txt（find_package + 构建定义）
    ↓ VS 生成器
-build\vs\Forge.sln → Forge.exe
+build\vs\Forge.sln → ForgeEngine.exe
 ```
 
 - **依赖分三类**：官方 port（9 个，baseline 锁版本）/ 自定义 port（6 个，REF 锁 commit）+ 覆盖官方 port（ktx、tinygltf）/ 系统级 Vulkan SDK（不走 vcpkg）
@@ -28,20 +28,20 @@ Forge\
 ├─ CMakeLists.txt             构建定义（入口，必须根目录）
 ├─ .gitignore
 ├─ cmd
-│  ├─ .forge.ps1
+│  ├─ forgeengine.ps1
 │  └─ config-view.ps1
 ├─ config\
 │  ├─ cmake\
 │  │  └─ ForgeShader.cmake    22 个着色器编译规则（替代原 bat）
 │  └─ vcpkg\
-│     ├─ triplet\x64-windows-static-forge.cmake   全静态 + Debug 宏定制
+│     ├─ triplet\x64-windows-static-forgeengine.cmake   全静态 + Debug 宏定制
 │     └─ port\                6 个自定义库配方（无源码，仅 vcpkg.json + portfile.cmake）
 │        ├─ aarand\
 │        ├─ subpar\
 │        ├─ sanisizer\
 │        ├─ kmeans\
 │        ├─ fastnoise2\
-│        ├─ forge-stb-font\
+│        ├─ forgeengine-stb-font\
 │        ├─ ktx\                 覆盖官方（7z解压，修符号链接）
 │        └─ tinygltf\            覆盖官方（修正 SHA512）
 ├─ src\code\                  项目源码（UTF-8，已转码）
@@ -65,7 +65,7 @@ Forge\
     "glfw3", "glm", "vulkan-headers", "vulkan-memory-allocator",
     { "name": "ktx", "features": ["vulkan"] },
     "tinygltf", "stb", "openal-soft", "freealut",
-    "kmeans", "fastnoise2", "forge-stb-font"
+    "kmeans", "fastnoise2", "forgeengine-stb-font"
   ],
   "builtin-baseline": "61d43ee6f0cc440dc97983d36e0c85e80fe429d4"
 }
@@ -82,7 +82,7 @@ Forge\
 - `ninja` 预设：备用命令行快速构建，输出 `build\ninja\`
 - 关键变量：
   - `CMAKE_TOOLCHAIN_FILE`：vcpkg 入口（manifest 模式自动装依赖）
-  - `VCPKG_TARGET_TRIPLET`：`x64-windows-static-forge`
+  - `VCPKG_TARGET_TRIPLET`：`x64-windows-static-forgeengine`
   - `VCPKG_OVERLAY_TRIPLETS` / `VCPKG_OVERLAY_PORTS`：自定义目录
   - `VCPKG_INSTALLED_DIR`：`build\vcpkg_installed`（依赖统一位置，不进项目根）
 
@@ -93,7 +93,7 @@ Forge\
 | 1 MSVC 全局 | `_ITERATOR_DEBUG_LEVEL=1`（与 triplet 一致防 LNK2038）+ `/utf-8`（源码已转码） |
 | 2 Vulkan SDK | `find_package(Vulkan)` + glslangValidator 查找 |
 | 3 vcpkg 官方包 | find_package（VMA 用 VulkanMemoryAllocator） |
-| 4 自定义库 | `unofficial-kmeans` / `FastNoise2` / `unofficial-forge-stb-font` |
+| 4 自定义库 | `unofficial-kmeans` / `FastNoise2` / `unofficial-forgeengine-stb-font` |
 | 5 主程序 | `add_executable(Forge src/code/vk/Main.cpp)` + 链接全部依赖 |
 | 6 调试工作目录 | `VS_DEBUGGER_WORKING_DIRECTORY` = 项目根（资源相对路径可解析） |
 | 7 着色器 | include ForgeShader.cmake + `add_dependencies(Forge ForgeShader)` |
@@ -122,13 +122,13 @@ set(VCPKG_CXX_FLAGS_DEBUG "${VCPKG_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=1")
 | sanisizer | LTLA/sanisizer | 数值安全检查 | `sanisizer\` | kmeans 依赖 |
 | kmeans | libscran/kmeans | k-means 聚类 | `kmeans\` | **项目直接使用**（区块分区） |
 | fastnoise2 | Auburn/FastNoise2 | 模块化噪音（需编译） | `FastNoise\` | **项目直接使用**（地形生成） |
-| forge-stb-font | KTX-Software | 字体数据 | `stb\` | **项目直接使用**（UI 文字） |
+| forgeengine-stb-font | KTX-Software | 字体数据 | `stb\` | **项目直接使用**（UI 文字） |
 
 ### 三种配方模式
 
 ① 纯头文件库（aarand/subpar/sanisizer/kmeans）：`vcpkg_from_git` + `file(COPY include)` + 手写 config
 ② 需编译库（fastnoise2）：`vcpkg_cmake_configure`（含 FastSIMD 编译单元，非纯 header）+ `vcpkg_cmake_install`
-③ 单文件下载（forge-stb-font）：`vcpkg_download_distfile`（raw URL + SHA512，不 clone 大仓库）
+③ 单文件下载（forgeengine-stb-font）：`vcpkg_download_distfile`（raw URL + SHA512，不 clone 大仓库）
 
 ### 各库版本锁定（REF = commit SHA / FETCH_REF = tag 或分支）
 
@@ -139,7 +139,7 @@ set(VCPKG_CXX_FLAGS_DEBUG "${VCPKG_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=1")
 | sanisizer | 32a024ae1926231ceaa02ed6ff104c6df6d524dc | master |
 | kmeans | 0f427abb2a66f5e820a64338543d838a5eca4c99 | master |
 | fastnoise2 | 9b75083b87d5e391d43dc0c721d8a9fa51db735a | v0.10.0-alpha |
-| forge-stb-font | （distfile，SHA512 校验） | — |
+| forgeengine-stb-font | （distfile，SHA512 校验） | — |
 
 ### 项目侧使用
 
@@ -155,7 +155,7 @@ set(VCPKG_CXX_FLAGS_DEBUG "${VCPKG_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=1")
 # CMakeLists.txt
 find_package(unofficial-kmeans CONFIG REQUIRED)   # 目标 kmeans
 find_package(FastNoise2 CONFIG REQUIRED)          # 目标 FastNoise2::FastNoise（注意不是 unofficial-）
-find_package(unofficial-forge-stb-font CONFIG REQUIRED)  # 目标 forge-stb-font
+find_package(unofficial-forgeengine-stb-font CONFIG REQUIRED)  # 目标 forgeengine-stb-font
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)      # 目标 GPUOpen::VulkanMemoryAllocator（VMA）
 find_package(FreeALUT CONFIG REQUIRED)                   # 目标 FreeALUT::alut（freealut）
 ```
@@ -164,13 +164,13 @@ find_package(FreeALUT CONFIG REQUIRED)                   # 目标 FreeALUT::alut
 
 | 操作 | 命令 |
 |---|---|
-| 装/更新依赖 | `vcpkg install --triplet x64-windows-static-forge --overlay-ports=config\vcpkg\port --overlay-triplets=config\vcpkg\triplet --x-install-root=build\vcpkg_installed` |
+| 装/更新依赖 | `vcpkg install --triplet x64-windows-static-forgeengine --overlay-ports=config\vcpkg\port --overlay-triplets=config\vcpkg\triplet --x-install-root=build\vcpkg_installed` |
 | 配置（首次/改依赖后） | `cmake --preset vs` |
 | 编译 Debug | `cmake --build --preset debug` |
 | 编译 Release | `cmake --build --preset release` |
 | 备用 Ninja 构建 | `cmake --preset ninja` |
 | 调试运行 | VS 打开 `build\vs\Forge.sln` → F5（工作目录自动=项目根） |
-| 命令行运行 | `cd E:\code\graphicsAPI\vulkan\Forge` + `.\build\vs\bin\output\x64\Debug\Forge.exe` |
+| 命令行运行 | `cd E:\code\graphicsAPI\vulkan\Forge` + `.\build\vs\bin\output\x64\Debug\ForgeEngine.exe` |
 
 ## 六、日常维护
 

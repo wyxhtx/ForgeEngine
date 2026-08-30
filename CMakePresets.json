@@ -3,13 +3,13 @@
   "configurePresets": [
     {
       "name": "vs",
-      "displayName": "Forge VS2022",
+      "displayName": "ForgeEngine VS2022",
       "generator": "Visual Studio 17 2022",
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build/vs",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_TARGET_TRIPLET": "x64-windows-static-forge",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-forgeengine",
         "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/config/vcpkg/triplet",
         "VCPKG_OVERLAY_PORTS": "${sourceDir}/config/vcpkg/port",
         "VCPKG_INSTALLED_DIR": "${sourceDir}/build/vcpkg_installed"
@@ -17,12 +17,12 @@
     },
     {
       "name": "ninja",
-      "displayName": "Forge Ninja",
+      "displayName": "ForgeEngine Ninja",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/ninja",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_TARGET_TRIPLET": "x64-windows-static-forge",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-forgeengine",
         "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/config/vcpkg/triplet",
         "VCPKG_OVERLAY_PORTS": "${sourceDir}/config/vcpkg/port",
         "VCPKG_INSTALLED_DIR": "${sourceDir}/build/vcpkg_installed"

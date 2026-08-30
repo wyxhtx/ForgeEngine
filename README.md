@@ -4,11 +4,11 @@
 
 ## 构建
 cmake --preset vs && cmake --build --preset release
-.\build\vs\bin\output\x64\Release\Forge.exe
+.\build\vs\bin\output\x64\Release\ForgeEngine.exe
 
 ## 调试指令
-cd 进项目自动加载（cmd\.forge.ps1），完整指令表见 docs/调试指令速查.md。
-常用：`f-br` 构建+运行 · `f-config` 配置速览 · `f-st` git 状态
+cd 进项目自动加载（cmd\forgeengine.ps1），完整指令表见 docs/调试指令速查.md。
+常用：`fe-br` 构建+运行 · `fe-config` 配置速览 · `fe-st` git 状态
 
 ## 目录
 - config/ 构建配置（cmake/vcpkg 端口）

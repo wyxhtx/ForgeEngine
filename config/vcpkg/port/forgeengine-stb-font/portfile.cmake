@@ -8,14 +8,14 @@ vcpkg_download_distfile(
 file(INSTALL "${FONT_INL}" DESTINATION "${CURRENT_PACKAGES_DIR}/include/stb")
 file(WRITE "${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright"
      "Forge custom port. See project repository for license details.\n")
-file(WRITE "${CURRENT_PACKAGES_DIR}/share/unofficial-forge-stb-font/unofficial-forge-stb-font-config.cmake" [[
-if(NOT TARGET forge-stb-font)
-    add_library(forge-stb-font INTERFACE IMPORTED)
-    set_target_properties(forge-stb-font PROPERTIES
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/unofficial-forgeengine-stb-font/unofficial-forgeengine-stb-font-config.cmake" [[
+if(NOT TARGET forgeengine-stb-font)
+    add_library(forgeengine-stb-font INTERFACE IMPORTED)
+    set_target_properties(forgeengine-stb-font PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}/../../include")
 endif()
 ]])
-file(WRITE "${CURRENT_PACKAGES_DIR}/share/unofficial-forge-stb-font/unofficial-forge-stb-font-config-version.cmake" [[
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/unofficial-forgeengine-stb-font/unofficial-forgeengine-stb-font-config-version.cmake" [[
 set(PACKAGE_VERSION "1.0.0")
 if(PACKAGE_VERSION VERSION_LESS PACKAGE_FIND_VERSION)
     set(PACKAGE_VERSION_COMPATIBLE FALSE)

@@ -3,7 +3,7 @@
 #  依赖清单：vcpkg.json    构建入口：CMakePresets.json
 # ============================================================================
 cmake_minimum_required(VERSION 3.24)
-project(Forge LANGUAGES CXX)
+project(ForgeEngine LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -68,10 +68,10 @@ set_target_properties(ForgeFastNoise PROPERTIES
     INTERFACE_LINK_LIBRARIES "$<$<CONFIG:Debug>:${FASTNOISE2_LIBRARY_DEBUG}>;$<$<NOT:$<CONFIG:Debug>>:${FASTNOISE2_LIBRARY_RELEASE}>"
     INTERFACE_COMPILE_DEFINITIONS "FASTNOISE_STATIC_LIB"
 )
-# forge-stb-font 是 header-only，config 目录名与包名不匹配，用 find_path 方式
+# forgeengine-stb-font 是 header-only，config 目录名与包名不匹配，用 find_path 方式
 find_path(FORGE_STB_FONT_INCLUDE_DIRS "stb/stb_font_consolas_24_latin1.inl")
 if(NOT FORGE_STB_FONT_INCLUDE_DIRS)
-    message(FATAL_ERROR "找不到 stb/stb_font_consolas_24_latin1.inl，请确认 vcpkg 已安装 forge-stb-font")
+    message(FATAL_ERROR "找不到 stb/stb_font_consolas_24_latin1.inl，请确认 vcpkg 已安装 forgeengine-stb-font")
 endif()
 add_library(ForgeStbFont INTERFACE)
 target_include_directories(ForgeStbFont INTERFACE "${FORGE_STB_FONT_INCLUDE_DIRS}")
@@ -79,28 +79,28 @@ target_include_directories(ForgeStbFont INTERFACE "${FORGE_STB_FONT_INCLUDE_DIRS
 # ----------------------------------------------------------------------------
 # 5. 主程序目标
 # ----------------------------------------------------------------------------
-add_executable(Forge src/code/vk/Main.cpp)
+add_executable(ForgeEngine src/code/vk/Main.cpp)
 # 恢复旧工程 CharacterSet=Unicode（GetKeyboardLayoutName/LoadKeyboardLayout 需 W 版本）
-target_compile_definitions(Forge PRIVATE UNICODE _UNICODE)
+target_compile_definitions(ForgeEngine PRIVATE UNICODE _UNICODE)
 # 单 TU 包含全部实现（VMA/tinygltf/stb/引擎），节数超限，旧工程同样带 /bigobj
-target_compile_options(Forge PRIVATE /bigobj)
-target_compile_options(Forge PRIVATE $<$<NOT:$<CONFIG:Debug>>:/U_DEBUG>)  # 非Debug强制撤销_DEBUG，杜绝IDL串味
+target_compile_options(ForgeEngine PRIVATE /bigobj)
+target_compile_options(ForgeEngine PRIVATE $<$<NOT:$<CONFIG:Debug>>:/U_DEBUG>)  # 非Debug强制撤销_DEBUG，杜绝IDL串味
 # 让 VS 解决方案资源管理器按磁盘目录显示源码树（纯显示，不影响编译）
 file(GLOB_RECURSE FORGE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/code/*.h"
     "${CMAKE_SOURCE_DIR}/src/code/*.hpp"
     "${CMAKE_SOURCE_DIR}/src/code/*.cpp"
 )
-target_sources(Forge PRIVATE ${FORGE_SOURCES})
+target_sources(ForgeEngine PRIVATE ${FORGE_SOURCES})
 source_group(TREE "${CMAKE_SOURCE_DIR}/src/code" PREFIX "src/code" FILES ${FORGE_SOURCES})
-set_property(TARGET Forge PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set_property(TARGET ForgeEngine PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-target_include_directories(Forge PRIVATE
+target_include_directories(ForgeEngine PRIVATE
     src/code/vk
     src/code/forge
 )
 
-target_link_libraries(Forge PRIVATE
+target_link_libraries(ForgeEngine PRIVATE
     glfw                                        # GLFW 窗口
     glm::glm                                    # glm 数学（header-only）
     Vulkan::Vulkan                              # Vulkan loader
@@ -117,7 +117,7 @@ target_link_libraries(Forge PRIVATE
 # ----------------------------------------------------------------------------
 # 6. 调试工作目录（VS 生成器专属）
 # ----------------------------------------------------------------------------
-set_target_properties(Forge PROPERTIES
+set_target_properties(ForgeEngine PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/output/x64/$<CONFIG>"
 )
@@ -126,4 +126,4 @@ set_target_properties(Forge PROPERTIES
 # 7. 着色器编译（替代原 bat）
 # ----------------------------------------------------------------------------
 include(config/cmake/ForgeShader.cmake)
-add_dependencies(Forge ForgeShader)
+add_dependencies(ForgeEngine ForgeShader)
