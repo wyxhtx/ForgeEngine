@@ -1,6 +1,6 @@
 {
   "name": "forge-stb-font",
-  "version-string": "1.0.0",
+  "version": "1.0.0",
   "description": "ForgeEngine font data: stb_truetype generated Consolas24 latin1 glyph data",
   "homepage": "https://github.com/KhronosGroup/KTX-Software",
   "license": "MIT"

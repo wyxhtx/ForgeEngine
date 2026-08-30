@@ -45,7 +45,6 @@ if(NOT EXISTS "${SOURCE_PATH}/NOTICE.md")
     file(WRITE "${SOURCE_PATH}/NOTICE.md" "See LICENSE.md for license details.\n")
 endif()
 
-
 # ---- 应用官方补丁 ----
 vcpkg_apply_patches(SOURCE_PATH "${SOURCE_PATH}"
     PATCHES

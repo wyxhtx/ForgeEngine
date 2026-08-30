@@ -1,3 +1,7 @@
+# ============================================================================
+#  ForgeShader：编译全部管线着色器（GLSL → SPIR-V）
+#  替代旧工程 0_shader_build 下的 *.bat 脚本
+# ============================================================================
 set(FORGE_SHADER_BUILD_DIR "${CMAKE_SOURCE_DIR}/src/assets/0_shader_build")
 set(FORGE_SHADER_OUT_DIR   "${CMAKE_SOURCE_DIR}/src/assets/0_shader")
 set(FORGE_SHADER_LIST "")
@@ -9,7 +13,8 @@ function(forge_compile_shader INPUT_FILE OUTPUT_FILE)
     OUTPUT  "${OUTPUT_FILE}"
     COMMAND "${GLSLANG_VALIDATOR}" -V -e main "${INPUT_FILE}" -o "${OUTPUT_FILE}"
     DEPENDS "${INPUT_FILE}"
-    COMMENT "编译着色器：${INPUT_FILE}")
+    COMMENT "编译着色器：${INPUT_FILE}"
+    VERBATIM)
   list(APPEND FORGE_SHADER_LIST "${OUTPUT_FILE}")
   set(FORGE_SHADER_LIST "${FORGE_SHADER_LIST}" PARENT_SCOPE)
 endfunction()

@@ -29,5 +29,9 @@
       }
     }
   ],
-  "buildPresets": [ { "name": "release", "configurePreset": "vs", "configuration": "Release" } ]
+  "buildPresets": [
+    { "name": "release", "configurePreset": "vs", "configuration": "Release" },
+    { "name": "debug",   "configurePreset": "vs", "configuration": "Debug" },
+    { "name": "ninja",   "configurePreset": "ninja" }
+]
 }
