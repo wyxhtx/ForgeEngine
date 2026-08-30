@@ -22,7 +22,7 @@ endif()
 # 2. Vulkan SDK（系统级，不走 vcpkg）
 # ----------------------------------------------------------------------------
 find_package(Vulkan REQUIRED)
-find_program(GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/Bin" "E:/code/lib/cpp/dynamicLib/VulkanSDK/1.4.321.1/Bin")
+find_program(GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/Bin")
 
 if(NOT GLSLANG_VALIDATOR)
     message(FATAL_ERROR "未找到 glslangValidator（请设 VULKAN_SDK 环境变量）")

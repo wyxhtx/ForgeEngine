@@ -44,11 +44,7 @@ file(RENAME "${KTX_SRC_DIR}" "${SOURCE_PATH}")
 if(NOT EXISTS "${SOURCE_PATH}/NOTICE.md")
     file(WRITE "${SOURCE_PATH}/NOTICE.md" "See LICENSE.md for license details.\n")
 endif()
-file(GLOB KTX_SRC_DIR "${CURRENT_BUILDTREES_DIR}/src/KTX-*")
-if(NOT KTX_SRC_DIR)
-    message(FATAL_ERROR "7z 解压失败：未在 src 下找到 KTX 源码目录")
-endif()
-file(RENAME "${KTX_SRC_DIR}" "${SOURCE_PATH}")
+
 
 # ---- 应用官方补丁 ----
 vcpkg_apply_patches(SOURCE_PATH "${SOURCE_PATH}"

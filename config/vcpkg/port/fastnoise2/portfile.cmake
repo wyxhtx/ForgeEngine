@@ -6,10 +6,11 @@ vcpkg_from_git(
 )
 
 # 用上游 CMake 构建（FastNoise2 含 FastSIMD 编译单元，非纯 header）
+vcpkg_find_acquire_program(GIT)
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
-            -DGIT_EXECUTABLE="E:/tool/app/Git/cmd/git.exe"
+            -DGIT_EXECUTABLE="${GIT}"
             -DFASTNOISE2_TOOLS=OFF
             -DFASTNOISE2_TESTS=OFF
 )
