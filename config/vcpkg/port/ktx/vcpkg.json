@@ -6,7 +6,7 @@
     "Functions for writing and reading KTX files, and instantiating OpenGL and Vulkan textures from them."
   ],
   "homepage": "https://github.com/KhronosGroup/KTX-Software",
-  "license": null,
+  "license": "Apache-2.0",
   "supports": "arm64 | x64 | !windows",
   "dependencies": [
     "opengl-registry",

@@ -22,11 +22,28 @@ vcpkg_execute_required_process(
 )
 # 7z 对 .tar.gz 只解 gzip 层（得到 .tar），需再解一次 tar
 file(GLOB KTX_TAR "${CURRENT_BUILDTREES_DIR}/src/*.tar")
-vcpkg_execute_required_process(
+# tar 内含符号链接（如 NOTICE.md）：无管理员/开发者模式权限时 7z 创建符号链接
+# 失败并返回非零退出码，但普通文件已全部解出；NOTICE.md 不参与构建与安装，故忽略退出码。
+execute_process(
     COMMAND "${7Z}" x "${KTX_TAR}" -o${CURRENT_BUILDTREES_DIR}/src -aoa -y
     WORKING_DIRECTORY "${CURRENT_BUILDTREES_DIR}/src"
-    LOGNAME "7z-extract-tar-${TARGET_TRIPLET}"
+    RESULT_VARIABLE _ktx_extract_rc
+    OUTPUT_FILE "${CURRENT_BUILDTREES_DIR}/7z-extract-tar-${TARGET_TRIPLET}-out.log"
+    ERROR_FILE  "${CURRENT_BUILDTREES_DIR}/7z-extract-tar-${TARGET_TRIPLET}-err.log"
 )
+if(NOT _ktx_extract_rc EQUAL 0)
+    message(WARNING "7z 解压 tar 返回码 ${_ktx_extract_rc}（预计为符号链接权限错误，继续构建）")
+endif()
+file(GLOB KTX_SRC_DIR "${CURRENT_BUILDTREES_DIR}/src/KTX-*")
+if(NOT KTX_SRC_DIR)
+    message(FATAL_ERROR "7z 解压失败：未在 src 下找到 KTX 源码目录")
+endif()
+file(RENAME "${KTX_SRC_DIR}" "${SOURCE_PATH}")
+
+# 符号链接缺失补偿：NOTICE.md 若因符号链接创建失败而缺失，补占位文件保持源码树完整
+if(NOT EXISTS "${SOURCE_PATH}/NOTICE.md")
+    file(WRITE "${SOURCE_PATH}/NOTICE.md" "See LICENSE.md for license details.\n")
+endif()
 file(GLOB KTX_SRC_DIR "${CURRENT_BUILDTREES_DIR}/src/KTX-*")
 if(NOT KTX_SRC_DIR)
     message(FATAL_ERROR "7z 解压失败：未在 src 下找到 KTX 源码目录")

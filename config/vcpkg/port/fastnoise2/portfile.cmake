@@ -14,6 +14,7 @@ vcpkg_cmake_configure(
             -DFASTNOISE2_TESTS=OFF
 )
 vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/FastNoise2)
 
 
 file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
