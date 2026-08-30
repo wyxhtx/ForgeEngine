@@ -190,7 +190,7 @@ find_package(FreeALUT CONFIG REQUIRED)                   # 目标 FreeALUT::alut
 
 1. **port 目录名必须 = 依赖名**（vcpkg 按目录找 port）
 2. **REF 必须是 commit SHA**（不能写 tag/branch 名）；FETCH_REF 用 tag/branch（浅克隆 fetch 需要）
-3. **fastnoise2 目标名是 `FastNoise2::FastNoise`**，find_package 用 `FastNoise2`
+3. **fastnoise2**：项目用 find_path/find_library 手工目标 `ForgeFastNoise`（端口亦生成 FastNoise2Config，可改 find_package）
 4. **源文件编码 UTF-8**（已全量转码），CMake 用 `/utf-8` 匹配；改源码保持 UTF-8 保存
 5. **triplet 的 C/CXX_FLAGS_DEBUG 必须成对设置**（vcpkg 要求）
 6. **`.gitignore`**：.vs/ build/ vcpkg_installed/ storage/chunk/ src/assets/shader/ CMakeUserPresets.json *.vcxproj.user（生成物不提交）
