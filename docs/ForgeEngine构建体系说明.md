@@ -13,16 +13,16 @@ vcpkg（下载 + 锁定版本 + 编译 + 安装）
    ↓ 装到 build\vcpkg_installed\
 CMakeLists.txt（find_package + 构建定义）
    ↓ VS 生成器
-build\vs\Forge.sln → ForgeEngine.exe
+build\vs\ForgeEngine.sln → ForgeEngine.exe
 ```
 
 - **依赖分三类**：官方 port（9 个，baseline 锁版本）/ 自定义 port（6 个，REF 锁 commit）+ 覆盖官方 port（ktx、tinygltf）/ 系统级 Vulkan SDK（不走 vcpkg）
-- **构建工作流**：`cmake --preset vs` → `cmake --build --preset debug` → VS 打开 `build\vs\Forge.sln` F5 调试
+- **构建工作流**：`cmake --preset vs` → `cmake --build --preset debug` → VS 打开 `build\vs\ForgeEngine.sln` F5 调试
 
 ## 二、目录结构
 
 ```
-Forge\
+ForgeEngine\
 ├─ vcpkg.json                 依赖清单（入口，必须根目录）
 ├─ CMakePresets.json          preset 配置（入口，必须根目录）
 ├─ CMakeLists.txt             构建定义（入口，必须根目录）
@@ -59,7 +59,7 @@ Forge\
 
 ```json
 {
-  "name": "forge",
+  "name": "forgeengine",
   "version": "1.0.0",
   "dependencies": [
     "glfw3", "glm", "vulkan-headers", "vulkan-memory-allocator",
@@ -94,9 +94,9 @@ Forge\
 | 2 Vulkan SDK | `find_package(Vulkan)` + glslangValidator 查找 |
 | 3 vcpkg 官方包 | find_package（VMA 用 VulkanMemoryAllocator） |
 | 4 自定义库 | `unofficial-kmeans` / `FastNoise2` / `unofficial-forgeengine-stb-font` |
-| 5 主程序 | `add_executable(Forge src/code/vk/Main.cpp)` + 链接全部依赖 |
+| 5 主程序 | `add_executable(ForgeEngine src/code/vk/Main.cpp)` + 链接全部依赖 |
 | 6 调试工作目录 | `VS_DEBUGGER_WORKING_DIRECTORY` = 项目根（资源相对路径可解析） |
-| 7 着色器 | include ForgeShader.cmake + `add_dependencies(Forge ForgeShader)` |
+| 7 着色器 | include ForgeShader.cmake + `add_dependencies(ForgeEngine ForgeShader)` |
 
 ### 3.4 triplet —— 库编译的统一配置
 
@@ -169,8 +169,8 @@ find_package(FreeALUT CONFIG REQUIRED)                   # 目标 FreeALUT::alut
 | 编译 Debug | `cmake --build --preset debug` |
 | 编译 Release | `cmake --build --preset release` |
 | 备用 Ninja 构建 | `cmake --preset ninja` |
-| 调试运行 | VS 打开 `build\vs\Forge.sln` → F5（工作目录自动=项目根） |
-| 命令行运行 | `cd E:\code\graphicsAPI\vulkan\Forge` + `.\build\vs\bin\output\x64\Debug\ForgeEngine.exe` |
+| 调试运行 | VS 打开 `build\vs\ForgeEngine.sln` → F5（工作目录自动=项目根） |
+| 命令行运行 | `cd E:\code\graphicsAPI\vulkan\ForgeEngine` + `.\build\vs\bin\output\x64\Debug\ForgeEngine.exe` |
 
 ## 六、日常维护
 
