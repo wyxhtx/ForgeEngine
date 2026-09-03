@@ -3,5 +3,6 @@ build/
 vcpkg_installed/
 storage/chunk/
 src/assets/shader/
-CMakeUserPresets.json
+
 *.vcxproj.user
+CMakeUserPresets.json

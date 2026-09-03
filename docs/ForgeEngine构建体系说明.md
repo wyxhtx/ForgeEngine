@@ -1,17 +1,13 @@
 # ForgeEngine 构建体系说明（vcpkg + CMake）
 
-> 版本：迁移完成版（2026）
-> 作用：ForgeEngine 依赖管理与构建的一站式说明
-> 适用：Windows + VS2022 + x64
-
 ## 一、体系概览
 
 ```
-vcpkg.json（依赖清单，12 库）
+vcpkg.json      （依赖清单，12 库）
    ↓ manifest 模式
-vcpkg（下载 + 锁定版本 + 编译 + 安装）
+vcpkg           （下载 + 锁定版本 + 编译 + 安装）
    ↓ 装到 build\vcpkg_installed\
-CMakeLists.txt（find_package + 构建定义）
+CMakeLists.txt  （find_package + 构建定义）
    ↓ VS 生成器
 build\vs\ForgeEngine.sln → ForgeEngine.exe
 ```
@@ -23,34 +19,46 @@ build\vs\ForgeEngine.sln → ForgeEngine.exe
 
 ```
 ForgeEngine\
-├─ vcpkg.json                 依赖清单（入口，必须根目录）
-├─ CMakePresets.json          preset 配置（入口，必须根目录）
-├─ CMakeLists.txt             构建定义（入口，必须根目录）
-├─ .gitignore
-├─ cmd
-│  ├─ forgeengine.ps1
-│  └─ config-view.ps1
+├─ build\
+│  ├─ ninja\                        ninja 工程
+│  ├─ vcpkg_installed\              依赖安装目录
+│  └─ vs\                           VS 工程 + exe
+├─ cmd\
+│  └─ forgeEngineCmdList.ps1        调试指令文件，项目路径下自动加载
 ├─ config\
 │  ├─ cmake\
-│  │  └─ ForgeShader.cmake    22 个着色器编译规则（替代原 bat）
+│  │  └─ ForgeShader.cmake          着色器编译规则
 │  └─ vcpkg\
-│     ├─ triplet\x64-windows-static-forgeengine.cmake   全静态 + Debug 宏定制
-│     └─ port\                6 个自定义库配方（无源码，仅 vcpkg.json + portfile.cmake）
-│        ├─ aarand\
-│        ├─ subpar\
-│        ├─ sanisizer\
-│        ├─ kmeans\
-│        ├─ fastnoise2\
-│        ├─ forgeengine-stb-font\
-│        ├─ ktx\                 覆盖官方（7z解压，修符号链接）
-│        └─ tinygltf\            覆盖官方（修正 SHA512）
-├─ src\code\                  项目源码（UTF-8，已转码）
-├─ src\assets\                资产（shader/图片/模型/音频，原 1_assets 改名）
-├─ docs\                      说明文档（本文件）
-└─ build\
-   ├─ vcpkg_installed\        依赖安装目录（统一位置）
-   ├─ vs\                     VS 工程 + exe
-   └─ ninja\                  备用构建
+│     ├─ port\                      8 个端口   （6 自定义 REF 锁 commit + 2 覆盖官方）
+│     │  ├─ aarand\                 随机数     （kmeans 依赖）
+│     │  ├─ fastnoise2\             噪音       （需编译 FastSIMD）
+│     │  ├─ forgeengine-stb-font\   字体位图   （distfile）
+│     │  ├─ kmeans\                 聚类       （区块并行分区）
+│     │  ├─ ktx\                    覆盖官方   （7z 解压，修符号链接）
+│     │  ├─ sanisizer\              数据清洗   （kmeans 依赖）
+│     │  ├─ subpar\                 并行工具   （kmeans 依赖）
+│     │  └─ tinygltf\               覆盖官方   （修正 SHA512）
+│     └─ triplet\
+│        └─ x64-windows-static-forgeengine.cmake   全静态 + Debug 宏定制
+├─ docs\
+│  ├─ ForgeEngine构建体系说明.md     本文件     （构建/依赖/维护全说明）
+│  ├─ 端口说明.md                    自定义端口速查
+│  └─ 调试指令速查.md                fe- 指令表
+├─ src\assets\
+│  ├─ image\                        ktx2                （入库）
+│  ├─ image_src\                    png/jpeg + 转换bat  （入库）
+│  ├─ model\                        glTF                （入库）
+│  ├─ music\                        wav                 （入库）
+│  ├─ shader\                       spv                 （忽略，构建现编）
+│  └─ shader_src\                   GLSL                （入库）
+├─ src\code\
+│  ├─ forge\                        游戏层
+│  └─ vk\                           Vulkan 渲染层
+├─ .gitignore
+├─ CMakeLists.txt                   构建定义
+├─ CMakePresets.json                preset 配置
+├─ README.md
+└─ vcpkg.json                       依赖清单
 ```
 
 ## 三、配置文件详解
@@ -94,7 +102,7 @@ ForgeEngine\
 | 2 Vulkan SDK | `find_package(Vulkan)` + glslangValidator 查找 |
 | 3 vcpkg 官方包 | find_package（VMA 用 VulkanMemoryAllocator） |
 | 4 自定义库 | find_path 手工目标（ForgeKmeans / ForgeFastNoise / ForgeStbFont） |
-| 5 主程序 | `add_executable(ForgeEngine src/code/vk/Main.cpp)` + 链接全部依赖 |
+| 5 主程序 | `add_executable(ForgeEngine ...)` + 编译定义 + 解决方案显示分组（GLOB） + 链接全部依赖 |
 | 6 调试工作目录 | `VS_DEBUGGER_WORKING_DIRECTORY` = 项目根（资源相对路径可解析） |
 | 7 着色器 | include ForgeShader.cmake + `add_dependencies(ForgeEngine ForgeShader)` |
 
@@ -111,6 +119,19 @@ set(VCPKG_CXX_FLAGS_DEBUG "${VCPKG_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=1")
 - 全静态：无 DLL，删除原 SetDllDirectoryA 和 dll 目录
 - Debug 宏与 Main.h 一致，避免 LNK2038（C/CXX 必须成对设置）
 
+### 3.5 解决方案显示分组（纯显示，不影响编译）
+
+CMakeLists 用 GLOB + source_group 把工程文件分组显示在 VS 解决方案资源管理器：
+
+| 组 | 内容 | 方式 |
+|---|---|---|
+| src\code | 源码树（按磁盘目录）| GLOB_RECURSE + TREE |
+| src\assets | 资产目录树 | GLOB_RECURSE + TREE |
+| config | ForgeShader/triplet/8 端口 + 根 4 文件 | GLOB + TREE / FILES |
+| docs | 3 份 md | GLOB |
+| cmd | forgeEngineCmdList.ps1 | GLOB |
+
+全部经 target_sources 加入（非源码不编译），GLOB 带 CONFIGURE_DEPENDS（新增文件自动刷新）。
 ## 四、自定义库说明书（config\vcpkg\port\）
 
 ### 总览
@@ -126,9 +147,11 @@ set(VCPKG_CXX_FLAGS_DEBUG "${VCPKG_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=1")
 
 ### 三种配方模式
 
+```
 ① 纯头文件库（aarand/subpar/sanisizer/kmeans）：`vcpkg_from_git` + `file(COPY include)` + 手写 config
 ② 需编译库（fastnoise2）：`vcpkg_cmake_configure`（含 FastSIMD 编译单元，非纯 header）+ `vcpkg_cmake_install`
 ③ 单文件下载（forgeengine-stb-font）：`vcpkg_download_distfile`（raw URL + SHA512，不 clone 大仓库）
+```
 
 ### 各库版本锁定（REF = commit SHA / FETCH_REF = tag 或分支）
 
@@ -153,13 +176,13 @@ set(VCPKG_CXX_FLAGS_DEBUG "${VCPKG_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=1")
 
 ```cmake
 # CMakeLists.txt
-find_path(KMEANS_INCLUDE_DIRS "kmeans/Details.hpp")           # 目标 ForgeKmeans（INTERFACE）
-find_path(FASTNOISE2_INCLUDE_DIR FastNoise/FastNoise.h)       # 目标 ForgeFastNoise（INTERFACE IMPORTED）
+find_path(KMEANS_INCLUDE_DIRS "kmeans/Details.hpp")             # 目标 ForgeKmeans（INTERFACE）
+find_path(FASTNOISE2_INCLUDE_DIR FastNoise/FastNoise.h)         # 目标 ForgeFastNoise（INTERFACE IMPORTED）
 find_library(FASTNOISE2_LIBRARY_RELEASE NAMES FastNoise)
 find_library(FASTNOISE2_LIBRARY_DEBUG NAMES FastNoiseD)
 find_path(FORGE_STB_FONT_INCLUDE_DIRS "stb/stb_font_consolas_24_latin1.inl")  # 目标 ForgeStbFont
-find_package(VulkanMemoryAllocator CONFIG REQUIRED)      # 目标 GPUOpen::VulkanMemoryAllocator（VMA）
-find_package(FreeALUT CONFIG REQUIRED)                   # 目标 FreeALUT::alut（freealut）
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)             # 目标 GPUOpen::VulkanMemoryAllocator（VMA）
+find_package(FreeALUT CONFIG REQUIRED)                          # 目标 FreeALUT::alut（freealut）
 ```
 
 ## 五、构建命令速查
