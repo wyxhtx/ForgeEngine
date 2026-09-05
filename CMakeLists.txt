@@ -116,10 +116,10 @@ source_group("config" FILES ${FORGE_ROOT_FILES})
 target_sources(ForgeEngine PRIVATE ${FORGE_ROOT_FILES})
 
 # 文档
-file(GLOB FORGE_DOCS_FILES CONFIGURE_DEPENDS
+file(GLOB_RECURSE FORGE_DOCS_FILES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/docs/*.md"
 )
-source_group("docs" FILES ${FORGE_DOCS_FILES})
+source_group(TREE "${CMAKE_SOURCE_DIR}/docs" PREFIX "docs" FILES ${FORGE_DOCS_FILES})
 target_sources(ForgeEngine PRIVATE ${FORGE_DOCS_FILES})
 
 # 资产
