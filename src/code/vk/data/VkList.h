@@ -239,6 +239,11 @@ namespace bufferList {
             //uiText_s
             samplerInfo.magFilter     = VK_FILTER_LINEAR;
             samplerInfo.maxAnisotropy = 16.0f;
+            //MSDF 图集：CLAMP 防跨字形出血（REPEAT 会在 uv=1 边缘采到另一侧）；无 mip → maxLod=0
+            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerInfo.maxLod       = 0.0f;
             if (vkCreateSampler(device, &samplerInfo, nullptr, &node[bufferEnum::procSamplerId::uiText_s]) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "uiText采样器创建失败");
             }
@@ -391,7 +396,7 @@ namespace pipelineList {
             node[pipelineEnum::procPipelineId::model_p]    .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag      }, device);
             node[pipelineEnum::procPipelineId::skybox_p]   .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag   }, device);
             node[pipelineEnum::procPipelineId::mine_p]     .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag     }, device);
-            node[pipelineEnum::procPipelineId::uiText_p]   .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::uiText_d],         { fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag   }, device);
+            node[pipelineEnum::procPipelineId::uiText_p]   .createPipelineNode(msaa, renderList[renderEnum::renderTemplateId::swapChain_rt],  nodeLayout[bufferEnum::procDescriptorId::uiText_d],         { fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag   }, device);
             node[pipelineEnum::procPipelineId::osMirror_p] .createPipelineNode(msaa,                  renderList[renderEnum::renderTemplateId::offScreen_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag }, device);
             node[pipelineEnum::procPipelineId::osScence_p] .createPipelineNode(msaa,                  renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag }, device);
             node[pipelineEnum::procPipelineId::dsScence_p] .createPipelineNode(msaa,                  renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::dsScence_d],       { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag }, device);
@@ -412,6 +417,17 @@ namespace pipelineList {
             node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.rasterizer.frontFace          = VK_FRONT_FACE_CLOCKWISE;
             node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.depthStencil.depthTestEnable  = VK_FALSE;
             node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.depthStencil.depthWriteEnable = VK_FALSE;
+
+            //颜色附件混合：MSDF 半透明平滑（frag 输出 white*alpha，需 src_alpha 混合）
+            for (auto& blendAtt : node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.colorAttachmentList) {
+                blendAtt.blendEnable         = VK_TRUE;
+                blendAtt.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+                blendAtt.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                blendAtt.colorBlendOp        = VK_BLEND_OP_ADD;
+                blendAtt.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+                blendAtt.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+                blendAtt.alphaBlendOp        = VK_BLEND_OP_ADD;
+            }
 
             //pipeDynamicStageState 动态视口与动态裁剪，rasterizer 剔除正面
             node[pipelineEnum::procPipelineId::osScence_p].pipeConfig.setPipeDynamicStage({ VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR });
