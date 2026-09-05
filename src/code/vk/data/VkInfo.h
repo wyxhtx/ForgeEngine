@@ -131,6 +131,10 @@ namespace cameraInfo {
 //todo 实现对应资产的固定根路径
 //file信息
 namespace fileInfo {
+    // 字体
+    namespace font {
+        const std::string sourceHanSansSC = "src/assets/font/SourceHanSansSC/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf";
+    }
     namespace shader {
         const std::string terrainTask = "src/assets/shader/terrain/terrainDeferredTask.spv";
         const std::string terrainMesh = "src/assets/shader/terrain/terrainDeferredMesh.spv";

@@ -46,6 +46,8 @@ add_library(ForgeTinygltf INTERFACE)
 target_include_directories(ForgeTinygltf INTERFACE "${TINYGLTF_INCLUDE_DIR}")
 find_package(OpenAL CONFIG REQUIRED)                                            # OpenAL:   音频库，lib
 find_package(FreeALUT CONFIG REQUIRED)                                          # ALUT:     音频封装库，lib
+find_package(msdfgen CONFIG REQUIRED)         # msdfgen:       MSDF 距离场生成库，lib
+find_package(msdf-atlas-gen CONFIG REQUIRED)  # msdf-atlas-gen: MSDF 图集生成库，lib
 
 
 
@@ -163,6 +165,8 @@ target_link_libraries(ForgeEngine PRIVATE
     ForgeKmeans                                # kmeans:                聚类算法库，header-only
     ForgeFastNoise                             # FastNoise2:            噪音库，    lib
     ForgeStbFont                               # forgeengine-stb-font:  字体库，    header-only
+    msdfgen::msdfgen-full           # msdfgen:       MSDF 距离场库，     lib
+    msdf-atlas-gen::msdf-atlas-gen  # msdf-atlas-gen: MSDF 图集库，       lib
 )
 
 # VS 工作目录
