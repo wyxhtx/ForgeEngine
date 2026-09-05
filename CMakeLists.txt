@@ -124,11 +124,9 @@ target_sources(ForgeEngine PRIVATE ${FORGE_DOCS_FILES})
 
 # 资产
 file(GLOB_RECURSE FORGE_ASSET_FILES CONFIGURE_DEPENDS
-    "${CMAKE_SOURCE_DIR}/src/assets/image/*"
-    "${CMAKE_SOURCE_DIR}/src/assets/image_src/*"
-    "${CMAKE_SOURCE_DIR}/src/assets/model/*"
-    "${CMAKE_SOURCE_DIR}/src/assets/music/*"
+    "${CMAKE_SOURCE_DIR}/src/assets/*"
 )
+list(FILTER FORGE_ASSET_FILES EXCLUDE REGEX "/(shader|shader_src)/")
 source_group(TREE "${CMAKE_SOURCE_DIR}/src/assets" PREFIX "src/assets" FILES ${FORGE_ASSET_FILES})
 target_sources(ForgeEngine PRIVATE ${FORGE_ASSET_FILES})
 
