@@ -1059,11 +1059,6 @@ public:
 						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(mine.pipeId), procPipeline.getPipeLayout(mine.pipeId), mine.descriptorSet, mine.vertex.buffer, mine.index.buffer, (uint32_t)mineVertex::indexs.size());
 					}
 
-					//uiText
-					if (uiText.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::text, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, VK_NULL_HANDLE, uiText.numLetters);
-					}
-
 					recorder.endRender();
 				}
 
@@ -1099,6 +1094,11 @@ public:
 					//dsScence
 					if (dsScence.isEnable) {
 						recorder.draw(pipelineEnum::cmdDrawId::fullscreen, procPipeline.getPipeline(dsScence.pipeId), procPipeline.getPipeLayout(dsScence.pipeId), dsScence.descriptorSet, VK_NULL_HANDLE, VK_NULL_HANDLE, 0, InitSwapchain.swapExtent);
+
+						//uiText
+						if (uiText.isEnable) {
+							recorder.draw(pipelineEnum::cmdDrawId::text, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, VK_NULL_HANDLE, uiText.numLetters);
+						}
 					}
 
 					recorder.endRender();

@@ -43,7 +43,7 @@ namespace noiseStruct {
 
 //方块结构空间
 namespace cubeStruct {
-    //贪心算法使用范围（1~32）遍历节点
+    //贪心算法使用范围（1~32）遍历结点
     struct traversalNode {
         int max = 1;                            //最短1
         int min = plateInfo::chunkLength;       //最长32
