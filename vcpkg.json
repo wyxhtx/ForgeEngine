@@ -27,7 +27,6 @@
     "freealut",
     "kmeans",
     "fastnoise2",
-    "forgeengine-stb-font",
     "msdf-atlas-gen"
   ],
   "builtin-baseline": "61d43ee6f0cc440dc97983d36e0c85e80fe429d4"

@@ -55,16 +55,10 @@
 #include <ktx.h>
 #include <ktxvulkan.h>
 
-//文本库
-#pragma warning(push)
-#pragma warning(disable : 26495)
-#include <stb/stb_font_consolas_24_latin1.inl>
-
 //MSDF 文本库（freetype 读轮廓 → msdfgen 距离场 → msdf-atlas-gen 图集）
 #include <msdfgen.h>
 #include <msdfgen-ext.h>
 #include <msdf-atlas-gen/msdf-atlas-gen.h>
-#pragma warning(pop)
 
 //音频库
 #include <AL/al.h>

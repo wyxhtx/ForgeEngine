@@ -78,13 +78,6 @@ set_target_properties(ForgeFastNoise PROPERTIES
     INTERFACE_COMPILE_DEFINITIONS "FASTNOISE_STATIC_LIB"                                                                                # 静态版必须（防 dllimport 冲突）
 )
 
-# 4.3 forgeengine-stb-font: 文本库，header-only
-find_path(FORGE_STB_FONT_INCLUDE_DIRS "stb/stb_font_consolas_24_latin1.inl")
-if(NOT FORGE_STB_FONT_INCLUDE_DIRS)
-    message(FATAL_ERROR "找不到 stb/stb_font_consolas_24_latin1.inl，请确认 vcpkg 已安装 forgeengine-stb-font")
-endif()
-add_library(ForgeStbFont INTERFACE)
-target_include_directories(ForgeStbFont INTERFACE "${FORGE_STB_FONT_INCLUDE_DIRS}")
 
 
 
@@ -174,7 +167,6 @@ target_link_libraries(ForgeEngine PRIVATE
     FreeALUT::alut                             # ALUT:                  音频封装库，lib
     ForgeKmeans                                # kmeans:                聚类算法库，header-only
     ForgeFastNoise                             # FastNoise2:            噪音库，    lib
-    ForgeStbFont                               # forgeengine-stb-font:  字体库，    header-only
     msdfgen::msdfgen-full           # msdfgen:       MSDF 距离场库，     lib
     msdf-atlas-gen::msdf-atlas-gen  # msdf-atlas-gen: MSDF 图集库，       lib
 )
