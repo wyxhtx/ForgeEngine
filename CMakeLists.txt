@@ -4,7 +4,7 @@
 #  构建两条链：
 #    cmake --preset vs     -> build\vs\     （VS2022 .sln，F5 调试）
 #    cmake --preset ninja  -> build\ninja\  （命令行快速构建）
-#  依赖：vcpkg.json（12 库）+ config\vcpkg\（triplet/port overlay）
+#  依赖：vcpkg.json（13 库）+ config\vcpkg\（triplet/port overlay）
 # ============================================================================
 cmake_minimum_required(VERSION 3.24)                                            # CMake 最低版本
 project(ForgeEngine LANGUAGES CXX)                                              # 工程名 ForgeEngine
