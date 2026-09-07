@@ -887,18 +887,19 @@ private:
 
 	//创建纹理文本结点
 	void createTextNode(bufferStruct::imageBufferNode& imageBuffer) {
-		const uint32_t fontWidth  = STB_FONT_consolas_24_latin1_BITMAP_WIDTH;
-		const uint32_t fontHeight = STB_FONT_consolas_24_latin1_BITMAP_HEIGHT;
-		VkDeviceSize   imageSize  = static_cast<VkDeviceSize>(fontWidth) * static_cast<VkDeviceSize>(fontHeight);
+		//MSDF 图集运算：返回 RGBA8 字节与图集尺寸（失败日志已在函数内输出）
+		float atlasWidth  = 0.0f;
+		float atlasHeight = 0.0f;
+		std::vector<uint8_t> rgba = uiStruct::textCalcNode::generateMsdfAtlas(uiText.glyphMap, atlasWidth, atlasHeight, uiText.emSize, fileInfo::font::sourceHanSansSC);
+		if (rgba.empty()) {
+			return;
+		}
 
-		static unsigned char font24pixels[fontHeight][fontWidth];
-		stb_font_consolas_24_latin1(uiText.stbFontData, font24pixels, fontHeight);
-
-		bufferStruct::baseBufferNode cpuBuffer{ &font24pixels[0][0], imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
-		createImage(fontWidth, fontHeight, 1, 1, VK_FORMAT_R8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageBuffer.image, imageBuffer.imageMem);
-		cmd.copyBufferToImage(Device.device, Device.graphicsQueue, cpuBuffer.buffer, imageBuffer.image, bufferStruct::makeImageCopyRegion(static_cast<uint32_t>(fontWidth), static_cast<uint32_t>(fontHeight)), 1, 1, VK_FORMAT_R8_UNORM);
-		createImageView(imageBuffer.image, imageBuffer.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-
+		//RGBA8 → 暂存缓冲 → 上传纹理图集
+		bufferStruct::baseBufferNode cpuBuffer{ rgba.data(), (VkDeviceSize)rgba.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
+		createImage((int)atlasWidth, (int)atlasHeight, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageBuffer.image, imageBuffer.imageMem);
+		cmd.copyBufferToImage(Device.device, Device.graphicsQueue, cpuBuffer.buffer, imageBuffer.image, bufferStruct::makeImageCopyRegion((uint32_t)atlasWidth, (uint32_t)atlasHeight), 1, 1, VK_FORMAT_R8G8B8A8_UNORM);
+		createImageView(imageBuffer.image, imageBuffer.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 		cpuBuffer.clear(Device.memAllocator);
 	}
 
@@ -1231,7 +1232,7 @@ public:
 	}
 
 	//更新Uniform
-	void updateUniformBuffer(const glm::dvec3 logicOriginPos, const playerStruct::cameraNode& camera, const playerStruct::selectBoxNode& box) {
+	void updateUniform(const glm::dvec3 logicOriginPos, const playerStruct::cameraNode& camera, const playerStruct::selectBoxNode& box) {
 		static std::chrono::steady_clock::time_point time0 = std::chrono::steady_clock::now();	//游戏起始时刻
 		static std::chrono::steady_clock::time_point time1;										//游戏当前时刻
 		static float gameTime;																	//游戏运行时长，最多支持连续运行194天（现实时间）
@@ -1410,38 +1411,46 @@ public:
 			createMemMap(dsScence.shadowUniform.bufferMem, &dsScence.shadowUbo, sizeof(dsScence.shadowUbo));
 		}
 	}
-	
+
 	//绘制uiText
 	void drawUIText(int fps) {
-		static std::ostringstream oss;
-		float width = 5.0;
-		float height = 5.0;
+		if (!uiText.isEnable) {
+			return;
+		}
 
-		if (!uiText.isEnable) { return; }
+		const float fontSize = 14.0f;				//字号
+		const float lineH	 = fontSize * 1.3f;		//行距
+		const float margin	 = 8.0f;				//页边距
+
+		//布局收集：行内容与锚点在此登记；列宽/对齐/段产出统一由 textCalcNode 完成
+		uiStruct::uiTextLayoutNode layout;
+		uiStruct::textCalcNode::beginUiTextLayout(layout, uiText.glyphMap, uiText.emSize, fontSize, lineH, margin, (float)windowInfo::width);
+
+		uiStruct::textCalcNode::addTextValuePos(layout, uiEnum::uiTextAnchorEnum::topLeft,  "worldpos",   showUIText.pos);
+		uiStruct::textCalcNode::addTextValuePos(layout, uiEnum::uiTextAnchorEnum::topLeft,  "chunkpos",   showUIText.chunkPos);
+		uiStruct::textCalcNode::addTextValuePos(layout, uiEnum::uiTextAnchorEnum::topLeft,  "mineboxpos", showUIText.minepos);
+		uiStruct::textCalcNode::addTextValue   (layout, uiEnum::uiTextAnchorEnum::topRight, "fps",		  uiStruct::textCalcNode::padFixedWidth(std::to_string(fps), 8));	//fps定长8
+
+		std::vector<uiStruct::uiTextSegmentNode> segments;
+		uiStruct::textCalcNode::buildUiTextLayout(layout, segments);
+
+		//内容未变 → 跳过顶点写（hash 命中须在 beginTextUpdate 之前返回）
+		size_t hash = 0;
+		for (const auto& segment : segments) {
+			hash ^= std::hash<std::string>{}(segment.text);
+			hash ^= (size_t)(segment.x * 4.0f) + 0x9e3779b9u + (hash << 6u) + (hash >> 2u);
+		}
+
+		static size_t prevHash = 0;
+		if (hash == prevHash) {
+			return;
+		}
+		prevHash = hash;
 
 		uiText.beginTextUpdate(Device.memAllocator);
-
-		//世界坐标
-		oss << std::fixed << std::setprecision(0);	//设置输出流的格式,不保留小数
-		oss << "worldpos:  " << "x:" << std::setw(8) << std::left << showUIText.pos.x << "y:" << std::setw(8) << std::left << showUIText.pos.y << " z:" << std::setw(8) << std::left << showUIText.pos.z;
-		uiText.addText(oss.str(), width, height, bufferEnum::textAlignId::left);
-		oss.str("");
-
-		//区块坐标
-		oss << "chunkpos:  " << "x:" << std::setw(8) << std::left << showUIText.chunkPos.x << "y:" << std::setw(8) << std::left << showUIText.chunkPos.y << " z:" << std::setw(8) << std::left << showUIText.chunkPos.z;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::left);
-		oss.str("");
-
-		//选择框坐标
-		oss << "mineboxpos:" << "x:" << std::setw(8) << std::left << showUIText.minepos.x << "y:" << std::setw(8) << std::left << showUIText.minepos.y << " z:" << std::setw(8) << std::left << showUIText.minepos.z;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::left);
-		oss.str("");
-
-		//帧率
-		oss << "fps:       " << std::setw(8) << std::left << fps;
-		uiText.addText(oss.str(), width, height += 15, bufferEnum::textAlignId::left);
-		oss.str("");
-
+		for (const auto& segment : segments) {
+			uiStruct::textCalcNode::addText(uiText.mapped, uiText.numLetters, uiText.glyphMap, uiText.emSize, segment.text, segment.x, segment.y, bufferEnum::textAlignId::left, fontSize);
+		}
 		uiText.endTextUpdate(Device.memAllocator);
 	}
 
@@ -1501,7 +1510,7 @@ public:
 	}
 
 private:
-	bufferStruct::uiTextInfoNode showUIText{};
+	uiStruct::uiTextInfoNode showUIText{};
 
 
 

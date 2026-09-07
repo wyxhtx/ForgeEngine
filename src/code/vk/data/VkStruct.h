@@ -514,6 +514,470 @@ namespace cmdStruct {
     };
 }
 
+//uiStruct  结构空间
+namespace uiStruct {
+    //字形度量结点
+    struct msdfGlyphNode {
+        glm::vec4 planeBounds{};        //显示盒，文本行左上为原点，y 向下为正
+        glm::vec4 uvBounds{};           //uv盒，含内边距
+        float     advance = 0.0f;       //占位宽度
+    };
+
+    //uiText信息结点
+    struct uiTextInfoNode {
+        glm::dvec3 pos{};
+        glm::dvec3 chunkPos{};
+        glm::ivec3 minepos{};
+    };
+
+    //字形度量表别名
+    using glyphMapNode = std::unordered_map<uint32_t, msdfGlyphNode>;
+
+
+
+    //uiText布局行结点
+    struct uiTextLayoutRowNode {
+        uiEnum::uiTextAnchorEnum::type anchor{};    //锚点（块归属）
+        std::string label{};                        //行标签（不含冒号，渲染自动补 ":"）
+        bool        isVecRow = false;               //true=坐标三值行（x/y/z cell），false=单值行
+        glm::dvec3  vecValue{};                     //坐标三值（ivec3 由重载内转 double）
+        std::string value{};                        //单值文本（已格式化，仅 isVecRow=false 有效）
+    };
+
+    //uiText段结点（排版产出，x/y 为像素，y 为基线）
+    struct uiTextSegmentNode {
+        float       x;
+        float       y;
+        std::string text;
+    };
+
+    //uiText布局结点（每帧局部重建，行缓冲不跨帧保留）
+    struct uiTextLayoutNode {
+        const glyphMapNode* glyphMap = nullptr;     //字形度量表
+        float emSize          = 0.0f;               //图集字号
+        float fontSizePx      = 0.0f;               //屏幕字号
+        float lineHeightPx    = 0.0f;               //行距
+        float marginPx        = 0.0f;               //页边距
+        float viewportWidthPx = 0.0f;               //视口宽（右锚点右端对齐用）
+        std::vector<uiTextLayoutRowNode> row{};     //行集合（调用顺序即行序）
+    };
+
+
+
+    //文本计算工具
+    struct textCalcNode {
+        //MSDF 图集运算：freetype 加载 → 字符集 → 打包 → MTSDF 生成 → 字形度量表；返回 RGBA8（上传由调用方完成）
+        static std::vector<uint8_t> generateMsdfAtlas(glyphMapNode& glyphMap, float& atlasWidth, float& atlasHeight, float emSize, const std::string& fontPath) {
+            msdfgen::FreetypeHandle* ft = msdfgen::initializeFreetype();
+            if (!ft) {
+                Log::printError(__FILE__, __LINE__, "generateMsdfAtlas: freetype 初始化失败");
+                return {};
+            }
+            msdfgen::FontHandle* font = msdfgen::loadFont(ft, fontPath.c_str());
+            if (!font) {
+                Log::printError(__FILE__, __LINE__, "generateMsdfAtlas: 字体加载失败（OTF 路径或 CFF 轮廓）");
+                msdfgen::deinitializeFreetype(ft);
+                return {};
+            }
+
+            std::vector<msdf_atlas::GlyphGeometry> glyphs;
+            msdf_atlas::FontGeometry fontGeometry(&glyphs);
+            fontGeometry.loadCharset(font, 1.0, msdf_atlas::Charset::ASCII);
+
+            const double maxCornerAngle = 3.0;
+            for (msdf_atlas::GlyphGeometry& glyph : glyphs) {
+                glyph.edgeColoring(&msdfgen::edgeColoringInkTrap, maxCornerAngle, 0);
+            }
+
+            msdf_atlas::TightAtlasPacker packer;
+            packer.setDimensionsConstraint(msdf_atlas::DimensionsConstraint::POWER_OF_TWO_RECTANGLE);
+            packer.setScale(emSize);
+            packer.setPixelRange(2.0);
+            packer.setMiterLimit(1.0);
+            if (packer.pack(glyphs.data(), (int)glyphs.size()) != 0) {
+                Log::printError(__FILE__, __LINE__, "generateMsdfAtlas: 图集打包失败");
+                msdfgen::destroyFont(font);
+                msdfgen::deinitializeFreetype(ft);
+                return {};
+            }
+
+            int atlasWidthPx = 0;
+            int atlasHeightPx = 0;
+            packer.getDimensions(atlasWidthPx, atlasHeightPx);
+
+            msdf_atlas::ImmediateAtlasGenerator<float, 4, msdf_atlas::mtsdfGenerator, msdf_atlas::BitmapAtlasStorage<unsigned char, 4>> generator(atlasWidthPx, atlasHeightPx);
+            msdf_atlas::GeneratorAttributes attributes;
+            generator.setAttributes(attributes);
+            generator.setThreadCount(4);
+            generator.generate(glyphs.data(), (int)glyphs.size());
+            msdfgen::BitmapConstRef<unsigned char, 4> bitmap = generator.atlasStorage();
+
+            //bottom-up → top-down 拷贝为 RGBA8
+            std::vector<uint8_t> rgba((size_t)atlasWidthPx * atlasHeightPx * 4);
+            for (int rowDown = 0; rowDown < atlasHeightPx; ++rowDown) {
+                const int rowSource = atlasHeightPx - 1 - rowDown;
+                for (int column = 0; column < atlasWidthPx; ++column) {
+                    const unsigned char* pixel = bitmap(column, rowSource);
+                    size_t offset = ((size_t)rowDown * atlasWidthPx + column) * 4;
+                    rgba[offset] = pixel[0];
+                    rgba[offset + 1] = pixel[1];
+                    rgba[offset + 2] = pixel[2];
+                    rgba[offset + 3] = pixel[3];
+                }
+            }
+
+            //图集元数据 + 字形度量表
+            atlasWidth  = (float)atlasWidthPx;
+            atlasHeight = (float)atlasHeightPx;
+            for (const msdf_atlas::GlyphGeometry& glyph : glyphs) {
+                const uint32_t codepoint = glyph.getCodepoint();
+                if (!codepoint) {
+                    continue;
+                }
+                double left = 0, bottom = 0, right = 0, top = 0;
+                glyph.getQuadPlaneBounds(left, bottom, right, top);
+                double atlasLeft = 0, atlasBottom = 0, atlasRight = 0, atlasTop = 0;
+                glyph.getQuadAtlasBounds(atlasLeft, atlasBottom, atlasRight, atlasTop);
+
+                msdfGlyphNode node;
+                node.planeBounds.x = (float)left * emSize;
+                node.planeBounds.y = (float)(-top) * emSize;
+                node.planeBounds.z = (float)right * emSize;
+                node.planeBounds.w = (float)(-bottom) * emSize;
+                node.uvBounds.x = (float)atlasLeft / (float)atlasWidthPx;
+                node.uvBounds.y = (float)(atlasHeightPx - atlasTop) / (float)atlasHeightPx;
+                node.uvBounds.z = (float)atlasRight / (float)atlasWidthPx;
+                node.uvBounds.w = (float)(atlasHeightPx - atlasBottom) / (float)atlasHeightPx;
+                node.advance = (float)glyph.getAdvance() * emSize;
+                glyphMap[codepoint] = node;
+            }
+
+            msdfgen::destroyFont(font);
+            msdfgen::deinitializeFreetype(ft);
+            return rgba;
+        }
+
+        //文本串 → 顶点（缩放/对齐/逐字几何）
+        static void addText(glm::vec4*& mapped, uint32_t& letterCount, const glyphMapNode& glyphMap, float emSize, const std::string& text, float positionX, float positionY, bufferEnum::textAlignId::type align, float fontSizePx) {
+            if (glyphMap.empty() || !mapped) {
+                return;
+            }
+
+            std::vector<uint32_t> codepoints = utf8ToCodepoints(text);
+            const float scale = fontSizePx / emSize;
+
+            //计算文本宽度
+            float textWidthPx = 0.0f;
+            for (uint32_t codepoint : codepoints) {
+                auto it = glyphMap.find(codepoint);
+
+                if (it == glyphMap.end()) {
+                    continue;
+                }
+
+                textWidthPx += it->second.advance * scale;
+            }
+
+            //对齐
+            float originX = positionX;
+            switch (align) {
+            case bufferEnum::textAlignId::right:
+                originX -= textWidthPx;
+                break;
+            case bufferEnum::textAlignId::center:
+                originX -= textWidthPx / 2.0f;
+                break;
+            case bufferEnum::textAlignId::left:
+                break;
+            }
+
+
+
+            //像素 → NDC（左上(-1,-1)，y 向下为正）
+            const float ndcX      = 2.0f / windowInfo::width;
+            const float ndcY      = 2.0f / windowInfo::height;
+            float       cursorX   = originX;
+            const float baselineY = positionY;
+
+            //逐字几何
+            for (uint32_t codepoint : codepoints) {
+                auto it = glyphMap.find(codepoint);
+
+                if (it == glyphMap.end()) {
+                    continue;
+                }
+
+                addGlyph(mapped, letterCount, it->second, cursorX, baselineY, scale, ndcX, ndcY);
+            }
+        }
+
+        //收集 HUD 布局：登记行内容与锚点；列宽/对齐/段产出统一在 buildUiTextLayout 完成
+        static void beginUiTextLayout(uiTextLayoutNode& layout, const glyphMapNode& glyphMap, float emSize, float fontSizePx, float lineHeightPx, float marginPx, float viewportWidthPx) {
+            layout.glyphMap        = &glyphMap;
+            layout.emSize          = emSize;
+            layout.fontSizePx      = fontSizePx;
+            layout.lineHeightPx    = lineHeightPx;
+            layout.marginPx        = marginPx;
+            layout.viewportWidthPx = viewportWidthPx;
+            layout.row.clear();
+        }
+
+        //登记单值行（如 fps，可放任意锚点）
+        static void addTextValue(uiTextLayoutNode& layout, uiEnum::uiTextAnchorEnum::type anchor, const std::string& label, const std::string& value) {
+            uiTextLayoutRowNode row;
+            row.anchor   = anchor;
+            row.label    = label;
+            row.isVecRow = false;
+            row.value    = value;
+            layout.row.push_back(row);
+        }
+
+        //登记坐标三值行（dvec3 重载：pos/chunkPos，可放任意锚点）
+        static void addTextValuePos(uiTextLayoutNode& layout, uiEnum::uiTextAnchorEnum::type anchor, const std::string& label, const glm::dvec3& valueVec) {
+            uiTextLayoutRowNode row;
+            row.anchor   = anchor;
+            row.label    = label;
+            row.isVecRow = true;
+            row.vecValue = valueVec;
+            layout.row.push_back(row);
+        }
+
+        //登记坐标三值行（ivec3 重载：mineboxpos）
+        static void addTextValuePos(uiTextLayoutNode& layout, uiEnum::uiTextAnchorEnum::type anchor, const std::string& label, const glm::ivec3& valueVec) {
+            addTextValuePos(layout, anchor, label, glm::dvec3{ (double)valueVec.x, (double)valueVec.y, (double)valueVec.z });
+        }
+
+        //排版全部行 → 段列表（行形态与锚点正交：单值/坐标行可放任意锚点）
+        static void buildUiTextLayout(uiTextLayoutNode& layout, std::vector<uiTextSegmentNode>& outSegments) {
+            outSegments.clear();
+
+            const glyphMapNode& glyphMap        = *layout.glyphMap;
+            const float         emSize          = layout.emSize;
+            const float         fontSizePx      = layout.fontSizePx;
+            const float         lineHeightPx    = layout.lineHeightPx;
+            const float         marginPx        = layout.marginPx;
+            const float         viewportWidthPx = layout.viewportWidthPx;
+
+            //坐标行三 cell 公共参数（两锚点同构）
+            const float tagPx      = std::max(stringWidthPx(glyphMap, emSize, "x:", fontSizePx), std::max(stringWidthPx(glyphMap, emSize, "y:", fontSizePx), stringWidthPx(glyphMap, emSize, "z:", fontSizePx)));
+            const float cellPx     = tagPx + stringWidthPx(glyphMap, emSize, "-9,999,999", fontSizePx);
+            const float spacePx    = charWidthPx(glyphMap, emSize, (uint32_t)' ', fontSizePx);
+            const float baseline0  = marginPx + fontSizePx;
+            float       topLeftY   = baseline0;
+            float       topRightY  = baseline0;
+
+            //第一遍：仅 topLeft 块需块级值列起点（块内最大标签宽）
+            float maxLabelWidthPx = 0.0f;
+            for (const uiTextLayoutRowNode& row : layout.row) {
+                if (row.anchor == uiEnum::uiTextAnchorEnum::topLeft) {
+                    maxLabelWidthPx = std::max(maxLabelWidthPx, stringWidthPx(glyphMap, emSize, row.label + ": ", fontSizePx));
+                }
+            }
+
+            const float colLabelX   = marginPx;
+            const float valueStartX = colLabelX + maxLabelWidthPx;
+
+            //产出坐标行 x:/y:/z: 三 cell 段（zoneX 为网格左端）
+            auto emitPosCells = [&](std::vector<uiTextSegmentNode>& outSegments, float zoneX, float rowY, const uiTextLayoutRowNode& row) {
+                const double values[3] = { row.vecValue.x, row.vecValue.y, row.vecValue.z };
+
+                for (int k = 0; k < 3; ++k) {
+                    const float cellX = zoneX + (float)k * cellPx;
+                    outSegments.push_back({ cellX, rowY, std::string(1, "xyz"[k]) + ":" });
+                    outSegments.push_back({ cellX + tagPx, rowY, padFixedWidth(formatThousand(values[k]), 10) });
+                }
+            };
+
+            //第二遍：逐行定 x/y（锚点内调用顺序即行序）
+            for (const uiTextLayoutRowNode& row : layout.row) {
+                if (row.anchor == uiEnum::uiTextAnchorEnum::topLeft) {
+                    const float rowY = topLeftY;
+                    topLeftY += lineHeightPx;
+
+                    //标签列左端齐 margin，值区左端齐 valueStartX（跨行列对齐）
+                    outSegments.push_back({ colLabelX, rowY, row.label + ":" });
+
+                    if (row.isVecRow) {
+                        emitPosCells(outSegments, valueStartX, rowY, row);
+                    }
+                    else {
+                        outSegments.push_back({ valueStartX, rowY, row.value });
+                    }
+                }
+                else if (row.anchor == uiEnum::uiTextAnchorEnum::topRight) {
+                    const float rowY = topRightY;
+                    topRightY += lineHeightPx;
+
+                    //整行内容右端齐视口右缘（标签与值区粘合排布）
+                    const float labelWidthPx = stringWidthPx(glyphMap, emSize, row.label + ":", fontSizePx);
+                    const float zoneWidthPx  = row.isVecRow ? 3.0f * cellPx
+                                                            : stringWidthPx(glyphMap, emSize, row.value, fontSizePx);
+                    const float rowWidthPx   = labelWidthPx + spacePx + zoneWidthPx;
+                    const float rowX         = viewportWidthPx - marginPx - rowWidthPx;
+                    const float zoneX        = rowX + labelWidthPx + spacePx;
+
+                    outSegments.push_back({ rowX, rowY, row.label + ":" });
+
+                    if (row.isVecRow) {
+                        emitPosCells(outSegments, zoneX, rowY, row);
+                    }
+                    else {
+                        outSegments.push_back({ zoneX, rowY, row.value });
+                    }
+                }
+            }
+        }
+
+
+
+        //字符串像素宽（UTF-8 解码后逐码点测宽，中英混排可用）
+        static float stringWidthPx(const glyphMapNode& glyphMap, float emSize, const std::string& text, float fontSizePx) {
+            const float scale = fontSizePx / emSize;
+            float       width = 0.0f;
+
+            for (uint32_t codepoint : utf8ToCodepoints(text)) {
+                auto it = glyphMap.find(codepoint);
+
+                if (it == glyphMap.end()) {
+                    continue;
+                }
+
+                width += it->second.advance * scale;
+            }
+
+            return width;
+        }
+
+        //单码点像素宽
+        static float charWidthPx(const glyphMapNode& glyphMap, float emSize, uint32_t codepoint, float fontSizePx) {
+            const float scale = fontSizePx / emSize;
+            auto        it    = glyphMap.find(codepoint);
+
+            if (it == glyphMap.end()) {
+                return 0.0f;
+            }
+
+            return it->second.advance * scale;
+        }
+
+        //UTF-8 → 码点流
+        static std::vector<uint32_t> utf8ToCodepoints(const std::string& text) {
+            std::vector<uint32_t> codepoints;
+            size_t index = 0;
+
+            while (index < text.size()) {
+                uint8_t  byte      = (uint8_t)text[index];
+                uint32_t codepoint = 0;
+                size_t   length    = 0;
+
+                if (byte < 0x80) {
+                    codepoint = byte;
+                    length    = 1;
+                }
+                else if ((byte >> 5) == 0x6) {
+                    codepoint = byte & 0x1F;
+                    length    = 2;
+                }
+                else if ((byte >> 4) == 0xE) {
+                    codepoint = byte & 0x0F;
+                    length    = 3;
+                }
+                else if ((byte >> 3) == 0x1E) {
+                    codepoint = byte & 0x07;
+                    length    = 4;
+                }
+                else {
+                    ++index;
+                    continue;
+                }
+
+                if (index + length > text.size()) {
+                    break;
+                }
+
+                bool valid = true;
+                for (size_t k = 1; k < length; ++k) {
+                    uint8_t continuation = (uint8_t)text[index + k];
+
+                    if ((continuation & 0xC0) != 0x80) {
+                        valid = false;
+                        break;
+                    }
+
+                    codepoint = (codepoint << 6) | (continuation & 0x3F);
+                }
+
+                if (!valid) {
+                    ++index;
+                    continue;
+                }
+
+                codepoints.push_back(codepoint);
+                index += length;
+            }
+
+            return codepoints;
+        }
+
+        //单个字形 → 顶点（写四顶点、推进光标、计数）
+        static void addGlyph(glm::vec4*& mapped, uint32_t& letterCount, const msdfGlyphNode& glyph, float& cursorX, float baselineY, float scale, float ndcX, float ndcY) {
+            const float left   = (cursorX   + glyph.planeBounds.x * scale) * ndcX - 1.0f;
+            const float right  = (cursorX   + glyph.planeBounds.z * scale) * ndcX - 1.0f;
+            const float top    = (baselineY + glyph.planeBounds.y * scale) * ndcY - 1.0f;
+            const float bottom = (baselineY + glyph.planeBounds.w * scale) * ndcY - 1.0f;
+            const float u0     = glyph.uvBounds.x;
+            const float v0     = glyph.uvBounds.y;
+            const float u1     = glyph.uvBounds.z;
+            const float v1     = glyph.uvBounds.w;
+
+            mapped->x = left;  mapped->y = top;    mapped->z = u0; mapped->w = v0; mapped++;
+            mapped->x = right; mapped->y = top;    mapped->z = u1; mapped->w = v0; mapped++;
+            mapped->x = left;  mapped->y = bottom; mapped->z = u0; mapped->w = v1; mapped++;
+            mapped->x = right; mapped->y = bottom; mapped->z = u1; mapped->w = v1; mapped++;
+
+            cursorX += glyph.advance * scale;
+            letterCount++;
+        }
+
+        //整数千分位（保留负号）
+        static std::string formatThousand(double value) {
+            long long  number   = (long long)value;
+            const bool negative = number < 0;
+            unsigned long long absolute = negative ? (unsigned long long)(-(number + 1)) + 1ull : (unsigned long long)number;
+
+            std::string digits = std::to_string(absolute);
+            std::string output;
+            int groupCount = 0;
+
+            for (int i = (int)digits.size() - 1; i >= 0; --i) {
+                output.insert(output.begin(), digits[i]);
+
+                if (++groupCount == 3 && i > 0) {
+                    output.insert(output.begin(), ',');
+                    groupCount = 0;
+                }
+            }
+
+            if (negative) {
+                output.insert(output.begin(), '-');
+            }
+
+            return output;
+        }
+
+        //右侧补空格至定长
+        static std::string padFixedWidth(const std::string& text, size_t width) {
+            std::string result = text;
+
+            if (result.size() < width) {
+                result.append(width - result.size(), ' ');
+            }
+
+            return result;
+        }
+    };
+}
+
 
 
 //buffer    结构空间

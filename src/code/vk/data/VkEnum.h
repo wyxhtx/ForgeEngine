@@ -2,7 +2,7 @@
 
 
 
-//engine枚举空间
+//engine    枚举空间
 namespace engineEnum {
     namespace tickEnum {
         enum type {
@@ -18,7 +18,22 @@ namespace engineEnum {
 
 
 
-//buffer枚举空间
+//ui        枚举空间
+namespace uiEnum {
+    //uiText锚点枚举
+    namespace uiTextAnchorEnum {
+        enum type {
+            topLeft,     //左上：行标签列左对齐，值区跨行列对齐
+            topRight,    //右上：整行右端对齐视口右缘
+
+            count
+        };
+    }
+}
+
+
+
+//buffer    枚举空间
 namespace bufferEnum {
     //imageBuffer枚举
     namespace imageBufferId {
@@ -33,7 +48,7 @@ namespace bufferEnum {
     }
 }
 
-//render枚举空间
+//render    枚举空间
 namespace renderEnum {
     //render附件枚举
     namespace renderAttId {
@@ -82,7 +97,7 @@ namespace renderEnum {
     }
 }
 
-//pipeline枚举空间
+//pipeline  枚举空间
 namespace pipelineEnum {
     //shader结点枚举
     namespace shaderNodeId {
@@ -140,7 +155,7 @@ namespace pipelineEnum {
 
 
 //todo 后续慢慢拆分
-//buffer枚举空间
+//buffer    枚举空间
 namespace bufferEnum {
     namespace textAlignId {
         enum type {

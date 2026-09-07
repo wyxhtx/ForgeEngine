@@ -6,3 +6,4 @@ src/assets/shader/
 
 *.vcxproj.user
 CMakeUserPresets.json
+/ForgeEngine.sln.lnk

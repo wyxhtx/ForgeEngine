@@ -9,11 +9,15 @@
 cmake_minimum_required(VERSION 3.24)                                            # CMake 最低版本
 project(ForgeEngine LANGUAGES CXX)                                              # 工程名 ForgeEngine
 
+
+
 # ---- 语言标准 ----
 set(CMAKE_CXX_STANDARD 20)                                                      # C++20
 set(CMAKE_CXX_STANDARD_REQUIRED ON)                                             # 强制支持
 set(CMAKE_CXX_EXTENSIONS OFF)                                                   # 纯标准，禁 GNU 扩展
-set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)            # 只留 Debug/Release（去掉默认的 MinSizeRel/RelWithDebInfo）
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/DNDEBUG /Od /Zi")                          # RelWithDebInfo：不优化+PDB，编译快、运行无 STL 检查、可断点
+set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /INCREMENTAL")                # RelWithDebInfo：增量链接WW
 
 
 
@@ -85,10 +89,16 @@ target_include_directories(ForgeStbFont INTERFACE "${FORGE_STB_FONT_INCLUDE_DIRS
 
 
 # 5. 主程序目标（ForgeEngine.exe；游戏逻辑在 src\code\forge）
-add_executable(ForgeEngine src/code/vk/Main.cpp)                                # 单 TU（Main.cpp 内含全部实现）
-target_compile_definitions(ForgeEngine PRIVATE UNICODE _UNICODE)                # Unicode（WinAPI W 版）
-target_compile_options(ForgeEngine PRIVATE /bigobj)                             # 单 TU 节数超限需大目标
-target_compile_options(ForgeEngine PRIVATE $<$<NOT:$<CONFIG:Debug>>:/U_DEBUG>)  # 非 Debug 撤 _DEBUG（防 LNK2038）
+add_executable(ForgeEngine src/code/vk/Main.cpp)                                                # 单 TU（Main.cpp 内含全部实现）
+target_compile_definitions(ForgeEngine PRIVATE UNICODE _UNICODE)                                # Unicode（WinAPI W 版）
+target_compile_options(ForgeEngine PRIVATE /bigobj)                                             # 单 TU 节数超限需大目标
+target_compile_options(ForgeEngine PRIVATE $<$<NOT:$<CONFIG:Debug>>:/U_DEBUG>)                  # 非 Debug 撤 _DEBUG（防 LNK2038）
+target_compile_options(ForgeEngine PRIVATE $<$<CONFIG:Release>:/Zi>)                            # Release 产 PDB（/O2 下可断点/看调用栈）
+target_link_options   (ForgeEngine PRIVATE $<$<CONFIG:Release>:/DEBUG>)                         # Release 链接带调试信息
+# target_compile_options(ForgeEngine PRIVATE $<$<CONFIG:Release>:/d1reportTime>)                # 临时诊断：编译相位耗时报告
+target_precompile_headers(ForgeEngine PRIVATE "${CMAKE_SOURCE_DIR}/src/code/vk/External.h")     # PCH：系统+三方头只编一次
+
+
 
 # ---- 解决方案资源管理器显示 ----
 # 命令

@@ -1,3 +1,4 @@
+#include "External.h"
 #include "Main.h"
 
 
@@ -10,8 +11,6 @@ int main() {
         Log::printError(__FILE__, __LINE__, "同一时间只能启用一个游戏进程");
         return 0;
     }
-
-
 
 
 

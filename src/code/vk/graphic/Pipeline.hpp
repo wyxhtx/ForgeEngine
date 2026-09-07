@@ -116,7 +116,7 @@ public:
 			lockInfo::chunkMapDataLock.store(false);
 		}
 
-		InitBuffer.updateUniformBuffer(playerInfo::logicOriginPos, Camera.node, selectBox);
+		InitBuffer.updateUniform(playerInfo::logicOriginPos, Camera.node, selectBox);
 		if (InitBuffer.drawFrame(currentThread)) {
 			lockInfo::drawFuncLock.unlock();
 			recreateSwapChain(Camera);
