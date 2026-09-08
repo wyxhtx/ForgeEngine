@@ -1,9 +1,11 @@
 .vs/
 build/
 vcpkg_installed/
-storage/chunk/
+
 src/assets/shader/
+storage/chunk/
+docs/chatbox-sync/
 
 *.vcxproj.user
 CMakeUserPresets.json
-/ForgeEngine.sln.lnk
+ForgeEngine.sln.lnk
