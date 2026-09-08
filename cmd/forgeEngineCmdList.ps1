@@ -224,3 +224,78 @@ function fe-sync-kb {
     Write-Host "步骤：先在 Chatbox KB 删除同名旧文件，再全选拖入打开的目录（.txt 结尾的即格式适配产物）"
     Start-Process explorer.exe $dstDir
 }
+
+# ============================================================
+# 七、知识库同步（Chatbox KB 手动同步辅助，状态文件+增量+格式适配）
+# ============================================================
+
+function fe-sync-kb {
+    # 集合展开（根配置+docs+chatbox-docs+src\code）+ SHA256 增量 + 白名单格式适配
+    # hash 基准存 docs\chatbox-sync-state.json；执行后 chatbox-sync 只留本次需同步文件
+    # 用法：fe-sync-kb（需在仓库根运行）
+    $isForge = Test-Path (Join-Path $PWD 'CMakePresets.json')
+    if (-not $isForge) { Write-Host "请在 ForgeEngine 仓库内运行"; return }
+    $repo      = $PWD.Path
+    $dstDir    = Join-Path $repo 'docs\chatbox-sync'
+    $stateFile = Join-Path $repo 'docs\chatbox-sync-state.json'
+    New-Item -ItemType Directory -Path $dstDir -Force | Out-Null
+
+    $whitelist = @('.md','.txt','.cpp','.h','.hpp','.rtf','.pdf','.docx','.pptx','.xlsx','.csv','.epub')
+
+    # --- 集合展开 ---
+    $files = @()
+    foreach ($root in @('CMakeLists.txt','README.md','.gitignore','vcpkg.json')) {
+        if (Test-Path (Join-Path $repo $root)) { $files += $root }
+    }
+    foreach ($pat in @('docs\*.md','docs\chatbox-docs\*.md')) {
+        Get-ChildItem (Join-Path $repo $pat) -File | ForEach-Object { $files += $_.FullName.Substring($repo.Length + 1) }
+    }
+    Get-ChildItem (Join-Path $repo 'src\code') -Recurse -File -Include *.h,*.hpp,*.cpp | ForEach-Object { $files += $_.FullName.Substring($repo.Length + 1) }
+
+    # --- 读状态（文件名 -> SHA256）；无状态时用 chatbox-sync 现有副本初始化（平滑首轮）---
+    $state = @{}
+    if (Test-Path $stateFile) {
+        $state = Get-Content $stateFile -Raw | ConvertFrom-Json -AsHashtable
+    } else {
+        Get-ChildItem $dstDir -File | ForEach-Object {
+            $state[$_.Name] = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
+        }
+    }
+
+    # --- 逐个对比 + 复制变更 ---
+    $changed = @()
+    $newState = @{}
+    foreach ($rel in $files) {
+        $src = Join-Path $repo $rel
+        $leaf = Split-Path $rel -Leaf
+        $ext  = [System.IO.Path]::GetExtension($leaf).ToLower()
+        $dstName = if ($whitelist -contains $ext) { $leaf } else { $leaf + '.txt' }
+        $srcHash = (Get-FileHash $src -Algorithm SHA256).Hash
+        $need = $true
+        if ($state.ContainsKey($dstName)) {
+            if ($state[$dstName] -eq $srcHash) { $need = $false }
+        }
+        if ($need) {
+            Copy-Item $src (Join-Path $dstDir $dstName) -Force
+            $changed += $dstName
+        }
+        $newState[$dstName] = $srcHash
+    }
+
+    # --- 清理：目录只留本次需同步的 ---
+    Get-ChildItem $dstDir -File | ForEach-Object {
+        if ($changed -notcontains $_.Name) { Remove-Item $_.FullName -Force }
+    }
+
+    # --- 写回状态 ---
+    ($newState | ConvertTo-Json) | Set-Content $stateFile -Encoding utf8
+
+    # --- 报告（不自动打开目录）---
+    if ($changed.Count -eq 0) {
+        Write-Host "无变更，KB 已是最新（$($files.Count) 个文件全部一致）" -ForegroundColor Green
+        return
+    }
+    Write-Host "需同步 $($changed.Count) 个文件（已放入 docs\chatbox-sync\）：" -ForegroundColor Yellow
+    $changed | ForEach-Object { Write-Host "  - $_" }
+    Write-Host "步骤：先在 Chatbox KB 删除同名旧文件，再从 docs\chatbox-sync\ 全选拖入新文件（.txt 结尾为格式适配产物）"
+}
