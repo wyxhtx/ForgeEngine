@@ -299,3 +299,29 @@ function fe-sync-kb {
     $changed | ForEach-Object { Write-Host "  - $_" }
     Write-Host "步骤：先在 Chatbox KB 删除同名旧文件，再从 docs\chatbox-sync\ 全选拖入新文件（.txt 结尾为格式适配产物）"
 }
+
+# 启动 dsh（DeepSeek Harness）Web 界面 → http://127.0.0.1:3080
+# 依赖：Node（PATH 或 E:\tool\app\node）、DSH_HOME=E:\tool\app\dsHarness；工作区=仓库根
+function fe-dsh {
+    $npx = (Get-Command npx -ErrorAction SilentlyContinue).Source
+    if (-not $npx) {
+        $npx = Join-Path 'E:\tool\app\node' 'npx.cmd'
+    }
+    if (-not (Test-Path $npx)) {
+        Write-Host "未找到 npx：$npx（检查 Node 安装，或重启终端补 PATH）" -ForegroundColor Red
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($env:DSH_HOME)) {
+        $env:DSH_HOME = 'E:\tool\app\dsHarness'
+    }
+
+    $busy = Get-NetTCPConnection -LocalPort 3080 -State Listen -ErrorAction SilentlyContinue
+    if ($busy) {
+        Write-Host "端口 3080 已被 PID $($busy.OwningProcess) 占用——dsh 可能已在运行" -ForegroundColor Yellow
+    }
+
+    Write-Host "启动 dsh  DSH_HOME=$env:DSH_HOME  工作区=$PWD" -ForegroundColor Cyan
+    Write-Host "浏览器打开：http://127.0.0.1:3080  （Ctrl+C 停止）" -ForegroundColor Cyan
+    & $npx '@deepseek-ai/dsh' web
+}
