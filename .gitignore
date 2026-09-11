@@ -10,3 +10,4 @@ docs/chatbox-sync-state.json
 *.vcxproj.user
 CMakeUserPresets.json
 ForgeEngine.sln.lnk
+/ForgeEngine.slnx.lnk

@@ -995,6 +995,7 @@ namespace bufferStruct {
             createMemMap(bufferData, bufferSize, memAllocator);
         }
 
+        //todo
         //baseBufferNode() = delete;
         baseBufferNode() {}
 
@@ -1045,9 +1046,9 @@ namespace bufferStruct {
             const bufferEnum::imageBufferId::type& imageBufferType,
             const VkFormat&                        format,
             const VkExtent2D&                      imageExtent,
-            const VkSampleCountFlagBits&           msaa,
             const uint32_t&                        mipLevel,
             const uint32_t&                        arrayLayer,
+            const VkSampleCountFlagBits&           msaa,
             const VkImageUsageFlags&               usage,
             const VkImageAspectFlags&              aspectFlags,
             const VkDevice&                        device,
@@ -1085,44 +1086,8 @@ namespace bufferStruct {
                 break;
             }
             case bufferEnum::imageBufferId::frame: {
-                VkImageCreateInfo imageInfo{};
-                imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-                imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-                imageInfo.format        = format;
-                imageInfo.extent.width  = imageExtent.width;
-                imageInfo.extent.height = imageExtent.height;
-                imageInfo.extent.depth  = 1;
-                imageInfo.mipLevels     = mipLevel;
-                imageInfo.arrayLayers   = arrayLayer;
-                imageInfo.samples       = msaa;
-                imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-                imageInfo.usage         = usage;
-                imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-                imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-                VmaAllocationCreateInfo allocInfo{};
-                allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
-                allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-                if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image, &imageMem, nullptr) != VK_SUCCESS) {
-                    Log::printError(__FILE__, __LINE__, "image创建失败");
-                }
-
-                VkImageViewCreateInfo viewInfo{};
-                viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                viewInfo.image    = image;
-                viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-                viewInfo.format   = format;
-                viewInfo.subresourceRange.aspectMask     = aspectFlags;
-                viewInfo.subresourceRange.baseMipLevel   = 0;
-                viewInfo.subresourceRange.levelCount     = 1;
-                viewInfo.subresourceRange.baseArrayLayer = 0;
-                viewInfo.subresourceRange.layerCount     = 1;
-
-                if (vkCreateImageView(device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
-                    Log::printError(__FILE__, __LINE__, "view创建失败");
-                }
-
+                createImage(VK_IMAGE_TYPE_2D, format, imageExtent, mipLevel, arrayLayer, msaa, usage, memAllocator);
+                createImageView(format, aspectFlags, device);
                 break;
             }
             }
@@ -1142,6 +1107,60 @@ namespace bufferStruct {
         }
 
     private:
+        void createImage(
+            const VkImageType&           imageType,
+            const VkFormat&              format,
+            const VkExtent2D&            imageExtent,
+            const uint32_t&              mipLevel,
+            const uint32_t&              arrayLayer,
+            const VkSampleCountFlagBits& msaa,
+            const VkImageUsageFlags&     usage,
+            const VmaAllocator&          memAllocator
+        ) {
+            VkImageCreateInfo imageInfo{};
+            imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            imageInfo.imageType     = imageType;
+            imageInfo.format        = format;
+            imageInfo.extent.width  = imageExtent.width;
+            imageInfo.extent.height = imageExtent.height;
+            imageInfo.extent.depth  = 1;
+            imageInfo.mipLevels     = mipLevel;
+            imageInfo.arrayLayers   = arrayLayer;
+            imageInfo.samples       = msaa;
+            imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+            imageInfo.usage         = usage;
+            imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+            VmaAllocationCreateInfo allocInfo{};
+            allocInfo.usage         = VMA_MEMORY_USAGE_GPU_ONLY;
+            allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+            if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image, &imageMem, nullptr) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "image创建失败");
+            }
+        }
+
+        void createImageView(
+            const VkFormat& format,
+            const VkImageAspectFlags& aspectFlags,
+            const VkDevice& device
+        ) {
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image    = image;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format   = format;
+            viewInfo.subresourceRange.aspectMask     = aspectFlags;
+            viewInfo.subresourceRange.baseMipLevel   = 0;
+            viewInfo.subresourceRange.levelCount     = 1;
+            viewInfo.subresourceRange.baseArrayLayer = 0;
+            viewInfo.subresourceRange.layerCount     = 1;
+
+            if (vkCreateImageView(device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "view创建失败");
+            }
+        }
     };
 
     //imageBufferList结点
@@ -1858,8 +1877,8 @@ namespace renderStruct {
 
                 //color、depth
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, msaa, 1, 1, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, msaa, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                                   VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, 1, 1, msaa, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, 1, 1, msaa, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                                   VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
                 };
 
                 //swap
@@ -1873,9 +1892,9 @@ namespace renderStruct {
 
                 //color、depth、view
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, msaa,                  1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, msaa,                  1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, 1, 1, msaa,                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, 1, 1, msaa,                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
                 };
 
                 createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, imageExtent, device);
@@ -1886,10 +1905,10 @@ namespace renderStruct {
 
                 //position、normal、albedo、depth
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {bufferEnum::imageBufferId::frame, renderInfo::dsPosColorFormat, imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, colorFormat,                  imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, colorFormat,                  imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, depthFormat,                  imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, renderInfo::dsPosColorFormat, imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, colorFormat,                  imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, colorFormat,                  imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, depthFormat,                  imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
                 };
 
                 createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, imageExtent, device);
@@ -1900,7 +1919,7 @@ namespace renderStruct {
 
                 //depth
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, VK_SAMPLE_COUNT_1_BIT, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
                 };
 
                 createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, imageExtent, device);

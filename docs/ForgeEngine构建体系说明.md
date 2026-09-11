@@ -9,12 +9,12 @@ vcpkg           （下载 + 锁定版本 + 编译 + 安装；删依赖行 → re
    ↓ 装到 build\vcpkg_installed\
 CMakeLists.txt  （find_package + find_path + PCH + 构建定义）
    ↓ VS 生成器
-build\vs\ForgeEngine.sln → ForgeEngine.exe
+build\vs\ForgeEngine.slnx → ForgeEngine.exe
 ```
 
 - **依赖分三类**：官方直用（8 个，baseline 锁版本）/ 覆盖官方（3 个：ktx、tinygltf、freetype，overlay 修正上游 port）/ 纯自定义（6 个：aarand、subpar、sanisizer、kmeans、fastnoise2、msdf-atlas-gen，REF 锁 commit）/ 系统级 Vulkan SDK（不走 vcpkg）
 - **配置三档**：Debug / Release / RelWithDebInfo——RelWithDebInfo 重定义为快速日常档（/DNDEBUG /Od /Zi，链接 /DEBUG /INCREMENTAL，带 PDB 可断点）
-- **构建工作流**：`cmake --preset vs` → `cmake --build --preset debug` → VS 打开 `build\vs\ForgeEngine.sln` F5 调试；日常迭代用 RelWithDebInfo 配置
+- **构建工作流**：`cmake --preset vs` → `cmake --build --preset debug` → VS 打开 `build\vs\ForgeEngine.slnx` F5 调试；日常迭代用 RelWithDebInfo 配置
 
 ## 二、目录结构
 
@@ -102,7 +102,7 @@ ForgeEngine\
 
 ### 3.2 CMakePresets.json —— 一键配置入口
 
-- `vs` 预设：VS2022 生成器，输出 `build\vs\`，F5 调试全功能
+- `vs` 预设：VS2026 生成器（`Visual Studio 18 2026`，工具集 v145），输出 `build\vs\`，F5 调试全功能
 - `ninja` 预设：备用命令行快速构建，输出 `build\ninja\`
 - 关键变量：
   - `CMAKE_TOOLCHAIN_FILE`：vcpkg 入口（manifest 模式自动装依赖）
@@ -224,7 +224,7 @@ find_package(FreeALUT CONFIG REQUIRED)                          # 目标 FreeALU
 | 编译 Debug | `cmake --build --preset debug` |
 | 编译 Release | `cmake --build --preset release` |
 | 备用 Ninja 构建 | `cmake --preset ninja` |
-| 调试运行 | VS 打开 `build\vs\ForgeEngine.sln` → F5（工作目录自动=项目根） |
+| 调试运行 | VS 打开 `build\vs\ForgeEngine.slnx` → F5（工作目录自动=项目根） |
 | 命令行运行 | `cd E:\code\graphicsAPI\vulkan\ForgeEngine` + `.\build\vs\bin\output\x64\Debug\ForgeEngine.exe` |
 
 ## 六、日常维护

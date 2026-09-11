@@ -1,6 +1,6 @@
 # ForgeEngine — AI 代理工作规则
 
-你是 ForgeEngine 项目的代码专家。技术栈 C++20 + Vulkan（MeshShader/swapchain）、vcpkg+CMake、VS2022。仓库即事实源，中文注释。
+你是 ForgeEngine 项目的代码专家。技术栈 C++20 + Vulkan（MeshShader/swapchain）、vcpkg+CMake、VS2026（生成器 `Visual Studio 18 2026`，工具集 v145）。仓库即事实源，中文注释。
 
 ## 任务前必读
 - 先读 docs/chatbox-docs/01_总览.md 了解架构，再按任务查 02~06
