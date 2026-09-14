@@ -294,7 +294,7 @@ namespace bufferList {
 
 
         procModelNode(bool enable, pipelineEnum::procPipelineId::type pId) : sNode(bufferEnum::procStaticModelId::count), dNode(bufferEnum::procDynamicModelId::count) {
-            sNode[bufferEnum::procStaticModelId::temple_m].create(fileInfo::model::temple, fileInfo::image::temple, /*fileInfo::image::temple,*/ bufferEnum::procSamplerId::staticModel_sn, glm::dvec3(0, 32, 0));
+            sNode[bufferEnum::procStaticModelId::temple_m].create(fileInfo::model::temple, fileInfo::image::temple, bufferEnum::procSamplerId::staticModel_sn, glm::dvec3(0, 32, 0));
 
             dNode[bufferEnum::procDynamicModelId::droid_m].create(fileInfo::model::droid, { fileInfo::image::droidBodyC,fileInfo::image::droidHeadC,fileInfo::image::droidMiscC }, /*{ fileInfo::image::droidBodyN,fileInfo::image::droidHeadN,fileInfo::image::droidMiscN },*/ bufferEnum::procSamplerId::dynamicModel_sl, glm::dvec3(0, 32, 0));
 
@@ -311,16 +311,20 @@ namespace bufferList {
 
         procModelNode() = delete;
 
+
+
         void getMaxModelMip() {
             std::vector<uint32_t> sMaxMip;
             for (const bufferStruct::staticModelNode& i : sNode) {
-                sMaxMip.push_back(i.mipLevel);
+                sMaxMip.push_back(i.texture.mipLevel);
             }
             sModelMip = *std::max_element(sMaxMip.begin(), sMaxMip.end());   //使用模型最大mip创建采样器
 
             std::vector<uint32_t> dMaxMip;
             for (const bufferStruct::dynamicModelNode& i : dNode) {
-                dMaxMip.push_back(i.mipLevel);
+                for (const bufferStruct::dynamicModelSubNode& j : i.node) {
+                    dMaxMip.push_back(j.texture.mipLevel);
+                }
             }
             dModelMip = *std::max_element(dMaxMip.begin(), dMaxMip.end());
         }

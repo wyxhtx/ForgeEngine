@@ -363,7 +363,7 @@ namespace cmdStruct {
 
 
 
-        //拷贝buffer到buffer
+        //拷贝 buffer 到 buffer
         void copyBufferToBuffer(const VkDevice& device, const VkQueue& graphicsQueue, const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, VkDeviceSize size) {
             recordTransientCmd();
 
@@ -376,20 +376,20 @@ namespace cmdStruct {
             submitTransientCmd(device, graphicsQueue);
         }
 
-        //拷贝buffer到image，转换→拷贝→转换
-        void copyBufferToImage(const VkDevice& device, const VkQueue& graphicsQueue, const VkBuffer& buffer, const VkImage& image, const std::vector<VkBufferImageCopy>& regions, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format) {
+        //拷贝 buffer 到 image，转换 → 拷贝 → 转换
+        void copyBufferToImage(const VkDevice& device, const VkQueue& graphicsQueue, const VkBuffer& buffer, const VkImage& image, const std::vector<VkBufferImageCopy>& regions, uint32_t mipLevel, uint32_t arrayLayer, VkFormat format) {
             recordTransientCmd();
 
-            recordImageLayoutBarrier(image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            recordImageLayoutBarrier(image, mipLevel, arrayLayer, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
             vkCmdCopyBufferToImage(transientCmd[0], buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(regions.size()), regions.data());
-            recordImageLayoutBarrier(image, arrayLayer, mipLevel, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            recordImageLayoutBarrier(image, mipLevel, arrayLayer, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
             submitTransientCmd(device, graphicsQueue);
         }
 
 
 
-        //录制本线程命令
+        //录制 renderCmd 本线程命令
         template<typename F>
         void recordCmd(int threadId, int frameId, F&& func) {
             recorder.bind(renderCmd[threadId][frameId]);
@@ -399,21 +399,14 @@ namespace cmdStruct {
             recorder.end();
         }
 
-        //等待本线程命令
+        //等待 renderCmd 本线程命令
         void waitCmd(const VkDevice& device, int threadId) {
             vkWaitForFences(device, 1, &renderCmd[threadId].fence, VK_TRUE, UINT64_MAX);
         }
 
     private:
-        //图像布局转换
-        void transImageLayout(const VkDevice& device, const VkQueue& graphicsQueue, const VkImage& image, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
-            recordTransientCmd();
-            recordImageLayoutBarrier(image, arrayLayer, mipLevel, format, oldLayout, newLayout);
-            submitTransientCmd(device, graphicsQueue);
-        }
-
         //录制图像布局转换屏障
-        void recordImageLayoutBarrier(const VkImage& image, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+        void recordImageLayoutBarrier(const VkImage& image, uint32_t mipLevel, uint32_t arrayLayer, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
             VkImageMemoryBarrier memBarrier{};
             memBarrier.sType                = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             memBarrier.oldLayout            = oldLayout;
@@ -472,7 +465,7 @@ namespace cmdStruct {
 
 
         
-        //录制transientCmd
+        //录制 transientCmd
         void recordTransientCmd() {
             vkResetCommandBuffer(transientCmd[0], 0);
 
@@ -485,7 +478,7 @@ namespace cmdStruct {
             }
         }
 
-        //提交transientCmd
+        //提交 transientCmd
         void submitTransientCmd(const VkDevice& device, const VkQueue& graphicsQueue) {
             vkEndCommandBuffer(transientCmd[0]);
 
@@ -516,25 +509,6 @@ namespace cmdStruct {
 
 //uiStruct  结构空间
 namespace uiStruct {
-    //字形度量结点
-    struct msdfGlyphNode {
-        glm::vec4 planeBounds{};        //显示盒，文本行左上为原点，y 向下为正
-        glm::vec4 uvBounds{};           //uv盒，含内边距
-        float     advance = 0.0f;       //占位宽度
-    };
-
-    //uiText信息结点
-    struct uiTextInfoNode {
-        glm::dvec3 pos{};
-        glm::dvec3 chunkPos{};
-        glm::ivec3 minepos{};
-    };
-
-    //字形度量表别名
-    using glyphMapNode = std::unordered_map<uint32_t, msdfGlyphNode>;
-
-
-
     //uiText布局行结点
     struct uiTextLayoutRowNode {
         uiEnum::uiTextAnchorEnum::type anchor{};    //锚点（块归属）
@@ -551,234 +525,225 @@ namespace uiStruct {
         std::string text;
     };
 
-    //uiText布局结点（每帧局部重建，行缓冲不跨帧保留）
+    //uiText布局结点（每帧重建；行/段缓冲跨帧复用容量）
     struct uiTextLayoutNode {
-        const glyphMapNode* glyphMap = nullptr;     //字形度量表
-        float emSize          = 0.0f;               //图集字号
-        float fontSizePx      = 0.0f;               //屏幕字号
-        float lineHeightPx    = 0.0f;               //行距
-        float marginPx        = 0.0f;               //页边距
-        float viewportWidthPx = 0.0f;               //视口宽（右锚点右端对齐用）
-        std::vector<uiTextLayoutRowNode> row{};     //行集合（调用顺序即行序）
+        std::vector<uiTextLayoutRowNode> row{};       //本帧待排版的行（调用顺序即行序）
+        std::vector<uiTextSegmentNode>   segment{};   //排版产出（容量跨帧保留，避免每帧分配）
+        size_t prevHash = ~0ull;                      //上次顶点内容 hash（~0ull 保证首帧必写）
+    };
+
+    //uiText信息结点
+    struct uiTextInfoNode {
+        glm::dvec3 pos{};
+        glm::dvec3 chunkPos{};
+        glm::ivec3 minepos{};
     };
 
 
 
-    //文本计算工具
-    struct textCalcNode {
-        //MSDF 图集运算：freetype 加载 → 字符集 → 打包 → MTSDF 生成 → 字形度量表；返回 RGBA8（上传由调用方完成）
-        static std::vector<uint8_t> generateMsdfAtlas(glyphMapNode& glyphMap, float& atlasWidth, float& atlasHeight, float emSize, const std::string& fontPath) {
+    //字形度量结点
+    struct msdfGlyphNode {
+        glm::vec4 planeBounds{};        //显示盒，文本行左上为原点，y 向下为正
+        glm::vec4 uvBounds{};           //uv盒，含内边距
+        float     advance = 0.0f;       //占位宽度
+    };
+
+    //字形度量图集结点
+    struct msdfGlyphAtlasNode {
+        //烘焙产物
+        std::unordered_map<uint32_t, msdfGlyphNode> map;    //图集Map：码点 → 字形度量
+        std::vector<uint8_t> data{};                        //图集数据（RGBA8；上传成功后可按需清空）
+        float emSize = 32.0f;                               //图集尺度
+        int   width  = 0;                                   //图集宽度
+        int   height = 0;                                   //图集高度
+
+        //HUD 默认参数
+        float defaultFontSizePx      = 14.0f;               //默认屏幕字号
+        float defaultLineHeightRatio = 1.3f;                //默认行距系数
+        float defaultMarginPx        = 8.0f;                //默认页边距
+
+        //暂存排版，每帧重建，段缓冲容量跨帧保留
+        uiStruct::uiTextLayoutNode uiTextLayout;
+
+        glm::vec4* vertCursor = nullptr;    //本帧顶点写游标，写入过程中前进
+        uint32_t   glyphCount = 0;          //本帧已写入字形数
+
+
+
+        msdfGlyphAtlasNode(const std::string& fontPath) {
+            //1、初始化 FreeType 库，该库的单例操作不能多线程
             msdfgen::FreetypeHandle* ft = msdfgen::initializeFreetype();
             if (!ft) {
-                Log::printError(__FILE__, __LINE__, "generateMsdfAtlas: freetype 初始化失败");
-                return {};
-            }
-            msdfgen::FontHandle* font = msdfgen::loadFont(ft, fontPath.c_str());
-            if (!font) {
-                Log::printError(__FILE__, __LINE__, "generateMsdfAtlas: 字体加载失败（OTF 路径或 CFF 轮廓）");
-                msdfgen::deinitializeFreetype(ft);
-                return {};
+                Log::printError(__FILE__, __LINE__, "freetype库初始化失败");
             }
 
+            //2、加载字体
+            msdfgen::FontHandle* font = msdfgen::loadFont(ft, fontPath.c_str());
+            if (!font) {
+                msdfgen::deinitializeFreetype(ft);
+                Log::printError(__FILE__, __LINE__, "字体加载失败");
+            }
+
+            //3、取字符集：生成字形几何列表
+            //缩放系数：1.0
+            //Charset::ASCII 只覆盖西文，要中文需换 GB2312/自定义字符集
             std::vector<msdf_atlas::GlyphGeometry> glyphs;
             msdf_atlas::FontGeometry fontGeometry(&glyphs);
             fontGeometry.loadCharset(font, 1.0, msdf_atlas::Charset::ASCII);
 
+            //4、边缘着色：让直角/尖角保持锐利，不被圆角化
+            //maxCornerAngle = 3.0°，夹角小于该值视为直角
+            //默认seed：0 
             const double maxCornerAngle = 3.0;
             for (msdf_atlas::GlyphGeometry& glyph : glyphs) {
                 glyph.edgeColoring(&msdfgen::edgeColoringInkTrap, maxCornerAngle, 0);
             }
 
+
+
+            //5、打包：把全部字形塞进一张图集
+            //POWER_OF_TWO_RECTANGLE：尺寸取 2 的幂矩形，便于采样/mip
+            //setScale(emSize)          ：烘焙尺度，像素/em
+            //setPixelRange(2.0)    ：SDF 边缘带宽 → 渲染端需用 pixelRange × scale
+            //setMiterLimit(1.0)    ：尖角斜接上限
             msdf_atlas::TightAtlasPacker packer;
             packer.setDimensionsConstraint(msdf_atlas::DimensionsConstraint::POWER_OF_TWO_RECTANGLE);
             packer.setScale(emSize);
             packer.setPixelRange(2.0);
             packer.setMiterLimit(1.0);
             if (packer.pack(glyphs.data(), (int)glyphs.size()) != 0) {
-                Log::printError(__FILE__, __LINE__, "generateMsdfAtlas: 图集打包失败");
                 msdfgen::destroyFont(font);
                 msdfgen::deinitializeFreetype(ft);
-                return {};
+                Log::printError(__FILE__, __LINE__, "msdf图集打包失败");
             }
+            packer.getDimensions(width, height);
 
-            int atlasWidthPx = 0;
-            int atlasHeightPx = 0;
-            packer.getDimensions(atlasWidthPx, atlasHeightPx);
-
-            msdf_atlas::ImmediateAtlasGenerator<float, 4, msdf_atlas::mtsdfGenerator, msdf_atlas::BitmapAtlasStorage<unsigned char, 4>> generator(atlasWidthPx, atlasHeightPx);
+            //6、生成 MTSDF 位图，4 通道：RGB 三向距离 + A 真实距离，线程 4 只用于栅格化，与 FreeType 生命周期无关
+            msdf_atlas::ImmediateAtlasGenerator<float, 4, msdf_atlas::mtsdfGenerator, msdf_atlas::BitmapAtlasStorage<unsigned char, 4>> generator(width, height);
             msdf_atlas::GeneratorAttributes attributes;
             generator.setAttributes(attributes);
             generator.setThreadCount(4);
             generator.generate(glyphs.data(), (int)glyphs.size());
-            msdfgen::BitmapConstRef<unsigned char, 4> bitmap = generator.atlasStorage();
 
-            //bottom-up → top-down 拷贝为 RGBA8
-            std::vector<uint8_t> rgba((size_t)atlasWidthPx * atlasHeightPx * 4);
-            for (int rowDown = 0; rowDown < atlasHeightPx; ++rowDown) {
-                const int rowSource = atlasHeightPx - 1 - rowDown;
-                for (int column = 0; column < atlasWidthPx; ++column) {
+            //7、取位图只读视图，逐行翻转拷贝成RGBA8，因为原点在左下，所以下面翻成左上，原因：FreeType/msdfgen 位图原点在左下，Vulkan 纹理上传按左上
+            msdfgen::BitmapConstRef<unsigned char, 4> bitmap = generator.atlasStorage();
+            data.resize((size_t)width * height * 4);
+            for (int rowDown = 0; rowDown < height; ++rowDown) {
+                const int rowSource = height - 1 - rowDown;
+
+                for (int column = 0; column < width; ++column) {
                     const unsigned char* pixel = bitmap(column, rowSource);
-                    size_t offset = ((size_t)rowDown * atlasWidthPx + column) * 4;
-                    rgba[offset] = pixel[0];
-                    rgba[offset + 1] = pixel[1];
-                    rgba[offset + 2] = pixel[2];
-                    rgba[offset + 3] = pixel[3];
+                    size_t offset = ((size_t)rowDown * width + column) * 4;
+
+                    data[offset] = pixel[0];
+                    data[offset + 1] = pixel[1];
+                    data[offset + 2] = pixel[2];
+                    data[offset + 3] = pixel[3];
                 }
             }
 
-            //图集元数据 + 字形度量表
-            atlasWidth  = (float)atlasWidthPx;
-            atlasHeight = (float)atlasHeightPx;
+            //8、逐字形填度量表
+            //planeBounds：平面边界（em 单位）→ × emSize 得像素；y 取负 = 屏幕 y 向下
+            //uvBounds   ：图集 UV，按像素归一化；y 用 (高 - top) 做上下翻转
+            //advance    ：步进（em → 像素）
             for (const msdf_atlas::GlyphGeometry& glyph : glyphs) {
                 const uint32_t codepoint = glyph.getCodepoint();
-                if (!codepoint) {
-                    continue;
-                }
+                if (!codepoint) { continue; }                 // 跳过 .notdef（码点 0）
+
                 double left = 0, bottom = 0, right = 0, top = 0;
                 glyph.getQuadPlaneBounds(left, bottom, right, top);
+
                 double atlasLeft = 0, atlasBottom = 0, atlasRight = 0, atlasTop = 0;
                 glyph.getQuadAtlasBounds(atlasLeft, atlasBottom, atlasRight, atlasTop);
 
                 msdfGlyphNode node;
-                node.planeBounds.x = (float)left * emSize;
-                node.planeBounds.y = (float)(-top) * emSize;
-                node.planeBounds.z = (float)right * emSize;
+                node.planeBounds.x = (float)left      * emSize;
+                node.planeBounds.z = (float)right     * emSize;
+                node.planeBounds.y = (float)(-top)    * emSize;
                 node.planeBounds.w = (float)(-bottom) * emSize;
-                node.uvBounds.x = (float)atlasLeft / (float)atlasWidthPx;
-                node.uvBounds.y = (float)(atlasHeightPx - atlasTop) / (float)atlasHeightPx;
-                node.uvBounds.z = (float)atlasRight / (float)atlasWidthPx;
-                node.uvBounds.w = (float)(atlasHeightPx - atlasBottom) / (float)atlasHeightPx;
+
+                node.uvBounds.x = (float)atlasLeft  / (float)width;
+                node.uvBounds.z = (float)atlasRight / (float)width;
+                node.uvBounds.y = (float)(height - atlasTop   ) / (float)height;
+                node.uvBounds.w = (float)(height - atlasBottom) / (float)height;
+
                 node.advance = (float)glyph.getAdvance() * emSize;
-                glyphMap[codepoint] = node;
+
+                map[codepoint] = node;
             }
 
+            //清理
             msdfgen::destroyFont(font);
             msdfgen::deinitializeFreetype(ft);
-            return rgba;
         }
 
-        //文本串 → 顶点（缩放/对齐/逐字几何）
-        static void addText(glm::vec4*& mapped, uint32_t& letterCount, const glyphMapNode& glyphMap, float emSize, const std::string& text, float positionX, float positionY, bufferEnum::textAlignId::type align, float fontSizePx) {
-            if (glyphMap.empty() || !mapped) {
-                return;
-            }
-
-            std::vector<uint32_t> codepoints = utf8ToCodepoints(text);
-            const float scale = fontSizePx / emSize;
-
-            //计算文本宽度
-            float textWidthPx = 0.0f;
-            for (uint32_t codepoint : codepoints) {
-                auto it = glyphMap.find(codepoint);
-
-                if (it == glyphMap.end()) {
-                    continue;
-                }
-
-                textWidthPx += it->second.advance * scale;
-            }
-
-            //对齐
-            float originX = positionX;
-            switch (align) {
-            case bufferEnum::textAlignId::right:
-                originX -= textWidthPx;
-                break;
-            case bufferEnum::textAlignId::center:
-                originX -= textWidthPx / 2.0f;
-                break;
-            case bufferEnum::textAlignId::left:
-                break;
-            }
+        msdfGlyphAtlasNode() = delete;
 
 
 
-            //像素 → NDC（左上(-1,-1)，y 向下为正）
-            const float ndcX      = 2.0f / windowInfo::width;
-            const float ndcY      = 2.0f / windowInfo::height;
-            float       cursorX   = originX;
-            const float baselineY = positionY;
-
-            //逐字几何
-            for (uint32_t codepoint : codepoints) {
-                auto it = glyphMap.find(codepoint);
-
-                if (it == glyphMap.end()) {
-                    continue;
-                }
-
-                addGlyph(mapped, letterCount, it->second, cursorX, baselineY, scale, ndcX, ndcY);
-            }
+        //开始排版
+        void begin() {
+            uiTextLayout.row.clear();
         }
 
-        //收集 HUD 布局：登记行内容与锚点；列宽/对齐/段产出统一在 buildUiTextLayout 完成
-        static void beginUiTextLayout(uiTextLayoutNode& layout, const glyphMapNode& glyphMap, float emSize, float fontSizePx, float lineHeightPx, float marginPx, float viewportWidthPx) {
-            layout.glyphMap        = &glyphMap;
-            layout.emSize          = emSize;
-            layout.fontSizePx      = fontSizePx;
-            layout.lineHeightPx    = lineHeightPx;
-            layout.marginPx        = marginPx;
-            layout.viewportWidthPx = viewportWidthPx;
-            layout.row.clear();
+        //添加 vec3，ivec3型
+        void addVec3(uiEnum::uiTextAnchorEnum::type anchor, const std::string& label, const glm::ivec3& valueVec) {
+            addVec3(anchor, label, glm::dvec3{ (double)valueVec.x, (double)valueVec.y, (double)valueVec.z });
         }
 
-        //登记单值行（如 fps，可放任意锚点）
-        static void addTextValue(uiTextLayoutNode& layout, uiEnum::uiTextAnchorEnum::type anchor, const std::string& label, const std::string& value) {
-            uiTextLayoutRowNode row;
-            row.anchor   = anchor;
-            row.label    = label;
-            row.isVecRow = false;
-            row.value    = value;
-            layout.row.push_back(row);
-        }
-
-        //登记坐标三值行（dvec3 重载：pos/chunkPos，可放任意锚点）
-        static void addTextValuePos(uiTextLayoutNode& layout, uiEnum::uiTextAnchorEnum::type anchor, const std::string& label, const glm::dvec3& valueVec) {
+        //添加 vec3，dvec3型
+        void addVec3(uiEnum::uiTextAnchorEnum::type anchor, const std::string& label, const glm::dvec3& valueVec) {
             uiTextLayoutRowNode row;
             row.anchor   = anchor;
             row.label    = label;
             row.isVecRow = true;
             row.vecValue = valueVec;
-            layout.row.push_back(row);
+            uiTextLayout.row.push_back(row);
         }
 
-        //登记坐标三值行（ivec3 重载：mineboxpos）
-        static void addTextValuePos(uiTextLayoutNode& layout, uiEnum::uiTextAnchorEnum::type anchor, const std::string& label, const glm::ivec3& valueVec) {
-            addTextValuePos(layout, anchor, label, glm::dvec3{ (double)valueVec.x, (double)valueVec.y, (double)valueVec.z });
+        //添加 单值
+        void addValue(uiEnum::uiTextAnchorEnum::type anchor, const std::string& label, const std::string& value, size_t width) {
+            uiTextLayoutRowNode row;
+            row.anchor   = anchor;
+            row.label    = label;
+            row.isVecRow = false;
+            row.value    = padFixedWidth(value, width);     //定长width
+            uiTextLayout.row.push_back(row);
         }
 
-        //排版全部行 → 段列表（行形态与锚点正交：单值/坐标行可放任意锚点）
-        static void buildUiTextLayout(uiTextLayoutNode& layout, std::vector<uiTextSegmentNode>& outSegments) {
+        //构建排版
+        void build(const VmaAllocation& bufferMem, const VmaAllocator& memAllocator) {
+            std::vector<uiTextSegmentNode>& outSegments = uiTextLayout.segment;
             outSegments.clear();
 
-            const glyphMapNode& glyphMap        = *layout.glyphMap;
-            const float         emSize          = layout.emSize;
-            const float         fontSizePx      = layout.fontSizePx;
-            const float         lineHeightPx    = layout.lineHeightPx;
-            const float         marginPx        = layout.marginPx;
-            const float         viewportWidthPx = layout.viewportWidthPx;
+            const float viewportWidthPx = (float)windowInfo::width;
+            const float fontSizePx      = defaultFontSizePx;
+            const float lineHeight      = getLineHeight();
+            const float marginPx        = defaultMarginPx;
 
-            //坐标行三 cell 公共参数（两锚点同构）
-            const float tagPx      = std::max(stringWidthPx(glyphMap, emSize, "x:", fontSizePx), std::max(stringWidthPx(glyphMap, emSize, "y:", fontSizePx), stringWidthPx(glyphMap, emSize, "z:", fontSizePx)));
-            const float cellPx     = tagPx + stringWidthPx(glyphMap, emSize, "-9,999,999", fontSizePx);
-            const float spacePx    = charWidthPx(glyphMap, emSize, (uint32_t)' ', fontSizePx);
-            const float baseline0  = marginPx + fontSizePx;
-            float       topLeftY   = baseline0;
-            float       topRightY  = baseline0;
+            //让 x/y/z 三格横向等宽、纵向逐行下移
+            const float tagPx     = std::max(getStringWidthPx("x:"), std::max(getStringWidthPx("y:"), getStringWidthPx("z:")));
+            const float cellPx    = tagPx + getStringWidthPx("-9,999,999");
+            const float spacePx   = getCharWidthPx((uint32_t)' ');
+            const float baseline0 = marginPx + fontSizePx;
+            float       topLeftY  = baseline0;
+            float       topRightY = baseline0;
 
-            //第一遍：仅 topLeft 块需块级值列起点（块内最大标签宽）
+
+
+            //第一遍：仅 topLeft 块需块级值列起点，块内最大标签宽
             float maxLabelWidthPx = 0.0f;
-            for (const uiTextLayoutRowNode& row : layout.row) {
+            for (const uiTextLayoutRowNode& row : uiTextLayout.row) {
                 if (row.anchor == uiEnum::uiTextAnchorEnum::topLeft) {
-                    maxLabelWidthPx = std::max(maxLabelWidthPx, stringWidthPx(glyphMap, emSize, row.label + ": ", fontSizePx));
+                    maxLabelWidthPx = std::max(maxLabelWidthPx, getStringWidthPx(row.label + ": "));
                 }
             }
 
             const float colLabelX   = marginPx;
             const float valueStartX = colLabelX + maxLabelWidthPx;
 
-            //产出坐标行 x:/y:/z: 三 cell 段（zoneX 为网格左端）
-            auto emitPosCells = [&](std::vector<uiTextSegmentNode>& outSegments, float zoneX, float rowY, const uiTextLayoutRowNode& row) {
+            //产出坐标行 x:/y:/z:
+            auto emitPosCells = [&](float zoneX, float rowY, const uiTextLayoutRowNode& row) {
                 const double values[3] = { row.vecValue.x, row.vecValue.y, row.vecValue.z };
 
                 for (int k = 0; k < 3; ++k) {
@@ -788,17 +753,19 @@ namespace uiStruct {
                 }
             };
 
-            //第二遍：逐行定 x/y（锚点内调用顺序即行序）
-            for (const uiTextLayoutRowNode& row : layout.row) {
+
+
+            //第二遍：逐行定 x/y，锚点内调用顺序即行序
+            for (const uiTextLayoutRowNode& row : uiTextLayout.row) {
                 if (row.anchor == uiEnum::uiTextAnchorEnum::topLeft) {
                     const float rowY = topLeftY;
-                    topLeftY += lineHeightPx;
+                    topLeftY += lineHeight;
 
-                    //标签列左端齐 margin，值区左端齐 valueStartX（跨行列对齐）
+                    //标签列左端齐 margin，值区左端齐 valueStartX，跨行列对齐
                     outSegments.push_back({ colLabelX, rowY, row.label + ":" });
 
                     if (row.isVecRow) {
-                        emitPosCells(outSegments, valueStartX, rowY, row);
+                        emitPosCells(valueStartX, rowY, row);
                     }
                     else {
                         outSegments.push_back({ valueStartX, rowY, row.value });
@@ -806,12 +773,11 @@ namespace uiStruct {
                 }
                 else if (row.anchor == uiEnum::uiTextAnchorEnum::topRight) {
                     const float rowY = topRightY;
-                    topRightY += lineHeightPx;
+                    topRightY += lineHeight;
 
-                    //整行内容右端齐视口右缘（标签与值区粘合排布）
-                    const float labelWidthPx = stringWidthPx(glyphMap, emSize, row.label + ":", fontSizePx);
-                    const float zoneWidthPx  = row.isVecRow ? 3.0f * cellPx
-                                                            : stringWidthPx(glyphMap, emSize, row.value, fontSizePx);
+                    //整行内容右端齐视口右缘，标签与值区粘合排布
+                    const float labelWidthPx = getStringWidthPx(row.label + ":");
+                    const float zoneWidthPx  = row.isVecRow ? 3.0f * cellPx : getStringWidthPx(row.value);
                     const float rowWidthPx   = labelWidthPx + spacePx + zoneWidthPx;
                     const float rowX         = viewportWidthPx - marginPx - rowWidthPx;
                     const float zoneX        = rowX + labelWidthPx + spacePx;
@@ -819,49 +785,117 @@ namespace uiStruct {
                     outSegments.push_back({ rowX, rowY, row.label + ":" });
 
                     if (row.isVecRow) {
-                        emitPosCells(outSegments, zoneX, rowY, row);
+                        emitPosCells(zoneX, rowY, row);
                     }
                     else {
                         outSegments.push_back({ zoneX, rowY, row.value });
                     }
                 }
             }
+
+            //内容 hash：与上次比对，判定是否需要重写顶点
+            size_t hash = 0;
+            for (const auto& segment : outSegments) {
+                hash ^= std::hash<std::string>{}(segment.text);
+                hash ^= (size_t)(segment.x * 4.0f) + 0x9e3779b9u + (hash << 6u) + (hash >> 2u);
+            }
+
+            if (hash != uiTextLayout.prevHash) {
+                vmaMapMemory(memAllocator, bufferMem, (void**)&vertCursor);
+                glyphCount = 0;
+
+                for (const auto& segment : uiTextLayout.segment) {
+                    setText(vertCursor, glyphCount, segment.text, segment.x, segment.y);
+                }
+
+                vmaUnmapMemory(memAllocator, bufferMem);
+                vertCursor = nullptr;
+                uiTextLayout.prevHash = hash;
+            }
         }
 
+    private:
+        //获取 lineHeight
+        float getLineHeight() const {
+            return defaultFontSizePx * defaultLineHeightRatio;
+        }
 
+        //获取 字符串宽度像素，默认字号
+        float getStringWidthPx(const std::string& text) const {
+            return getStringWidthPx(text, defaultFontSizePx);
+        }
 
-        //字符串像素宽（UTF-8 解码后逐码点测宽，中英混排可用）
-        static float stringWidthPx(const glyphMapNode& glyphMap, float emSize, const std::string& text, float fontSizePx) {
+        //获取 字符串宽度像素，指定字号
+        float getStringWidthPx(const std::string& text, float fontSizePx) const {
             const float scale = fontSizePx / emSize;
             float       width = 0.0f;
 
             for (uint32_t codepoint : utf8ToCodepoints(text)) {
-                auto it = glyphMap.find(codepoint);
+                const msdfGlyphNode* glyph = getGlyph(codepoint);
 
-                if (it == glyphMap.end()) {
-                    continue;
+                if (glyph) {
+                    width += glyph->advance * scale;
                 }
-
-                width += it->second.advance * scale;
             }
 
             return width;
         }
 
-        //单码点像素宽
-        static float charWidthPx(const glyphMapNode& glyphMap, float emSize, uint32_t codepoint, float fontSizePx) {
-            const float scale = fontSizePx / emSize;
-            auto        it    = glyphMap.find(codepoint);
-
-            if (it == glyphMap.end()) {
-                return 0.0f;
-            }
-
-            return it->second.advance * scale;
+        //获取 单字符宽度像素，默认字号
+        float getCharWidthPx(uint32_t codepoint) const {
+            return getCharWidthPx(codepoint, defaultFontSizePx);
         }
 
+        //获取 单字符宽度像素，指定字号
+        float getCharWidthPx(uint32_t codepoint, float fontSizePx) const {
+            const msdfGlyphNode* glyph = getGlyph(codepoint);
+
+            return glyph ? glyph->advance * (fontSizePx / emSize) : 0.0f;
+        }
+        
+        //设置 文本，默认布局
+        void setText(glm::vec4*& mapped, uint32_t& letterCount, const std::string& text, float positionX, float positionY) const {
+            setText(mapped, letterCount, text, positionX, positionY, bufferEnum::textAlignId::left, defaultFontSizePx);
+        }
+
+        //设置 文本，指定布局
+        void setText(glm::vec4*& mapped, uint32_t& letterCount, const std::string& text, float positionX, float positionY, bufferEnum::textAlignId::type align, float fontSizePx) const {
+            if (map.empty() || !mapped) {
+                return;
+            }
+
+            const float scale   = fontSizePx / emSize;
+            float       originX = positionX;
+
+            //对齐
+            switch (align) {
+            case bufferEnum::textAlignId::right:
+                originX -= getStringWidthPx(text, fontSizePx);
+                break;
+            case bufferEnum::textAlignId::center:
+                originX -= getStringWidthPx(text, fontSizePx) * 0.5f;
+                break;
+            case bufferEnum::textAlignId::left:
+                break;
+            }
+
+            //逐字几何
+            float cursorX = originX;
+            for (uint32_t codepoint : utf8ToCodepoints(text)) {
+                const msdfGlyphNode* glyph = getGlyph(codepoint);
+
+                if (!glyph) {
+                    continue;
+                }
+
+                setGlyph(mapped, letterCount, *glyph, cursorX, positionY, scale);
+            }
+        }
+
+
+        
         //UTF-8 → 码点流
-        static std::vector<uint32_t> utf8ToCodepoints(const std::string& text) {
+        std::vector<uint32_t> utf8ToCodepoints(const std::string& text) const {
             std::vector<uint32_t> codepoints;
             size_t index = 0;
 
@@ -919,8 +953,18 @@ namespace uiStruct {
             return codepoints;
         }
 
-        //单个字形 → 顶点（写四顶点、推进光标、计数）
-        static void addGlyph(glm::vec4*& mapped, uint32_t& letterCount, const msdfGlyphNode& glyph, float& cursorX, float baselineY, float scale, float ndcX, float ndcY) {
+        //获取 msdfGlyphNode
+        const msdfGlyphNode* getGlyph(uint32_t codepoint) const {
+            const auto it = map.find(codepoint);
+
+            return (it == map.end()) ? nullptr : &it->second;
+        }
+
+        //设置 msdfGlyphNode，单个字形 → 顶点，写四顶点、推进光标、计数
+        void setGlyph(glm::vec4*& mapped, uint32_t& letterCount, const msdfGlyphNode& glyph, float& cursorX, float baselineY, float scale) const {
+            //像素 → NDC（左上(-1,-1)，y 向下为正）
+            const float ndcX   = 2.0f / windowInfo::width;
+            const float ndcY   = 2.0f / windowInfo::height;
             const float left   = (cursorX   + glyph.planeBounds.x * scale) * ndcX - 1.0f;
             const float right  = (cursorX   + glyph.planeBounds.z * scale) * ndcX - 1.0f;
             const float top    = (baselineY + glyph.planeBounds.y * scale) * ndcY - 1.0f;
@@ -939,8 +983,19 @@ namespace uiStruct {
             letterCount++;
         }
 
-        //整数千分位（保留负号）
-        static std::string formatThousand(double value) {
+        //固定宽度，填充空格
+        std::string padFixedWidth(const std::string& text, size_t width) {
+            std::string result = text;
+
+            if (result.size() < width) {
+                result.append(width - result.size(), ' ');
+            }
+
+            return result;
+        }
+
+        //整数千分位，保留负号
+        std::string formatThousand(double value) {
             long long  number   = (long long)value;
             const bool negative = number < 0;
             unsigned long long absolute = negative ? (unsigned long long)(-(number + 1)) + 1ull : (unsigned long long)number;
@@ -963,17 +1018,6 @@ namespace uiStruct {
             }
 
             return output;
-        }
-
-        //右侧补空格至定长
-        static std::string padFixedWidth(const std::string& text, size_t width) {
-            std::string result = text;
-
-            if (result.size() < width) {
-                result.append(width - result.size(), ' ');
-            }
-
-            return result;
         }
     };
 }
@@ -1038,76 +1082,7 @@ namespace bufferStruct {
 
 
 
-        //todo 临时
-        imageBufferNode() {}
-
-        //创建frame图像
         imageBufferNode(
-            const bufferEnum::imageBufferId::type& imageBufferType,
-            const VkFormat&                        format,
-            const VkExtent2D&                      imageExtent,
-            const uint32_t&                        mipLevel,
-            const uint32_t&                        arrayLayer,
-            const VkSampleCountFlagBits&           msaa,
-            const VkImageUsageFlags&               usage,
-            const VkImageAspectFlags&              aspectFlags,
-            const VkDevice&                        device,
-            const VmaAllocator&                    memAllocator
-        ) {
-            switch (imageBufferType) {
-            case bufferEnum::imageBufferId::base: {
-
-                break;
-            }
-            case bufferEnum::imageBufferId::array: {
-
-                break;
-            }
-            case bufferEnum::imageBufferId::text: {
-                //const uint32_t fontWidth = STB_FONT_consolas_24_latin1_BITMAP_WIDTH;
-                //const uint32_t fontHeight = STB_FONT_consolas_24_latin1_BITMAP_HEIGHT;
-                //VkDeviceSize   imageSize = static_cast<VkDeviceSize>(fontWidth) * static_cast<VkDeviceSize>(fontHeight);
-		        const uint32_t fontWidth  = imageExtent.width;
-		        const uint32_t fontHeight = imageExtent.height;
-		        VkDeviceSize   imageSize  = static_cast<VkDeviceSize>(fontWidth) * static_cast<VkDeviceSize>(fontHeight);
-
-		        //static unsigned char font24pixels[fontHeight][fontWidth];
-		        //stb_font_consolas_24_latin1(uiText.stbFontData, font24pixels, fontHeight);
-
-
-
-		        //bufferStruct::baseBufferNode cpuBuffer{ &font24pixels[0][0], imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
-		        //createImage(fontWidth, fontHeight, 1, 1, VK_FORMAT_R8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageBuffer.image, imageBuffer.imageMem);
-		        //cmd.copyBufferToImage(Device.device, Device.graphicsQueue, cpuBuffer.buffer, imageBuffer.image, bufferStruct::makeImageCopyRegion(static_cast<uint32_t>(fontWidth), static_cast<uint32_t>(fontHeight)), 1, 1, VK_FORMAT_R8_UNORM);
-		        //createImageView(imageBuffer.image, imageBuffer.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-                //
-		        //cpuBuffer.clear(Device.memAllocator);
-
-                break;
-            }
-            case bufferEnum::imageBufferId::frame: {
-                createImage(VK_IMAGE_TYPE_2D, format, imageExtent, mipLevel, arrayLayer, msaa, usage, memAllocator);
-                createImageView(format, aspectFlags, device);
-                break;
-            }
-            }
-        }
-
-
-
-        //完整清理
-        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-            vkDestroyImageView(device, view, nullptr);
-            vmaDestroyImage(memAllocator, image, imageMem);
-        }
-
-        //view清理
-        void clearView(const VkDevice& device) {
-            vkDestroyImageView(device, view, nullptr);
-        }
-
-    private:
-        void createImage(
             const VkImageType&           imageType,
             const VkFormat&              format,
             const VkExtent2D&            imageExtent,
@@ -1115,6 +1090,27 @@ namespace bufferStruct {
             const uint32_t&              arrayLayer,
             const VkSampleCountFlagBits& msaa,
             const VkImageUsageFlags&     usage,
+            const VkImageAspectFlags&    aspectFlags,
+            const VkDevice&              device,
+            const VmaAllocator&          memAllocator
+        ) {
+            create(imageType, format, imageExtent, mipLevel, arrayLayer, msaa, usage, aspectFlags, device, memAllocator);
+        }
+
+        imageBufferNode() {}
+
+
+
+        void create(
+            const VkImageType&           imageType,
+            const VkFormat&              format,
+            const VkExtent2D&            imageExtent,
+            const uint32_t&              mipLevel,
+            const uint32_t&              arrayLayer,
+            const VkSampleCountFlagBits& msaa,
+            const VkImageUsageFlags&     usage,
+            const VkImageAspectFlags&    aspectFlags,
+            const VkDevice&              device,
             const VmaAllocator&          memAllocator
         ) {
             VkImageCreateInfo imageInfo{};
@@ -1139,27 +1135,31 @@ namespace bufferStruct {
             if (vmaCreateImage(memAllocator, &imageInfo, &allocInfo, &image, &imageMem, nullptr) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "image创建失败");
             }
-        }
 
-        void createImageView(
-            const VkFormat& format,
-            const VkImageAspectFlags& aspectFlags,
-            const VkDevice& device
-        ) {
             VkImageViewCreateInfo viewInfo{};
             viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             viewInfo.image    = image;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.viewType = (arrayLayer > 1) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
             viewInfo.format   = format;
             viewInfo.subresourceRange.aspectMask     = aspectFlags;
             viewInfo.subresourceRange.baseMipLevel   = 0;
-            viewInfo.subresourceRange.levelCount     = 1;
+            viewInfo.subresourceRange.levelCount     = mipLevel;
             viewInfo.subresourceRange.baseArrayLayer = 0;
-            viewInfo.subresourceRange.layerCount     = 1;
+            viewInfo.subresourceRange.layerCount     = arrayLayer;
 
             if (vkCreateImageView(device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
                 Log::printError(__FILE__, __LINE__, "view创建失败");
             }
+        }
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            vkDestroyImageView(device, view, nullptr);
+            vmaDestroyImage(memAllocator, image, imageMem);
+        }
+
+        //用于重建swap时清理view
+        void clearView(const VkDevice& device) {
+            vkDestroyImageView(device, view, nullptr);
         }
     };
 
@@ -1206,14 +1206,13 @@ namespace bufferStruct {
 
 
 
-        //完整清理
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             for (bufferStruct::imageBufferNode& node : imageList) {
                 node.clear(device, memAllocator);
             }
         }
 
-        //view清理
+        //用于重建swap时清理view列表
         void clearView(const VkDevice& device) {
             for (bufferStruct::imageBufferNode& node : imageList) {
                 node.clearView(device);
@@ -1223,89 +1222,158 @@ namespace bufferStruct {
 
     //textureBuffer结点
     struct textureBufferNode {
-        bufferStruct::imageBufferNode imageNode{};  //图像缓冲结点
-        uint32_t arrayLayer = 1;                    //纹理数组层数
         uint32_t mipLevel   = 1;                    //mip级别
+        uint32_t arrayLayer = 1;                    //纹理数组层数
+
+        bufferStruct::imageBufferNode imageNode{};  //图像缓冲结点
 
 
 
-        //创建textureArray，使用无损压缩
-        textureBufferNode(const char* imageFile, const VkFormat& colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, const VkDevice& device, const VmaAllocator& memAllocator)
-            :/*imageNode(colorFormat, tileExtent, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator), */arrayLayer(atlasExtent.width * atlasExtent.height) {
-
-        }
-
-        textureBufferNode() = delete;
-    };
-
-
-
-    //todo 到时候看看能不能放imageBufferNode里
-    //构建图像拷贝区域（单区域）
-    std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t width, uint32_t height) {
-        VkBufferImageCopy region{};
-
-        region.bufferOffset                    = 0;
-        region.bufferRowLength                 = 0;
-        region.bufferImageHeight               = 0;
-        region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        region.imageSubresource.mipLevel       = 0;
-        region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount     = 1;
-        region.imageOffset                     = { 0, 0, 0 };
-        region.imageExtent                     = { width, height, 1 };
-
-        return { region };
-    }
-
-    //构建图像拷贝区域（图集）
-    std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t tileWidth, uint32_t tileHeight, uint32_t atlasWidth, uint32_t atlasHeight, uint32_t texWidth, uint32_t texHeight, uint32_t arrayLayer) {
-        std::vector<VkBufferImageCopy> regions{ arrayLayer };
-        uint32_t texturePixel = 4;
-        uint32_t wOffset      = tileWidth  * texturePixel;
-        uint32_t hOffset      = atlasWidth * tileWidth * tileHeight * texturePixel;
-
-        for (uint32_t w = 0; w < atlasWidth; w++) {
-            for (uint32_t h = 0; h < atlasHeight; h++) {
-                uint32_t id     = w + h * atlasWidth;
-                uint32_t offset = w * wOffset + h * hOffset;
-
-                regions[id].bufferOffset                    = offset;
-                regions[id].bufferRowLength                 = texWidth;
-                regions[id].bufferImageHeight               = texHeight;
-                regions[id].imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-                regions[id].imageSubresource.mipLevel       = 0;
-                regions[id].imageSubresource.baseArrayLayer = id;
-                regions[id].imageSubresource.layerCount     = 1;
-                regions[id].imageOffset                     = { 0, 0, 0 };
-                regions[id].imageExtent                     = { tileWidth, tileHeight, 1 };
+        //todo
+        //创建 KTX 图集，无损压缩
+        void createKtxArray(const char* imageFile, uint32_t layerCount, const VkFormat& format, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+            if (!imageFile || !std::filesystem::exists(imageFile)) {
+                Log::printError(__FILE__, __LINE__, "贴图文件不存在");
+                return;
             }
+
+            ktxTexture2* ktxTexture{};
+            ktxResult result = ktxTexture2_CreateFromNamedFile(imageFile, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
+            if (result != KTX_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
+                return;
+            }
+
+
+
+            mipLevel   = ktxTexture->numLevels;
+            arrayLayer = layerCount;
+            imageNode.create(VK_IMAGE_TYPE_2D, format, VkExtent2D{ textureInfo::terrain::tileWidth, textureInfo::terrain::tileHeight }, mipLevel, arrayLayer, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
+
+            baseBufferNode cpuBuffer{ ktxTexture->pData, (VkDeviceSize)ktxTexture->dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+            cmd.copyBufferToImage(device, graphicsQueue, cpuBuffer.buffer, imageNode.image, makeImageCopyRegion(textureInfo::terrain::tileWidth, textureInfo::terrain::tileHeight, textureInfo::terrain::atlasWidth, textureInfo::terrain::atlasHeight, ktxTexture->baseWidth, ktxTexture->baseHeight, arrayLayer), mipLevel, arrayLayer, format);
+            cpuBuffer.clear(memAllocator);
+            ktxTexture2_Destroy(ktxTexture);
+        }
+        
+        //创建 KTX 纹理，微损压缩 BC7 + mip
+        void createKtx(const char* imageFile, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+            if (!imageFile || !std::filesystem::exists(imageFile)) {
+                Log::printError(__FILE__, __LINE__, "贴图文件不存在");
+                return;
+            }
+
+            ktxTexture2* ktxTexture{};
+            ktxResult result = ktxTexture2_CreateFromNamedFile(imageFile, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
+            if (result != KTX_SUCCESS) {
+                Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
+                return;
+            }
+
+            result = ktxTexture2_TranscodeBasis(ktxTexture, KTX_TTF_BC7_RGBA, 0);
+            if (result != KTX_SUCCESS) {
+                ktxTexture2_Destroy(ktxTexture);
+                Log::printError(__FILE__, __LINE__, "KTX贴图转码失败");
+                return;
+            }
+
+
+
+            mipLevel   = ktxTexture->numLevels;
+            arrayLayer = 1;
+            imageNode.create(VK_IMAGE_TYPE_2D, VK_FORMAT_BC7_UNORM_BLOCK, VkExtent2D{ ktxTexture->baseWidth, ktxTexture->baseHeight }, mipLevel, arrayLayer, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
+
+            baseBufferNode cpuBuffer{ ktxTexture->pData, (VkDeviceSize)ktxTexture->dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+            cmd.copyBufferToImage(device, graphicsQueue, cpuBuffer.buffer, imageNode.image, makeImageCopyRegion(ktxTexture->baseWidth, ktxTexture->baseHeight, mipLevel, ktxTexture), mipLevel, arrayLayer, VK_FORMAT_BC7_UNORM_BLOCK);
+            cpuBuffer.clear(memAllocator);
+            ktxTexture2_Destroy(ktxTexture);
         }
 
-        return regions;
-    }
+        //创建 文本纹理
+        void createText(const void* data, VkDeviceSize size, uint32_t width, uint32_t height, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+            if (!data || !size || !width || !height) {
+				Log::printError(__FILE__, __LINE__, "纹理数据无效");
+                return;
+            }
 
-    //构建图像拷贝区域（KTX多mip）
-    std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t width, uint32_t height, uint32_t mipLevels, ktxTexture2* ktxTexture) {
-        std::vector<VkBufferImageCopy> regions{ mipLevels };
-
-        for (uint32_t i = 0; i < mipLevels; i++) {
-            ktx_size_t offset;
-            ktxTexture2_GetImageOffset(ktxTexture, i, 0, 0, &offset);
-
-            regions[i].bufferOffset                    = offset;
-            regions[i].bufferRowLength                 = 0;
-            regions[i].bufferImageHeight               = 0;
-            regions[i].imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-            regions[i].imageSubresource.mipLevel       = i;
-            regions[i].imageSubresource.baseArrayLayer = 0;
-            regions[i].imageSubresource.layerCount     = 1;
-            regions[i].imageOffset                     = { 0, 0, 0 };
-            regions[i].imageExtent                     = { width >> i, height >> i, 1 };
+            baseBufferNode cpuBuffer{ data, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+            imageNode.create(VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, VkExtent2D{ width, height }, mipLevel, arrayLayer, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
+            
+            cmd.copyBufferToImage(device, graphicsQueue, cpuBuffer.buffer, imageNode.image, makeImageCopyRegion(width, height), mipLevel, arrayLayer, VK_FORMAT_R8G8B8A8_UNORM);
+            cpuBuffer.clear(memAllocator);
         }
 
-        return regions;
-    }
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            imageNode.clear(device, memAllocator);
+        }
+
+
+
+        //构建图像拷贝区域，KTX 图集
+        std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t tileWidth, uint32_t tileHeight, uint32_t atlasWidth, uint32_t atlasHeight, uint32_t texWidth, uint32_t texHeight, uint32_t arrayLayer) {
+            std::vector<VkBufferImageCopy> regions{ arrayLayer };
+            uint32_t texturePixel = 4;
+            uint32_t wOffset      = tileWidth  * texturePixel;
+            uint32_t hOffset      = atlasWidth * tileWidth * tileHeight * texturePixel;
+
+            for (uint32_t w = 0; w < atlasWidth; w++) {
+                for (uint32_t h = 0; h < atlasHeight; h++) {
+                    uint32_t id     = w + h * atlasWidth;
+                    uint32_t offset = w * wOffset + h * hOffset;
+
+                    regions[id].bufferOffset                    = offset;
+                    regions[id].bufferRowLength                 = texWidth;
+                    regions[id].bufferImageHeight               = texHeight;
+                    regions[id].imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                    regions[id].imageSubresource.mipLevel       = 0;
+                    regions[id].imageSubresource.baseArrayLayer = id;
+                    regions[id].imageSubresource.layerCount     = 1;
+                    regions[id].imageOffset                     = { 0, 0, 0 };
+                    regions[id].imageExtent                     = { tileWidth, tileHeight, 1 };
+                }
+            }
+
+            return regions;
+        }
+
+        //构建图像拷贝区域，KTX 纹理
+        std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t width, uint32_t height, uint32_t mipLevels, ktxTexture2* ktxTexture) {
+            std::vector<VkBufferImageCopy> regions{ mipLevels };
+
+            for (uint32_t i = 0; i < mipLevels; i++) {
+                ktx_size_t offset;
+                ktxTexture2_GetImageOffset(ktxTexture, i, 0, 0, &offset);
+
+                regions[i].bufferOffset                    = offset;
+                regions[i].bufferRowLength                 = 0;
+                regions[i].bufferImageHeight               = 0;
+                regions[i].imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                regions[i].imageSubresource.mipLevel       = i;
+                regions[i].imageSubresource.baseArrayLayer = 0;
+                regions[i].imageSubresource.layerCount     = 1;
+                regions[i].imageOffset                     = { 0, 0, 0 };
+                regions[i].imageExtent                     = { width >> i, height >> i, 1 };
+            }
+
+            return regions;
+        }
+        
+        //构建图像拷贝区域，单区域
+        std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t width, uint32_t height) {
+            VkBufferImageCopy region{};
+            region.bufferOffset                    = 0;
+            region.bufferRowLength                 = 0;
+            region.bufferImageHeight               = 0;
+            region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            region.imageSubresource.mipLevel       = 0;
+            region.imageSubresource.baseArrayLayer = 0;
+            region.imageSubresource.layerCount     = 1;
+            region.imageOffset                     = { 0, 0, 0 };
+            region.imageExtent                     = { width, height, 1 };
+
+            return { region };
+        }
+    };
 }
 
 //swapchain 结构空间
@@ -1877,8 +1945,8 @@ namespace renderStruct {
 
                 //color、depth
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, 1, 1, msaa, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, 1, 1, msaa, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                                   VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {VK_IMAGE_TYPE_2D, colorFormat, imageExtent, 1, 1, msaa, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {VK_IMAGE_TYPE_2D, depthFormat, imageExtent, 1, 1, msaa, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                                   VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
                 };
 
                 //swap
@@ -1892,9 +1960,9 @@ namespace renderStruct {
 
                 //color、depth、view
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, 1, 1, msaa,                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, 1, 1, msaa,                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, colorFormat, imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {VK_IMAGE_TYPE_2D, colorFormat, imageExtent, 1, 1, msaa,                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {VK_IMAGE_TYPE_2D, depthFormat, imageExtent, 1, 1, msaa,                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {VK_IMAGE_TYPE_2D, colorFormat, imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
                 };
 
                 createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, imageExtent, device);
@@ -1905,10 +1973,10 @@ namespace renderStruct {
 
                 //position、normal、albedo、depth
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {bufferEnum::imageBufferId::frame, renderInfo::dsPosColorFormat, imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, colorFormat,                  imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, colorFormat,                  imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
-                    {bufferEnum::imageBufferId::frame, depthFormat,                  imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {VK_IMAGE_TYPE_2D, renderInfo::dsPosColorFormat, imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {VK_IMAGE_TYPE_2D, colorFormat,                  imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {VK_IMAGE_TYPE_2D, colorFormat,                  imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator},
+                    {VK_IMAGE_TYPE_2D, depthFormat,                  imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,                      VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
                 };
 
                 createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, imageExtent, device);
@@ -1919,7 +1987,7 @@ namespace renderStruct {
 
                 //depth
                 frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
-                    {bufferEnum::imageBufferId::frame, depthFormat, imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
+                    {VK_IMAGE_TYPE_2D, depthFormat, imageExtent, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, device, memAllocator},
                 };
 
                 createFrameBufferList(frameImageList[renderEnum::renderFrameId::conv_rf], renderTemplate.render, imageExtent, device);
@@ -2391,16 +2459,15 @@ namespace bufferStruct {
 
     /*管线缓冲区*/
     struct terrainBufferNode {
-        //todo
-        textureBufferNode temp_texture;                                                                  //纹理结点，构造时初始化
-
-
-
-        terrainBufferNode(const bool& tEnable, const pipelineEnum::procPipelineId::type& tPipeType, const bufferEnum::procSamplerId::type& tSamplerType, const char* imageFile, const VkFormat& colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, const VkDevice& device, const VmaAllocator& memAllocator)
-            :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType), temp_texture(imageFile, colorFormat, tileExtent, atlasExtent, device, memAllocator) {
+        terrainBufferNode(const bool& tEnable, const pipelineEnum::procPipelineId::type& tPipeType, const bufferEnum::procSamplerId::type& tSamplerType, const char* imageFile, const VkFormat& colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator)
+            :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {
 
             textureFile = imageFile;
             arrayLayer  = atlasExtent.width * atlasExtent.height;
+
+            if (isEnable) {
+                texture.createKtxArray(imageFile, arrayLayer, colorFormat, cmd, device, graphicsQueue, memAllocator);
+            }
         }
 
         terrainBufferNode() = delete;
@@ -2412,13 +2479,12 @@ namespace bufferStruct {
         baseBufferNode vertex[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
         baseBufferNode index[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
 
-        //纹理缓冲
+        //纹理缓冲（KTX 图集 → 2D_ARRAY）
         const char* textureFile;
-        imageBufferNode texture;
+        textureBufferNode texture{};
 
         //纹理参数
         uint32_t arrayLayer;
-        uint32_t mipLevel = 1;
 
         //统一缓冲
         baseBufferNode uniform;
@@ -2444,8 +2510,7 @@ namespace bufferStruct {
                 }
             }
 
-            vmaDestroyImage(memAllocator, texture.image, texture.imageMem);
-            vkDestroyImageView(device, texture.view, nullptr);
+            texture.clear(device, memAllocator);
 
             vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
         }
@@ -2461,12 +2526,7 @@ namespace bufferStruct {
 
         //纹理缓冲
         const char* textureFile;
-        imageBufferNode texture;
-        //const char* normalFile;
-        //imageBufferNode normal;
-
-        //纹理参数
-        uint32_t mipLevel;                  //在创建texture时赋值
+        textureBufferNode texture{};
 
         //统一缓冲
         baseBufferNode uniform;
@@ -2497,12 +2557,7 @@ namespace bufferStruct {
             vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
             vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
 
-            vmaDestroyImage(memAllocator, texture.image, texture.imageMem);
-            vkDestroyImageView(device, texture.view, nullptr);
-
-            //vmaDestroyImage(memAllocator, normal.image, normal.imageMem);
-            //vkDestroyImageView(device, normal.view, nullptr);
-
+            texture.clear(device, memAllocator);
             vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
         }
     };
@@ -2514,9 +2569,7 @@ namespace bufferStruct {
 
         //纹理缓冲
         const char* textureFile;
-        imageBufferNode texture;
-        //const char* normalFile;
-        //imageBufferNode normal;
+        textureBufferNode texture{};
 
         //统一缓冲
         baseBufferNode uniform;
@@ -2531,12 +2584,7 @@ namespace bufferStruct {
             vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
             vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
 
-            vmaDestroyImage(memAllocator, texture.image, texture.imageMem);
-            vkDestroyImageView(device, texture.view, nullptr);
-
-            //vmaDestroyImage(memAllocator, normal.image, normal.imageMem);
-            //vkDestroyImageView(device, normal.view, nullptr);
-
+            texture.clear(device, memAllocator);
             vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
         }
     };
@@ -2547,9 +2595,6 @@ namespace bufferStruct {
 
         //动态模型结点列表
         std::vector<dynamicModelSubNode> node;
-
-        //纹理参数
-        uint32_t mipLevel;
 
         //程序化索引
         bufferEnum::procSamplerId::type samplerId;
@@ -2651,57 +2696,37 @@ namespace bufferStruct {
     };
 
     struct uiTextBufferNode {
-        //网格缓冲
-        baseBufferNode vertex;
-
-        //纹理缓冲（MTSDF 图集，RGBA8，mip=1）
-        imageBufferNode texture;
-
-        //字形度量表（码点→字形；生成期填充，渲染期只读）
-        std::unordered_map<uint32_t, uiStruct::msdfGlyphNode> glyphMap{};
-        float atlasWidth  = 0.0f;       //图集像素宽（薄壳填充，uv 归一化除数）
-        float atlasHeight = 0.0f;       //图集像素高
-        float emSize      = 32.0f;      //图集生成字号（屏幕放大系数 = fontSizePx / emSize）
-
-        //纹理参数
-        glm::vec4* mapped = nullptr;
-        uint32_t numLetters;
-
-        //描述缓冲
-        VkDescriptorSet descriptorSet;
-
         //程序化索引
         bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
         bufferEnum::procSamplerId::type samplerId;
 
+        baseBufferNode  vertex{};                                                           //网格缓冲
+        uiStruct::msdfGlyphAtlasNode msdfGlyphAtlas{ fileInfo::font::sourceHanSansSC };     //字体图集
+        textureBufferNode texture{};                                                        //纹理缓冲，MTSDF 图集，RGBA8，mip=1
+
+        //描述缓冲
+        VkDescriptorSet descriptorSet;
 
 
-        uiTextBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+
+        uiTextBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
             isEnable  = enable;
             pipeId    = pId;
             samplerId = sId;
+
+            if (isEnable) {
+                texture.createText(msdfGlyphAtlas.data.data(), (VkDeviceSize)msdfGlyphAtlas.data.size(), (uint32_t)msdfGlyphAtlas.width, (uint32_t)msdfGlyphAtlas.height, cmd, device, graphicsQueue, memAllocator);
+            }
         }
 
         uiTextBufferNode() = delete;
 
 
 
-        void beginTextUpdate(VmaAllocator memAllocator) {
-            vmaMapMemory(memAllocator, vertex.bufferMem, (void**)&mapped);
-            numLetters = 0;
-        }
-
-        void endTextUpdate(const VmaAllocator& memAllocator) {
-            vmaUnmapMemory(memAllocator, vertex.bufferMem);
-            mapped = nullptr;
-        }
-
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
-
-            vmaDestroyImage(memAllocator, texture.image, texture.imageMem);
-            vkDestroyImageView(device, texture.view, nullptr);
+            texture.clear(device, memAllocator);
         }
     };
 

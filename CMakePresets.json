@@ -8,6 +8,7 @@
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build/vs",
       "cacheVariables": {
+        "VCPKG_APPLOCAL_DEPS": "OFF",
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static-forgeengine",
         "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/config/vcpkg/triplet",
@@ -21,6 +22,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/ninja",
       "cacheVariables": {
+        "VCPKG_APPLOCAL_DEPS": "OFF",
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static-forgeengine",
         "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/config/vcpkg/triplet",

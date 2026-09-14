@@ -164,68 +164,6 @@ function global:fe-code {
 }
 
 # ============================================================
-# 七、知识库同步（Chatbox KB 手动同步辅助，集合展开+hash增量+格式适配）
-# ============================================================
-
-function fe-sync-kb {
-    # 自动展开 KB 文件集合（根配置+docs+ai_docs+src\code 全量），SHA256 增量同步到 docs\chatbox-sync\
-    # 格式适配（白名单制）：白名单外格式（如 .json）复制为 <原名>.txt，Chatbox KB 按 txt 解析
-    # 用法：fe-sync-kb（需在仓库根运行）；只复制有变更/新增的文件并列出
-    # 说明：Chatbox KB 同名拖入=新增，需先在 KB 删除同名旧文件再拖入新文件
-    $isForge = Test-Path (Join-Path $PWD 'CMakePresets.json')
-    if (-not $isForge) { Write-Host "请在 ForgeEngine 仓库内运行"; return }
-    $repo   = $PWD.Path
-    $dstDir = Join-Path $repo 'docs\chatbox-sync'
-    New-Item -ItemType Directory -Path $dstDir -Force | Out-Null
-
-    # Chatbox KB 支持的扩展名白名单（其余转 .txt）
-    $whitelist = @('.md','.txt','.cpp','.h','.hpp','.rtf','.pdf','.docx','.pptx','.xlsx','.csv','.epub')
-
-    # --- 集合展开 ---
-    $files = @()
-    foreach ($root in @('CMakeLists.txt','README.md','.gitignore','vcpkg.json')) {
-        if (Test-Path (Join-Path $repo $root)) { $files += $root }
-    }
-    foreach ($pat in @('docs\*.md','docs\ai_docs\*.md')) {
-        Get-ChildItem (Join-Path $repo $pat) -File | ForEach-Object { $files += $_.FullName.Substring($repo.Length + 1) }
-    }
-    Get-ChildItem (Join-Path $repo 'src\code') -Recurse -File -Include *.h,*.hpp,*.cpp | ForEach-Object { $files += $_.FullName.Substring($repo.Length + 1) }
-
-    # --- 格式适配 + hash 增量 ---
-    $changed = @()
-    $dstNames = @()
-    foreach ($rel in $files) {
-        $src = Join-Path $repo $rel
-        $leaf = Split-Path $rel -Leaf
-        $ext  = [System.IO.Path]::GetExtension($leaf).ToLower()
-        $dstName = if ($whitelist -contains $ext) { $leaf } else { $leaf + '.txt' }
-        $dstNames += $dstName
-        $dst = Join-Path $dstDir $dstName
-        $srcHash = (Get-FileHash $src -Algorithm SHA256).Hash
-        $need = $true
-        if (Test-Path $dst) {
-            if ($srcHash -eq (Get-FileHash $dst -Algorithm SHA256).Hash) { $need = $false }
-        }
-        if ($need) { Copy-Item $src $dst -Force; $changed += $dstName }
-    }
-
-    # --- 清理目录中已不在集合内的旧副本（改名/移除的残留）---
-    Get-ChildItem $dstDir -File | ForEach-Object {
-        if ($dstNames -notcontains $_.Name) { Remove-Item $_.FullName -Force }
-    }
-
-    # --- 报告 ---
-    if ($changed.Count -eq 0) {
-        Write-Host "无变更，KB 已是最新（$($files.Count) 个文件全部一致）" -ForegroundColor Green
-        return
-    }
-    Write-Host "需同步 $($changed.Count)/$($files.Count) 个文件（KB 中显示名）：" -ForegroundColor Yellow
-    $changed | ForEach-Object { Write-Host "  - $_" }
-    Write-Host "步骤：先在 Chatbox KB 删除同名旧文件，再全选拖入打开的目录（.txt 结尾的即格式适配产物）"
-    Start-Process explorer.exe $dstDir
-}
-
-# ============================================================
 # 七、知识库同步（Chatbox KB 手动同步辅助，状态文件+增量+格式适配）
 # ============================================================
 

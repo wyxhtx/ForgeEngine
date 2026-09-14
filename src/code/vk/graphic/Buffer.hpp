@@ -9,7 +9,7 @@ public:
 		createUniformBuffer();
 		createTexture();
 		procModel.getMaxModelMip();
-		procSampler.createTextureSampler(Device.device, terrain.mipLevel, procModel.sModelMip, procModel.dModelMip);
+		procSampler.createTextureSampler(Device.device, terrain.texture.mipLevel, procModel.sModelMip, procModel.dModelMip);
 		createDescriptorSet();
 
 		initUniformBuffer();	//初始化Uniform
@@ -46,22 +46,24 @@ public:
 
 
 
+	//todo 先这样凑合，等后面全放管线下
 	Device& Device;
 
 	Swapchain InitSwapchain{ Device };
-	bufferList::procRenderNode		procRenderPass{ InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.swapExtent, InitSwapchain.msaa, Device.device, Device.memAllocator };
-	bufferList::procDescriptorNode	procDescriptor{ Device.device };
-	bufferList::procSamplerNode		procSampler{};
 
 	cmdStruct::cmdNode cmd{ Device.device, Device.enableGpu->graphicsQueueFamily.index, uint32_t(swapStruct::swapImageList.size()) };
 
-//todo 暂时开放上述
 private:
-	bufferStruct::terrainBufferNode  terrain	{ true,	 pipelineEnum::procPipelineId::terrain_p,   bufferEnum::procSamplerId::terrain_s, fileInfo::image::cube, textureInfo::terrain::colorFormat, textureInfo::terrain::tileExtent, textureInfo::terrain::atlasExtent, Device.device, Device.memAllocator };
+	bufferList::procRenderNode		 procRenderPass{ InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.swapExtent, InitSwapchain.msaa, Device.device, Device.memAllocator };
+	bufferList::procDescriptorNode	 procDescriptor{ Device.device };
+	bufferList::procSamplerNode		 procSampler{};
+
+	//todo terrain 写了一大堆没用的参数
+	bufferStruct::terrainBufferNode  terrain	{ true,	 pipelineEnum::procPipelineId::terrain_p,   bufferEnum::procSamplerId::terrain_s, fileInfo::image::cube, textureInfo::terrain::colorFormat, textureInfo::terrain::tileExtent, textureInfo::terrain::atlasExtent, cmd, Device.device, Device.graphicsQueue, Device.memAllocator};
 	bufferList::procModelNode		 procModel	{ false, pipelineEnum::procPipelineId::model_p	    };
 	bufferStruct::skyboxBufferNode	 skybox		{ true,	 pipelineEnum::procPipelineId::skybox_p	    };
 	bufferStruct::mineBufferNode	 mine		{ true,  pipelineEnum::procPipelineId::mine_p	    };
-	bufferStruct::uiTextBufferNode	 uiText		{ true,  pipelineEnum::procPipelineId::uiText_p,    bufferEnum::procSamplerId::uiText_s };
+	bufferStruct::uiTextBufferNode	 uiText		{ true,  pipelineEnum::procPipelineId::uiText_p,    bufferEnum::procSamplerId::uiText_s   , cmd, Device.device, Device.graphicsQueue, Device.memAllocator };
 	bufferStruct::osMirrorBufferNode osMirror	{ false, pipelineEnum::procPipelineId::osMirror_p,  bufferEnum::procSamplerId::offScreen_s };
 	bufferStruct::osScenceBufferNode osScence	{ false, pipelineEnum::procPipelineId::osScence_p,  bufferEnum::procSamplerId::offScreen_s };
 	bufferStruct::dsScenceBufferNode dsScence	{ true,	 pipelineEnum::procPipelineId::dsScence_p,  bufferEnum::procSamplerId::offScreen_s };
@@ -228,31 +230,20 @@ private:
 	}
 
 	void createTexture() {
-		//terrain
-		if (terrain.isEnable) {
-			createTextureKtxArrayNode(terrain.textureFile, terrain.texture, terrain.arrayLayer, terrain.mipLevel, VK_FORMAT_R8G8B8A8_UNORM);
-		}
 
 		//model
 		if (procModel.isEnable) {
 			//model-sNode
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				createTextureKtxNode(procModel.sNode[i].textureFile, procModel.sNode[i].texture, procModel.sNode[i].mipLevel);
-				//createTextureKtxNode(procModel.sNode[i].normalFile,  procModel.sNode[i].normal,  procModel.sNode[i].mipLevel);
+				procModel.sNode[i].texture.createKtx(procModel.sNode[i].textureFile, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
 			}
 
 			//model-dNode
 			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 				for (int j = 0; j < procModel.dNode[i].node.size(); j++) {
-					createTextureKtxNode(procModel.dNode[i].node[j].textureFile, procModel.dNode[i].node[j].texture, procModel.dNode[i].mipLevel);
-					//createTextureKtxNode(procModel.dNode[i].node[j].normalFile,  procModel.dNode[i].node[j].normal,  procModel.dNode[i].mipLevel);
+					procModel.dNode[i].node[j].texture.createKtx(procModel.dNode[i].node[j].textureFile, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
 				}
 			}
-		}
-
-		//uiText
-		if (uiText.isEnable) {
-			createTextNode(uiText.texture);
 		}
 	}
 
@@ -330,7 +321,7 @@ private:
 				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &terrain.descriptorSet) == VK_SUCCESS) {
 					std::array<VkWriteDescriptorSet, 2> tempWrite{
 						procDescriptor.getWrite(0, terrain.descriptorSet, terrain.uniform.buffer, sizeof(terrain.ubo)),
-						procDescriptor.getWrite(1, terrain.descriptorSet, procSampler.node[terrain.samplerType], terrain.texture.view),
+						procDescriptor.getWrite(1, terrain.descriptorSet, procSampler.node[terrain.samplerType], terrain.texture.imageNode.view),
 					};
 
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -347,7 +338,7 @@ private:
 					if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.sNode[i].descriptorSet) == VK_SUCCESS) {
 						std::array<VkWriteDescriptorSet, 2> tempWrite{
 							procDescriptor.getWrite(0, procModel.sNode[i].descriptorSet, procModel.sNode[i].uniform.buffer, sizeof(procModel.sNode[i].ubo)),
-							procDescriptor.getWrite(1, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.view)
+							procDescriptor.getWrite(1, procModel.sNode[i].descriptorSet, procSampler.node[procModel.sNode[i].samplerId], procModel.sNode[i].texture.imageNode.view)
 						};
 
 						vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -363,7 +354,7 @@ private:
 						if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &procModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
 							std::array<VkWriteDescriptorSet, 2> tempWrite{
 								procDescriptor.getWrite(0, procModel.dNode[i].node[j].descriptorSet, procModel.dNode[i].node[j].uniform.buffer, sizeof(procModel.dNode[i].node[j].ubo)),
-								procDescriptor.getWrite(1, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.view)
+								procDescriptor.getWrite(1, procModel.dNode[i].node[j].descriptorSet, procSampler.node[procModel.dNode[i].samplerId], procModel.dNode[i].node[j].texture.imageNode.view)
 							};
 
 							vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -384,7 +375,7 @@ private:
 			if (uiText.isEnable) {
 				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &uiText.descriptorSet) == VK_SUCCESS) {
 					std::array<VkWriteDescriptorSet, 1> tempWrite{
-						procDescriptor.getWrite(0, uiText.descriptorSet, procSampler.node[uiText.samplerId], uiText.texture.view)
+						procDescriptor.getWrite(0, uiText.descriptorSet, procSampler.node[uiText.samplerId], uiText.texture.imageNode.view)
 					};
 
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -833,75 +824,6 @@ private:
 		}
 	}
 
-	//创建纹理KTX数组结点，使用无损压缩
-	void createTextureKtxArrayNode(const char* imageFile, bufferStruct::imageBufferNode& imageBuffer, uint32_t arrayLayer, uint32_t& mipLevel, VkFormat format) {
-		ktxTexture2* ktxTexture;
-		if (ktxTexture2_CreateFromNamedFile(imageFile, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture) != KTX_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
-		}
-
-		uint32_t   texWidth    = ktxTexture->baseWidth;
-		uint32_t   texHeight   = ktxTexture->baseHeight;
-		ktx_size_t textureSize = ktxTexture->dataSize;
-		mipLevel = ktxTexture->numLevels;
-
-		bufferStruct::baseBufferNode cpuBuffer{ ktxTexture->pData, textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
-		createImage(textureInfo::terrain::tileWidth, textureInfo::terrain::tileHeight, arrayLayer, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageBuffer.image, imageBuffer.imageMem);
-		cmd.copyBufferToImage(Device.device, Device.graphicsQueue, cpuBuffer.buffer, imageBuffer.image, bufferStruct::makeImageCopyRegion(textureInfo::terrain::tileWidth, textureInfo::terrain::tileHeight, textureInfo::terrain::atlasWidth, textureInfo::terrain::atlasHeight, texWidth, texHeight, arrayLayer), arrayLayer, mipLevel, format);
-		createImageView(imageBuffer.image, imageBuffer.view, arrayLayer, mipLevel, VK_IMAGE_VIEW_TYPE_2D_ARRAY, format, VK_IMAGE_ASPECT_COLOR_BIT);
-
-		cpuBuffer.clear(Device.memAllocator);
-		ktxTexture2_Destroy(ktxTexture);
-	}
-
-	//创建纹理KTX结点，使用微损压缩 + mip
-	void createTextureKtxNode(const char* imageFile, bufferStruct::imageBufferNode& imageBuffer, uint32_t& mipLevel) {
-		ktxResult result;
-		ktxTexture2* ktxTexture;
-
-		if (!std::filesystem::exists(imageFile)) {
-			Log::printError(__FILE__, __LINE__, "贴图文件不存在: " + std::string(imageFile));
-		}
-
-		result = ktxTexture2_CreateFromNamedFile(imageFile, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
-		result = ktxTexture2_TranscodeBasis(ktxTexture, KTX_TTF_BC7_RGBA, 0);
-
-		if (result != KTX_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
-		}
-
-		uint32_t   texWidth    = ktxTexture->baseWidth;
-		uint32_t   texHeight   = ktxTexture->baseHeight;
-		ktx_size_t textureSize = ktxTexture->dataSize;
-		VkFormat   format	   = VK_FORMAT_BC7_UNORM_BLOCK;
-		mipLevel = ktxTexture->numLevels;
-
-		bufferStruct::baseBufferNode cpuBuffer{ ktxTexture->pData, textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
-		createImage(texWidth, texHeight, 1, mipLevel, format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageBuffer.image, imageBuffer.imageMem);
-		cmd.copyBufferToImage(Device.device, Device.graphicsQueue, cpuBuffer.buffer, imageBuffer.image, bufferStruct::makeImageCopyRegion(texWidth, texHeight, mipLevel, ktxTexture), 1, mipLevel, format);
-		createImageView(imageBuffer.image, imageBuffer.view, 1, mipLevel, VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT);
-
-		cpuBuffer.clear(Device.memAllocator);
-		ktxTexture2_Destroy(ktxTexture);
-	}
-
-	//创建纹理文本结点
-	void createTextNode(bufferStruct::imageBufferNode& imageBuffer) {
-		//MSDF 图集运算：返回 RGBA8 字节与图集尺寸（失败日志已在函数内输出）
-		float atlasWidth  = 0.0f;
-		float atlasHeight = 0.0f;
-		std::vector<uint8_t> rgba = uiStruct::textCalcNode::generateMsdfAtlas(uiText.glyphMap, atlasWidth, atlasHeight, uiText.emSize, fileInfo::font::sourceHanSansSC);
-		if (rgba.empty()) {
-			return;
-		}
-
-		//RGBA8 → 暂存缓冲 → 上传纹理图集
-		bufferStruct::baseBufferNode cpuBuffer{ rgba.data(), (VkDeviceSize)rgba.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Device.memAllocator };
-		createImage((int)atlasWidth, (int)atlasHeight, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageBuffer.image, imageBuffer.imageMem);
-		cmd.copyBufferToImage(Device.device, Device.graphicsQueue, cpuBuffer.buffer, imageBuffer.image, bufferStruct::makeImageCopyRegion((uint32_t)atlasWidth, (uint32_t)atlasHeight), 1, 1, VK_FORMAT_R8G8B8A8_UNORM);
-		createImageView(imageBuffer.image, imageBuffer.view, 1, 1, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-		cpuBuffer.clear(Device.memAllocator);
-	}
 
 
 
@@ -938,6 +860,9 @@ private:
 		vmaUnmapMemory(Device.memAllocator, tempMemory);
 	}
 
+
+
+	//todo mip与array 倒置，待删除
 	void createImage(uint32_t width, uint32_t height, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImage& image, VmaAllocation& allocation) {
 		VkImageCreateInfo imageInfo = {};
 		imageInfo.sType			= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -962,7 +887,8 @@ private:
 			Log::printError(__FILE__, __LINE__, "图像创建失败");
 		}
 	}
-	
+
+	//todo mip与array 倒置，待删除
 	void createImageView(const VkImage& image, VkImageView& view, uint32_t arrayLayer, uint32_t mipLevel, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspectFlags) {
 		VkImageViewCreateInfo viewInfo{};
 		viewInfo.sType							 = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1098,7 +1024,7 @@ public:
 
 						//uiText
 						if (uiText.isEnable) {
-							recorder.draw(pipelineEnum::cmdDrawId::text, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, VK_NULL_HANDLE, uiText.numLetters);
+							recorder.draw(pipelineEnum::cmdDrawId::text, procPipeline.getPipeline(uiText.pipeId), procPipeline.getPipeLayout(uiText.pipeId), uiText.descriptorSet, uiText.vertex.buffer, VK_NULL_HANDLE, uiText.msdfGlyphAtlas.glyphCount);
 						}
 					}
 
@@ -1411,47 +1337,17 @@ public:
 			createMemMap(dsScence.shadowUniform.bufferMem, &dsScence.shadowUbo, sizeof(dsScence.shadowUbo));
 		}
 	}
-
+	
 	//绘制uiText
 	void drawUIText(int fps) {
-		if (!uiText.isEnable) {
-			return;
+		if (uiText.isEnable) {
+			uiText.msdfGlyphAtlas.begin();
+			uiText.msdfGlyphAtlas.addVec3 (uiEnum::uiTextAnchorEnum::topLeft,  "worldpos",   showUIText.pos);
+			uiText.msdfGlyphAtlas.addVec3 (uiEnum::uiTextAnchorEnum::topLeft,  "chunkpos",   showUIText.chunkPos);
+			uiText.msdfGlyphAtlas.addVec3 (uiEnum::uiTextAnchorEnum::topLeft,  "mineboxpos", showUIText.minepos);
+			uiText.msdfGlyphAtlas.addValue(uiEnum::uiTextAnchorEnum::topRight, "fps",		 std::to_string(fps), 8);
+			uiText.msdfGlyphAtlas.build(uiText.vertex.bufferMem, Device.memAllocator);
 		}
-
-		const float fontSize = 14.0f;				//字号
-		const float lineH	 = fontSize * 1.3f;		//行距
-		const float margin	 = 8.0f;				//页边距
-
-		//布局收集：行内容与锚点在此登记；列宽/对齐/段产出统一由 textCalcNode 完成
-		uiStruct::uiTextLayoutNode layout;
-		uiStruct::textCalcNode::beginUiTextLayout(layout, uiText.glyphMap, uiText.emSize, fontSize, lineH, margin, (float)windowInfo::width);
-
-		uiStruct::textCalcNode::addTextValuePos(layout, uiEnum::uiTextAnchorEnum::topLeft,  "worldpos",   showUIText.pos);
-		uiStruct::textCalcNode::addTextValuePos(layout, uiEnum::uiTextAnchorEnum::topLeft,  "chunkpos",   showUIText.chunkPos);
-		uiStruct::textCalcNode::addTextValuePos(layout, uiEnum::uiTextAnchorEnum::topLeft,  "mineboxpos", showUIText.minepos);
-		uiStruct::textCalcNode::addTextValue   (layout, uiEnum::uiTextAnchorEnum::topRight, "fps",		  uiStruct::textCalcNode::padFixedWidth(std::to_string(fps), 8));	//fps定长8
-
-		std::vector<uiStruct::uiTextSegmentNode> segments;
-		uiStruct::textCalcNode::buildUiTextLayout(layout, segments);
-
-		//内容未变 → 跳过顶点写（hash 命中须在 beginTextUpdate 之前返回）
-		size_t hash = 0;
-		for (const auto& segment : segments) {
-			hash ^= std::hash<std::string>{}(segment.text);
-			hash ^= (size_t)(segment.x * 4.0f) + 0x9e3779b9u + (hash << 6u) + (hash >> 2u);
-		}
-
-		static size_t prevHash = 0;
-		if (hash == prevHash) {
-			return;
-		}
-		prevHash = hash;
-
-		uiText.beginTextUpdate(Device.memAllocator);
-		for (const auto& segment : segments) {
-			uiStruct::textCalcNode::addText(uiText.mapped, uiText.numLetters, uiText.glyphMap, uiText.emSize, segment.text, segment.x, segment.y, bufferEnum::textAlignId::left, fontSize);
-		}
-		uiText.endTextUpdate(Device.memAllocator);
 	}
 
 	//绘制frame

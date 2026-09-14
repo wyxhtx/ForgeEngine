@@ -131,7 +131,7 @@ target_sources(ForgeEngine PRIVATE ${FORGE_DOCS_FILES})
 file(GLOB_RECURSE FORGE_ASSET_FILES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/assets/*"
 )
-list(FILTER FORGE_ASSET_FILES EXCLUDE REGEX "/(shader|shader_src)/")
+list(FILTER FORGE_ASSET_FILES EXCLUDE REGEX "/(shader|shader_src|image)/")
 source_group(TREE "${CMAKE_SOURCE_DIR}/src/assets" PREFIX "src/assets" FILES ${FORGE_ASSET_FILES})
 target_sources(ForgeEngine PRIVATE ${FORGE_ASSET_FILES})
 
@@ -180,3 +180,21 @@ set_target_properties(ForgeEngine PROPERTIES
 # 着色器编译
 include(config/cmake/ForgeShader.cmake)     # 编译规则
 add_dependencies(ForgeEngine ForgeShader)   # 先编译着色器
+
+
+# ---- 着色器源（GLSL）在解决方案中显示 ----
+# 只显示 src/assets/shader_src 下的 GLSL 源；shader\（spv 产物）不显示，避免 VS 出现 "CMake Rules" 节点
+# 显式限定扩展名：当前只有 .vert/.frag；.mesh/.task/.comp/.glsl 为预留（将来加网格/计算着色器自动显示）
+# 这些文件为 None 项类型：仅显示，不参与编译
+file(GLOB_RECURSE FORGE_SHADER_SRC_FILES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/assets/shader_src/*.vert"
+    "${CMAKE_SOURCE_DIR}/src/assets/shader_src/*.frag"
+    "${CMAKE_SOURCE_DIR}/src/assets/shader_src/*.mesh"
+    "${CMAKE_SOURCE_DIR}/src/assets/shader_src/*.task"
+    "${CMAKE_SOURCE_DIR}/src/assets/shader_src/*.comp"
+    "${CMAKE_SOURCE_DIR}/src/assets/shader_src/*.glsl"
+)
+if (FORGE_SHADER_SRC_FILES)
+  source_group(TREE "${CMAKE_SOURCE_DIR}/src/assets" PREFIX "src/assets" FILES ${FORGE_SHADER_SRC_FILES})
+  target_sources(ForgeEngine PRIVATE ${FORGE_SHADER_SRC_FILES})
+endif()
