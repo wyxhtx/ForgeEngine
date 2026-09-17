@@ -1229,7 +1229,7 @@ namespace bufferStruct {
 
 
 
-        //todo
+        //todo 内部直接用info了
         //创建 KTX 图集，无损压缩
         void createKtxArray(const char* imageFile, uint32_t layerCount, const VkFormat& format, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
             if (!imageFile || !std::filesystem::exists(imageFile)) {
@@ -2458,8 +2458,8 @@ namespace bufferStruct {
 
 
     /*管线缓冲区*/
-    struct terrainBufferNode {
-        terrainBufferNode(const bool& tEnable, const pipelineEnum::procPipelineId::type& tPipeType, const bufferEnum::procSamplerId::type& tSamplerType, const char* imageFile, const VkFormat& colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator)
+    struct pipeTerrainNode {
+        pipeTerrainNode(const bool& tEnable, const pipelineEnum::procPipelineId::type& tPipeType, const bufferEnum::procSamplerId::type& tSamplerType, const char* imageFile, const VkFormat& colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator)
             :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {
 
             textureFile = imageFile;
@@ -2470,7 +2470,7 @@ namespace bufferStruct {
             }
         }
 
-        terrainBufferNode() = delete;
+        pipeTerrainNode() = delete;
 
 
 
@@ -2516,7 +2516,8 @@ namespace bufferStruct {
         }
     };
 
-    struct staticModelNode {
+
+    struct modelStaticNode {
         //模型文件
         std::string modelFile;
 
@@ -2562,7 +2563,7 @@ namespace bufferStruct {
         }
     };
 
-    struct dynamicModelSubNode {
+    struct modelDynamicSubNode {
         //网格缓冲
         baseBufferNode vertex;
         baseBufferNode index;
@@ -2589,12 +2590,12 @@ namespace bufferStruct {
         }
     };
 
-    struct dynamicModelNode {
+    struct modelDynamicNode {
         //模型文件
         std::string modelFile;
 
         //动态模型结点列表
-        std::vector<dynamicModelSubNode> node;
+        std::vector<modelDynamicSubNode> node;
 
         //程序化索引
         bufferEnum::procSamplerId::type samplerId;
@@ -2625,8 +2626,68 @@ namespace bufferStruct {
             }
         }
     };
+    
+    struct pipeModelNode {
+        std::vector<bufferStruct::modelStaticNode>  sNode{};
+        std::vector<bufferStruct::modelDynamicNode> dNode{};
 
-    struct skyboxBufferNode {
+        uint32_t sModelMip = 0;                  //在创建texture时赋值
+        uint32_t dModelMip = 0;                  //在创建texture时赋值
+
+        bool isEnable;
+        pipelineEnum::procPipelineId::type pipeId;
+
+
+
+        pipeModelNode(bool enable, pipelineEnum::procPipelineId::type pId) : sNode(bufferEnum::procStaticModelId::count), dNode(bufferEnum::procDynamicModelId::count) {
+            sNode[bufferEnum::procStaticModelId::temple_m].create(fileInfo::model::temple, fileInfo::image::temple, bufferEnum::procSamplerId::staticModel_sn, glm::dvec3(0, 32, 0));
+
+            dNode[bufferEnum::procDynamicModelId::droid_m].create(fileInfo::model::droid, { fileInfo::image::droidBodyC,fileInfo::image::droidHeadC,fileInfo::image::droidMiscC }, /*{ fileInfo::image::droidBodyN,fileInfo::image::droidHeadN,fileInfo::image::droidMiscN },*/ bufferEnum::procSamplerId::dynamicModel_sl, glm::dvec3(0, 32, 0));
+
+
+
+            for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+                modelVertex::dVertexs[i].resize(dNode[i].node.size());
+                modelVertex::dIndexs[i].resize(dNode[i].node.size());
+            }
+
+            isEnable = enable;
+            pipeId   = pId;
+        }
+
+        pipeModelNode() = delete;
+
+
+
+        void getMaxModelMip() {
+            std::vector<uint32_t> sMaxMip;
+            for (const bufferStruct::modelStaticNode& i : sNode) {
+                sMaxMip.push_back(i.texture.mipLevel);
+            }
+            sModelMip = *std::max_element(sMaxMip.begin(), sMaxMip.end());   //使用模型最大mip创建采样器
+
+            std::vector<uint32_t> dMaxMip;
+            for (const bufferStruct::modelDynamicNode& i : dNode) {
+                for (const bufferStruct::modelDynamicSubNode& j : i.node) {
+                    dMaxMip.push_back(j.texture.mipLevel);
+                }
+            }
+            dModelMip = *std::max_element(dMaxMip.begin(), dMaxMip.end());
+        }
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+                sNode[i].clear(device, memAllocator);
+            }
+
+            for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+                dNode[i].clear(device, memAllocator);
+            }
+        }
+    };
+
+
+    struct pipeSkyboxNode {
         //网格缓冲
         baseBufferNode vertex;
         baseBufferNode index;
@@ -2646,12 +2707,12 @@ namespace bufferStruct {
 
 
 
-        skyboxBufferNode(bool enable, pipelineEnum::procPipelineId::type pId) {
+        pipeSkyboxNode(bool enable, pipelineEnum::procPipelineId::type pId) {
             isEnable = enable;
             pipeId   = pId;
         }
 
-        skyboxBufferNode() = delete;
+        pipeSkyboxNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
@@ -2662,7 +2723,7 @@ namespace bufferStruct {
         }
     };
 
-    struct mineBufferNode {
+    struct pipeMineNode {
         //网格缓冲
         baseBufferNode vertex;
         baseBufferNode index;
@@ -2680,12 +2741,12 @@ namespace bufferStruct {
 
 
 
-        mineBufferNode(bool enable, pipelineEnum::procPipelineId::type pId) {
+        pipeMineNode(bool enable, pipelineEnum::procPipelineId::type pId) {
             isEnable = enable;
             pipeId   = pId;
         }
 
-        mineBufferNode() = delete;
+        pipeMineNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
@@ -2695,7 +2756,7 @@ namespace bufferStruct {
         }
     };
 
-    struct uiTextBufferNode {
+    struct pipeUITextNode {
         //程序化索引
         bool isEnable;
         pipelineEnum::procPipelineId::type pipeId;
@@ -2710,7 +2771,7 @@ namespace bufferStruct {
 
 
 
-        uiTextBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+        pipeUITextNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
             isEnable  = enable;
             pipeId    = pId;
             samplerId = sId;
@@ -2720,9 +2781,13 @@ namespace bufferStruct {
             }
         }
 
-        uiTextBufferNode() = delete;
+        pipeUITextNode() = delete;
 
 
+
+        void create() {
+
+        }
 
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
@@ -2730,7 +2795,7 @@ namespace bufferStruct {
         }
     };
 
-    struct osMirrorBufferNode {
+    struct pipeOSMirrorNode {
         //网格缓冲
         baseBufferNode vertex;
         baseBufferNode index;
@@ -2751,13 +2816,13 @@ namespace bufferStruct {
 
 
 
-        osMirrorBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+        pipeOSMirrorNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
             isEnable  = enable;
             pipeId    = pId;
             samplerId = sId;
         }
 
-        osMirrorBufferNode() = delete;
+        pipeOSMirrorNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
@@ -2768,7 +2833,7 @@ namespace bufferStruct {
         }
     };
 
-    struct osScenceBufferNode {
+    struct pipeOSScenceNode {
         //描述缓冲
         VkDescriptorSet descriptorSet;
 
@@ -2779,20 +2844,20 @@ namespace bufferStruct {
 
 
 
-        osScenceBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+        pipeOSScenceNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
             isEnable  = enable;
             pipeId    = pId;
             samplerId = sId;
         }
 
-        osScenceBufferNode() = delete;
+        pipeOSScenceNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
 
         }
     };
 
-    struct dsScenceBufferNode {
+    struct pipeDSScenceNode {
         //统一缓冲
         baseBufferNode lightUniform;
         deferredLightUBO lightUbo;
@@ -2809,13 +2874,13 @@ namespace bufferStruct {
 
 
 
-        dsScenceBufferNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
+        pipeDSScenceNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) {
             isEnable  = enable;
             pipeId    = pId;
             samplerId = sId;
         }
 
-        dsScenceBufferNode() = delete;
+        pipeDSScenceNode() = delete;
 
         void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
             vmaDestroyBuffer(memAllocator, lightUniform.buffer,  lightUniform.bufferMem);
@@ -2823,7 +2888,8 @@ namespace bufferStruct {
         }
     };
 
-    struct shadowTerrainBufferNode {
+
+    struct shadowTerrainNode {
         //网格缓冲，索引直接用源网格的
         baseBufferNode vertex[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
 
@@ -2847,7 +2913,7 @@ namespace bufferStruct {
         }
     };
 
-    struct shadowBufferNode {
+    struct shadowModelNode {
         //网格缓冲，索引直接用源网格的
         baseBufferNode vertex;
 
@@ -2864,6 +2930,45 @@ namespace bufferStruct {
             vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
 
             vmaDestroyBuffer(memAllocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMem);
+        }
+    };
+    
+    struct pipeShadowNode {
+        bufferStruct::shadowTerrainNode shadow_t{};                             //地形阴影
+        std::vector<bufferStruct::shadowModelNode> shadow_ms{};                 //静态模型阴影
+        std::vector<std::vector<bufferStruct::shadowModelNode>> shadow_md{};    //动态模型阴影
+
+        //辅助shadowMvp计算
+        glm::mat4 shadowProj{};
+        glm::mat4 shadowVP{};
+
+        //程序化索引
+        bool isEnable;
+        pipelineEnum::procPipelineId::type pipeId;
+        bufferEnum::procSamplerId::type samplerId;
+
+
+
+        pipeShadowNode(bool enable, pipelineEnum::procPipelineId::type pId, bufferEnum::procSamplerId::type sId) : shadow_ms(bufferEnum::procStaticModelId::count), shadow_md(bufferEnum::procDynamicModelId::count) {
+            isEnable  = enable;
+            pipeId    = pId;
+            samplerId = sId;
+        }
+
+        pipeShadowNode() = delete;
+
+        void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
+            shadow_t.clear(device, memAllocator);
+
+            for (int i = 0; i < shadow_ms.size(); i++) {
+                shadow_ms[i].clear(device, memAllocator);
+            }
+
+            for (int i = 0; i < shadow_md.size(); i++) {
+                for (int j = 0; j < shadow_md[i].size(); j++) {
+                    shadow_md[i][j].clear(device, memAllocator);
+                }
+            }
         }
     };
 

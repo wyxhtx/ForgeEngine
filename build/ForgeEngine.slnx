@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Solution>
+	<Configurations>
+		<BuildType Name="Debug"/>
+		<BuildType Name="Release"/>
+		<BuildType Name="RelWithDebInfo"/>
+		<Platform Name="x64"/>
+	</Configurations>
+	<Project Path="vs\ForgeEngine.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="19c989ba-f633-3dd8-96d7-e3fb1093f8ee" DefaultStartup="true">
+		<BuildDependency Project="vs\ForgeShader.vcxproj"/>
+	</Project>
+	<Project Path="vs\ForgeShader.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="655dac8c-f4fc-3d43-a298-b036bfb01943"/>
+</Solution>

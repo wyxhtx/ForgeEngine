@@ -9,7 +9,7 @@ vcpkg           （下载 + 锁定版本 + 编译 + 安装；删依赖行 → re
    ↓ 装到 build\vcpkg_installed\
 CMakeLists.txt  （find_package + find_path + PCH + 构建定义）
    ↓ VS 生成器
-build\vs\ForgeEngine.slnx → ForgeEngine.exe
+build\vs\ForgeEngine.slnx → build\vs\bin\output\x64\<Config>\ForgeEngine.exe
 ```
 
 - **依赖分三类**：官方直用（8 个，baseline 锁版本）/ 覆盖官方（3 个：ktx、tinygltf、freetype，overlay 修正上游 port）/ 纯自定义（6 个：aarand、subpar、sanisizer、kmeans、fastnoise2、msdf-atlas-gen，REF 锁 commit）/ 系统级 Vulkan SDK（不走 vcpkg）
@@ -23,12 +23,14 @@ ForgeEngine\
 ├─ build\
 │  ├─ ninja\                        ninja 工程
 │  ├─ vcpkg_installed\              依赖安装目录
-│  └─ vs\                           VS 工程 + exe
+│  ├─ vs\                           VS 工程 + bin\{intermediate,output}\x64\<Config>
+│  └─ ForgeEngine.slnx              唯一解决方案入口（手写 2 项目；.vs 也落在 build\，见 3.7）
 ├─ cmd\
 │  └─ forgeEngineCmdList.ps1        调试指令文件，项目路径下自动加载
 ├─ config\
 │  ├─ cmake\
-│  │  └─ ForgeShader.cmake          着色器编译规则
+│  │  ├─ ForgeShader.cmake          着色器编译规则
+│  │  └─ ForgeIntermediate.targets  输出/中间目录覆盖（configure_file → build\vs\Directory.Build.targets）
 │  └─ vcpkg\
 │     ├─ port\                      9 个端口   （6 纯自定义 REF 锁 commit + 3 覆盖官方）
 │     │  ├─ aarand\                 随机数     （kmeans 依赖）
@@ -45,7 +47,9 @@ ForgeEngine\
 ├─ docs\
 │  ├─ ForgeEngine构建体系说明.md     本文件     （构建/依赖/维护全说明）
 │  ├─ 端口说明.md                    自定义端口速查
-│  └─ 调试指令速查.md                fe- 指令表
+│  ├─ 调试指令速查.md                fe- 指令表
+│  ├─ chatbox-docs\                 Chatbox 知识库源（01~08，改后需手动同步）
+│  └─ chatbox-sync\                 KB 拖入暂存区（忽略）
 ├─ src\assets\
 │  ├─ font\                         SourceHanSansSC（OTF + OFL 授权，MSDF 字形源）
 │  ├─ image\                        ktx2                （入库）
@@ -57,6 +61,7 @@ ForgeEngine\
 ├─ src\code\
 │  ├─ forge\                        游戏层
 │  └─ vk\                           Vulkan 渲染层
+├─ storage\                         运行时区块存档（忽略，运行时自动建）
 ├─ .gitignore
 ├─ CMakeLists.txt                   构建定义
 ├─ CMakePresets.json                preset 配置
@@ -105,7 +110,7 @@ ForgeEngine\
 - `vs` 预设：VS2026 生成器（`Visual Studio 18 2026`，工具集 v145），输出 `build\vs\`，F5 调试全功能
 - `ninja` 预设：备用命令行快速构建，输出 `build\ninja\`
 - 关键变量：
-  - `CMAKE_TOOLCHAIN_FILE`：vcpkg 入口（manifest 模式自动装依赖）
+  - `toolchainFile`：vcpkg 入口（manifest 模式自动装依赖）。用 preset **专用字段**而非 `cacheVariables` —— 后者会让 CMake 报 `Manually-specified variables were not used by the project: CMAKE_TOOLCHAIN_FILE`（工具链其实已生效，纯提示）
   - `VCPKG_TARGET_TRIPLET`：`x64-windows-static-forgeengine`
   - `VCPKG_OVERLAY_TRIPLETS` / `VCPKG_OVERLAY_PORTS`：自定义目录
   - `VCPKG_INSTALLED_DIR`：`build\vcpkg_installed`（依赖统一位置，不进项目根）
@@ -120,9 +125,12 @@ ForgeEngine\
 | 2 Vulkan SDK | `find_package(Vulkan)` + glslangValidator 查找 |
 | 3 find_package 群 | 官方 CONFIG（glfw3/glm/VMA/Ktx/OpenAL/ALUT/msdfgen）+ 自产 CONFIG（msdf-atlas-gen）；tinygltf 官方无 config → find_path 封装 ForgeTinygltf |
 | 4 自定义手工目标 | kmeans（find_path → ForgeKmeans）、fastnoise2（find_path+find_library → ForgeFastNoise，Debug 链 FastNoiseD.lib + FASTNOISE_STATIC_LIB） |
-| 5 主程序 | `add_executable(ForgeEngine src/code/vk/Main.cpp)`（单 TU）+ target_precompile_headers(External.h)（PCH）+ /bigobj + UNICODE + 非 Debug 撤 _DEBUG + Release /Zi /DEBUG（PDB）+ 解决方案显示分组（GLOB）+ 链接全部依赖（含 msdfgen::msdfgen-full、msdf-atlas-gen::msdf-atlas-gen） |
+| 5 主程序 | `add_executable(ForgeEngine src/code/vk/Main.cpp)`（单 TU）+ target_precompile_headers(External.h)（PCH）+ /bigobj + UNICODE + 非 Debug 撤 _DEBUG + Release /Zi /DEBUG（PDB）+ 链接全部依赖（含 msdfgen::msdfgen-full、msdf-atlas-gen::msdf-atlas-gen） |
 | 6 调试工作目录 | `VS_DEBUGGER_WORKING_DIRECTORY` = 项目根（资源相对路径可解析） |
 | 7 着色器 | include ForgeShader.cmake + `add_dependencies(ForgeEngine ForgeShader)` |
+| 8 输出目录 | `RUNTIME_OUTPUT_DIRECTORY` = `build\vs\bin\output\x64\<Config>`（exe + pdb） |
+| 9 中间目录 | `configure_file(config/cmake/ForgeIntermediate.targets → build\vs\Directory.Build.targets)` 覆盖 IntDir = `bin\intermediate\x64\<Config>`（见 3.6） |
+| 10 解决方案显示 | GLOB + source_group，只显示 `src\...` 与 `docs\...`（见 3.5） |
 
 ### 3.4 triplet —— 库编译的统一配置
 
@@ -139,17 +147,49 @@ set(VCPKG_CXX_FLAGS_DEBUG "${VCPKG_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=1")
 
 ### 3.5 解决方案显示分组（纯显示，不影响编译）
 
-CMakeLists 用 GLOB + source_group 把工程文件分组显示在 VS 解决方案资源管理器：
+CMakeLists 用 GLOB + source_group 把文件挂进 VS 解决方案资源管理器，**顶层只保留 `src\` 与 `docs\`**：
 
 | 组 | 内容 | 方式 |
 |---|---|---|
 | src\code | 源码树（按磁盘目录）| GLOB_RECURSE + TREE |
 | src\assets | 资产目录树（含 font\）| GLOB_RECURSE + TREE |
-| config | ForgeShader/triplet/9 端口 + 根 4 文件 | GLOB + TREE / FILES |
-| docs | 3 份 md | GLOB |
-| cmd | forgeEngineCmdList.ps1 | GLOB |
+| src\assets\shader_src | GLSL 源（.vert/.frag 等，None 项）| GLOB_RECURSE + TREE |
+| 构建中间文件 | PCH 中间文件 `cmake_pch.cxx`/`.hxx`（CMake 自动生成）| FILES + 绝对路径覆盖 CMake 默认的 `Source Files`/`Precompile Header File`；中文名排序在 docs/src 之后 |
+| docs | docs\*.md + docs\chatbox-docs\*.md（**排除 chatbox-sync 同步副本**，避免同名两份）| GLOB + FILTER EXCLUDE |
 
-全部经 target_sources 加入（非源码不编译），GLOB 带 CONFIGURE_DEPENDS（新增文件自动刷新）。
+- 经 target_sources 加入（非源码不编译），GLOB 带 CONFIGURE_DEPENDS（新增文件自动刷新）
+- **不再注入**：根 4 文件（.gitignore/CMakePresets.json/README.md/vcpkg.json）、`cmd\`、`config\`（此前根文件还被 `source_group("config")` 并进 config 节点）——文件仍在磁盘，直接编辑即可
+- 实测 `.vcxproj.filters` 项数 120 → 82
+- PCH 中间文件（`cmake_pch.cxx` / `cmake_pch.hxx`，CMake 自动生成）默认落在英文节点 `Source Files` / `Precompile Header File`：对它们的**绝对路径**调用 `source_group` 可以覆盖（实测生效），现归入顶层节点 `构建中间文件`（中文名排序在 docs/src 之后、不挤进 src）；顶层另有项目根的 `CMakeLists.txt` 一项
+
+### 3.6 输出目录与中间目录（对齐 VS 手写工程习惯）
+
+```
+build\vs\bin\
+├─ output\x64\<Config>\        ForgeEngine.exe + ForgeEngine.pdb
+└─ intermediate\x64\<Config>\  Main.obj / cmake_pch.{obj,pch} / vc145.pdb / *.recipe / *.tlog / microsoft\STL\
+```
+
+| 项 | 来源 | 做法 |
+|---|---|---|
+| OutDir | CMake 原生 | `RUNTIME_OUTPUT_DIRECTORY` = `bin\output\x64\$<CONFIG>` |
+| IntDir | **无原生项**（生成器固定写 `<Target>.dir\<Config>`）| `config\cmake\ForgeIntermediate.targets` 经 configure_file 生成 `build\vs\Directory.Build.targets`（MSBuild 末尾导入 ⇒ 覆盖生效） |
+| 链接 recipe | `Microsoft.CppBuild.targets` 评估期用旧 IntDir 定死默认值 | 同文件重赋 `DesktopDeployRecipeFile` |
+| PCH (.pch) | CMake 在 vcxproj 里写**绝对路径** `<Target>.dir\<Config>\cmake_pch.pch` | 同文件的 target 在 `ClCompile` 前改写 `ClCompile.PrecompiledHeaderOutputFile` 元数据 |
+
+- `Directory.Build.targets` 是 MSBuild 侧覆盖：CMake 并不知道 IntDir 已变（vcxproj 里仍写 `ForgeEngine.dir\Release\`），但不影响构建
+- ForgeEngine 归入 `bin\intermediate\x64\<Config>\`；辅助工程（ForgeShader / ZERO_CHECK / ALL_BUILD）的 IntDir 与 OutDir 一并收到 `bin\intermediate\x64\<Config>\<ProjectName>\`（各自子目录，避免 MSB8028）——它们的默认值分别是 `$(Platform)\$(Configuration)\$(ProjectName)` 与 `$(SolutionDir)$(Platform)\$(Configuration)\`，正是 `build\vs\x64\` 空目录的来源
+- ForgeEngine 的 `<ImportLibrary>`（CMake 写死 `build\vs\<Config>\ForgeEngine.lib`；EXE 用不到 import lib，但 `Microsoft.CppBuild.targets:1450` 会按 `%(Link.ImportLibrary)` 建目录）改指 `bin\intermediate\…` ⇒ 不再留下空的 `Release\` / `RelWithDebInfo\`
+- 仅剩 4 个空壳目录 `ForgeEngine.dir\`、`ForgeShader.dir\`、`ZERO_CHECK.dir\`、`ALL_BUILD.dir\`（均 0 文件），由生成器每次 configure 创建，无法消除；VS 资源管理器里看不到
+- PCH 包装头 `cmake_pch.hxx`（ClInclude 纯显示项，三份内容字节相同）在同一文件里 `Remove` 掉 ⇒ 工程树只剩必需的 `cmake_pch.cxx`（实测 `msbuild -getItem:ClInclude` 已无该项，构建不受影响；`.hxx` 的路径仍由 `PrecompiledHeaderFile` 元数据提供）
+- 改 `ForgeIntermediate.targets` 后需重新 configure（configure_file 的输入是 configure 依赖）
+
+### 3.7 解决方案入口与 .vs 位置
+
+- **唯一入口**：`build\ForgeEngine.slnx`（手写，只含 ForgeEngine / ForgeShader 两个真实项目，项目路径 `vs\*.vcxproj`）。CMake 另生成 `build\vs\ForgeEngine.slnx`（含 ALL_BUILD / ZERO_CHECK），两者互不干扰；`.slnf` 方案必带漏斗图标，已弃用
+- **为什么放 build\ 里**：VS 把 `.vs` 生成在"被打开的那个根"旁边，且**没有位置设置项**。入口在 `build\` ⇒ 状态落在 `build\.vs\`；加上 CMake 生成解决方案的 `build\vs\.vs\`，所有 `.vs` 都在 build 下。`fe-clean` 只删 `build\vs`，入口与 `build\.vs` 都能存活（解决了"卸载项目/隐藏未加载项不持久"）
+- **不要用"打开文件夹"打开仓库根**（那会在仓库根生成 `.vs`，无设置可避免）；需要文件夹模式时以 `build\` 为根
+- `.gitignore`：`build/*` 整目录忽略 + `!build/ForgeEngine.slnx` 放行 ⇒ 入口可提交，`build\vs`、`build\vcpkg_installed` 等生成物照旧不入库
 
 ## 四、自定义库说明书（config\vcpkg\port\）
 
@@ -224,7 +264,7 @@ find_package(FreeALUT CONFIG REQUIRED)                          # 目标 FreeALU
 | 编译 Debug | `cmake --build --preset debug` |
 | 编译 Release | `cmake --build --preset release` |
 | 备用 Ninja 构建 | `cmake --preset ninja` |
-| 调试运行 | VS 打开 `build\vs\ForgeEngine.slnx` → F5（工作目录自动=项目根） |
+| 调试运行 | VS 打开 `build\ForgeEngine.slnx` → F5（工作目录自动=项目根；勿用"打开文件夹"打开仓库根） |
 | 命令行运行 | `cd E:\code\graphicsAPI\vulkan\ForgeEngine` + `.\build\vs\bin\output\x64\Debug\ForgeEngine.exe` |
 
 ## 六、日常维护
@@ -249,3 +289,4 @@ find_package(FreeALUT CONFIG REQUIRED)                          # 目标 FreeALU
 6. **triplet 的 C/CXX_FLAGS_DEBUG 必须成对设置**（vcpkg 要求）
 7. **`.gitignore`**：.vs/ build/ vcpkg_installed/ storage/chunk/ src/assets/shader/ CMakeUserPresets.json *.vcxproj.user（生成物不提交）
 8. **Vulkan SDK 是系统级依赖**（不进 vcpkg）：glfw3 探测、校验层、glslangValidator 都靠它
+9. **输出/中间目录**：OutDir 用 `RUNTIME_OUTPUT_DIRECTORY`（CMake 原生）；IntDir 无原生项，由 `config\cmake\ForgeIntermediate.targets`（configure_file → `build\vs\Directory.Build.targets`）覆盖，改它后必须重新 configure

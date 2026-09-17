@@ -1,5 +1,7 @@
 .vs/
-build/
+# build/ 整目录忽略，仅放行手写解决方案入口（无漏斗的 2 项目解决方案）
+build/*
+!build/ForgeEngine.slnx
 vcpkg_installed/
 
 src/assets/shader/

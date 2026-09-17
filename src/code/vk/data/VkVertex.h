@@ -2,7 +2,7 @@
 
 
 
-//terrain
+//pipeTerrain
 namespace terrainVertex {
     struct vertexNode {
         glm::vec3 position;     //坐标
@@ -105,7 +105,7 @@ namespace std {
     };
 }
 
-//skybox
+//pipeSkybox
 namespace skyboxVertex {
     struct vertexNode {
         glm::vec3 position;     //坐标
@@ -155,7 +155,7 @@ namespace skyboxVertex {
     };
 }
 
-//mine
+//pipeMine
 namespace mineVertex {
     struct vertexNode {
         glm::vec3 position;     //坐标
@@ -214,7 +214,7 @@ namespace mineVertex {
     };
 }
 
-//uiText
+//pipeUIText
 namespace uiTextVertex {
     struct vertexNode {
         //绑定描述
@@ -253,7 +253,7 @@ namespace uiTextVertex {
     };
 }
 
-//osMirror
+//pipeOSMirror
 namespace osMirrorVertex {
     struct vertexNode {
         glm::vec3 position;

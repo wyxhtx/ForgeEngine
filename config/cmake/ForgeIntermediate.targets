@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!-- 中间目录对齐 VS 手写工程习惯：bin\intermediate\$(Platform)\$(Configuration)\（参考工程为 bin\intermediate\x64\<Config>）
+       CMake 的 VS 生成器把 <IntDir> 固定写成 <Target>.dir\<Config>，无原生配置项；VS_GLOBAL_IntDir 也会被逐配置属性组覆盖。
+       Directory.Build.targets 由 MSBuild 在工程末尾导入，此处赋值即可覆盖生成器写入的 IntDir；
+       本文件由 CMakeLists.txt 的 configure_file 每次 configure 生成到构建目录，不会被重新生成冲掉。
+       只覆盖 ForgeEngine：多工程共用同一 IntDir 会触发 MSB8028（中间目录混放其它工程文件）。 -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'ForgeEngine'">
+    <IntDir>bin\intermediate\$(Platform)\$(Configuration)\</IntDir>
+    <!-- 链接 recipe：Microsoft.CppBuild.targets 在评估期就用当时的 IntDir 定好了默认值，需在这里重新赋值 -->
+    <DesktopDeployRecipeFile>bin\intermediate\$(Platform)\$(Configuration)\$(TargetName)$(TargetExt).recipe</DesktopDeployRecipeFile>
+  </PropertyGroup>
+  <!-- PCH 包装头 cmake_pch.hxx 是 ClInclude 纯显示项（168B，只 #include External.h，三份完全相同）；
+       构建只读它的路径字符串（PrecompiledHeaderFile 元数据），不依赖"项"存在 ⇒ 从项目评估里摘掉，工程树只剩必需的 cmake_pch.cxx -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'ForgeEngine'">
+    <ClInclude Remove="$(ProjectDir)CMakeFiles\ForgeEngine.dir\**\cmake_pch.hxx" />
+  </ItemGroup>
+  <!-- CMake 给 ForgeEngine 写死了 <ImportLibrary>…\build\vs\<Config>\ForgeEngine.lib；EXE 用不到 import lib，但 Microsoft.CppBuild.targets:1450 会按 %(Link.ImportLibrary) 建目录 ⇒ 留下空的 Release\ / RelWithDebInfo\
+       改指到 bin\intermediate 下（目录已存在，不再产生新空目录） -->
+  <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'ForgeEngine'">
+    <Link>
+      <ImportLibrary>bin\intermediate\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <!-- 辅助工程（ALL_BUILD / ZERO_CHECK / ForgeShader）的中间目录与输出目录：默认值分别是 $(Platform)\$(Configuration)\$(ProjectName) 与 $(SolutionDir)$(Platform)\$(Configuration)\
+       ⇒ 会在 build\vs 下留下 x64\ 空目录；两者都收到 bin\intermediate 下各自子目录（互不混放，避免 MSB8028） -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'ForgeEngine'">
+    <IntDir>bin\intermediate\$(Platform)\$(Configuration)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>bin\intermediate\$(Platform)\$(Configuration)\$(MSBuildProjectName)\</OutDir>
+  </PropertyGroup>
+  <!-- PCH：CMake 给 cmake_pch.cxx 写死了绝对路径 <Target>.dir\<Config>\cmake_pch.pch，该项元数据在评估期固化，
+       PropertyGroup 改不动，只能在 ClCompile 执行前改写 item 元数据（target 内不带 Include 的 ClCompile = 改全部现有项）。 -->
+  <Target Name="ForgeIntermediateDirFix" BeforeTargets="ClCompile" Condition="'$(MSBuildProjectName)' == 'ForgeEngine'">
+    <ItemGroup>
+      <ClCompile>
+        <PrecompiledHeaderOutputFile>bin\intermediate\$(Platform)\$(Configuration)\cmake_pch.pch</PrecompiledHeaderOutputFile>
+      </ClCompile>
+    </ItemGroup>
+  </Target>
+</Project>

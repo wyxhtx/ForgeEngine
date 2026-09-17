@@ -7,9 +7,9 @@
       "generator": "Visual Studio 18 2026",
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build/vs",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "VCPKG_APPLOCAL_DEPS": "OFF",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static-forgeengine",
         "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/config/vcpkg/triplet",
         "VCPKG_OVERLAY_PORTS": "${sourceDir}/config/vcpkg/port",
@@ -21,9 +21,9 @@
       "displayName": "ForgeEngine Ninja",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/ninja",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "VCPKG_APPLOCAL_DEPS": "OFF",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static-forgeengine",
         "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/config/vcpkg/triplet",
         "VCPKG_OVERLAY_PORTS": "${sourceDir}/config/vcpkg/port",
