@@ -87,7 +87,7 @@ public:
 						std::unordered_map<glm::ivec3, short>& node = visibleFaceMap[i][j];
 						glm::ivec3 pos = node.begin()->first;
 						short cubeId = node.begin()->second;
-						int faceId = cubeList::procCube.node[cubeId].faceId[i].x + cubeList::procCube.node[cubeId].faceId[i].y * textureInfo::terrain::atlasWidth;
+						int faceId = cubeList::procCube.node[cubeId].faceId[i].x + cubeList::procCube.node[cubeId].faceId[i].y * textureInfo::terrain::atlasExtent.width;
 
 						cubeStruct::traversalNode wSet;
 						cubeStruct::traversalNode hSet;
@@ -985,7 +985,7 @@ public:
 						std::unordered_map<glm::ivec3, short>& node = visibleFaceMap[i][j];
 						glm::ivec3 pos = node.begin()->first;
 						short cubeId = node.begin()->second;
-						int faceId = cubeList::procCube.node[cubeId].faceId[i].x + cubeList::procCube.node[cubeId].faceId[i].y * textureInfo::terrain::atlasWidth;
+						int faceId = cubeList::procCube.node[cubeId].faceId[i].x + cubeList::procCube.node[cubeId].faceId[i].y * textureInfo::terrain::atlasExtent.width;
 
 						cubeStruct::traversalNode wSet;
 						cubeStruct::traversalNode hSet;

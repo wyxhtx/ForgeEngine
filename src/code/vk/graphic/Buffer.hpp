@@ -5,11 +5,15 @@
 class Buffer {
 public:
 	Buffer(Device& Device) :Device{ Device } {
+		pipeTerrain.create(fileInfo::image::cube, textureInfo::terrain::colorFormat, textureInfo::terrain::tileExtent, textureInfo::terrain::atlasExtent, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+		pipeModel  .create(cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+		pipeUIText .create(cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+		pipeShadow .create();
+
 		createMeshBuffer();
 		createUniformBuffer();
-		createTexture();
-		pipeModel.getMaxModelMip();
-		procSampler.createTextureSampler(Device.device, pipeTerrain.texture.mipLevel, pipeModel.sModelMip, pipeModel.dModelMip);
+		auto [sModelMip, dModelMip] = pipeModel.getMaxModelMip();
+		procSampler.createTextureSampler(Device.device, pipeTerrain.texture.mipLevel, sModelMip, dModelMip);
 		createDescriptorSet();
 
 		initUniformBuffer();	//初始化Uniform
@@ -58,11 +62,11 @@ private:
 	bufferList::procDescriptorNode	procDescriptor{ Device.device };
 	bufferList::procSamplerNode		procSampler{};
 
-	bufferStruct::pipeTerrainNode	pipeTerrain		{ true,	 pipelineEnum::procPipelineId::terrain_p,   bufferEnum::procSamplerId::terrain_s, fileInfo::image::cube, textureInfo::terrain::colorFormat, textureInfo::terrain::tileExtent, textureInfo::terrain::atlasExtent, cmd, Device.device, Device.graphicsQueue, Device.memAllocator};
-	bufferStruct::pipeModelNode		pipeModel		{ true,  pipelineEnum::procPipelineId::model_p	    };
+	bufferStruct::pipeTerrainNode	pipeTerrain		{ true,  pipelineEnum::procPipelineId::terrain_p,   bufferEnum::procSamplerId::terrain_s };
+	bufferStruct::pipeModelNode		pipeModel		{ true,  pipelineEnum::procPipelineId::model_p };
 	bufferStruct::pipeSkyboxNode	pipeSkybox		{ true,	 pipelineEnum::procPipelineId::skybox_p	    };
 	bufferStruct::pipeMineNode		pipeMine		{ true,  pipelineEnum::procPipelineId::mine_p	    };
-	bufferStruct::pipeUITextNode	pipeUIText		{ true,  pipelineEnum::procPipelineId::uiText_p,    bufferEnum::procSamplerId::uiText_s   , cmd, Device.device, Device.graphicsQueue, Device.memAllocator };
+	bufferStruct::pipeUITextNode	pipeUIText		{ true,  pipelineEnum::procPipelineId::uiText_p,    bufferEnum::procSamplerId::uiText_s };
 	bufferStruct::pipeOSMirrorNode	pipeOSMirror	{ false, pipelineEnum::procPipelineId::osMirror_p,  bufferEnum::procSamplerId::offScreen_s };
 	bufferStruct::pipeOSScenceNode	pipeOSScence	{ false, pipelineEnum::procPipelineId::osScence_p,  bufferEnum::procSamplerId::offScreen_s };
 	bufferStruct::pipeDSScenceNode	pipeDSScence	{ true,	 pipelineEnum::procPipelineId::dsScence_p,  bufferEnum::procSamplerId::offScreen_s };
@@ -85,7 +89,7 @@ private:
 		if (pipeModel.isEnable) {
 			//model-sNode
 			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				loadStaticModel(pipeModel.sNode[i].modelFile, modelVertex::sVertexs[i], modelVertex::sIndexs[i], shadowVertex::sVertexs[i]);
+				pipeModel.loadStaticModel(fileInfo::model::staticList[i], modelVertex::sVertexs[i], modelVertex::sIndexs[i], shadowVertex::sVertexs[i]);
 
 				createVertexBuffer(modelVertex::sVertexs[i], pipeModel.sNode[i].vertex);
 				createIndexBuffer(modelVertex::sIndexs[i], pipeModel.sNode[i].index);
@@ -96,7 +100,7 @@ private:
 				shadowVertex::dVertexs[i].resize(modelVertex::dIndexs[i].size());
 				pipeShadow.shadow_md[i].resize(modelVertex::dIndexs[i].size());
 
-				loadDynamicModel(pipeModel.dNode[i].modelFile, modelVertex::dVertexs[i], modelVertex::dIndexs[i], shadowVertex::dVertexs[i]);
+				pipeModel.loadDynamicModel(fileInfo::model::dynamicList[i], modelVertex::dVertexs[i], modelVertex::dIndexs[i], shadowVertex::dVertexs[i]);
 
 				for (int j = 0; j < pipeModel.dNode[i].node.size(); j++) {
 					createVertexBuffer(modelVertex::dVertexs[i][j], pipeModel.dNode[i].node[j].vertex);
@@ -228,23 +232,6 @@ private:
 		}
 	}
 
-	void createTexture() {
-		//model
-		if (pipeModel.isEnable) {
-			//model-sNode
-			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				pipeModel.sNode[i].texture.createKtx(pipeModel.sNode[i].textureFile, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
-			}
-
-			//model-dNode
-			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-				for (int j = 0; j < pipeModel.dNode[i].node.size(); j++) {
-					pipeModel.dNode[i].node[j].texture.createKtx(pipeModel.dNode[i].node[j].textureFile, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
-				}
-			}
-		}
-	}
-
 	void createDescriptorSet() {
 		/*scenceForward_d*/
 		{
@@ -285,7 +272,7 @@ private:
 					std::array<VkWriteDescriptorSet, 3> tempWrite{
 						procDescriptor.getWrite(0, pipeOSMirror.descriptorSet, pipeOSMirror.uniform.buffer,				 sizeof(pipeOSMirror.ubo)),
 						procDescriptor.getWrite(1, pipeOSMirror.descriptorSet, pipeOSMirror.lightUniform.buffer,		 sizeof(pipeOSMirror.lightUbo)),
-						procDescriptor.getWrite(2, pipeOSMirror.descriptorSet, procSampler.node[pipeOSMirror.samplerId], procRenderPass.getFrameImage(renderEnum::renderInstanceId::osMirror_ri, renderEnum::renderFrameId::conv_rf, 2))
+						procDescriptor.getWrite(2, pipeOSMirror.descriptorSet, procSampler.node[pipeOSMirror.samplerType], procRenderPass.getFrameImage(renderEnum::renderInstanceId::osMirror_ri, renderEnum::renderFrameId::conv_rf, 2))
 					};
 
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -299,7 +286,7 @@ private:
 			if (pipeOSScence.isEnable) {
 				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &pipeOSScence.descriptorSet) == VK_SUCCESS) {
 					std::array<VkWriteDescriptorSet, 1> tempWrite{
-						procDescriptor.getWrite(2, pipeOSScence.descriptorSet, procSampler.node[pipeOSScence.samplerId], procRenderPass.getFrameImage(renderEnum::renderInstanceId::osScence_ri, renderEnum::renderFrameId::conv_rf, 2))
+						procDescriptor.getWrite(2, pipeOSScence.descriptorSet, procSampler.node[pipeOSScence.samplerType], procRenderPass.getFrameImage(renderEnum::renderInstanceId::osScence_ri, renderEnum::renderFrameId::conv_rf, 2))
 					};
 
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -336,7 +323,7 @@ private:
 					if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &pipeModel.sNode[i].descriptorSet) == VK_SUCCESS) {
 						std::array<VkWriteDescriptorSet, 2> tempWrite{
 							procDescriptor.getWrite(0, pipeModel.sNode[i].descriptorSet, pipeModel.sNode[i].uniform.buffer, sizeof(pipeModel.sNode[i].ubo)),
-							procDescriptor.getWrite(1, pipeModel.sNode[i].descriptorSet, procSampler.node[pipeModel.sNode[i].samplerId], pipeModel.sNode[i].texture.imageNode.view)
+							procDescriptor.getWrite(1, pipeModel.sNode[i].descriptorSet, procSampler.node[pipeModel.sNode[i].samplerType], pipeModel.sNode[i].texture.imageNode.view)
 						};
 
 						vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -352,7 +339,7 @@ private:
 						if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &pipeModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
 							std::array<VkWriteDescriptorSet, 2> tempWrite{
 								procDescriptor.getWrite(0, pipeModel.dNode[i].node[j].descriptorSet, pipeModel.dNode[i].node[j].uniform.buffer, sizeof(pipeModel.dNode[i].node[j].ubo)),
-								procDescriptor.getWrite(1, pipeModel.dNode[i].node[j].descriptorSet, procSampler.node[pipeModel.dNode[i].samplerId], pipeModel.dNode[i].node[j].texture.imageNode.view)
+								procDescriptor.getWrite(1, pipeModel.dNode[i].node[j].descriptorSet, procSampler.node[pipeModel.dNode[i].samplerType], pipeModel.dNode[i].node[j].texture.imageNode.view)
 							};
 
 							vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -373,7 +360,7 @@ private:
 			if (pipeUIText.isEnable) {
 				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &pipeUIText.descriptorSet) == VK_SUCCESS) {
 					std::array<VkWriteDescriptorSet, 1> tempWrite{
-						procDescriptor.getWrite(0, pipeUIText.descriptorSet, procSampler.node[pipeUIText.samplerId], pipeUIText.texture.imageNode.view)
+						procDescriptor.getWrite(0, pipeUIText.descriptorSet, procSampler.node[pipeUIText.samplerType], pipeUIText.texture.imageNode.view)
 					};
 
 					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -393,10 +380,10 @@ private:
 				std::array<VkWriteDescriptorSet, 6> tempWrite{
 					procDescriptor.getWrite(0, pipeDSScence.descriptorSet, pipeDSScence.lightUniform.buffer,		   sizeof(pipeDSScence.lightUbo)),
 					procDescriptor.getWrite(1, pipeDSScence.descriptorSet, pipeDSScence.shadowUniform.buffer,		   sizeof(pipeDSScence.shadowUbo)),
-					procDescriptor.getWrite(2, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerId],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 0)),
-					procDescriptor.getWrite(3, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerId],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 1)),
-					procDescriptor.getWrite(4, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerId],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 2)),
-					procDescriptor.getWrite(5, pipeDSScence.descriptorSet, procSampler.node[pipeShadow.samplerId], procRenderPass.getFrameImage(renderEnum::renderInstanceId::shadowMap_ri, renderEnum::renderFrameId::conv_rf, 0))
+					procDescriptor.getWrite(2, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerType],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 0)),
+					procDescriptor.getWrite(3, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerType],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 1)),
+					procDescriptor.getWrite(4, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerType],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 2)),
+					procDescriptor.getWrite(5, pipeDSScence.descriptorSet, procSampler.node[pipeShadow.samplerType], procRenderPass.getFrameImage(renderEnum::renderInstanceId::shadowMap_ri, renderEnum::renderFrameId::conv_rf, 0))
 				};
 
 				vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -549,280 +536,6 @@ private:
 		cpuBuffer.clear(Device.memAllocator);
 	}
 
-	//加载静态模型
-	void loadStaticModel(const std::string& filename, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::vector<shadowVertex::vertexNode>& shadowVertexs) {
-		tinygltf::Model model;
-		tinygltf::TinyGLTF loader;
-		std::string err, warn;
-		std::ifstream file(filename);
-		bool ret;
-
-
-
-		//检查文件是否存在  
-		if (!file.good()) {
-			Log::printError(__FILE__, __LINE__, "模型文件不存在: \t" + filename);
-		}
-		file.close();
-
-		//加载glTF文件（支持二进制和ASCII格式）  
-		if (filename.find(".glb") != std::string::npos) {
-			ret = loader.LoadBinaryFromFile(&model, &err, &warn, filename);
-		}
-		else {
-			ret = loader.LoadASCIIFromFile(&model, &err, &warn, filename);
-		}
-
-		/*if (!warn.empty()) {
-			Log::print("glTF警告: " + warn);	//因为使用KTX管理贴图，故屏蔽gltf缺失贴图的报错
-		}*/
-		if (!ret) {
-			Log::printError(__FILE__, __LINE__, "glTF加载失败:  \t" + err);
-		}
-
-		// 验证基本结构  
-		if (model.meshes.empty()) {
-			Log::printError(__FILE__, __LINE__, "glTF文件不包含任何mesh");
-		}
-
-		if (model.buffers.empty()) {
-			Log::printError(__FILE__, __LINE__, "glTF文件不包含任何buffer数据");
-		}
-
-
-
-		//遍历所有mesh和primitive
-		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
-
-		for (const tinygltf::Mesh& mesh : model.meshes) {
-			loadGltfModel(model, mesh, vertexs, indexs, shadowVertexs, uniqueVertices);
-		}
-
-		if (debugInfo::LogSwitch) {
-			if (vertexs.empty()) {
-				Log::printError(__FILE__, __LINE__, "加载的模型不包含任何顶点");
-			}
-
-			if (indexs.empty()) {
-				Log::printError(__FILE__, __LINE__, "加载的模型不包含任何索引");
-			}
-		}
-	}
-
-	//加载动态模型
-	void loadDynamicModel(const std::string& filename, std::vector<std::vector<modelVertex::vertexNode>>& vertexsList, std::vector<std::vector<uint32_t>>& indexsList, std::vector<std::vector<shadowVertex::vertexNode>>& shadowVertexsList) {
-		tinygltf::Model model;
-		tinygltf::TinyGLTF loader;
-		std::string err, warn;
-		std::ifstream file(filename);
-		bool ret;
-
-
-
-		//检查文件是否存在  
-		if (!file.good()) {
-			Log::printError(__FILE__, __LINE__, "模型文件不存在:  \t" + filename);
-		}
-		file.close();
-
-		//加载glTF文件（支持二进制和ASCII格式）  
-		if (filename.find(".glb") != std::string::npos) {
-			ret = loader.LoadBinaryFromFile(&model, &err, &warn, filename);
-		}
-		else {
-			ret = loader.LoadASCIIFromFile(&model, &err, &warn, filename);
-		}
-
-		/*if (!warn.empty()) {
-			Log::print("glTF警告: " + warn);	//因为使用KTX管理贴图，故屏蔽gltf缺失贴图的报错
-		}*/
-		if (!ret) {
-			Log::printError(__FILE__, __LINE__, "glTF加载失败: \t" + err);
-		}
-
-		if (model.meshes.empty()) {
-			Log::printError(__FILE__, __LINE__, "glTF文件不包含任何mesh");
-		}
-
-		if (model.buffers.empty()) {
-			Log::printError(__FILE__, __LINE__, "glTF文件不包含任何buffer数据");
-		}
-
-
-
-		//遍历所有mesh和primitive
-		std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
-
-		for (int i = 0; i < model.meshes.size(); i++) {
-			loadGltfModel(model, model.meshes[i], vertexsList[i], indexsList[i], shadowVertexsList[i], uniqueVertices);
-
-			if (debugInfo::LogSwitch) {
-				if (vertexsList[i].empty()) {
-					Log::printError(__FILE__, __LINE__, "加载的模型不包含任何顶点");
-				}
-
-				if (indexsList[i].empty()) {
-					Log::printError(__FILE__, __LINE__, "加载的模型不包含任何索引");
-				}
-			}
-		}
-	}
-	
-	void loadGltfModel(const tinygltf::Model& model, const tinygltf::Mesh& mesh, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::vector<shadowVertex::vertexNode>& shadowVertexs, std::unordered_map<modelVertex::vertexNode, uint32_t>& uniqueVertices) {
-		for (const auto& primitive : mesh.primitives) {
-			//获取顶点数据  
-			const float* positions = nullptr;
-			const float* texCoords = nullptr;
-			const float* normals   = nullptr;
-			size_t vertexCount = 0;
-
-			//获取POSITION属性  
-			if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
-				const auto& accessor = model.accessors[primitive.attributes.at("POSITION")];
-				const auto& bufferView = model.bufferViews[accessor.bufferView];
-				const auto& buffer = model.buffers[bufferView.buffer];
-
-				positions = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-				vertexCount = accessor.count;
-			}
-			else {
-				Log::printWarning(__FILE__, __LINE__, "primitive缺少POSITION属性");
-				continue;
-			}
-
-			//获取TEXCOORD_0属性  
-			if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
-				const auto& accessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
-				const auto& bufferView = model.bufferViews[accessor.bufferView];
-				const auto& buffer = model.buffers[bufferView.buffer];
-
-				texCoords = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-			}
-			else {
-				Log::printWarning(__FILE__, __LINE__, "primitive缺少TEXCOORD_0属性");
-				texCoords = nullptr;
-			}
-
-			//获取NORMAL属性 - 添加法线加载
-			if (primitive.attributes.find("NORMAL") != primitive.attributes.end()) {
-				const auto& accessor = model.accessors[primitive.attributes.at("NORMAL")];
-				const auto& bufferView = model.bufferViews[accessor.bufferView];
-				const auto& buffer = model.buffers[bufferView.buffer];
-
-				normals = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-			}
-			else {
-				Log::printWarning(__FILE__, __LINE__, "primitive缺少NORMAL属性，将使用默认法线");
-				normals = nullptr;
-			}
-
-			//存储当前primitive的顶点映射  
-			std::vector<uint32_t> primitiveVertexIndices;
-
-			for (size_t i = 0; i < vertexCount; i++) {
-				modelVertex::vertexNode vertex{};
-
-				//坐标系转换：从glTF的Y向上转换为本引擎的Z向上
-				vertex.position = {
-					positions[i * 3 + 0],     //X保持不变  
-					positions[i * 3 + 2],     //Z -> Y (交换Y和Z)  
-					-positions[i * 3 + 1]     //-Y -> Z (翻转Y轴并赋给Z)  
-				};
-
-				//UV坐标处理
-				if (texCoords) {
-					vertex.texCoord = {
-						texCoords[i * 2 + 0],
-						texCoords[i * 2 + 1]      //glTF标准UV，不翻转  
-					};
-				}
-				else {
-					vertex.texCoord = { 0.0f, 0.0f }; //默认UV坐标
-				}
-
-				//法线处理 - 添加法线加载
-				if (normals) {
-					//法线也需要进行坐标系转换
-					vertex.normal = {
-						normals[i * 3 + 0],      //X保持不变
-						normals[i * 3 + 2],      //Z -> Y (交换Y和Z)
-						-normals[i * 3 + 1]      //-Y -> Z (翻转Y轴并赋给Z)
-					};
-
-					//标准化法线
-					float length = std::sqrt(
-						vertex.normal.x * vertex.normal.x +
-						vertex.normal.y * vertex.normal.y +
-						vertex.normal.z * vertex.normal.z
-					);
-
-					if (length > 0.0f) {
-						vertex.normal.x /= length;
-						vertex.normal.y /= length;
-						vertex.normal.z /= length;
-					}
-				}
-				else {
-					//如果没有法线数据，设置为默认上方向（根据坐标系转换）
-					vertex.normal = { 0.0f, 1.0f, 0.0f }; //Y轴向上
-				}
-
-				//使用顶点去重
-				if (uniqueVertices.count(vertex) == 0) {
-					uniqueVertices[vertex] = static_cast<uint32_t>(vertexs.size());
-
-					vertexs.push_back(vertex);
-					shadowVertexs.push_back(shadowVertex::vertexNode{ vertex.position });
-				}
-
-				//记录原始顶点到去重后顶点的映射
-				primitiveVertexIndices.push_back(uniqueVertices[vertex]);
-			}
-
-			//处理索引数据  
-			if (primitive.indices >= 0) {
-				const auto& accessor = model.accessors[primitive.indices];
-				const auto& bufferView = model.bufferViews[accessor.bufferView];
-				const auto& buffer = model.buffers[bufferView.buffer];
-
-				size_t indexCount = accessor.count;
-
-				if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-					const uint16_t* indices = reinterpret_cast<const uint16_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-
-					for (size_t i = 0; i < indexCount; i++) {
-						uint32_t originalVertexIndex = indices[i];
-						if (originalVertexIndex < primitiveVertexIndices.size()) {
-							indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
-						}
-					}
-				}
-				else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-					const uint32_t* indices = reinterpret_cast<const uint32_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-
-					for (size_t i = 0; i < indexCount; i++) {
-						uint32_t originalVertexIndex = indices[i];
-						if (originalVertexIndex < primitiveVertexIndices.size()) {
-							indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
-						}
-					}
-				}
-				else {
-					Log::printWarning(__FILE__, __LINE__, "不支持的索引类型");
-				}
-			}
-			else {
-				//如果没有索引，生成三角形索引
-				for (size_t i = 0; i < vertexCount; i += 3) {
-					indexs.push_back(primitiveVertexIndices[i]);
-					indexs.push_back(primitiveVertexIndices[i + 1]);
-					indexs.push_back(primitiveVertexIndices[i + 2]);
-				}
-			}
-		}
-	}
-
-
 
 
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bufferStruct::baseBufferNode& baseBufferNode) {
@@ -858,52 +571,6 @@ private:
 		vmaUnmapMemory(Device.memAllocator, tempMemory);
 	}
 
-
-
-	//todo mip与array 倒置，待删除
-	void createImage(uint32_t width, uint32_t height, uint32_t arrayLayer, uint32_t mipLevel, VkFormat format, VkSampleCountFlagBits numSamples, VkImageUsageFlags usage, VkImage& image, VmaAllocation& allocation) {
-		VkImageCreateInfo imageInfo = {};
-		imageInfo.sType			= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		imageInfo.imageType		= VK_IMAGE_TYPE_2D;
-		imageInfo.format		= format;
-		imageInfo.extent.width	= width;
-		imageInfo.extent.height = height;
-		imageInfo.extent.depth	= 1;
-		imageInfo.mipLevels		= mipLevel;
-		imageInfo.arrayLayers	= arrayLayer;
-		imageInfo.samples		= numSamples;
-		imageInfo.tiling		= VK_IMAGE_TILING_OPTIMAL;
-		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageInfo.usage			= usage;
-		imageInfo.sharingMode	= VK_SHARING_MODE_EXCLUSIVE;
-
-		VmaAllocationCreateInfo allocInfo = {};
-		allocInfo.usage			= VMA_MEMORY_USAGE_GPU_ONLY;
-		allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-		if (vmaCreateImage(Device.memAllocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "图像创建失败");
-		}
-	}
-
-	//todo mip与array 倒置，待删除
-	void createImageView(const VkImage& image, VkImageView& view, uint32_t arrayLayer, uint32_t mipLevel, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspectFlags) {
-		VkImageViewCreateInfo viewInfo{};
-		viewInfo.sType							 = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		viewInfo.image							 = image;
-		viewInfo.viewType						 = viewType;
-		viewInfo.format							 = format;
-		viewInfo.subresourceRange.aspectMask	 = aspectFlags;
-		viewInfo.subresourceRange.baseMipLevel	 = 0;
-		viewInfo.subresourceRange.levelCount	 = mipLevel;
-		viewInfo.subresourceRange.baseArrayLayer = 0;
-		viewInfo.subresourceRange.layerCount	 = arrayLayer;
-
-		if (vkCreateImageView(Device.device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "图像视图创建失败");
-		}
-	}
-
 public:
 	//创建cmd
 	void createCmd(int threadId, pipelineList::procPipelineNode& procPipeline) {
@@ -918,7 +585,7 @@ public:
 						if (pipeTerrain.isEnable) {
 							for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
 								if (isNullTerrainMesh(layer)) {
-									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeId), procPipeline.getPipeLayout(pipeShadow.pipeId), pipeShadow.shadow_t.descriptorSet, pipeShadow.shadow_t.vertex[threadId][layer].buffer, pipeTerrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
+									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_t.descriptorSet, pipeShadow.shadow_t.vertex[threadId][layer].buffer, pipeTerrain.index[threadId][layer].buffer, (uint32_t)terrainVertex::indexs[layer].size());
 								}
 							}
 						}
@@ -927,14 +594,14 @@ public:
 						if (pipeModel.isEnable) {
 							for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
 								if (pipeModel.sNode[nodeId].isVisible) {
-									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeId), procPipeline.getPipeLayout(pipeShadow.pipeId), pipeShadow.shadow_ms[nodeId].descriptorSet, pipeShadow.shadow_ms[nodeId].vertex.buffer, pipeModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_ms[nodeId].descriptorSet, pipeShadow.shadow_ms[nodeId].vertex.buffer, pipeModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
 								}
 							}
 
 							for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
 								if (pipeModel.dNode[nodeId].isVisible) {
 									for (int subNode = 0; subNode < pipeShadow.shadow_md[nodeId].size(); subNode++) {
-										recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeId), procPipeline.getPipeLayout(pipeShadow.pipeId), pipeShadow.shadow_md[nodeId][subNode].descriptorSet, pipeShadow.shadow_md[nodeId][subNode].vertex.buffer, pipeModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+										recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_md[nodeId][subNode].descriptorSet, pipeShadow.shadow_md[nodeId][subNode].vertex.buffer, pipeModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
 									}
 								}
 							}
@@ -961,14 +628,14 @@ public:
 					if (pipeModel.isEnable) {
 						for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
 							if (pipeModel.sNode[nodeId].isVisible) {
-								recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeId), procPipeline.getPipeLayout(pipeModel.pipeId), pipeModel.sNode[nodeId].descriptorSet, pipeModel.sNode[nodeId].vertex.buffer, pipeModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
+								recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeType), procPipeline.getPipeLayout(pipeModel.pipeType), pipeModel.sNode[nodeId].descriptorSet, pipeModel.sNode[nodeId].vertex.buffer, pipeModel.sNode[nodeId].index.buffer, (uint32_t)modelVertex::sIndexs[nodeId].size());
 							}
 						}
 
 						for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
 							if (pipeModel.dNode[nodeId].isVisible) {
 								for (int subNode = 0; subNode < pipeModel.dNode[nodeId].node.size(); subNode++) {
-									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeId), procPipeline.getPipeLayout(pipeModel.pipeId), pipeModel.dNode[nodeId].node[subNode].descriptorSet, pipeModel.dNode[nodeId].node[subNode].vertex.buffer, pipeModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
+									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeType), procPipeline.getPipeLayout(pipeModel.pipeType), pipeModel.dNode[nodeId].node[subNode].descriptorSet, pipeModel.dNode[nodeId].node[subNode].vertex.buffer, pipeModel.dNode[nodeId].node[subNode].index.buffer, (uint32_t)modelVertex::dIndexs[nodeId][subNode].size());
 								}
 							}
 						}
@@ -976,12 +643,12 @@ public:
 
 					//pipeSkybox
 					if (pipeSkybox.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeSkybox.pipeId), procPipeline.getPipeLayout(pipeSkybox.pipeId), pipeSkybox.descriptorSet, pipeSkybox.vertex.buffer, pipeSkybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
+						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeSkybox.pipeType), procPipeline.getPipeLayout(pipeSkybox.pipeType), pipeSkybox.descriptorSet, pipeSkybox.vertex.buffer, pipeSkybox.index.buffer, (uint32_t)skyboxVertex::indexs.size());
 					}
 
 					//pipeMine
 					if (pipeMine.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeMine.pipeId), procPipeline.getPipeLayout(pipeMine.pipeId), pipeMine.descriptorSet, pipeMine.vertex.buffer, pipeMine.index.buffer, (uint32_t)mineVertex::indexs.size());
+						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeMine.pipeType), procPipeline.getPipeLayout(pipeMine.pipeType), pipeMine.descriptorSet, pipeMine.vertex.buffer, pipeMine.index.buffer, (uint32_t)mineVertex::indexs.size());
 					}
 
 					recorder.endRender();
@@ -1000,7 +667,7 @@ public:
 
 					//pipeOSMirror
 					if (pipeOSMirror.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeOSMirror.pipeId), procPipeline.getPipeLayout(pipeOSMirror.pipeId), pipeOSMirror.descriptorSet, pipeOSMirror.vertex.buffer, pipeOSMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
+						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeOSMirror.pipeType), procPipeline.getPipeLayout(pipeOSMirror.pipeType), pipeOSMirror.descriptorSet, pipeOSMirror.vertex.buffer, pipeOSMirror.index.buffer, (uint32_t)osMirrorVertex::indexs.size());
 					}
 
 					recorder.endRender();
@@ -1013,16 +680,16 @@ public:
 
 					//pipeOSScence
 					if (pipeOSScence.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::fullscreen, procPipeline.getPipeline(pipeOSScence.pipeId), procPipeline.getPipeLayout(pipeOSScence.pipeId), pipeOSScence.descriptorSet, VK_NULL_HANDLE, VK_NULL_HANDLE, 0, InitSwapchain.swapExtent);
+						recorder.draw(pipelineEnum::cmdDrawId::fullscreen, procPipeline.getPipeline(pipeOSScence.pipeType), procPipeline.getPipeLayout(pipeOSScence.pipeType), pipeOSScence.descriptorSet, VK_NULL_HANDLE, VK_NULL_HANDLE, 0, InitSwapchain.swapExtent);
 					}
 
 					//pipeDSScence
 					if (pipeDSScence.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::fullscreen, procPipeline.getPipeline(pipeDSScence.pipeId), procPipeline.getPipeLayout(pipeDSScence.pipeId), pipeDSScence.descriptorSet, VK_NULL_HANDLE, VK_NULL_HANDLE, 0, InitSwapchain.swapExtent);
+						recorder.draw(pipelineEnum::cmdDrawId::fullscreen, procPipeline.getPipeline(pipeDSScence.pipeType), procPipeline.getPipeLayout(pipeDSScence.pipeType), pipeDSScence.descriptorSet, VK_NULL_HANDLE, VK_NULL_HANDLE, 0, InitSwapchain.swapExtent);
 
 						//pipeUIText
 						if (pipeUIText.isEnable) {
-							recorder.draw(pipelineEnum::cmdDrawId::text, procPipeline.getPipeline(pipeUIText.pipeId), procPipeline.getPipeLayout(pipeUIText.pipeId), pipeUIText.descriptorSet, pipeUIText.vertex.buffer, VK_NULL_HANDLE, pipeUIText.msdfGlyphAtlas.glyphCount);
+							recorder.draw(pipelineEnum::cmdDrawId::text, procPipeline.getPipeline(pipeUIText.pipeType), procPipeline.getPipeLayout(pipeUIText.pipeType), pipeUIText.descriptorSet, pipeUIText.vertex.buffer, VK_NULL_HANDLE, pipeUIText.msdfGlyphAtlas.glyphCount);
 						}
 					}
 
@@ -1373,7 +1040,7 @@ public:
 			std::array<VkWriteDescriptorSet, 3> osMirrorWrite{
 				procDescriptor.getWrite(0, pipeOSMirror.descriptorSet, pipeOSMirror.uniform.buffer,				 sizeof(pipeOSMirror.ubo)),
 				procDescriptor.getWrite(1, pipeOSMirror.descriptorSet, pipeOSMirror.lightUniform.buffer,		 sizeof(pipeOSMirror.lightUbo)),
-				procDescriptor.getWrite(2, pipeOSMirror.descriptorSet, procSampler.node[pipeOSMirror.samplerId], procRenderPass.getFrameImage(renderEnum::renderInstanceId::osMirror_ri, renderEnum::renderFrameId::conv_rf, 2))
+				procDescriptor.getWrite(2, pipeOSMirror.descriptorSet, procSampler.node[pipeOSMirror.samplerType], procRenderPass.getFrameImage(renderEnum::renderInstanceId::osMirror_ri, renderEnum::renderFrameId::conv_rf, 2))
 			};
 			vkUpdateDescriptorSets(Device.device, uint32_t(osMirrorWrite.size()), osMirrorWrite.data(), 0, nullptr);
 		}
@@ -1381,7 +1048,7 @@ public:
 		//pipeOSScence
 		if (pipeOSScence.isEnable) {
 			std::array<VkWriteDescriptorSet, 1> osScenceWrite{
-				procDescriptor.getWrite(2, pipeOSScence.descriptorSet, procSampler.node[pipeOSScence.samplerId], procRenderPass.getFrameImage(renderEnum::renderInstanceId::osScence_ri, renderEnum::renderFrameId::conv_rf, 2))
+				procDescriptor.getWrite(2, pipeOSScence.descriptorSet, procSampler.node[pipeOSScence.samplerType], procRenderPass.getFrameImage(renderEnum::renderInstanceId::osScence_ri, renderEnum::renderFrameId::conv_rf, 2))
 			};
 			vkUpdateDescriptorSets(Device.device, uint32_t(osScenceWrite.size()), osScenceWrite.data(), 0, nullptr);
 		}
@@ -1393,10 +1060,10 @@ public:
 			std::array<VkWriteDescriptorSet, 6> tempWrite{
 				procDescriptor.getWrite(0, pipeDSScence.descriptorSet, pipeDSScence.lightUniform.buffer,		   sizeof(pipeDSScence.lightUbo)),
 				procDescriptor.getWrite(1, pipeDSScence.descriptorSet, pipeDSScence.shadowUniform.buffer,		   sizeof(pipeDSScence.shadowUbo)),
-				procDescriptor.getWrite(2, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerId],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 0)),
-				procDescriptor.getWrite(3, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerId],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 1)),
-				procDescriptor.getWrite(4, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerId],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 2)),
-				procDescriptor.getWrite(5, pipeDSScence.descriptorSet, procSampler.node[pipeShadow.samplerId], procRenderPass.getFrameImage(renderEnum::renderInstanceId::shadowMap_ri, renderEnum::renderFrameId::conv_rf, 0))
+				procDescriptor.getWrite(2, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerType],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 0)),
+				procDescriptor.getWrite(3, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerType],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 1)),
+				procDescriptor.getWrite(4, pipeDSScence.descriptorSet, procSampler.node[pipeDSScence.samplerType],   procRenderPass.getFrameImage(renderEnum::renderInstanceId::dsScence_ri,  renderEnum::renderFrameId::conv_rf, 2)),
+				procDescriptor.getWrite(5, pipeDSScence.descriptorSet, procSampler.node[pipeShadow.samplerType], procRenderPass.getFrameImage(renderEnum::renderInstanceId::shadowMap_ri, renderEnum::renderFrameId::conv_rf, 0))
 			};
 
 			vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);

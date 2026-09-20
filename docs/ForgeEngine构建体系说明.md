@@ -179,10 +179,11 @@ build\vs\bin\
 
 - `Directory.Build.targets` 是 MSBuild 侧覆盖：CMake 并不知道 IntDir 已变（vcxproj 里仍写 `ForgeEngine.dir\Release\`），但不影响构建
 - ForgeEngine 归入 `bin\intermediate\x64\<Config>\`；辅助工程（ForgeShader / ZERO_CHECK / ALL_BUILD）的 IntDir 与 OutDir 一并收到 `bin\intermediate\x64\<Config>\<ProjectName>\`（各自子目录，避免 MSB8028）——它们的默认值分别是 `$(Platform)\$(Configuration)\$(ProjectName)` 与 `$(SolutionDir)$(Platform)\$(Configuration)\`，正是 `build\vs\x64\` 空目录的来源
+- **该覆盖必须排除 CMake 内部工程**：`Directory.Build.targets` 位于 `build\vs`，会被该目录树下**所有** vcxproj 继承 —— 包括 CMake 自己的编译器识别工程 `CMakeFiles\<ver>\CompilerIdCXX\` 与试编译工程 `CMakeFiles\CMakeScratch\TryCompile-*\`。若不加区分地改写它们的 OutDir/IntDir，探测程序 `CompilerIdCXX.exe` 会落到 CMake 找不到的位置 ⇒ `CMakeFiles\<ver>\CMakeCXXCompiler.cmake` 里 `CMAKE_CXX_COMPILER_ID`/`_VERSION` 被写成空串 ⇒ configure 报 `No known features for CXX compiler "" version .`（表层症状：VS / F5 报 `"…\CMakeLists.txt" 的自定义生成已退出，代码为 1`）。故该分支带条件 `'$(ForgeProjectIsCMakeInternal)' != 'True'`（工程目录含 `CMakeFiles` 时不生效）。验证手法：`msbuild <proj> -getProperty:OutDir -p:Configuration=Debug -p:Platform=x64`，`ForgeEngine.vcxproj` 应得 `bin\output\x64\Debug\`、`CompilerIdCXX.vcxproj` 应为 `.\`
 - ForgeEngine 的 `<ImportLibrary>`（CMake 写死 `build\vs\<Config>\ForgeEngine.lib`；EXE 用不到 import lib，但 `Microsoft.CppBuild.targets:1450` 会按 `%(Link.ImportLibrary)` 建目录）改指 `bin\intermediate\…` ⇒ 不再留下空的 `Release\` / `RelWithDebInfo\`
 - 仅剩 4 个空壳目录 `ForgeEngine.dir\`、`ForgeShader.dir\`、`ZERO_CHECK.dir\`、`ALL_BUILD.dir\`（均 0 文件），由生成器每次 configure 创建，无法消除；VS 资源管理器里看不到
 - PCH 包装头 `cmake_pch.hxx`（ClInclude 纯显示项，三份内容字节相同）在同一文件里 `Remove` 掉 ⇒ 工程树只剩必需的 `cmake_pch.cxx`（实测 `msbuild -getItem:ClInclude` 已无该项，构建不受影响；`.hxx` 的路径仍由 `PrecompiledHeaderFile` 元数据提供）
-- 改 `ForgeIntermediate.targets` 后需重新 configure（configure_file 的输入是 configure 依赖）
+- 改 `ForgeIntermediate.targets` 后需重新 configure（configure_file 的输入是 configure 依赖）；若某次 configure 中途失败（如 vcpkg 被拒、被中断），空的 `COMPILER_ID` 会留在缓存里且 **CMake 不会自动重新识别**（只在 `CMakeCXXCompiler.cmake` 缺失时才重跑）—— 需删 `build\vs\CMakeFiles\<ver>\` 或 `fe-clean` 后重配
 
 ### 3.7 解决方案入口与 .vs 位置
 

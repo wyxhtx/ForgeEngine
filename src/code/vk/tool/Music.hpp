@@ -23,7 +23,7 @@ public:
 private:
     void createBackgroundMusic() {
         alutInit(NULL, 0);                                                              //初始化ALUT
-        ALuint buffer = alutCreateBufferFromFile(fileInfo::music::throughTheMounta);    //加载音频文件
+        ALuint buffer = alutCreateBufferFromFile(fileInfo::music::throughTheMounta.c_str());    //加载音频文件
         if (buffer == AL_NONE) {
             Log::printError(__FILE__, __LINE__, "音频文件加载失败");
             alutExit();

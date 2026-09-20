@@ -23,10 +23,17 @@
     </Link>
   </ItemDefinitionGroup>
   <!-- 辅助工程（ALL_BUILD / ZERO_CHECK / ForgeShader）的中间目录与输出目录：默认值分别是 $(Platform)\$(Configuration)\$(ProjectName) 与 $(SolutionDir)$(Platform)\$(Configuration)\
-       ⇒ 会在 build\vs 下留下 x64\ 空目录；两者都收到 bin\intermediate 下各自子目录（互不混放，避免 MSB8028） -->
-  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'ForgeEngine'">
+       ⇒ 会在 build\vs 下留下 x64\ 空目录；两者都收到 bin\intermediate 下各自子目录（互不混放，避免 MSB8028）
+       DesktopDeployRecipeFile 也必须重赋：它在 Microsoft.CppBuild.targets:37 评估期就按当时的 IntDir 定死了，否则构建会报"未能找到路径 …x64\<Config>\<Project>\*.recipe"
+       必须排除 CMake 内部工程（CompilerIdCXX 编译器识别、CMakeScratch\TryCompile-* 试编译，都在 CMakeFiles\ 下）：
+       它们的产物路径由 CMake 掌控，改写会让 CMake 找不到探测程序 ⇒ CMAKE_CXX_COMPILER_ID 变空串、configure 报 "No known features for CXX compiler" -->
+  <PropertyGroup>
+    <ForgeProjectIsCMakeInternal>$(MSBuildProjectDirectory.Contains('CMakeFiles'))</ForgeProjectIsCMakeInternal>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'ForgeEngine' and '$(ForgeProjectIsCMakeInternal)' != 'True'">
     <IntDir>bin\intermediate\$(Platform)\$(Configuration)\$(MSBuildProjectName)\</IntDir>
     <OutDir>bin\intermediate\$(Platform)\$(Configuration)\$(MSBuildProjectName)\</OutDir>
+    <DesktopDeployRecipeFile>bin\intermediate\$(Platform)\$(Configuration)\$(MSBuildProjectName)\$(TargetName)$(TargetExt).recipe</DesktopDeployRecipeFile>
   </PropertyGroup>
   <!-- PCH：CMake 给 cmake_pch.cxx 写死了绝对路径 <Target>.dir\<Config>\cmake_pch.pch，该项元数据在评估期固化，
        PropertyGroup 改不动，只能在 ClCompile 执行前改写 item 元数据（target 内不带 Include 的 ClCompile = 改全部现有项）。 -->

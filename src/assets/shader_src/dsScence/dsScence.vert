@@ -1,5 +1,7 @@
 #version 450
+#ifndef VULKAN
 #extension GL_KHR_vulkan_glsl : enable
+#endif
 
 layout(location = 0) out vec2 fragUV;
 

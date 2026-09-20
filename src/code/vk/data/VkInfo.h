@@ -168,45 +168,41 @@ namespace fileInfo {
 
     namespace image {
         //todo 待整合，着色器，贴图，贴图信息
-        const char* cube       = "src/assets/image/terrain/cube_16_64.ktx2";
+        const std::string cube       = "src/assets/image/terrain/cube_16_64.ktx2";
 
-        const char* temple     = "src/assets/image/model/temple/baseColor.ktx2";
-        const char* droidBodyC = "src/assets/image/model/droid/Body_baseColor.ktx2";
-        const char* droidHeadC = "src/assets/image/model/droid/Head_baseColor.ktx2";
-        const char* droidMiscC = "src/assets/image/model/droid/Misc_baseColor.ktx2";
-        //const char* droidBodyN = "src/assets/image/model/droid/Body_normal.ktx2";
-        //const char* droidHeadN = "src/assets/image/model/droid/Head_normal.ktx2";
-        //const char* droidMiscN = "src/assets/image/model/droid/Misc_normal.ktx2";
+        const std::string temple     = "src/assets/image/model/temple/baseColor.ktx2";
+        const std::string droidBodyC = "src/assets/image/model/droid/Body_baseColor.ktx2";
+        const std::string droidHeadC = "src/assets/image/model/droid/Head_baseColor.ktx2";
+        const std::string droidMiscC = "src/assets/image/model/droid/Misc_baseColor.ktx2";
+        //const std::string droidBodyN = "src/assets/image/model/droid/Body_normal.ktx2";
+        //const std::string droidHeadN = "src/assets/image/model/droid/Head_normal.ktx2";
+        //const std::string droidMiscN = "src/assets/image/model/droid/Misc_normal.ktx2";
     }
 
     namespace model {
         const std::string temple = "src/assets/model/temple/scene.gltf";
         const std::string droid  = "src/assets/model/droid/scene.gltf";
         //const std::string nextTemp = "src/assets/model/nextTemp/scene.gltf";
+
+        //模型路径表：索引 = bufferEnum::procStaticModelId / procDynamicModelId（节点里不再各存一份 modelFile）
+        const std::vector<std::string> staticList{ temple };
+        const std::vector<std::string> dynamicList{ droid };
     }
 
     namespace music {
-        const char* throughTheMounta = "src/assets/music/background/Through the Mounta.wav";
-        //const char* throughTheMounta = "src/music/background/Greedy.wav";
+        const std::string throughTheMounta = "src/assets/music/background/Through the Mounta.wav";
+        //const std::string throughTheMounta = "src/music/background/Greedy.wav";
     }
 
     namespace storage {
-        const char* fullFile  = "storage/chunk/full";       //全存法区块存储路径
-        const char* deltaFile = "storage/chunk/delta";      //变存法区块存储路径
+        const std::string fullFile  = "storage/chunk/full";   //全存法区块存储路径
+        const std::string deltaFile = "storage/chunk/delta";  //变存法区块存储路径
     }
 }
 
 //texture信息
 namespace textureInfo {
     namespace terrain {
-        //todo 待删除
-	    const int tileWidth   = 16;							    //纹理宽度
-	    const int tileHeight  = 16;							    //纹理高度
-	    const int atlasWidth  = 64;							    //图集宽几个纹理
-	    const int atlasHeight = 32;							    //图集高几个纹理
-	    const uint32_t arrayLayer = atlasWidth * atlasHeight;   //图集层数
-
-        //todo
         const VkFormat   colorFormat = VK_FORMAT_R8G8B8A8_UNORM;    //颜色格式
         const VkExtent2D tileExtent  = { 16, 16 };                  //纹理尺寸
         const VkExtent2D atlasExtent = { 64, 32 };                  //图集尺寸
