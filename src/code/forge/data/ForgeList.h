@@ -31,7 +31,7 @@ namespace noiseList {
 		std::vector<float> zPosArray3D{};		//3d z轴坐标数组，在线程间是只读的
 
 		int worldSeed = noiseInfo::worldSeed;	//地形种子
-		
+
 
 
 		procNoiseNode() : node(noiseEnum::noiseId::count), xPosArray2D(plateInfo::cubeArraySquare), zPosArray2D(plateInfo::cubeArraySquare), xPosArray3D(plateInfo::cubeArrayVolume), yPosArray3D(plateInfo::cubeArrayVolume), zPosArray3D(plateInfo::cubeArrayVolume) {
@@ -68,6 +68,8 @@ namespace noiseList {
 				}
 			}
 		}
+
+
 
 		//2D噪音数组
 		void getNoiseArray2D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
@@ -110,7 +112,6 @@ namespace noiseList {
 				}
 			}
 		}
-
 
 	private:
 		int randomSeed(int tempSeed) {

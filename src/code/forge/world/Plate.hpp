@@ -200,8 +200,6 @@ private:
 		}
 	}
 
-
-	
 	//创建区块，生成方块数组数据
 	void createChunk(Chunk& chunk, std::unordered_map<glm::dvec3, std::unordered_map<glm::dvec3, plateStruct::linkStructChunkNode>>& linkStructSet) {
 		std::vector<glm::ivec3> structPosList{};								//结构源点列表，存储结构源点，方块坐标系
@@ -356,6 +354,8 @@ private:
 		chunk.isVisibleDataLock->unlock();
 		chunk.cubeArrayDataLock->unlock();
 	}
+
+
 
 	//判断是否切换噪音算法
 	bool isNoiseExtreme(const glm::dvec3& logicalWorldPos) {

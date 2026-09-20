@@ -115,8 +115,6 @@ private:
 		}
 	}
 
-
-
 	//按键回调处理，只适用于不需要长按的按钮
 	void keyHandle(GLFWwindow* window, int key, int scancode, int action, int mods) {
 		if (action == GLFW_PRESS) {

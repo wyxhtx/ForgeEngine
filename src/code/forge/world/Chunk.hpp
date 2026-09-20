@@ -34,14 +34,6 @@ public:
 
 
 
-	//初始化区块
-	void InitChunk(const glm::dvec3 origin, const glm::dvec3 chunkPos0) {
-		originOffset	= origin;
-		chunkPos		= chunkPos0;
-		logicalWorldPos = chunkPos * (double)plateInfo::chunkLength;
-		actualWorldPos  = glm::ivec3(logicalWorldPos - origin);
-	}
-
 	//创建区块网格数据
 	void createChunkMeshData() {
 		std::vector<std::vector<std::unordered_map<glm::ivec3, short>>> visibleFaceMap(6, std::vector<std::unordered_map<glm::ivec3, short>>(plateInfo::chunkLength));	//方块坐标为键，方块ID为值，存储所有可见面，[0,31]
@@ -488,6 +480,16 @@ public:
 		}
 	}
 
+
+
+	//初始化区块
+	void InitChunk(const glm::dvec3 origin, const glm::dvec3 chunkPos0) {
+		originOffset	= origin;
+		chunkPos		= chunkPos0;
+		logicalWorldPos = chunkPos * (double)plateInfo::chunkLength;
+		actualWorldPos  = glm::ivec3(logicalWorldPos - origin);
+	}
+
 private:
 	plateStruct::chunkMeshSignNode chunkMeshSignList[6];			//区块网格标识列表，按照先0~5面再0~31层的顺序维护网格列表
 
@@ -572,6 +574,8 @@ private:
 
 		indexOffset += 4;
 	}
+
+
 
 	//i：		朝向id
 	//faceId：	纹理id

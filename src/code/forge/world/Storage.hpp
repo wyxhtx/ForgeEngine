@@ -93,8 +93,6 @@ private:
 		}
 	}
 
-
-
 	//全存法保存区块文件
 	void saveFullChunk(glm::dvec3 regionPos, Chunk& chunk) {
 		storageStruct::saveFileNode saveChunkFile{ getChunkPath(fileInfo::storage::fullFile, regionPos, chunk.chunkPos) };

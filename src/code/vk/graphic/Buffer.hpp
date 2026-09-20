@@ -42,7 +42,7 @@ public:
 		if (pipeOSScence.isEnable)	 { pipeOSScence	 .clear(Device.device, Device.memAllocator); }
 		if (pipeDSScence.isEnable)	 { pipeDSScence	 .clear(Device.device, Device.memAllocator); }
 		if (pipeShadow.isEnable) { pipeShadow.clear(Device.device, Device.memAllocator); }
-		
+
 		if (debugInfo::LogSwitch) {
 			Log::print("Buffer已清除");
 		}
@@ -977,17 +977,17 @@ public:
 		if (pipeDSScence.isEnable) {
 			pipeDSScence.lightUbo.viewPos	  = glm::vec3{ camera.pos - logicOriginPos };		//位置
 			pipeDSScence.lightUbo.currentHour = currentHour;								//时间
-			
+
 			//点光源
 			pipeDSScence.lightUbo.pointLightList[0].position = offsetPos;					//位置
 			pipeDSScence.lightUbo.pointLightList[0].radius	 = 16.0f;						//半径
 			pipeDSScence.lightUbo.pointLightList[0].color	 = glm::vec3(1.0f);				//颜色
-		
+
 			//平行光
 			pipeDSScence.lightUbo.dirLightList[0].direction = lightInfo::sunLightDir;		//方向
 			pipeDSScence.lightUbo.dirLightList[0].scale		= 0.5f;							//强度
 			pipeDSScence.lightUbo.dirLightList[0].color		= lightInfo::sunLightColor;		//颜色
-		
+
 			//聚光灯
 			pipeDSScence.lightUbo.spotLightList[0].position  = glm::vec3{ camera.pos - logicOriginPos };		//位置
 			pipeDSScence.lightUbo.spotLightList[0].inner	 = glm::cos(glm::radians(12.5f));			//内圆锥
@@ -1002,7 +1002,7 @@ public:
 			createMemMap(pipeDSScence.shadowUniform.bufferMem, &pipeDSScence.shadowUbo, sizeof(pipeDSScence.shadowUbo));
 		}
 	}
-	
+
 	//绘制uiText
 	void drawUIText(int fps) {
 		if (pipeUIText.isEnable) {
@@ -1079,7 +1079,7 @@ private:
 	bool isNullTerrainMesh(int layer) {
 		return terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size();
 	}
-	
+
 public:
 	const std::vector<bufferStruct::descriptorNode>& getDstList() {
 		return procDescriptor.node;
