@@ -1038,10 +1038,20 @@ namespace bufferStruct {
 
 
 
-		//创建cpuBuffer
+		//创建 cpuBuffer
 		baseBufferNode(const void* bufferData, VkDeviceSize bufferSize, VkBufferUsageFlags bufferUsage, VkMemoryPropertyFlags memProperty, const VmaAllocator& memAllocator) {
 			createBuffer(bufferSize, bufferUsage, memProperty, memAllocator);
 			createMemMap(bufferData, bufferSize, memAllocator);
+		}
+
+		//创建 buffer
+		baseBufferNode(VkDeviceSize bufferSize, VkBufferUsageFlags bufferUsage, VkMemoryPropertyFlags memProperty, const VmaAllocator& memAllocator) {
+			createBuffer(bufferSize, bufferUsage, memProperty, memAllocator);
+		}
+
+		//创建 uniformBuffer
+		baseBufferNode(VkDeviceSize bufferSize, const VmaAllocator& memAllocator) {
+			createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator);
 		}
 
 		//todo
@@ -1050,6 +1060,16 @@ namespace bufferStruct {
 
 
 
+		//写入缓冲数据
+		void createMemMap(const void* bufferData, VkDeviceSize bufferSize, const VmaAllocator& memAllocator) {
+			void* memMap{};
+
+			vmaMapMemory(memAllocator, bufferMem, &memMap);
+			memcpy(memMap, bufferData, bufferSize);
+			vmaUnmapMemory(memAllocator, bufferMem);
+		}
+
+		//清理buffer
 		void clear(const VmaAllocator& memAllocator) {
 			vmaDestroyBuffer(memAllocator, buffer, bufferMem);
 		}
@@ -1068,16 +1088,54 @@ namespace bufferStruct {
 
 			vmaCreateBuffer(memAllocator, &bufferInfo, &memInfo, &buffer, &bufferMem, nullptr);
 		}
+	};
 
-		//创建memMap
-		void createMemMap(const void* bufferData, VkDeviceSize bufferSize, const VmaAllocator& memAllocator) {
-			void* memMap{};
+	//meshBuffer结点
+	struct meshBufferNode {
+		baseBufferNode vertex{};        //顶点缓冲
+		baseBufferNode index{};         //索引缓冲
 
-			vmaMapMemory(memAllocator, bufferMem, &memMap);
-			memcpy(memMap, bufferData, bufferSize);
-			vmaUnmapMemory(memAllocator, bufferMem);
+
+
+		//创建网格缓冲：顶点容器 + 索引表 → 暂存 cpuBuffer → deviceLocal
+		void create(const auto& vertexNode, const std::vector<uint32_t>& indexList, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+			VkDeviceSize vertexSize = sizeof(vertexNode[0]) * vertexNode.size();
+			VkDeviceSize indexSize  = sizeof(indexList[0])  * indexList.size();
+
+			baseBufferNode cpuVertex{ vertexNode.data(), vertexSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+			baseBufferNode cpuIndex { indexList.data(),  indexSize,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+
+			vertex = baseBufferNode{ vertexSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memAllocator };
+			index  = baseBufferNode{ indexSize,  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memAllocator };
+
+			cmd.copyBufferToBuffer(device, graphicsQueue, cpuVertex.buffer, vertex.buffer, vertexSize);
+			cmd.copyBufferToBuffer(device, graphicsQueue, cpuIndex.buffer,  index.buffer,  indexSize);
+
+			cpuVertex.clear(memAllocator);
+			cpuIndex.clear(memAllocator);
+		}
+
+		//创建仅顶点网格缓冲（阴影等，索引复用源网格）
+		void create(const auto& vertexNode, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+			VkDeviceSize vertexSize = sizeof(vertexNode[0]) * vertexNode.size();
+
+			baseBufferNode cpuVertex{ vertexNode.data(), vertexSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+
+			vertex = baseBufferNode{ vertexSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memAllocator };
+
+			cmd.copyBufferToBuffer(device, graphicsQueue, cpuVertex.buffer, vertex.buffer, vertexSize);
+
+			cpuVertex.clear(memAllocator);
+		}
+
+		//清理网格缓冲
+		void clear(const VmaAllocator& memAllocator) {
+			vertex.clear(memAllocator);
+			index.clear(memAllocator);
 		}
 	};
+
+
 
 	//imageBuffer结点
 	struct imageBufferNode {
@@ -2447,23 +2505,16 @@ namespace bufferStruct {
 
 	/*管线缓冲区*/
 	struct pipeTerrainNode {
-		//程序化索引
-		bool isEnable;
-		pipelineEnum::procPipelineId::type pipeType;    //管线索引
-		bufferEnum::procSamplerId::type samplerType;    //采样索引
+		bool isEnable;																			//启用标识
+		pipelineEnum::procPipelineId::type pipeType;											//管线索引
+		bufferEnum::procSamplerId::type samplerType;											//采样索引
 
-		//todo baseBufferNode    mesh[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];     //网格缓冲
-		baseBufferNode vertex[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
-		baseBufferNode index[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
+		meshBufferNode    mesh[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];	//网格缓冲
+		textureBufferNode texture{};															//纹理缓冲
+		baseBufferNode    uniform;																//统一缓冲
+		mvpUBO            ubo;
 
-		textureBufferNode texture{};                    //纹理缓冲
-
-		//统一缓冲
-		baseBufferNode uniform;
-		mvpUBO ubo;
-
-		//描述缓冲
-		VkDescriptorSet descriptorSet;
+		VkDescriptorSet descriptorSet;															//描述缓冲
 
 
 
@@ -2473,12 +2524,20 @@ namespace bufferStruct {
 
 
 
-		//创建地形纹理：KTX 图集按 tile 切成纹理数组
+		//创建地形纹理（KTX 图集按 tile 切成纹理数组）与网格缓冲
 		void create(const std::string& imageFile, VkFormat colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			texture.textureFile = imageFile;
 
 			if (isEnable) {
 				texture.createKtxArray(colorFormat, tileExtent, atlasExtent, cmd, device, graphicsQueue, memAllocator);
+
+				for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
+					for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
+						mesh[thread][layer].create(terrainVertex::vertexs[layer], terrainVertex::indexs[layer], cmd, device, graphicsQueue, memAllocator);
+					}
+				}
+
+				uniform = baseBufferNode{ sizeof(ubo), memAllocator };
 			}
 		}
 
@@ -2486,8 +2545,7 @@ namespace bufferStruct {
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
 			for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
 				for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
-					vmaDestroyBuffer(memAllocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMem);
-					vmaDestroyBuffer(memAllocator, index[thread][layer].buffer, index[thread][layer].bufferMem);
+					mesh[thread][layer].clear(memAllocator);
 				}
 			}
 
@@ -2500,27 +2558,19 @@ namespace bufferStruct {
 
 
 	struct modelStaticNode {
-		//程序化索引
-		bufferEnum::procSamplerId::type samplerType;  //采样索引
+		bufferEnum::procSamplerId::type samplerType;	//采样索引
 
-		//网格缓冲
-		baseBufferNode vertex;
-		baseBufferNode index;
+		meshBufferNode    mesh;							//网格缓冲
+		textureBufferNode texture{};					//纹理缓冲
+		baseBufferNode    uniform;						//统一缓冲
+		mvpUBO            ubo;
 
-		//纹理缓冲
-		textureBufferNode texture{};
-
-		//统一缓冲
-		baseBufferNode uniform;
-		mvpUBO ubo;
-
-		//描述缓冲
-		VkDescriptorSet descriptorSet;
+		VkDescriptorSet descriptorSet;					//描述缓冲
 
 		//用于屏蔽超出视觉范围模型的命令提交和统一缓冲更新
-		glm::dvec3 modelWorldPos;           //模型世界坐标（d世界坐标系），在初始化时赋值
-		glm::dvec3 currentWorldPos;         //当前世界坐标（d世界坐标系），在更新统一缓冲时赋值
-		bool isVisible = true;              //模型可见标识，在提交命令时赋值
+		glm::dvec3 modelWorldPos;						//模型世界坐标（d世界坐标系），在初始化时赋值
+		glm::dvec3 currentWorldPos;						//当前世界坐标（d世界坐标系），在更新统一缓冲时赋值
+		bool       isVisible = true;					//模型可见标识，在提交命令时赋值
 
 
 
@@ -2536,8 +2586,7 @@ namespace bufferStruct {
 
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-			vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
-			vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
+			mesh.clear(memAllocator);
 
 			texture.clear(device, memAllocator);
 			vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
@@ -2545,25 +2594,17 @@ namespace bufferStruct {
 	};
 
 	struct modelDynamicSubNode {
-		//网格缓冲
-		baseBufferNode vertex;
-		baseBufferNode index;
+		meshBufferNode    mesh;			//网格缓冲
+		textureBufferNode texture{};	//纹理缓冲
+		baseBufferNode    uniform;		//统一缓冲
+		mvpUBO            ubo;
 
-		//纹理缓冲
-		textureBufferNode texture{};
-
-		//统一缓冲
-		baseBufferNode uniform;
-		mvpUBO ubo;
-
-		//描述缓冲
-		VkDescriptorSet descriptorSet;
+		VkDescriptorSet descriptorSet;	//描述缓冲
 
 
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-			vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
-			vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
+			mesh.clear(memAllocator);
 
 			texture.clear(device, memAllocator);
 			vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
@@ -2607,9 +2648,8 @@ namespace bufferStruct {
 	};
 	
 	struct pipeModelNode {
-		//程序化索引
-		bool isEnable;
-		pipelineEnum::procPipelineId::type pipeType;  //管线索引
+		bool isEnable;									//启用标识
+		pipelineEnum::procPipelineId::type pipeType;	//管线索引
 
 		std::vector<bufferStruct::modelStaticNode>  sNode{};
 		std::vector<bufferStruct::modelDynamicNode> dNode{};
@@ -2622,6 +2662,7 @@ namespace bufferStruct {
 
 
 
+		//创建模型纹理与网格缓冲（含 glTF 加载）
 		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			sNode.emplace_back(bufferEnum::procSamplerId::staticModel_sn, glm::dvec3(0, 32, 0), fileInfo::image::temple);
 
@@ -2644,6 +2685,34 @@ namespace bufferStruct {
 				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
 					for (int j = 0; j < dNode[i].node.size(); j++) {
 						dNode[i].node[j].texture.createKtx(cmd, device, graphicsQueue, memAllocator);
+					}
+				}
+
+				//网格缓冲
+				for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+					loadStaticModel(fileInfo::model::staticList[i], modelVertex::sVertexs[i], modelVertex::sIndexs[i], shadowVertex::sVertexs[i]);
+
+					sNode[i].mesh.create(modelVertex::sVertexs[i], modelVertex::sIndexs[i], cmd, device, graphicsQueue, memAllocator);
+				}
+
+				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+					shadowVertex::dVertexs[i].resize(modelVertex::dIndexs[i].size());
+
+					loadDynamicModel(fileInfo::model::dynamicList[i], modelVertex::dVertexs[i], modelVertex::dIndexs[i], shadowVertex::dVertexs[i]);
+
+					for (int j = 0; j < dNode[i].node.size(); j++) {
+						dNode[i].node[j].mesh.create(modelVertex::dVertexs[i][j], modelVertex::dIndexs[i][j], cmd, device, graphicsQueue, memAllocator);
+					}
+				}
+
+				//统一缓冲
+				for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+					sNode[i].uniform = baseBufferNode{ sizeof(sNode[i].ubo), memAllocator };
+				}
+
+				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+					for (int j = 0; j < dNode[i].node.size(); j++) {
+						dNode[i].node[j].uniform = baseBufferNode{ sizeof(dNode[i].node[j].ubo), memAllocator };
 					}
 				}
 			}
@@ -2933,22 +3002,16 @@ namespace bufferStruct {
 
 
 	struct pipeSkyboxNode {
-		//程序化索引
-		bool isEnable;
-		pipelineEnum::procPipelineId::type pipeType;  //管线索引
+		bool isEnable;									//启用标识
+		pipelineEnum::procPipelineId::type pipeType;	//管线索引
 
-		//网格缓冲
-		baseBufferNode vertex;
-		baseBufferNode index;
-
-		//统一缓冲
-		baseBufferNode uniform;
-		mvpUBO ubo;
-		baseBufferNode lightUniform;
+		meshBufferNode  mesh;							//网格缓冲
+		baseBufferNode  uniform;						//统一缓冲
+		mvpUBO          ubo;
+		baseBufferNode  lightUniform;
 		forwardLightUBO lightUbo;
 
-		//描述缓冲
-		VkDescriptorSet descriptorSet;
+		VkDescriptorSet descriptorSet;					//描述缓冲
 
 
 
@@ -2958,9 +3021,19 @@ namespace bufferStruct {
 
 
 
+		//创建网格缓冲
+		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+			if (isEnable) {
+				mesh.create(skyboxVertex::vertexs, skyboxVertex::indexs, cmd, device, graphicsQueue, memAllocator);
+
+				//统一缓冲
+				uniform      = baseBufferNode{ sizeof(ubo),      memAllocator };
+				lightUniform = baseBufferNode{ sizeof(lightUbo), memAllocator };
+			}
+		}
+
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-			vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
-			vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
+			mesh.clear(memAllocator);
 
 			vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
 			vmaDestroyBuffer(memAllocator, lightUniform.buffer, lightUniform.bufferMem);
@@ -2968,20 +3041,14 @@ namespace bufferStruct {
 	};
 
 	struct pipeMineNode {
-		//程序化索引
-		bool isEnable;
-		pipelineEnum::procPipelineId::type pipeType;  //管线索引
+		bool isEnable;									//启用标识
+		pipelineEnum::procPipelineId::type pipeType;	//管线索引
 
-		//网格缓冲
-		baseBufferNode vertex;
-		baseBufferNode index;
+		meshBufferNode mesh;							//网格缓冲
+		baseBufferNode uniform;							//统一缓冲
+		mvpUBO         ubo;
 
-		//统一缓冲
-		baseBufferNode uniform;
-		mvpUBO ubo;
-
-		//描述缓冲
-		VkDescriptorSet descriptorSet;
+		VkDescriptorSet descriptorSet;					//描述缓冲
 
 
 
@@ -2991,26 +3058,33 @@ namespace bufferStruct {
 
 
 
+		//创建网格缓冲
+		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+			if (isEnable) {
+				mesh.create(mineVertex::vertexs, mineVertex::indexs, cmd, device, graphicsQueue, memAllocator);
+
+				//统一缓冲
+				uniform = baseBufferNode{ sizeof(ubo), memAllocator };
+			}
+		}
+
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-			vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
-			vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
+			mesh.clear(memAllocator);
 
 			vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
 		}
 	};
 
 	struct pipeUITextNode {
-		//程序化索引
-		bool isEnable;
-		pipelineEnum::procPipelineId::type pipeType;  //管线索引
-		bufferEnum::procSamplerId::type samplerType;  //采样索引
+		bool isEnable;																	//启用标识
+		pipelineEnum::procPipelineId::type pipeType;									//管线索引
+		bufferEnum::procSamplerId::type samplerType;									//采样索引
 
-		baseBufferNode  vertex{};                                                           //网格缓冲
-		uiStruct::msdfGlyphAtlasNode msdfGlyphAtlas{ fileInfo::font::sourceHanSansSC };     //字体图集
-		textureBufferNode texture{};                                                        //纹理缓冲，MTSDF 图集，RGBA8，mip=1
+		baseBufferNode vertex{};														//网格缓冲
+		uiStruct::msdfGlyphAtlasNode msdfGlyphAtlas{ fileInfo::font::sourceHanSansSC };	//字体图集
+		textureBufferNode texture{};													//纹理缓冲，MTSDF 图集，RGBA8，mip=1
 
-		//描述缓冲
-		VkDescriptorSet descriptorSet;
+		VkDescriptorSet descriptorSet;													//描述缓冲
 
 
 
@@ -3020,9 +3094,11 @@ namespace bufferStruct {
 
 
 
-		//创建字体图集纹理
+		//创建字体图集纹理与顶点缓冲
 		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			if (isEnable) {
+				vertex = baseBufferNode{ 2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+
 				texture.createText(msdfGlyphAtlas.data.data(), msdfGlyphAtlas.data.size(), static_cast<uint32_t>(msdfGlyphAtlas.width), static_cast<uint32_t>(msdfGlyphAtlas.height), cmd, device, graphicsQueue, memAllocator);
 			}
 		}
@@ -3034,23 +3110,17 @@ namespace bufferStruct {
 	};
 
 	struct pipeOSMirrorNode {
-		//程序化索引
-		bool isEnable;
-		pipelineEnum::procPipelineId::type pipeType;  //管线索引
-		bufferEnum::procSamplerId::type samplerType;  //采样索引
+		bool isEnable;									//启用标识
+		pipelineEnum::procPipelineId::type pipeType;	//管线索引
+		bufferEnum::procSamplerId::type samplerType;	//采样索引
 
-		//网格缓冲
-		baseBufferNode vertex;
-		baseBufferNode index;
-
-		//统一缓冲
-		baseBufferNode uniform;
-		mvpUBO ubo;
-		baseBufferNode lightUniform;
+		meshBufferNode  mesh;							//网格缓冲
+		baseBufferNode  uniform;						//统一缓冲
+		mvpUBO          ubo;
+		baseBufferNode  lightUniform;
 		forwardLightUBO lightUbo;
 
-		//描述缓冲
-		VkDescriptorSet descriptorSet;
+		VkDescriptorSet descriptorSet;					//描述缓冲
 
 
 
@@ -3060,9 +3130,19 @@ namespace bufferStruct {
 
 
 
+		//创建网格缓冲
+		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+			if (isEnable) {
+				mesh.create(osMirrorVertex::vertexs, osMirrorVertex::indexs, cmd, device, graphicsQueue, memAllocator);
+
+				//统一缓冲
+				uniform      = baseBufferNode{ sizeof(ubo),      memAllocator };
+				lightUniform = baseBufferNode{ sizeof(lightUbo), memAllocator };
+			}
+		}
+
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-			vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
-			vmaDestroyBuffer(memAllocator, index.buffer, index.bufferMem);
+			mesh.clear(memAllocator);
 
 			vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
 			vmaDestroyBuffer(memAllocator, lightUniform.buffer, lightUniform.bufferMem);
@@ -3070,13 +3150,11 @@ namespace bufferStruct {
 	};
 
 	struct pipeOSScenceNode {
-		//程序化索引
-		bool isEnable;
-		pipelineEnum::procPipelineId::type pipeType;  //管线索引
-		bufferEnum::procSamplerId::type samplerType;  //采样索引
+		bool isEnable;									//启用标识
+		pipelineEnum::procPipelineId::type pipeType;	//管线索引
+		bufferEnum::procSamplerId::type samplerType;	//采样索引
 
-		//描述缓冲
-		VkDescriptorSet descriptorSet;
+		VkDescriptorSet descriptorSet;					//描述缓冲
 
 
 
@@ -3092,19 +3170,16 @@ namespace bufferStruct {
 	};
 
 	struct pipeDSScenceNode {
-		//程序化索引
-		bool isEnable;
-		pipelineEnum::procPipelineId::type pipeType;  //管线索引
-		bufferEnum::procSamplerId::type samplerType;  //采样索引
+		bool isEnable;									//启用标识
+		pipelineEnum::procPipelineId::type pipeType;	//管线索引
+		bufferEnum::procSamplerId::type samplerType;	//采样索引
 
-		//统一缓冲
-		baseBufferNode lightUniform;
-		deferredLightUBO lightUbo;
-		baseBufferNode shadowUniform;
+		baseBufferNode    lightUniform;					//统一缓冲
+		deferredLightUBO  lightUbo;
+		baseBufferNode    shadowUniform;
 		deferredShadowUBO shadowUbo;
 
-		//描述缓冲
-		VkDescriptorSet descriptorSet;
+		VkDescriptorSet descriptorSet;					//描述缓冲
 
 
 
@@ -3113,6 +3188,14 @@ namespace bufferStruct {
 		pipeDSScenceNode() = delete;
 
 
+
+		//创建统一缓冲
+		void create(const VmaAllocator& memAllocator) {
+			if (isEnable) {
+				lightUniform  = baseBufferNode{ sizeof(lightUbo),  memAllocator };
+				shadowUniform = baseBufferNode{ sizeof(shadowUbo), memAllocator };
+			}
+		}
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
 			vmaDestroyBuffer(memAllocator, lightUniform.buffer,  lightUniform.bufferMem);
@@ -3123,22 +3206,18 @@ namespace bufferStruct {
 
 
 	struct shadowTerrainNode {
-		//网格缓冲，索引直接用源网格的
-		baseBufferNode vertex[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];
+		meshBufferNode mesh[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];	//网格缓冲，索引直接用源网格的
+		baseBufferNode shadowMvpUniform;														//统一缓冲
+		shadowMvpUBO   shadowMvpUbo;
 
-		//统一缓冲
-		baseBufferNode shadowMvpUniform;
-		shadowMvpUBO shadowMvpUbo;
-
-		//描述缓冲
-		VkDescriptorSet descriptorSet;
+		VkDescriptorSet descriptorSet;															//描述缓冲
 
 
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
 			for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
 				for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
-					vmaDestroyBuffer(memAllocator, vertex[thread][layer].buffer, vertex[thread][layer].bufferMem);
+					mesh[thread][layer].clear(memAllocator);
 				}
 			}
 
@@ -3147,37 +3226,31 @@ namespace bufferStruct {
 	};
 
 	struct shadowModelNode {
-		//网格缓冲，索引直接用源网格的
-		baseBufferNode vertex;
+		meshBufferNode mesh;				//网格缓冲，索引直接用源网格的
+		baseBufferNode shadowMvpUniform;	//统一缓冲
+		shadowMvpUBO   shadowMvpUbo;
 
-		//统一缓冲
-		baseBufferNode shadowMvpUniform;
-		shadowMvpUBO shadowMvpUbo;
-
-		//描述缓冲
-		VkDescriptorSet descriptorSet;
+		VkDescriptorSet descriptorSet;		//描述缓冲
 
 
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-			vmaDestroyBuffer(memAllocator, vertex.buffer, vertex.bufferMem);
+			mesh.clear(memAllocator);
 
 			vmaDestroyBuffer(memAllocator, shadowMvpUniform.buffer, shadowMvpUniform.bufferMem);
 		}
 	};
 	
 	struct pipeShadowNode {
-		//程序化索引
-		bool isEnable;
-		pipelineEnum::procPipelineId::type pipeType;  //管线索引
-		bufferEnum::procSamplerId::type samplerType;  //采样索引
+		bool isEnable;															//启用标识
+		pipelineEnum::procPipelineId::type pipeType;							//管线索引
+		bufferEnum::procSamplerId::type samplerType;							//采样索引
 
-		bufferStruct::shadowTerrainNode shadow_t{};                             //地形阴影
-		std::vector<bufferStruct::shadowModelNode> shadow_ms{};                 //静态模型阴影
-		std::vector<std::vector<bufferStruct::shadowModelNode>> shadow_md{};    //动态模型阴影
+		bufferStruct::shadowTerrainNode shadow_t{};								//地形阴影
+		std::vector<bufferStruct::shadowModelNode> shadow_ms{};					//静态模型阴影
+		std::vector<std::vector<bufferStruct::shadowModelNode>> shadow_md{};	//动态模型阴影
 
-		//辅助shadowMvp计算
-		glm::mat4 shadowProj{};
+		glm::mat4 shadowProj{};													//辅助shadowMvp计算
 		glm::mat4 shadowVP{};
 
 
@@ -3188,10 +3261,61 @@ namespace bufferStruct {
 
 
 
-		//创建阴影结点列表：按模型 id 数量准备
-		void create() {
+		//创建阴影结点列表与网格缓冲（顶点随源网格，索引直接用源网格的）
+		void create(bool terrainEnable, bool modelEnable, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			shadow_ms.resize(bufferEnum::procStaticModelId::count);
 			shadow_md.resize(bufferEnum::procDynamicModelId::count);
+
+			if (modelEnable) {
+				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+					shadow_md[i].resize(modelVertex::dIndexs[i].size());
+				}
+			}
+
+			if (isEnable) {
+				//shadow-pipeTerrain
+				if (terrainEnable) {
+					for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
+						shadowVertex::loadTerrainVertexs(layer);
+
+						for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
+							shadow_t.mesh[thread][layer].create(shadowVertex::tVertexs[layer], cmd, device, graphicsQueue, memAllocator);
+						}
+					}
+				}
+
+				//shadow-model
+				if (modelEnable) {
+					//shadow-sNode
+					for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+						shadow_ms[i].mesh.create(shadowVertex::sVertexs[i], cmd, device, graphicsQueue, memAllocator);
+					}
+
+					//shadow-dNode
+					for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+						for (int j = 0; j < shadow_md[i].size(); j++) {
+							shadow_md[i][j].mesh.create(shadowVertex::dVertexs[i][j], cmd, device, graphicsQueue, memAllocator);
+						}
+					}
+				}
+
+				//统一缓冲
+				if (terrainEnable) {
+					shadow_t.shadowMvpUniform = baseBufferNode{ sizeof(shadow_t.shadowMvpUbo), memAllocator };
+				}
+
+				if (modelEnable) {
+					for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+						shadow_ms[i].shadowMvpUniform = baseBufferNode{ sizeof(shadow_ms[i].shadowMvpUbo), memAllocator };
+					}
+
+					for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+						for (int j = 0; j < shadow_md[i].size(); j++) {
+							shadow_md[i][j].shadowMvpUniform = baseBufferNode{ sizeof(shadow_md[i][j].shadowMvpUbo), memAllocator };
+						}
+					}
+				}
+			}
 		}
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {

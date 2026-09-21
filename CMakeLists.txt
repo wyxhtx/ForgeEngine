@@ -184,3 +184,24 @@ if (FORGE_SHADER_SRC_FILES)
   source_group(TREE "${CMAKE_SOURCE_DIR}/src/assets" PREFIX "src/assets" FILES ${FORGE_SHADER_SRC_FILES})
   target_sources(ForgeEngine PRIVATE ${FORGE_SHADER_SRC_FILES})
 endif()
+
+# ---- 运行时资源随构建复制到 exe 同级 ----
+# 目的：从输出目录直接运行 exe（工作目录=输出目录，含双击）也能找到资源，免去手动拷贝
+# 落点：镜像 src\assets 相对路径（代码 fileInfo 用的是 "src/assets/..."，与 F5 工作目录=项目根一致）
+# 范围：只复制运行时真正读取的 5 个子目录；shader_src\（GLSL 源）、image_src\（png 源）不复制
+# 时机：POST_BUILD —— ForgeShader 已由 add_dependencies 先产出 spv，故 spv 一并复制
+# 增量：CMake ≥3.26 用 copy_directory_if_different（只复制有差异的文件，资源约 115MB）；旧版回退全量
+set(FORGE_RUNTIME_ASSET_DIRS shader image model music font)                     # 运行时资源子目录
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.26)
+    set(FORGE_ASSET_COPY_CMD copy_directory_if_different)                       # 只复制有差异的文件
+else()
+    set(FORGE_ASSET_COPY_CMD copy_directory)                                    # 3.24/3.25 回退：全量复制
+endif()
+foreach(FORGE_ASSET_DIR IN LISTS FORGE_RUNTIME_ASSET_DIRS)                      # 逐目录复制（保持相对结构）
+    add_custom_command(TARGET ForgeEngine POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E ${FORGE_ASSET_COPY_CMD}
+                "${CMAKE_SOURCE_DIR}/src/assets/${FORGE_ASSET_DIR}"
+                "$<TARGET_FILE_DIR:ForgeEngine>/src/assets/${FORGE_ASSET_DIR}"
+        COMMENT "复制运行时资源：src/assets/${FORGE_ASSET_DIR} → 输出目录"
+        VERBATIM)
+endforeach()
