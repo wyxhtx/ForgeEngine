@@ -25,15 +25,6 @@ private:
 	float yMouseSpeed = 0.1f;       //鼠标移动Y速率
 
 public:
-	//键盘处理
-	void keyHandle(glm::vec3 direction) {
-		static glm::vec3 xAxis{ -1.0f, 0.0f, 0.0f };
-
-		node.pos += keySpeed * (direction.x * glm::vec3{ node.rota * xAxis } - direction.y * node.front + direction.z * glm::vec3{cameraInfo::worldUp});
-
-		updateView();
-	}
-
 	//鼠标处理
 	void mouseHandle(float deltaX, float deltaY) {
 		static glm::quat initRota = { 1.0f, 0.0f, 0.0f, 0.0f };
@@ -57,11 +48,22 @@ public:
 		updateView();
 	}
 
+	//键盘处理
+	void keyHandle(const glm::vec3& direction) {
+		static glm::vec3 xAxis{ -1.0f, 0.0f, 0.0f };
+
+		node.pos += keySpeed * (direction.x * glm::vec3{ node.rota * xAxis } - direction.y * node.front + direction.z * glm::vec3{cameraInfo::worldUp});
+
+		updateView();
+	}
+
 	//滚轮处理
 	void scrollHandle(float scrollOffset) {
 		keySpeed += scrollOffset * 10.0f;
 		keySpeed = glm::clamp(keySpeed, minKeySpeed, maxKeySpeed);
 	}
+
+
 
 	void updateView() {
 		node.view = glm::mat4_cast(glm::conjugate(node.rota)) * glm::translate(glm::mat4(1.0f), glm::vec3(playerInfo::logicOriginPos - node.pos));

@@ -48,8 +48,8 @@ namespace noiseList {
 			//2D
 			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
 				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
-					xPosArray2D[noiseId2D] = (float)x;
-					zPosArray2D[noiseId2D] = (float)z;
+					xPosArray2D[noiseId2D] = static_cast<float>(x);
+					zPosArray2D[noiseId2D] = static_cast<float>(z);
 
 					noiseId2D++;
 				}
@@ -59,9 +59,9 @@ namespace noiseList {
 			for (int x = 0; x < plateInfo::cubeArrayLength; x++) {
 				for (int z = 0; z < plateInfo::cubeArrayLength; z++) {
 					for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
-						xPosArray3D[noiseId3D] = (float)x;
-						zPosArray3D[noiseId3D] = (float)z;
-						yPosArray3D[noiseId3D] = (float)y;
+						xPosArray3D[noiseId3D] = static_cast<float>(x);
+						zPosArray3D[noiseId3D] = static_cast<float>(z);
+						yPosArray3D[noiseId3D] = static_cast<float>(y);
 
 						noiseId3D++;
 					}
@@ -73,12 +73,12 @@ namespace noiseList {
 
 		//2D噪音数组
 		void getNoiseArray2D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
-			node[terrainType].noise->GenPositionArray2D(noiseData.data(), (int)xPosArray2D.size(), xPosArray2D.data(), zPosArray2D.data(), (float)worldPos.x, (float)worldPos.z, node[terrainType].seed);
+			node[terrainType].noise->GenPositionArray2D(noiseData.data(), static_cast<int>(xPosArray2D.size()), xPosArray2D.data(), zPosArray2D.data(), static_cast<float>(worldPos.x), static_cast<float>(worldPos.z), node[terrainType].seed);
 		}
 
 		//2D噪音点
 		double getNoiseSingle2D(noiseEnum::noiseId::type terrainType, const glm::dvec3& worldPos) {
-			return node[terrainType].noise->GenSingle2D((float)worldPos.x, (float)worldPos.z, node[terrainType].seed);
+			return node[terrainType].noise->GenSingle2D(static_cast<float>(worldPos.x), static_cast<float>(worldPos.z), node[terrainType].seed);
 		}
 
 		//2D噪音点数组
@@ -86,19 +86,19 @@ namespace noiseList {
 			int	noiseId2D = 0;
 
 			for (const glm::ivec3& arrayPos : loopList::cubeXZLoop) {
-				noiseData[noiseId2D] = node[terrainType].noise->GenSingle2D((float)(worldPos.x + arrayPos.x), (float)(worldPos.z + arrayPos.z), node[terrainType].seed);
+				noiseData[noiseId2D] = node[terrainType].noise->GenSingle2D(static_cast<float>(worldPos.x + arrayPos.x), static_cast<float>(worldPos.z + arrayPos.z), node[terrainType].seed);
 				noiseId2D++;
 			}
 		}
 
 		//3D噪音数组
 		void getNoiseArray3D(noiseEnum::noiseId::type terrainType, std::vector<float>& noiseData, const glm::dvec3& worldPos) {
-			node[terrainType].noise->GenPositionArray3D(noiseData.data(), (int)xPosArray3D.size(), xPosArray3D.data(), yPosArray3D.data(), zPosArray3D.data(), (float)worldPos.x, (float)worldPos.y, (float)worldPos.z, node[terrainType].seed);
+			node[terrainType].noise->GenPositionArray3D(noiseData.data(), static_cast<int>(xPosArray3D.size()), xPosArray3D.data(), yPosArray3D.data(), zPosArray3D.data(), static_cast<float>(worldPos.x), static_cast<float>(worldPos.y), static_cast<float>(worldPos.z), node[terrainType].seed);
 		}
 
 		//3D噪音点
 		double getNoiseSingle3D(noiseEnum::noiseId::type terrainType, const glm::dvec3& worldPos) {
-			return node[terrainType].noise->GenSingle3D((float)worldPos.x, (float)worldPos.y, (float)worldPos.z, node[terrainType].seed);
+			return node[terrainType].noise->GenSingle3D(static_cast<float>(worldPos.x), static_cast<float>(worldPos.y), static_cast<float>(worldPos.z), node[terrainType].seed);
 		}
 
 		//3D噪音点数组
@@ -107,7 +107,7 @@ namespace noiseList {
 
 			for (const glm::ivec3& arrayPos : loopList::cubeXZLoop) {
 				for (int y = 0; y < plateInfo::cubeArrayLength; y++) {
-					noiseData[noiseId3D] = node[terrainType].noise->GenSingle3D((float)(worldPos.x + arrayPos.x), (float)(worldPos.y + y), (float)(worldPos.z + arrayPos.z), node[terrainType].seed);
+					noiseData[noiseId3D] = node[terrainType].noise->GenSingle3D(static_cast<float>(worldPos.x + arrayPos.x), static_cast<float>(worldPos.y + y), static_cast<float>(worldPos.z + arrayPos.z), node[terrainType].seed);
 					noiseId3D++;
 				}
 			}
@@ -118,7 +118,7 @@ namespace noiseList {
 			static unsigned int salt = 0;
 
 			//转为unsigned进行位运算，避免溢出UB
-			unsigned int x = static_cast<unsigned int>(tempSeed) + static_cast<unsigned int>(salt) * 0x9E3779B9U;
+			unsigned int x = static_cast<unsigned int>(tempSeed) + salt * 0x9E3779B9U;
 			x = (x ^ (x >> 16)) * 0x85ebca6bU;
 			salt++;
 

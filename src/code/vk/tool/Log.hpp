@@ -21,13 +21,13 @@ namespace Log {
 	}
 
 	//输出坐标
-	void printPos(glm::vec3 text) {
+	void printPos(const glm::vec3& text) {
 		std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
 		std::cout << "\t" << text.x << "\t" << text.y << "\t" << text.z << std::endl;
 	}
 
 	//输出报错后暂停
-	void printError(std::string file, int line, std::string text) {
+	void printError(const std::string& file, int line, const std::string& text) {
 		std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
 		std::cerr << std::endl
 			<< "------" << "错误" << std::endl
@@ -38,7 +38,7 @@ namespace Log {
 	}
 
 	//输出警告
-	void printWarning(std::string file, int line, std::string text) {
+	void printWarning(const std::string& file, int line, const std::string& text) {
 		std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
 		std::cerr << std::endl
 			<< "------" << "警告" << std::endl

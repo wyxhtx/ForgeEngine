@@ -192,7 +192,7 @@ namespace cmdStruct {
 		}
 
 		//绘制
-		void draw(const pipelineEnum::cmdDrawId::type& cmdDrawType, const VkPipeline& tPipe, const VkPipelineLayout& tLayout, const VkDescriptorSet& tDesc, const VkBuffer& tVertBuffer = VK_NULL_HANDLE, const VkBuffer& tIndexBuffer = VK_NULL_HANDLE, uint32_t tCount = 0, const VkExtent2D& tExtent = {}) {
+		void draw(pipelineEnum::cmdDrawId::type cmdDrawType, const VkPipeline& tPipe, const VkPipelineLayout& tLayout, const VkDescriptorSet& tDesc, const VkBuffer& tVertBuffer = VK_NULL_HANDLE, const VkBuffer& tIndexBuffer = VK_NULL_HANDLE, uint32_t tCount = 0, const VkExtent2D& tExtent = {}) {
 			switch (cmdDrawType) {
 			case pipelineEnum::cmdDrawId::indexed: {
 				bindPipe(tPipe);
@@ -280,7 +280,7 @@ namespace cmdStruct {
 
 
 		//创建cmdPool、info、fence
-		cmdBufferNode(const VkDevice& device, const uint32_t& queueFamily, const uint32_t& frameCount) {
+		cmdBufferNode(const VkDevice& device, uint32_t queueFamily, uint32_t frameCount) {
 			VkCommandPoolCreateInfo poolInfo{};
 			poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 			poolInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -338,8 +338,6 @@ namespace cmdStruct {
 			vkFreeCommandBuffers(device, pool, static_cast<uint32_t>(list.size()), list.data());
 		}
 
-
-
 		//重载
 		VkCommandBuffer& operator[](int frameId) { return list[frameId]; }
 
@@ -358,7 +356,7 @@ namespace cmdStruct {
 
 
 
-		cmdNode(const VkDevice& device, const uint32_t& queueFamily, const uint32_t& frameCount) : renderCmd{ cmdStruct::cmdBufferNode(device, queueFamily, frameCount), cmdStruct::cmdBufferNode(device, queueFamily, frameCount) }, transientCmd{ device, queueFamily, 1 } {}
+		cmdNode(const VkDevice& device, uint32_t queueFamily, uint32_t frameCount) : renderCmd{ cmdStruct::cmdBufferNode(device, queueFamily, frameCount), cmdStruct::cmdBufferNode(device, queueFamily, frameCount) }, transientCmd{ device, queueFamily, 1 } {}
 
 		cmdNode() = delete;
 
@@ -620,7 +618,7 @@ namespace uiStruct {
 			packer.setScale(emSize);
 			packer.setPixelRange(2.0);
 			packer.setMiterLimit(1.0);
-			if (packer.pack(glyphs.data(), (int)glyphs.size()) != 0) {
+			if (packer.pack(glyphs.data(), static_cast<int>(glyphs.size())) != 0) {
 				msdfgen::destroyFont(font);
 				msdfgen::deinitializeFreetype(ft);
 				Log::printError(__FILE__, __LINE__, "msdf图集打包失败");
@@ -632,17 +630,17 @@ namespace uiStruct {
 			msdf_atlas::GeneratorAttributes attributes;
 			generator.setAttributes(attributes);
 			generator.setThreadCount(4);
-			generator.generate(glyphs.data(), (int)glyphs.size());
+			generator.generate(glyphs.data(), static_cast<int>(glyphs.size()));
 
 			//7、取位图只读视图，逐行翻转拷贝成RGBA8，因为原点在左下，所以下面翻成左上，原因：FreeType/msdfgen 位图原点在左下，Vulkan 纹理上传按左上
 			msdfgen::BitmapConstRef<unsigned char, 4> bitmap = generator.atlasStorage();
-			data.resize((size_t)width * height * 4);
+			data.resize(static_cast<size_t>(width) * height * 4);
 			for (int rowDown = 0; rowDown < height; ++rowDown) {
 				const int rowSource = height - 1 - rowDown;
 
 				for (int column = 0; column < width; ++column) {
 					const unsigned char* pixel = bitmap(column, rowSource);
-					size_t offset = ((size_t)rowDown * width + column) * 4;
+					size_t offset = (static_cast<size_t>(rowDown) * width + column) * 4;
 
 					data[offset] = pixel[0];
 					data[offset + 1] = pixel[1];
@@ -666,17 +664,17 @@ namespace uiStruct {
 				glyph.getQuadAtlasBounds(atlasLeft, atlasBottom, atlasRight, atlasTop);
 
 				msdfGlyphNode node;
-				node.planeBounds.x = (float)left      * emSize;
-				node.planeBounds.z = (float)right     * emSize;
-				node.planeBounds.y = (float)(-top)    * emSize;
-				node.planeBounds.w = (float)(-bottom) * emSize;
+				node.planeBounds.x = static_cast<float>(left)      * emSize;
+				node.planeBounds.z = static_cast<float>(right)     * emSize;
+				node.planeBounds.y = static_cast<float>(-top)      * emSize;
+				node.planeBounds.w = static_cast<float>(-bottom)   * emSize;
 
-				node.uvBounds.x = (float)atlasLeft  / (float)width;
-				node.uvBounds.z = (float)atlasRight / (float)width;
-				node.uvBounds.y = (float)(height - atlasTop   ) / (float)height;
-				node.uvBounds.w = (float)(height - atlasBottom) / (float)height;
+				node.uvBounds.x = static_cast<float>(atlasLeft)  / static_cast<float>(width);
+				node.uvBounds.z = static_cast<float>(atlasRight) / static_cast<float>(width);
+				node.uvBounds.y = static_cast<float>(height - atlasTop   ) / static_cast<float>(height);
+				node.uvBounds.w = static_cast<float>(height - atlasBottom) / static_cast<float>(height);
 
-				node.advance = (float)glyph.getAdvance() * emSize;
+				node.advance = static_cast<float>(glyph.getAdvance()) * emSize;
 
 				map[codepoint] = node;
 			}
@@ -697,7 +695,7 @@ namespace uiStruct {
 
 		//添加 vec3，ivec3型
 		void addVec3(uiEnum::uiTextAnchorEnum::type anchor, const std::string& label, const glm::ivec3& valueVec) {
-			addVec3(anchor, label, glm::dvec3{ (double)valueVec.x, (double)valueVec.y, (double)valueVec.z });
+			addVec3(anchor, label, glm::dvec3{ static_cast<double>(valueVec.x), static_cast<double>(valueVec.y), static_cast<double>(valueVec.z) });
 		}
 
 		//添加 vec3，dvec3型
@@ -725,7 +723,7 @@ namespace uiStruct {
 			std::vector<uiTextSegmentNode>& outSegments = uiTextLayout.segment;
 			outSegments.clear();
 
-			const float viewportWidthPx = (float)windowInfo::width;
+			const float viewportWidthPx = static_cast<float>(windowInfo::width);
 			const float fontSizePx      = defaultFontSizePx;
 			const float lineHeight      = getLineHeight();
 			const float marginPx        = defaultMarginPx;
@@ -733,7 +731,7 @@ namespace uiStruct {
 			//让 x/y/z 三格横向等宽、纵向逐行下移
 			const float tagPx     = std::max(getStringWidthPx("x:"), std::max(getStringWidthPx("y:"), getStringWidthPx("z:")));
 			const float cellPx    = tagPx + getStringWidthPx("-9,999,999");
-			const float spacePx   = getCharWidthPx((uint32_t)' ');
+			const float spacePx   = getCharWidthPx(static_cast<uint32_t>(' '));
 			const float baseline0 = marginPx + fontSizePx;
 			float       topLeftY  = baseline0;
 			float       topRightY = baseline0;
@@ -756,7 +754,7 @@ namespace uiStruct {
 				const double values[3] = { row.vecValue.x, row.vecValue.y, row.vecValue.z };
 
 				for (int k = 0; k < 3; ++k) {
-					const float cellX = zoneX + (float)k * cellPx;
+					const float cellX = zoneX + static_cast<float>(k) * cellPx;
 					outSegments.push_back({ cellX, rowY, std::string(1, "xyz"[k]) + ":" });
 					outSegments.push_back({ cellX + tagPx, rowY, padFixedWidth(formatThousand(values[k]), 10) });
 				}
@@ -806,11 +804,11 @@ namespace uiStruct {
 			size_t hash = 0;
 			for (const auto& segment : outSegments) {
 				hash ^= std::hash<std::string>{}(segment.text);
-				hash ^= (size_t)(segment.x * 4.0f) + 0x9e3779b9u + (hash << 6u) + (hash >> 2u);
+				hash ^= static_cast<size_t>(segment.x * 4.0f) + 0x9e3779b9u + (hash << 6u) + (hash >> 2u);
 			}
 
 			if (hash != uiTextLayout.prevHash) {
-				vmaMapMemory(memAllocator, bufferMem, (void**)&vertCursor);
+				vmaMapMemory(memAllocator, bufferMem, reinterpret_cast<void**>(&vertCursor));
 				glyphCount = 0;
 
 				for (const auto& segment : uiTextLayout.segment) {
@@ -937,7 +935,7 @@ namespace uiStruct {
 			size_t index = 0;
 
 			while (index < text.size()) {
-				uint8_t  byte      = (uint8_t)text[index];
+				uint8_t  byte      = static_cast<uint8_t>(text[index]);
 				uint32_t codepoint = 0;
 				size_t   length    = 0;
 
@@ -968,7 +966,7 @@ namespace uiStruct {
 
 				bool valid = true;
 				for (size_t k = 1; k < length; ++k) {
-					uint8_t continuation = (uint8_t)text[index + k];
+					uint8_t continuation = static_cast<uint8_t>(text[index + k]);
 
 					if ((continuation & 0xC0) != 0x80) {
 						valid = false;
@@ -1003,15 +1001,15 @@ namespace uiStruct {
 
 		//整数千分位，保留负号
 		std::string formatThousand(double value) {
-			long long  number   = (long long)value;
+			long long  number   = static_cast<long long>(value);
 			const bool negative = number < 0;
-			unsigned long long absolute = negative ? (unsigned long long)(-(number + 1)) + 1ull : (unsigned long long)number;
+			unsigned long long absolute = negative ? static_cast<unsigned long long>(-(number + 1)) + 1ull : static_cast<unsigned long long>(number);
 
 			std::string digits = std::to_string(absolute);
 			std::string output;
 			int groupCount = 0;
 
-			for (int i = (int)digits.size() - 1; i >= 0; --i) {
+			for (int i = static_cast<int>(digits.size()) - 1; i >= 0; --i) {
 				output.insert(output.begin(), digits[i]);
 
 				if (++groupCount == 3 && i > 0) {
@@ -1041,7 +1039,7 @@ namespace bufferStruct {
 
 
 		//创建cpuBuffer
-		baseBufferNode(const void* bufferData, const VkDeviceSize& bufferSize, const VkBufferUsageFlags& bufferUsage, const VkMemoryPropertyFlags& memProperty, const VmaAllocator& memAllocator) {
+		baseBufferNode(const void* bufferData, VkDeviceSize bufferSize, VkBufferUsageFlags bufferUsage, VkMemoryPropertyFlags memProperty, const VmaAllocator& memAllocator) {
 			createBuffer(bufferSize, bufferUsage, memProperty, memAllocator);
 			createMemMap(bufferData, bufferSize, memAllocator);
 		}
@@ -1058,7 +1056,7 @@ namespace bufferStruct {
 
 	private:
 		//创建buffer
-		void createBuffer(const VkDeviceSize& bufferSize, const VkBufferUsageFlags& bufferUsage, const VkMemoryPropertyFlags& memProperty, const VmaAllocator& memAllocator) {
+		void createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags bufferUsage, VkMemoryPropertyFlags memProperty, const VmaAllocator& memAllocator) {
 			VkBufferCreateInfo bufferInfo{};
 			bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 			bufferInfo.size  = bufferSize;
@@ -1072,11 +1070,11 @@ namespace bufferStruct {
 		}
 
 		//创建memMap
-		void createMemMap(const void* bufferData, const VkDeviceSize& bufferSize, const VmaAllocator& memAllocator) {
+		void createMemMap(const void* bufferData, VkDeviceSize bufferSize, const VmaAllocator& memAllocator) {
 			void* memMap{};
 
 			vmaMapMemory(memAllocator, bufferMem, &memMap);
-			memcpy(memMap, bufferData, (size_t)bufferSize);
+			memcpy(memMap, bufferData, bufferSize);
 			vmaUnmapMemory(memAllocator, bufferMem);
 		}
 	};
@@ -1089,7 +1087,7 @@ namespace bufferStruct {
 
 
 
-		imageBufferNode(const VkImageType& imageType, const VkFormat& format, const VkExtent2D& imageExtent, const uint32_t& mipLevel, const uint32_t& arrayLayer, const VkSampleCountFlagBits& msaa, const VkImageUsageFlags& usage, const VkImageAspectFlags& aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator ) {
+		imageBufferNode(VkImageType imageType, VkFormat format, const VkExtent2D& imageExtent, uint32_t mipLevel, uint32_t arrayLayer, VkSampleCountFlagBits msaa, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
 			create(imageType, format, imageExtent, mipLevel, arrayLayer, msaa, usage, aspectFlags, device, memAllocator);
 		}
 
@@ -1097,7 +1095,7 @@ namespace bufferStruct {
 
 
 
-		void create(const VkImageType& imageType, const VkFormat& format, const VkExtent2D& imageExtent, const uint32_t& mipLevel, const uint32_t& arrayLayer, const VkSampleCountFlagBits& msaa, const VkImageUsageFlags& usage, const VkImageAspectFlags& aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator ) {
+		void create(VkImageType imageType, VkFormat format, const VkExtent2D& imageExtent, uint32_t mipLevel, uint32_t arrayLayer, VkSampleCountFlagBits msaa, VkImageUsageFlags usage, VkImageAspectFlags aspectFlags, const VkDevice& device, const VmaAllocator& memAllocator) {
 			VkImageCreateInfo imageInfo{};
 			imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 			imageInfo.imageType     = imageType;
@@ -1142,6 +1140,8 @@ namespace bufferStruct {
 			vmaDestroyImage(memAllocator, image, imageMem);
 		}
 
+
+
 		//用于重建swap时清理view
 		void clearView(const VkDevice& device) {
 			vkDestroyImageView(device, view, nullptr);
@@ -1155,7 +1155,7 @@ namespace bufferStruct {
 
 
 		//创建swap图像列表
-		void createSwapImageList(std::vector<VkImage>& swapImageList, const VkFormat& format, const VkImageAspectFlags& aspectFlags, const VkDevice& device) {
+		void createSwapImageList(const std::vector<VkImage>& swapImageList, VkFormat format, VkImageAspectFlags aspectFlags, const VkDevice& device) {
 			VkImageViewCreateInfo viewInfo{};
 			viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 			viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -1216,7 +1216,7 @@ namespace bufferStruct {
 
 
 		//创建 KTX 图集，无损压缩
-		void createKtxArray(const VkFormat& format, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+		void createKtxArray(VkFormat format, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			if (textureFile.empty() || !std::filesystem::exists(textureFile)) {
 				Log::printError(__FILE__, __LINE__, "贴图文件不存在");
 				return;
@@ -1235,7 +1235,7 @@ namespace bufferStruct {
 			arrayLayer = atlasExtent.width * atlasExtent.height;
 			imageNode.create(VK_IMAGE_TYPE_2D, format, tileExtent, mipLevel, arrayLayer, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
 
-			baseBufferNode cpuBuffer{ ktxTexture->pData, (VkDeviceSize)ktxTexture->dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+			baseBufferNode cpuBuffer{ ktxTexture->pData, ktxTexture->dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
 			cmd.copyBufferToImage(device, graphicsQueue, cpuBuffer.buffer, imageNode.image, makeImageCopyRegion(tileExtent.width, tileExtent.height, atlasExtent.width, atlasExtent.height, ktxTexture->baseWidth, ktxTexture->baseHeight, arrayLayer), mipLevel, arrayLayer, format);
 			cpuBuffer.clear(memAllocator);
 			ktxTexture2_Destroy(ktxTexture);
@@ -1268,7 +1268,7 @@ namespace bufferStruct {
 			arrayLayer = 1;
 			imageNode.create(VK_IMAGE_TYPE_2D, VK_FORMAT_BC7_UNORM_BLOCK, VkExtent2D{ ktxTexture->baseWidth, ktxTexture->baseHeight }, mipLevel, arrayLayer, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
 
-			baseBufferNode cpuBuffer{ ktxTexture->pData, (VkDeviceSize)ktxTexture->dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+			baseBufferNode cpuBuffer{ ktxTexture->pData, ktxTexture->dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
 			cmd.copyBufferToImage(device, graphicsQueue, cpuBuffer.buffer, imageNode.image, makeImageCopyRegion(ktxTexture->baseWidth, ktxTexture->baseHeight, mipLevel, ktxTexture), mipLevel, arrayLayer, VK_FORMAT_BC7_UNORM_BLOCK);
 			cpuBuffer.clear(memAllocator);
 			ktxTexture2_Destroy(ktxTexture);
@@ -1391,7 +1391,6 @@ namespace swapStruct {
 				Log::printError(__FILE__, __LINE__, "表面功能获取失败");
 			}
 
-
 			//表面格式查询
 			uint32_t formatCount;
 			vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, presentSurface, &formatCount, nullptr);
@@ -1400,7 +1399,6 @@ namespace swapStruct {
 			}
 			swapFormat.resize(formatCount);
 			vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, presentSurface, &formatCount, swapFormat.data());
-
 
 			//呈现模式查询
 			uint32_t presentModeCount;
@@ -1434,6 +1432,8 @@ namespace swapStruct {
 				Log::delimiter();
 			}
 		}
+
+
 
 		//设置swapCreateInfo
 		void createSwapCreateInfo(const VkSurfaceKHR& presentSurface) {
@@ -1581,7 +1581,7 @@ namespace renderStruct {
 
 
 
-		renderAttachmentNode(const renderEnum::renderAttId::type& renderAttType, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaa = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM, const VkImageLayout& finalLayout = VK_IMAGE_LAYOUT_MAX_ENUM) {
+		renderAttachmentNode(renderEnum::renderAttId::type renderAttType, VkFormat colorFormat, VkFormat depthFormat, VkSampleCountFlagBits msaa = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM, VkImageLayout finalLayout = VK_IMAGE_LAYOUT_MAX_ENUM) {
 			switch (renderAttType) {
 			case renderEnum::renderAttId::forward_ra: {
 				//前向渲染附件列表：颜色、深度、解析
@@ -1641,7 +1641,7 @@ namespace renderStruct {
 
 
 		//创建渲染附件描述
-		VkAttachmentDescription createAttachmentDesc(const VkFormat& format, const VkSampleCountFlagBits& msaa, const VkAttachmentLoadOp& loadOp, const VkAttachmentStoreOp& storeOp, const VkImageLayout& finalLayout) {
+		VkAttachmentDescription createAttachmentDesc(VkFormat format, VkSampleCountFlagBits msaa, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkImageLayout finalLayout) {
 			return {
 				.format         = format,                            //附件的图像格式
 				.samples        = msaa,                              //多重采样的数量
@@ -1655,7 +1655,7 @@ namespace renderStruct {
 		}
 
 		//创建渲染附件引用
-		VkAttachmentReference createAttachmentRef(const VkImageLayout& layout) {
+		VkAttachmentReference createAttachmentRef(VkImageLayout layout) {
 			return{
 				.attachment = refIndex++,   //附件的索引
 				.layout     = layout,       //附件的图像布局
@@ -1682,7 +1682,7 @@ namespace renderStruct {
 
 
 
-		renderSubpassNode(const renderEnum::renderTemplateId::type& renderTemplateType, const VkPipelineBindPoint& pipeType, const std::array<std::vector<VkAttachmentReference>, 3>& attRefList) {
+		renderSubpassNode(renderEnum::renderTemplateId::type renderTemplateType, VkPipelineBindPoint pipeType, const std::array<std::vector<VkAttachmentReference>, 3>& attRefList) {
 			subpassList = {
 				createSubpass(pipeType, attRefList),
 			};
@@ -1759,10 +1759,10 @@ namespace renderStruct {
 
 	private:
 		//创建subpass
-		VkSubpassDescription createSubpass(const VkPipelineBindPoint& pipeType, const std::array<std::vector<VkAttachmentReference>, 3>& attRefList) {
+		VkSubpassDescription createSubpass(VkPipelineBindPoint pipeType, const std::array<std::vector<VkAttachmentReference>, 3>& attRefList) {
 			return{
 				.pipelineBindPoint       = pipeType,                        //管线类型（图形、计算、光追等等）
-				.colorAttachmentCount    = (uint32_t)attRefList[0].size(),  //颜色附件数量
+				.colorAttachmentCount    = static_cast<uint32_t>(attRefList[0].size()),  //颜色附件数量
 				.pColorAttachments       = attRefList[0].data(),            //颜色附件引用
 				.pResolveAttachments     = attRefList[2].data(),            //解析附件引用
 				.pDepthStencilAttachment = attRefList[1].data(),            //深度附件引用
@@ -1770,7 +1770,7 @@ namespace renderStruct {
 		}
 
 		//创建subpass依赖
-		VkSubpassDependency createSubpassDependency(const uint32_t& srcSubpass, const VkPipelineStageFlags& srcStageMask, const VkAccessFlags& srcAccessMask, const uint32_t& dstSubpass, const VkPipelineStageFlags& dstStageMask, const VkAccessFlags& dstAccessMask) {
+		VkSubpassDependency createSubpassDependency(uint32_t srcSubpass, VkPipelineStageFlags srcStageMask, VkAccessFlags srcAccessMask, uint32_t dstSubpass, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask) {
 			return {
 				.srcSubpass      = srcSubpass,                      //上阶段已完成的子通道，（VK_SUBPASS_EXTERNAL：外部、0/1/2：第n个子通道）
 				.dstSubpass      = dstSubpass,                      //本阶段要执行的子通道，（VK_SUBPASS_EXTERNAL：外部、0/1/2：第n个子通道）
@@ -1794,7 +1794,7 @@ namespace renderStruct {
 			VkFramebufferCreateInfo framebufferInfo{};
 			framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			framebufferInfo.renderPass      = render;
-			framebufferInfo.attachmentCount = (uint32_t)frameAttList.size();
+			framebufferInfo.attachmentCount = static_cast<uint32_t>(frameAttList.size());
 			framebufferInfo.pAttachments    = frameAttList.data();
 			framebufferInfo.width           = extent.width;
 			framebufferInfo.height          = extent.height;
@@ -1809,7 +1809,7 @@ namespace renderStruct {
 			renderBegin.framebuffer       = frameBuffer;
 			renderBegin.renderArea.offset = { 0, 0 };
 			renderBegin.renderArea.extent = extent;
-			renderBegin.clearValueCount   = (uint32_t)clearValueList.size();
+			renderBegin.clearValueCount   = static_cast<uint32_t>(clearValueList.size());
 			renderBegin.pClearValues      = clearValueList.data();
 		}
 
@@ -1833,7 +1833,7 @@ namespace renderStruct {
 
 
 
-		void createRenderTemplateNode(const renderEnum::renderTemplateId::type& tRenderTemplateType, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaa, const VkDevice& device) {
+		void createRenderTemplateNode(renderEnum::renderTemplateId::type tRenderTemplateType, VkFormat colorFormat, VkFormat depthFormat, VkSampleCountFlagBits msaa, const VkDevice& device) {
 			switch (tRenderTemplateType) {
 			case renderEnum::renderTemplateId::swapChain_rt: {
 				renderAttType = renderEnum::renderAttId::forward_ra;
@@ -1885,14 +1885,14 @@ namespace renderStruct {
 		}
 
 	private:
-		void createRender(const std::vector<VkAttachmentDescription>& attDescList, const std::vector<VkSubpassDescription>& subpassList, std::vector<VkSubpassDependency>& dependencyList, const VkDevice& device, const char* name) {
+		void createRender(const std::vector<VkAttachmentDescription>& attDescList, const std::vector<VkSubpassDescription>& subpassList, const std::vector<VkSubpassDependency>& dependencyList, const VkDevice& device, const char* name) {
 			VkRenderPassCreateInfo createInfo{};
 			createInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-			createInfo.attachmentCount = (uint32_t)attDescList.size();
+			createInfo.attachmentCount = static_cast<uint32_t>(attDescList.size());
 			createInfo.pAttachments    = attDescList.data();
-			createInfo.subpassCount    = (uint32_t)subpassList.size();
+			createInfo.subpassCount    = static_cast<uint32_t>(subpassList.size());
 			createInfo.pSubpasses      = subpassList.data();
-			createInfo.dependencyCount = (uint32_t)dependencyList.size();
+			createInfo.dependencyCount = static_cast<uint32_t>(dependencyList.size());
 			createInfo.pDependencies   = dependencyList.data();
 
 			if (vkCreateRenderPass(device, &createInfo, nullptr, &render) != VK_SUCCESS) {
@@ -1908,7 +1908,7 @@ namespace renderStruct {
 
 
 
-		void createRenderInstanceNode(const renderStruct::renderTemplateNode& renderTemplate, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkExtent2D& imageExtent, const VkSampleCountFlagBits& msaa, const VkDevice& device, const VmaAllocator& memAllocator) {
+		void createRenderInstanceNode(const renderStruct::renderTemplateNode& renderTemplate, VkFormat colorFormat, VkFormat depthFormat, const VkExtent2D& imageExtent, VkSampleCountFlagBits msaa, const VkDevice& device, const VmaAllocator& memAllocator) {
 			switch (renderTemplate.renderAttType) {
 			case renderEnum::renderAttId::forward_ra: {
 				clearValueList = { renderInfo::colorClearValue, renderInfo::depthClearValue };
@@ -2035,7 +2035,7 @@ namespace pipelineStruct {
 
 
 		//创建着色器结点
-		void createShaderNode(const VkDevice& device, const std::string& filename, const VkShaderStageFlagBits& stage) {
+		void createShaderNode(const VkDevice& device, const std::string& filename, VkShaderStageFlagBits stage) {
 			//读取着色器文件
 			std::ifstream fileData(filename, std::ios::ate | std::ios::binary);
 			if (!fileData.is_open()) {
@@ -2043,7 +2043,7 @@ namespace pipelineStruct {
 			}
 
 			//创建着色器代码
-			size_t fileSize = (size_t)fileData.tellg();
+			size_t fileSize = static_cast<size_t>(fileData.tellg());
 			std::vector<char> shaderCode(fileSize);
 			fileData.seekg(0);
 			fileData.read(shaderCode.data(), fileSize);
@@ -2089,7 +2089,7 @@ namespace pipelineStruct {
 
 
 
-		void createPipeConfigNode(const std::vector<pipelineStruct::shaderNode>& shaderList, const VkSampleCountFlagBits& msaa, const renderEnum::renderAttId::type& renderAttType, const VkRenderPass& render, const VkPipelineLayout& pipeLayout) {
+		void createPipeConfigNode(const std::vector<pipelineStruct::shaderNode>& shaderList, VkSampleCountFlagBits msaa, renderEnum::renderAttId::type renderAttType, const VkRenderPass& render, const VkPipelineLayout& pipeLayout) {
 			//着色阶段列表
 			shaderStageList.resize(shaderList.size());
 			for (int i = 0; i < shaderList.size(); i++) {
@@ -2184,7 +2184,7 @@ namespace pipelineStruct {
 			colorAttachmentState.sType			   = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 			colorAttachmentState.logicOpEnable	   = VK_FALSE;
 			colorAttachmentState.logicOp		   = VK_LOGIC_OP_COPY;		
-			colorAttachmentState.attachmentCount   = (uint32_t)colorAttachmentList.size();
+			colorAttachmentState.attachmentCount   = static_cast<uint32_t>(colorAttachmentList.size());
 			colorAttachmentState.pAttachments	   = colorAttachmentList.data();
 			colorAttachmentState.blendConstants[0] = 0.0f;				
 			colorAttachmentState.blendConstants[1] = 0.0f;				
@@ -2193,7 +2193,7 @@ namespace pipelineStruct {
 
 			//管线信息
 			pipeInfo.sType				 = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-			pipeInfo.stageCount          = (uint32_t)shaderStageList.size();
+			pipeInfo.stageCount          = static_cast<uint32_t>(shaderStageList.size());
 			pipeInfo.pStages             = shaderStageList.data();
 			pipeInfo.pVertexInputState   = &vertInputStage;
 			pipeInfo.pInputAssemblyState = &primitiveState;
@@ -2216,7 +2216,7 @@ namespace pipelineStruct {
 		void setPipeDynamicStage(const std::vector<VkDynamicState>& list) {
 			pipeDynamicStageList                    = list;
 			pipeDynamicStageState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			pipeDynamicStageState.dynamicStateCount = (uint32_t)pipeDynamicStageList.size();
+			pipeDynamicStageState.dynamicStateCount = static_cast<uint32_t>(pipeDynamicStageList.size());
 			pipeDynamicStageState.pDynamicStates    = pipeDynamicStageList.data();
 
 			pipeInfo.pDynamicState = &pipeDynamicStageState;
@@ -2324,7 +2324,7 @@ namespace pipelineStruct {
 
 
 		//创建顶点管线结点
-		void createPipelineNode(const VkSampleCountFlagBits& msaa, const renderStruct::renderTemplateNode& renderTemplateNode, const pipelineStruct::pipeLayoutNode& pipeLayoutNode, const std::vector<std::string>& shaderFileList, const VkDevice& device) {
+		void createPipelineNode(VkSampleCountFlagBits msaa, const renderStruct::renderTemplateNode& renderTemplateNode, const pipelineStruct::pipeLayoutNode& pipeLayoutNode, const std::vector<std::string>& shaderFileList, const VkDevice& device) {
 			//创建shaderList
 			shaderList.resize(shaderFileList.size());
 			if (shaderFileList.size() == pipelineEnum::shaderNodeId::vert::count) {
@@ -2474,7 +2474,7 @@ namespace bufferStruct {
 
 
 		//创建地形纹理：KTX 图集按 tile 切成纹理数组
-		void create(const std::string& imageFile, const VkFormat& colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+		void create(const std::string& imageFile, VkFormat colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			texture.textureFile = imageFile;
 
 			if (isEnable) {
@@ -2496,6 +2496,7 @@ namespace bufferStruct {
 			vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
 		}
 	};
+
 
 
 	struct modelStaticNode {
@@ -2930,6 +2931,7 @@ namespace bufferStruct {
 	};
 
 
+
 	struct pipeSkyboxNode {
 		//程序化索引
 		bool isEnable;
@@ -3021,7 +3023,7 @@ namespace bufferStruct {
 		//创建字体图集纹理
 		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			if (isEnable) {
-				texture.createText(msdfGlyphAtlas.data.data(), (VkDeviceSize)msdfGlyphAtlas.data.size(), (uint32_t)msdfGlyphAtlas.width, (uint32_t)msdfGlyphAtlas.height, cmd, device, graphicsQueue, memAllocator);
+				texture.createText(msdfGlyphAtlas.data.data(), msdfGlyphAtlas.data.size(), static_cast<uint32_t>(msdfGlyphAtlas.width), static_cast<uint32_t>(msdfGlyphAtlas.height), cmd, device, graphicsQueue, memAllocator);
 			}
 		}
 
@@ -3117,6 +3119,7 @@ namespace bufferStruct {
 			vmaDestroyBuffer(memAllocator, shadowUniform.buffer, shadowUniform.bufferMem);
 		}
 	};
+
 
 
 	struct shadowTerrainNode {
@@ -3239,7 +3242,7 @@ namespace bufferStruct {
 
 
 
-		const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkBuffer& buffer, const VkDeviceSize& range) {
+		const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkBuffer& buffer, VkDeviceSize range) {
 			bufferInfo.buffer = buffer;
 			bufferInfo.range  = range;
 

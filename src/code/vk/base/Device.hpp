@@ -80,7 +80,7 @@ private:
 		deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		deviceCreateInfo.queueCreateInfoCount    = 1;
 		deviceCreateInfo.pQueueCreateInfos       = &queueCreateInfo;
-		deviceCreateInfo.enabledExtensionCount   = (uint32_t)enableDeviceExtensionList.size();
+		deviceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>(enableDeviceExtensionList.size());
 		deviceCreateInfo.ppEnabledExtensionNames = enableDeviceExtensionList.data();
 		deviceCreateInfo.pNext                   = &gpuFeatures2;
 		if (vkCreateDevice(enableGpu->gpu, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS) {
@@ -156,6 +156,8 @@ private:
 			Log::delimiter();
 		}
 	}
+
+
 
 	//获取最优队列族
 	void getQueueFamilyIndex(deviceStruct::gpuNode& node, const VkPhysicalDeviceProperties& gpuInfo, const VkSurfaceKHR& presentSurface) {

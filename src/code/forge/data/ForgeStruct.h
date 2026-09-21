@@ -124,7 +124,7 @@ namespace plateStruct {
 
 
 
-		void kMeans(const std::vector<glm::dvec3>& chunkLoop, const int& maxThreadCount) {
+		void kMeans(const std::vector<glm::dvec3>& chunkLoop, int maxThreadCount) {
 			const int ndim = 3;                                     //三维
 			const int nobs = static_cast<int>(chunkLoop.size());    //长度
 			const int ncenters = maxThreadCount;                    //分区

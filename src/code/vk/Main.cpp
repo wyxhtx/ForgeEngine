@@ -30,7 +30,7 @@ int main() {
 
 		if (InitWindow.isMin) {
 			if (engineList::procTick.node[engineEnum::tickEnum::key].isUpdate()) {
-				InitWindow.getKey((float)engineList::procTick.node[engineEnum::tickEnum::key].dt);
+				InitWindow.getKey(static_cast<float>(engineList::procTick.node[engineEnum::tickEnum::key].dt));
 			}
 
 			InitPipeline.drawFrame(InitWindow.InitCamera);

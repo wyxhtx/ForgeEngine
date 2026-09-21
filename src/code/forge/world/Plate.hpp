@@ -63,8 +63,8 @@ private:
 		plateStruct::kMeansNode partChunkLoop;									//分区区块循环，用于并行生成地形
 		std::vector<plateStruct::linkStructManagerNode> linkStructPartManager;		//链结构分区管理器
 
-		const glm::dvec3 playerChunkPos = glm::floor(playerInfo::initSpawnPos / (double)plateInfo::chunkLength);
-		originPos = glm::floor(playerInfo::initSpawnPos / (double)plateInfo::originShiftThreshold) * (double)plateInfo::originShiftThreshold;
+		const glm::dvec3 playerChunkPos = glm::floor(playerInfo::initSpawnPos / static_cast<double>(plateInfo::chunkLength));
+		originPos = glm::floor(playerInfo::initSpawnPos / static_cast<double>(plateInfo::originShiftThreshold)) * static_cast<double>(plateInfo::originShiftThreshold);
 
 
 
@@ -200,6 +200,8 @@ private:
 		}
 	}
 
+
+
 	//创建区块，生成方块数组数据
 	void createChunk(Chunk& chunk, std::unordered_map<glm::dvec3, std::unordered_map<glm::dvec3, plateStruct::linkStructChunkNode>>& linkStructSet) {
 		std::vector<glm::ivec3> structPosList{};								//结构源点列表，存储结构源点，方块坐标系
@@ -292,24 +294,24 @@ private:
 
 						//本区块移到邻区块处理[0/33]
 						if (structCubeData.x == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x + 1, chunkPos.y, chunkPos.z }].cubeSet[{ (short)0, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x + 1, chunkPos.y, chunkPos.z }].cubeSet[{ static_cast<short>(0), static_cast<short>(structCubeData.y), static_cast<short>(structCubeData.z) }] = static_cast<short>(structCubeData.w);
 						}
 						else if (structCubeData.x == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x - 1, chunkPos.y, chunkPos.z }].cubeSet[{ (short)plateInfo::lengthIncrement, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x - 1, chunkPos.y, chunkPos.z }].cubeSet[{ static_cast<short>(plateInfo::lengthIncrement), static_cast<short>(structCubeData.y), static_cast<short>(structCubeData.z) }] = static_cast<short>(structCubeData.w);
 						}
 
 						if (structCubeData.y == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y + 1, chunkPos.z }].cubeSet[{ (short)structCubeData.x, (short)0, (short)structCubeData.z }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y + 1, chunkPos.z }].cubeSet[{ static_cast<short>(structCubeData.x), static_cast<short>(0), static_cast<short>(structCubeData.z) }] = static_cast<short>(structCubeData.w);
 						}
 						else if (structCubeData.y == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y - 1, chunkPos.z }].cubeSet[{ (short)structCubeData.x, (short)plateInfo::lengthIncrement, (short)structCubeData.z }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y - 1, chunkPos.z }].cubeSet[{ static_cast<short>(structCubeData.x), static_cast<short>(plateInfo::lengthIncrement), static_cast<short>(structCubeData.z) }] = static_cast<short>(structCubeData.w);
 						}
 
 						if (structCubeData.z == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z + 1 }].cubeSet[{ (short)structCubeData.x, (short)structCubeData.y, (short)0 }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z + 1 }].cubeSet[{ static_cast<short>(structCubeData.x), static_cast<short>(structCubeData.y), static_cast<short>(0) }] = static_cast<short>(structCubeData.w);
 						}
 						else if (structCubeData.z == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z - 1 }].cubeSet[{ (short)structCubeData.x, (short)structCubeData.y, (short)plateInfo::lengthIncrement }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z - 1 }].cubeSet[{ static_cast<short>(structCubeData.x), static_cast<short>(structCubeData.y), static_cast<short>(plateInfo::lengthIncrement) }] = static_cast<short>(structCubeData.w);
 						}
 					}
 					else {
@@ -324,28 +326,28 @@ private:
 						structCubeData.z = (structCubeData.z + plateInfo::lengthDecrement) % plateInfo::chunkLength + 1;
 
 						//邻区块处理[1,32]
-						linkStructSet[strucWorldPos][chunkPos].cubeSet[{ (short)structCubeData.x, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
+						linkStructSet[strucWorldPos][chunkPos].cubeSet[{ static_cast<short>(structCubeData.x), static_cast<short>(structCubeData.y), static_cast<short>(structCubeData.z) }] = static_cast<short>(structCubeData.w);
 
 						//邻区块移到邻区块处理[0/33]
 						if (structCubeData.x == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x + 1, chunkPos.y, chunkPos.z }].cubeSet[{ (short)0, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x + 1, chunkPos.y, chunkPos.z }].cubeSet[{ static_cast<short>(0), static_cast<short>(structCubeData.y), static_cast<short>(structCubeData.z) }] = static_cast<short>(structCubeData.w);
 						}
 						else if (structCubeData.x == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x - 1, chunkPos.y, chunkPos.z }].cubeSet[{ (short)plateInfo::lengthIncrement, (short)structCubeData.y, (short)structCubeData.z }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x - 1, chunkPos.y, chunkPos.z }].cubeSet[{ static_cast<short>(plateInfo::lengthIncrement), static_cast<short>(structCubeData.y), static_cast<short>(structCubeData.z) }] = static_cast<short>(structCubeData.w);
 						}
 
 						if (structCubeData.y == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y + 1, chunkPos.z }].cubeSet[{ (short)structCubeData.x, (short)0, (short)structCubeData.z }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y + 1, chunkPos.z }].cubeSet[{ static_cast<short>(structCubeData.x), static_cast<short>(0), static_cast<short>(structCubeData.z) }] = static_cast<short>(structCubeData.w);
 						}
 						else if (structCubeData.y == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y - 1, chunkPos.z }].cubeSet[{ (short)structCubeData.x, (short)plateInfo::lengthIncrement, (short)structCubeData.z }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y - 1, chunkPos.z }].cubeSet[{ static_cast<short>(structCubeData.x), static_cast<short>(plateInfo::lengthIncrement), static_cast<short>(structCubeData.z) }] = static_cast<short>(structCubeData.w);
 						}
 
 						if (structCubeData.z == plateInfo::chunkLength) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z + 1 }].cubeSet[{ (short)structCubeData.x, (short)structCubeData.y, (short)0 }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z + 1 }].cubeSet[{ static_cast<short>(structCubeData.x), static_cast<short>(structCubeData.y), static_cast<short>(0) }] = static_cast<short>(structCubeData.w);
 						}
 						else if (structCubeData.z == 1) {
-							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z - 1 }].cubeSet[{ (short)structCubeData.x, (short)structCubeData.y, (short)plateInfo::lengthIncrement }] = (short)structCubeData.w;
+							linkStructSet[strucWorldPos][glm::dvec3{ chunkPos.x, chunkPos.y, chunkPos.z - 1 }].cubeSet[{ static_cast<short>(structCubeData.x), static_cast<short>(structCubeData.y), static_cast<short>(plateInfo::lengthIncrement) }] = static_cast<short>(structCubeData.w);
 						}
 					}
 				}
@@ -353,6 +355,48 @@ private:
 		}
 		chunk.isVisibleDataLock->unlock();
 		chunk.cubeArrayDataLock->unlock();
+	}
+
+	//拼接地形网格，将区块网格拼成地形网格，自动内存分配时函数耗时1.8ms，平时函数耗时0.18ms
+	void joinTerrainMesh(Chunk& chunk, const glm::dvec3& originOffset, const glm::dvec3& chunkPos, int layer) {
+		if (chunk.indexOffset) {
+			//等同(uint32_t)(terrainVertex::indexs.terrain[layer].size() / 1.5);
+			uint32_t offset = static_cast<uint32_t>(terrainVertex::vertexs[layer].size());
+
+			if (debugInfo::LogSwitch) {
+				if (offset != static_cast<uint32_t>(terrainVertex::indexs[layer].size() / 1.5)) {
+					Log::printError(__FILE__, __LINE__, "索引偏移错误");
+				}
+			}
+
+
+
+			//维护terrainMeshSignList
+			terrainMeshSignList[layer].push_front(plateStruct::terrainMeshSignNode{ chunkPos, static_cast<int>(chunk.chunkVertexs.size()), static_cast<int>(chunk.chunkIndexs.size()) });
+
+			//配置旧区块
+			if (chunk.originOffset != originOffset) {
+				glm::vec3 tempPos = chunk.originOffset - originOffset;
+
+				for (terrainVertex::vertexNode& node : chunk.chunkVertexs) {
+					node.position += tempPos;
+				}
+
+				chunk.InitChunk(originOffset, chunkPos);
+			}
+
+			//拼入地形顶点数组
+			terrainVertex::vertexs[layer].insert(terrainVertex::vertexs[layer].end(), chunk.chunkVertexs.begin(), chunk.chunkVertexs.end());
+
+			//处理索引偏移
+			std::vector<uint32_t> tempIndexs = chunk.chunkIndexs;
+			for (uint32_t& i : tempIndexs) {
+				i += offset;
+			}
+
+			//拼入地形索引数组
+			terrainVertex::indexs[layer].insert(terrainVertex::indexs[layer].end(), tempIndexs.begin(), tempIndexs.end());
+		}
 	}
 
 
@@ -363,7 +407,7 @@ private:
 	}
 
 	//生成方块
-	__forceinline void generateCube(short& cubeId, int& isVisible, const glm::dvec3& cubeWorldPos, const glm::ivec3& cubePos, const double& elevationValue, const double& groundValue, const double& caveValue, const bool& isCave, std::vector<glm::ivec3>& structPosList) {
+	__forceinline void generateCube(short& cubeId, int& isVisible, const glm::dvec3& cubeWorldPos, const glm::ivec3& cubePos, double elevationValue, double groundValue, double caveValue, bool isCave, std::vector<glm::ivec3>& structPosList) {
 		if (cubeWorldPos.y < plateInfo::groundPlane) {
 			if (cubeWorldPos.y > groundValue || (isCave && caveValue > 0)) {
 				cubeId = cubeEnum::cubeId::air;
@@ -404,76 +448,20 @@ private:
 		}
 	}
 
-	//拼接地形网格，将区块网格拼成地形网格，自动内存分配时函数耗时1.8ms，平时函数耗时0.18ms
-	void joinTerrainMesh(Chunk& chunk, const glm::dvec3 originOffset, const glm::dvec3 chunkPos, const int layer) {
-		if (chunk.indexOffset) {
-			//等同(uint32_t)(terrainVertex::indexs.terrain[layer].size() / 1.5);
-			uint32_t offset = (uint32_t)terrainVertex::vertexs[layer].size();
-
-			if (debugInfo::LogSwitch) {
-				if (offset != (uint32_t)(terrainVertex::indexs[layer].size() / 1.5)) {
-					Log::printError(__FILE__, __LINE__, "索引偏移错误");
-				}
-			}
-
-
-
-			//维护terrainMeshSignList
-			terrainMeshSignList[layer].push_front(plateStruct::terrainMeshSignNode{ chunkPos, (int)chunk.chunkVertexs.size(), (int)chunk.chunkIndexs.size() });
-
-			//配置旧区块
-			if (chunk.originOffset != originOffset) {
-				glm::vec3 tempPos = chunk.originOffset - originOffset;
-
-				for (terrainVertex::vertexNode& node : chunk.chunkVertexs) {
-					node.position += tempPos;
-				}
-
-				chunk.InitChunk(originOffset, chunkPos);
-			}
-
-			//拼入地形顶点数组
-			terrainVertex::vertexs[layer].insert(terrainVertex::vertexs[layer].end(), chunk.chunkVertexs.begin(), chunk.chunkVertexs.end());
-
-			//处理索引偏移
-			std::vector<uint32_t> tempIndexs = chunk.chunkIndexs;
-			for (uint32_t& i : tempIndexs) {
-				i += offset;
-			}
-
-			//拼入地形索引数组
-			terrainVertex::indexs[layer].insert(terrainVertex::indexs[layer].end(), tempIndexs.begin(), tempIndexs.end());
-		}
-	}
-
-	//于地形网格中删除区块网格
-	void delTerrainMesh(const glm::dvec3 chunkPos, const int layer) {
-		for (std::forward_list<plateStruct::terrainMeshSignNode>::iterator node = terrainMeshSignList[layer].begin(), prev = terrainMeshSignList[layer].before_begin(); node != terrainMeshSignList[layer].end(); prev = node, ++node) {
-			if (node->chunkPos == chunkPos) {
-				std::forward_list<plateStruct::terrainMeshSignNode>::iterator p = std::next(node);
-				int vertexsSize = 0;
-
-				while (p != terrainMeshSignList[layer].end()) {
-					vertexsSize += p->vertexsSize;
-					++p;
-				}
-
-				terrainVertex::vertexs[layer].erase(terrainVertex::vertexs[layer].begin() + vertexsSize, terrainVertex::vertexs[layer].begin() + vertexsSize + node->vertexsSize);
-				terrainVertex::indexs[layer].erase(terrainVertex::indexs[layer].end() - node->indexsSize, terrainVertex::indexs[layer].end());
-
-				terrainMeshSignList[layer].erase_after(prev);
-				break;
-			}
-		}
-	}
-
 public:
 	std::atomic<bool> isEntireRebuild = false;												//用于判断InitBuffer.recreateBuffer是完全重建还是部分重建
 
 
 
+	//判断是否调用handleChangeCubeList
+	bool isHandleChangeCubeList() {
+		return !changeCubeList.empty();
+	}
+
+
+
 	//更新板块，RM_0.4.6（8_32：200~300）
-	void updatePlate(const glm::dvec3 logicOriginPos, const glm::dvec3 playerPos) {
+	void updatePlate(const glm::dvec3& logicOriginPos, const glm::dvec3& playerPos) {
 		std::unordered_set<glm::dvec3> existChunkLoop;										//存储当前视距内已加载区块列表 
 		std::vector<glm::dvec3> updateChunkLoop;											//存储当前视距内未加载区块列表，和需重载网格的区块（updateStructLoop）
 		plateStruct::kMeansNode partChunkLoop;												//分区区块循环，用于并行生成地形
@@ -481,7 +469,7 @@ public:
 		std::unordered_map<glm::dvec3, std::unordered_set<glm::dvec3>> updateStructSet;		//更新结构集合，存储板块新向旧压入结构时所涉及的structPos、chunkSet
 		std::unordered_set<glm::dvec3> updateStructLoop;									//更新结构循环，存储updateStructSet所涉及的区块坐标
 
-		glm::dvec3 playerChunkPos = glm::floor(playerPos / (double)plateInfo::chunkLength);
+		glm::dvec3 playerChunkPos = glm::floor(playerPos / static_cast<double>(plateInfo::chunkLength));
 		glm::dvec3 originShiftPos = glm::abs(logicOriginPos - playerPos);
 		glm::dvec3 tempOriginPos  = originPos;												//临时原点坐标，确保originPos在第三阶段结束后再变更
 
@@ -492,8 +480,8 @@ public:
 		InitStorage.updateConfig(playerChunkPos);
 
 		//重设逻辑原点
-		if (originShiftPos.x > (double)plateInfo::originShiftThreshold || originShiftPos.y > (double)plateInfo::originShiftThreshold || originShiftPos.z > (double)plateInfo::originShiftThreshold) {
-			tempOriginPos = glm::floor(playerPos / (double)plateInfo::originShiftThreshold) * (double)plateInfo::originShiftThreshold;
+		if (originShiftPos.x > static_cast<double>(plateInfo::originShiftThreshold) || originShiftPos.y > static_cast<double>(plateInfo::originShiftThreshold) || originShiftPos.z > static_cast<double>(plateInfo::originShiftThreshold)) {
+			tempOriginPos = glm::floor(playerPos / static_cast<double>(plateInfo::originShiftThreshold)) * static_cast<double>(plateInfo::originShiftThreshold);
 		}
 
 		//获取existChunkLoop、updateChunkLoop，RM_0.4.6（8_32：5~10）
@@ -814,7 +802,7 @@ public:
 
 	//todo 选择框有误差，等写完十字标时修正
 	//选择框算法，参考Bresenham算法
-	playerStruct::selectBoxNode getSelectBox(const glm::dvec3 logicOriginPos, const playerStruct::cameraNode& camera) {
+	playerStruct::selectBoxNode getSelectBox(const glm::dvec3& logicOriginPos, const playerStruct::cameraNode& camera) {
 		static glm::dvec3 displacement;						//坐标变化量
 		static int remainingSteps;							//剩余步骤数量
 		glm::dvec3 offsetPos{ 0 };							//坐标偏移量
@@ -822,14 +810,14 @@ public:
 		static glm::dvec3 stepTime;							//每步用时
 		static glm::dvec3 currentTime;						//当前用时
 
-		static double chunkLength = (double)plateInfo::chunkLength;
+		static double chunkLength = static_cast<double>(plateInfo::chunkLength);
 		std::vector<playerStruct::selectBoxTraceNode> cubeList{};	//方块列表
 		static playerStruct::selectBoxTraceNode cube{};				//方块结点
 
 
 
 		displacement	= camera.front * playerInfo::cubeInteractionRange;
-		remainingSteps	= (int)(glm::floor(glm::abs(displacement.x) + glm::abs(displacement.y) + glm::abs(displacement.z)));
+		remainingSteps	= static_cast<int>(glm::floor(glm::abs(displacement.x) + glm::abs(displacement.y) + glm::abs(displacement.z)));
 		stepDirection.x = (displacement.x >= 0) ? 1 : -1;
 		stepDirection.y = (displacement.y >= 0) ? 1 : -1;
 		stepDirection.z = (displacement.z >= 0) ? 1 : -1;
@@ -902,11 +890,6 @@ public:
 		return playerStruct::selectBoxNode{ glm::vec3{0}, 0 };
 	}
 
-	//判断是否调用handleChangeCubeList
-	bool isHandleChangeCubeList() {
-		return !changeCubeList.empty();
-	}
-
 	//处理变更方块列表，放置或破坏方块后更新地形网格
 	void handleChangeCubeList() {
 		//因为forward_list的性质，处理近期处理过的区块更快，平均首次处理0.22，平均近期处理0.06
@@ -943,7 +926,7 @@ private:
 
 
 	//获取变更方块列表，用于updateDeltaCube修改网格，plateMeshDataLock也能屏蔽chunkMap[chunkPos]资源竞争，chunkPos：非空方块所处区块坐标、区块坐标系，cubePos：非空方块坐标、方块坐标系（内部范围[1,32]）
-	void getChangeCubeList(const glm::dvec3& chunkPos, const glm::ivec3& cubePos, const short& newCubeId) {
+	void getChangeCubeList(const glm::dvec3& chunkPos, const glm::ivec3& cubePos, short newCubeId) {
 		if (debugInfo::LogSwitch) {
 			if (!chunkMap.contains(chunkPos)) {
 				Log::printError(__FILE__, __LINE__, "变更方块所处区块为空");
@@ -964,7 +947,7 @@ private:
 
 		Chunk& chunkNode = chunkMap[chunkPos];
 		short& oldCubeId = chunkNode.cubeArray[cubePos.x][cubePos.y][cubePos.z];		//[1,32]
-		plateStruct::cubePosNode cubePosKey = { (short)cubePos.x, (short)cubePos.y, (short)cubePos.z };
+		plateStruct::cubePosNode cubePosKey = { static_cast<short>(cubePos.x), static_cast<short>(cubePos.y), static_cast<short>(cubePos.z) };
 
 		//本区块处理[1,32]
 		chunkNode.isVisibleDataLock->lock();
@@ -1032,7 +1015,7 @@ private:
 	}
 
 	//获取边界变更方块列表
-	void getExtremeChangeCubeList(const glm::dvec3& extremeChunkPos, const glm::ivec3& extremeCubePos, const glm::ivec2& abutCubePos, const short& newCubeId) {
+	void getExtremeChangeCubeList(const glm::dvec3& extremeChunkPos, const glm::ivec3& extremeCubePos, const glm::ivec2& abutCubePos, short newCubeId) {
 		if (debugInfo::LogSwitch) {
 			if (!chunkMap.contains(extremeChunkPos)) {
 				Log::printError(__FILE__, __LINE__, "变更方块所处临界区块为空");
@@ -1041,7 +1024,7 @@ private:
 
 		Chunk& chunkNode = chunkMap[extremeChunkPos];
 		short& oldCubeId = chunkNode.cubeArray[extremeCubePos.x][extremeCubePos.y][extremeCubePos.z];		//[0,33]
-		plateStruct::cubePosNode extremeCubePosKey = { (short)extremeCubePos.x, (short)extremeCubePos.y, (short)extremeCubePos.z };
+		plateStruct::cubePosNode extremeCubePosKey = { static_cast<short>(extremeCubePos.x), static_cast<short>(extremeCubePos.y), static_cast<short>(extremeCubePos.z) };
 
 		chunkNode.isVisibleDataLock->lock();
 		if (oldCubeId == cubeEnum::cubeId::air) {
@@ -1080,6 +1063,27 @@ private:
 		if (debugInfo::LogSwitch) {
 			if (!chunkMap.contains(extremeChunkPos)) {
 				Log::printError(__FILE__, __LINE__, "变更方块所处临界区块为空");
+			}
+		}
+	}
+
+	//于地形网格中删除区块网格
+	void delTerrainMesh(const glm::dvec3& chunkPos, int layer) {
+		for (std::forward_list<plateStruct::terrainMeshSignNode>::iterator node = terrainMeshSignList[layer].begin(), prev = terrainMeshSignList[layer].before_begin(); node != terrainMeshSignList[layer].end(); prev = node, ++node) {
+			if (node->chunkPos == chunkPos) {
+				std::forward_list<plateStruct::terrainMeshSignNode>::iterator p = std::next(node);
+				int vertexsSize = 0;
+
+				while (p != terrainMeshSignList[layer].end()) {
+					vertexsSize += p->vertexsSize;
+					++p;
+				}
+
+				terrainVertex::vertexs[layer].erase(terrainVertex::vertexs[layer].begin() + vertexsSize, terrainVertex::vertexs[layer].begin() + vertexsSize + node->vertexsSize);
+				terrainVertex::indexs[layer].erase(terrainVertex::indexs[layer].end() - node->indexsSize, terrainVertex::indexs[layer].end());
+
+				terrainMeshSignList[layer].erase_after(prev);
+				break;
 			}
 		}
 	}

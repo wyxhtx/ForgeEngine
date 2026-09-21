@@ -20,7 +20,7 @@ public:
 
 	~Instance() {
 		if (debugInfo::LayerSwitch) {
-			auto debugCallbackInfo = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+			auto debugCallbackInfo = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 
 			if (debugCallbackInfo != nullptr) {
 				debugCallbackInfo(instance, debugCallback, nullptr);
@@ -78,7 +78,7 @@ private:
 		if (debugInfo::LayerSwitch) {
 			enableLayerListSupport(engineInfo::enableLayerList);
 			createInfo.pNext               = &debugCreateInfo;
-			createInfo.enabledLayerCount   = (uint32_t)engineInfo::enableLayerList.size();
+			createInfo.enabledLayerCount   = static_cast<uint32_t>(engineInfo::enableLayerList.size());
 			createInfo.ppEnabledLayerNames = engineInfo::enableLayerList.data();
 		}
 		else {
@@ -89,7 +89,7 @@ private:
 
 		//启用扩展
 		std::vector<const char*> extensionList = enableInstanceExtensionListSupport(engineInfo::enableInstanceExtensionList);
-		createInfo.enabledExtensionCount       = (uint32_t)extensionList.size();
+		createInfo.enabledExtensionCount       = static_cast<uint32_t>(extensionList.size());
 		createInfo.ppEnabledExtensionNames     = extensionList.data();
 
 		//创建instance
@@ -99,7 +99,7 @@ private:
 
 		//获取instance扩展函数
 		if (debugInfo::LayerSwitch) {
-			PFN_vkCreateDebugUtilsMessengerEXT debugCallbackInfo = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+			PFN_vkCreateDebugUtilsMessengerEXT debugCallbackInfo = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
 
 			if (debugCallbackInfo == nullptr) {
 				Log::printError(__FILE__, __LINE__, "vkCreateDebugUtilsMessengerEXT获取失败");
@@ -111,18 +111,6 @@ private:
 	}
 
 
-
-	//回调处理
-	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallbackFunc(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-		std::cerr << "校验层: " << std::endl << pCallbackData->pMessage << std::endl << "------" << std::endl;
-
-		//Pipeline生命周期中，校验层报错时暂停
-		while (lockInfo::logPauseEnableLock.load()) {
-			std::this_thread::yield();
-		};
-
-		return VK_FALSE;
-	}
 
 	//enableLayerList支持
 	void enableLayerListSupport(const std::vector<const char*>& enableLayerList) {
@@ -221,5 +209,19 @@ private:
 		}
 
 		return platformExtensionList;
+	}
+
+
+
+	//回调处理
+	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallbackFunc(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+		std::cerr << "校验层: " << std::endl << pCallbackData->pMessage << std::endl << "------" << std::endl;
+
+		//Pipeline生命周期中，校验层报错时暂停
+		while (lockInfo::logPauseEnableLock.load()) {
+			std::this_thread::yield();
+		};
+
+		return VK_FALSE;
 	}
 };

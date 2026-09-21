@@ -4,7 +4,7 @@
 
 class Pipeline {
 public:
-	Pipeline(Device& Device) : Device{ Device } {
+	Pipeline(Device& tDevice) : Device{ tDevice } {
 		createPipeline();
 		InitBuffer.createCmd(InitBuffer.cmd.thread.current.load(), procPipeline);
 
@@ -81,14 +81,14 @@ public:
 		//更新uiText
 		uiDeltaFrame++;
 		if (engineList::procTick.node[engineEnum::tickEnum::uiText].isUpdate()) {
-			InitBuffer.drawUIText((int)(uiDeltaFrame / engineList::procTick.node[engineEnum::tickEnum::uiText].dt));
+			InitBuffer.drawUIText(static_cast<int>(uiDeltaFrame / engineList::procTick.node[engineEnum::tickEnum::uiText].dt));
 			uiDeltaFrame = 0;
 		}
 
 		//更新板块，因玩家移动后更新板块网格
 		if (engineList::procTick.node[engineEnum::tickEnum::plate].isUpdate() && !cmdIsFlip) {
-			static glm::dvec3 pos0 = glm::floor(playerInfo::initSpawnPos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
-			glm::dvec3		  pos1 = glm::floor(Camera.node.pos / (double)plateInfo::chunkLength) * (double)plateInfo::chunkLength;
+			static glm::dvec3 pos0 = glm::floor(playerInfo::initSpawnPos / static_cast<double>(plateInfo::chunkLength)) * static_cast<double>(plateInfo::chunkLength);
+			glm::dvec3		  pos1 = glm::floor(Camera.node.pos / static_cast<double>(plateInfo::chunkLength)) * static_cast<double>(plateInfo::chunkLength);
 
 			if (pos0 != pos1 && !lockInfo::updatePlateFuncLock.exchange(true)) {
 				submitUpdatePlate(Camera.node.pos);
@@ -126,8 +126,28 @@ public:
 	}
 
 private:
+	void recreateSwapChain(Camera& Camera) {
+		plateWorker.waitIdle();					//等板块任务排空
+		cubeWorker .waitIdle();					//等方块任务排空
+		cmdWorker  .waitIdle();					//等命令任务排空
+
+		lockInfo::queueThreadLock.lock();		//recreateSwapChain里队列命令操作太多了挨个隔离太麻烦，干脆全部隔离
+		vkDeviceWaitIdle(Device.device);
+
+		InitBuffer  .clearSwapChain();
+		procPipeline.clearSwapChain(Device.device);
+
+		InitBuffer.recreateSwapChain();
+		createPipeline();
+		lockInfo::queueThreadLock.unlock();
+
+		InitBuffer.cmd.flip();
+		InitBuffer.recreateCmd(InitBuffer.cmd.thread.next.load(), InitPlate.isEntireRebuild, InitPlate.originPos, Camera, procPipeline);
+		Log::print("重建交换链");
+	}
+
 	//提交板块更新任务，plateWorker执行
-	void submitUpdatePlate(glm::dvec3 playerPos) {
+	void submitUpdatePlate(const glm::dvec3& playerPos) {
 		plateWorker.submit([this, playerPos] {
 			engineStruct::timeNode time{};
 
@@ -165,25 +185,5 @@ private:
 
 			lockInfo::recreateCmdFuncLock.store(false);
 		});
-	}
-
-	void recreateSwapChain(Camera& Camera) {
-		plateWorker.waitIdle();					//等板块任务排空
-		cubeWorker .waitIdle();					//等方块任务排空
-		cmdWorker  .waitIdle();					//等命令任务排空
-
-		lockInfo::queueThreadLock.lock();		//recreateSwapChain里队列命令操作太多了挨个隔离太麻烦，干脆全部隔离
-		vkDeviceWaitIdle(Device.device);
-
-		InitBuffer  .clearSwapChain();
-		procPipeline.clearSwapChain(Device.device);
-
-		InitBuffer.recreateSwapChain();
-		createPipeline();
-		lockInfo::queueThreadLock.unlock();
-
-		InitBuffer.cmd.flip();
-		InitBuffer.recreateCmd(InitBuffer.cmd.thread.next.load(), InitPlate.isEntireRebuild, InitPlate.originPos, Camera, procPipeline);
-		Log::print("重建交换链");
 	}
 };

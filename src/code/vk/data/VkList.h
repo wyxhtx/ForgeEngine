@@ -31,7 +31,7 @@ namespace bufferList {
 
 
 
-		procRenderNode(const VkFormat& colorFormat, const VkFormat& depthFormat, const VkExtent2D& swapExtent, const VkSampleCountFlagBits& msaa, const VkDevice& device, const VmaAllocator& memAllocator) : renderTemplateList(renderEnum::renderTemplateId::count), renderInstanceList(renderEnum::renderInstanceId::count) {
+		procRenderNode(VkFormat colorFormat, VkFormat depthFormat, const VkExtent2D& swapExtent, VkSampleCountFlagBits msaa, const VkDevice& device, const VmaAllocator& memAllocator) : renderTemplateList(renderEnum::renderTemplateId::count), renderInstanceList(renderEnum::renderInstanceId::count) {
 			renderTemplateList[renderEnum::renderTemplateId::swapChain_rt].createRenderTemplateNode(renderEnum::renderTemplateId::swapChain_rt, colorFormat, depthFormat, msaa, device);
 			renderTemplateList[renderEnum::renderTemplateId::offScreen_rt].createRenderTemplateNode(renderEnum::renderTemplateId::offScreen_rt, colorFormat, depthFormat, msaa, device);
 			renderTemplateList[renderEnum::renderTemplateId::deferred_rt] .createRenderTemplateNode(renderEnum::renderTemplateId::deferred_rt,  colorFormat, depthFormat, msaa, device);
@@ -48,14 +48,6 @@ namespace bufferList {
 
 
 
-		void recreateSwapChain(const VkExtent2D& swapExtent, const VkFormat& colorFormat, const VkFormat& depthFormat, const VkSampleCountFlagBits& msaa, const VkDevice& device, const VmaAllocator& memAllocator) {
-			renderInstanceList[renderEnum::renderInstanceId::scScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::swapChain_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
-			renderInstanceList[renderEnum::renderInstanceId::osScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::offScreen_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
-			renderInstanceList[renderEnum::renderInstanceId::osMirror_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::offScreen_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
-			renderInstanceList[renderEnum::renderInstanceId::dsScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::deferred_rt],  colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
-			renderInstanceList[renderEnum::renderInstanceId::shadowMap_ri].createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::shadowMap_rt], colorFormat, depthFormat, renderInfo::shadowMapExtent, msaa, device, memAllocator);
-		}
-
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
 			for (int i = 0; i < renderEnum::renderTemplateId::count; i++) {
 				renderTemplateList[i].clear(device);
@@ -66,26 +58,34 @@ namespace bufferList {
 			}
 		}
 
+
+
+		void recreateSwapChain(const VkExtent2D& swapExtent, VkFormat colorFormat, VkFormat depthFormat, VkSampleCountFlagBits msaa, const VkDevice& device, const VmaAllocator& memAllocator) {
+			renderInstanceList[renderEnum::renderInstanceId::scScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::swapChain_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+			renderInstanceList[renderEnum::renderInstanceId::osScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::offScreen_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+			renderInstanceList[renderEnum::renderInstanceId::osMirror_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::offScreen_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+			renderInstanceList[renderEnum::renderInstanceId::dsScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::deferred_rt],  colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
+			renderInstanceList[renderEnum::renderInstanceId::shadowMap_ri].createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::shadowMap_rt], colorFormat, depthFormat, renderInfo::shadowMapExtent, msaa, device, memAllocator);
+		}
+
 		void clearSwapChain(const VkDevice& device, const VmaAllocator& memAllocator) {
 			for (int i = 0; i < renderEnum::renderInstanceId::count; i++) {
 				renderInstanceList[i].clear(device, memAllocator);
 			}
 		}
 
-
-
 		//获取frameImage，为创建描述符服务
-		const VkImageView& getFrameImage(const renderEnum::renderInstanceId::type& renderInstanceType, const renderEnum::renderFrameId::type& renderFrameType, int viewId) {
+		const VkImageView& getFrameImage(renderEnum::renderInstanceId::type renderInstanceType, renderEnum::renderFrameId::type renderFrameType, int viewId) {
 			return renderInstanceList[renderInstanceType].frameImageList[renderFrameType].imageList[viewId].view;
 		}
 
 		//获取renderBegin
-		const VkRenderPassBeginInfo& getRenderBegin(const renderEnum::renderInstanceId::type& renderInstanceType) {
+		const VkRenderPassBeginInfo& getRenderBegin(renderEnum::renderInstanceId::type renderInstanceType) {
 			return renderInstanceList[renderInstanceType].frameBufferList[0].renderBegin;
 		}
 
 		//获取renderBegin，swap版
-		const VkRenderPassBeginInfo& getRenderBegin(const renderEnum::renderInstanceId::type& renderInstanceType, int frameId) {
+		const VkRenderPassBeginInfo& getRenderBegin(renderEnum::renderInstanceId::type renderInstanceType, int frameId) {
 			return renderInstanceList[renderInstanceType].frameBufferList[frameId].renderBegin;
 		}
 	};
@@ -159,7 +159,7 @@ namespace bufferList {
 			nodeId = id;
 		}
 
-		const VkWriteDescriptorSet& getWrite(int writeId, const VkDescriptorSet& dstSet, const VkBuffer& buffer, const VkDeviceSize& range) {
+		const VkWriteDescriptorSet& getWrite(int writeId, const VkDescriptorSet& dstSet, const VkBuffer& buffer, VkDeviceSize range) {
 			return node[nodeId].config[writeId].setWrite(dstSet, buffer, range);
 		}
 
@@ -174,6 +174,14 @@ namespace bufferList {
 
 
 		procSamplerNode() : node(bufferEnum::procSamplerId::count) {}
+
+
+
+		void clear(const VkDevice& device) {
+			for (int i = 0; i < bufferEnum::procSamplerId::count; i++) {
+				vkDestroySampler(device, node[i], nullptr);
+			}
+		}
 
 
 
@@ -277,12 +285,6 @@ namespace bufferList {
 				Log::printError(__FILE__, __LINE__, "shadow采样器创建失败");
 			}
 		}
-
-		void clear(const VkDevice& device) {
-			for (int i = 0; i < bufferEnum::procSamplerId::count; i++) {
-				vkDestroySampler(device, node[i], nullptr);
-			}
-		}
 	};
 }
 
@@ -294,7 +296,7 @@ namespace pipelineList {
 
 
 
-		procPipelineNode(const VkDevice& device, const std::vector<bufferStruct::descriptorNode>& dstList, const std::vector<renderStruct::renderTemplateNode>& renderList, const VkSampleCountFlagBits& msaa) : nodeLayout(bufferEnum::procDescriptorId::count), node(pipelineEnum::procPipelineId::count) {
+		procPipelineNode(const VkDevice& device, const std::vector<bufferStruct::descriptorNode>& dstList, const std::vector<renderStruct::renderTemplateNode>& renderList, VkSampleCountFlagBits msaa) : nodeLayout(bufferEnum::procDescriptorId::count), node(pipelineEnum::procPipelineId::count) {
 			/*配置nodeLayout*/
 			for (size_t i = 0; i < bufferEnum::procDescriptorId::count; i++) {
 				nodeLayout[i].createPipeLayoutNode(device, dstList[i].layout);
@@ -358,6 +360,20 @@ namespace pipelineList {
 
 
 
+		void clear(const VkDevice& device) {
+			for (size_t i = 0; i < bufferEnum::procDescriptorId::count; i++) {
+				nodeLayout[i].clear(device);
+			}
+
+			for (int i = 0; i < pipelineEnum::procPipelineId::count; i++) {
+				node[i].clear(device);
+			}
+
+			vkDestroyPipelineCache(device, pipeCache, nullptr);
+		}
+
+
+
 		//创建管线
 		template<typename VertexType>
 		void createPipeline(const VkDevice& device, pipelineEnum::procPipelineId::type id, const VkExtent2D& extent) {
@@ -374,8 +390,8 @@ namespace pipelineList {
 
 			//配置pipeConfig
 			pipelineStruct::pipeConfigNode& pipeConfig = node[id].pipeConfig;
-			pipeConfig.viewport.width  = (float)extent.width;
-			pipeConfig.viewport.height = (float)extent.height;
+			pipeConfig.viewport.width  = static_cast<float>(extent.width);
+			pipeConfig.viewport.height = static_cast<float>(extent.height);
 			pipeConfig.scissor.extent  = extent;
 			pipeConfig.pipeInfo.pVertexInputState = &vertInputStage;
 
@@ -383,18 +399,6 @@ namespace pipelineList {
 			if (vkCreateGraphicsPipelines(device, pipeCache, 1, &pipeConfig.pipeInfo, nullptr, &node[id].pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "管线创建失败");
 			}
-		}
-
-		void clear(const VkDevice& device) {
-			for (size_t i = 0; i < bufferEnum::procDescriptorId::count; i++) {
-				nodeLayout[i].clear(device);
-			}
-
-			for (int i = 0; i < pipelineEnum::procPipelineId::count; i++) {
-				node[i].clear(device);
-			}
-
-			vkDestroyPipelineCache(device, pipeCache, nullptr);
 		}
 
 		void clearSwapChain(const VkDevice& device) {

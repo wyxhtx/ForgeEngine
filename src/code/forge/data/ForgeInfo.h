@@ -35,13 +35,13 @@ namespace plateInfo {
 	const int cubeArrayLength = chunkLength + 2;										//方块数组边长
 	const int lengthIncrement = plateInfo::chunkLength + 1;								//区块边长增一，用于方块数组边缘检测
 	const int lengthDecrement = plateInfo::chunkLength - 1;								//区块边长减一，用于方块数组边缘检测
-	const int cubeArraySquare = (int)std::pow(plateInfo::cubeArrayLength, 2);			//方块数组边长平方值
-	const int cubeArrayVolume = (int)std::pow(plateInfo::cubeArrayLength, 3);			//方块数组边长立方值
+	const int cubeArraySquare = static_cast<int>(std::pow(plateInfo::cubeArrayLength, 2));			//方块数组边长平方值
+	const int cubeArrayVolume = static_cast<int>(std::pow(plateInfo::cubeArrayLength, 3));			//方块数组边长立方值
 
 	const float perspSightRange = plateInfo::chunkLength * (plateInfo::sightRange + 2);	//方块透视投影视距半径，用于设置远裁剪面半径
 	const float orthoSightRange = plateInfo::chunkLength * plateInfo::sightRange;		//方块正交投影视距半径，用于设置远裁剪面半径
 
-	const int originShiftThreshold = (int)pow(2, 8);									//测试用256
+	const int originShiftThreshold = static_cast<int>(pow(2, 8));									//测试用256
 	//const int originShiftThreshold = (int)pow(2, 13);									//原点迁移阈值8192，小数点后还有三位能准确表示精度
 
 	const int terrainLayerSight[plateEnum::terrainLayer::count] = { 4,plateInfo::sightRange };	//地形管线各层视距列表
@@ -67,7 +67,7 @@ namespace playerInfo {
 	const glm::dvec3 initSpawnPos = { 0, 64, 0 };		//玩家出生点（d世界坐标系）
 
 	//逻辑原点坐标（d世界坐标系），在逻辑之中表示无限地图，用于updateUniformBuffer正确计算板块mvp
-	glm::dvec3 logicOriginPos = glm::floor(initSpawnPos / (double)plateInfo::originShiftThreshold) * (double)plateInfo::originShiftThreshold;
+	glm::dvec3 logicOriginPos = glm::floor(initSpawnPos / static_cast<double>(plateInfo::originShiftThreshold)) * static_cast<double>(plateInfo::originShiftThreshold);
 
 	//todo目前距离不准待日后矫正
 	const float cubeInteractionRange = 16;				//方块交互半径

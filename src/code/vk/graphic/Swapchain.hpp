@@ -11,7 +11,7 @@ public:
 
 
 
-	Swapchain(Device& Device) :Device{ Device } {
+	Swapchain(Device& tDevice) :Device{ tDevice } {
 		createSwapSupport();
 		createSwapChain();
 
@@ -100,26 +100,7 @@ private:
 	}
 
 public:
-	void recreateSwapChain() {
-		swapSupport.recreateSwapCreateInfo(Device.enableGpu->gpu, Device.presentSurface, swapchain);
-		swapExtent = swapSupport.swapCreateInfo.imageExtent;
-
-		vkQueueWaitIdle(Device.graphicsQueue);
-
-		VkSwapchainKHR tempSwapchain;
-		if (vkCreateSwapchainKHR(Device.device, &swapSupport.swapCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
-			Log::printError(__FILE__, __LINE__, "重建交换链创建失败");
-		}
-
-		vkDestroySwapchainKHR(Device.device, swapchain, nullptr);
-		swapchain = tempSwapchain;
-
-		createSwapImageList();
-	}
-
-
-
-	bool drawFrame(std::vector<VkCommandBuffer>& cmdList, VkFence cmdFence) {
+	bool drawFrame(std::vector<VkCommandBuffer>& cmdList, const VkFence& cmdFence) {
 		vkWaitForFences(Device.device, 1, &cmdFence, VK_TRUE, std::numeric_limits<uint64_t>::max());
 		vkResetFences  (Device.device, 1, &cmdFence);
 	
@@ -182,5 +163,22 @@ public:
 	
 		currentFrame = (currentFrame + 1) % swapSupport.swapCreateInfo.minImageCount;
 		return false;
+	}
+
+	void recreateSwapChain() {
+		swapSupport.recreateSwapCreateInfo(Device.enableGpu->gpu, Device.presentSurface, swapchain);
+		swapExtent = swapSupport.swapCreateInfo.imageExtent;
+
+		vkQueueWaitIdle(Device.graphicsQueue);
+
+		VkSwapchainKHR tempSwapchain;
+		if (vkCreateSwapchainKHR(Device.device, &swapSupport.swapCreateInfo, nullptr, &tempSwapchain) != VK_SUCCESS) {
+			Log::printError(__FILE__, __LINE__, "重建交换链创建失败");
+		}
+
+		vkDestroySwapchainKHR(Device.device, swapchain, nullptr);
+		swapchain = tempSwapchain;
+
+		createSwapImageList();
 	}
 };

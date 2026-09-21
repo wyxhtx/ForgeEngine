@@ -89,7 +89,7 @@ private:
 	static void mouseCallback(GLFWwindow* window, double xPos, double yPos) {
 		Window* instance = static_cast<Window*>(glfwGetWindowUserPointer(window));
 		if (instance) {
-			instance->mouseHandle(window, (float)xPos, (float)yPos);
+			instance->mouseHandle(window, static_cast<float>(xPos), static_cast<float>(yPos));
 		}
 	}
 
@@ -97,7 +97,7 @@ private:
 	static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset) {
 		Window* instance = static_cast<Window*>(glfwGetWindowUserPointer(window));
 		if (instance) {
-			instance->InitCamera.scrollHandle((float)yOffset);
+			instance->InitCamera.scrollHandle(static_cast<float>(yOffset));
 		}
 	}
 

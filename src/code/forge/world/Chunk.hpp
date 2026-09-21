@@ -73,7 +73,7 @@ public:
 		for (int i = 0; i < 6; i++) {
 			for (int j = 0; j < plateInfo::chunkLength; j++) {
 				if (!visibleFaceMap[i][j].empty()) {		//[0,31]
-					int size = (int)chunkVertexs.size();
+					int size = static_cast<int>(chunkVertexs.size());
 
 					while (!visibleFaceMap[i][j].empty()) {
 						std::unordered_map<glm::ivec3, short>& node = visibleFaceMap[i][j];
@@ -471,36 +471,30 @@ public:
 						}
 					}
 
-					size = (int)chunkVertexs.size() - size;
+					size = static_cast<int>(chunkVertexs.size()) - size;
 
-					chunkMeshSignList[i].list.push_front(plateStruct::chunkMeshSignListNode{ j, size, (int)(size * 1.5f) });
+					chunkMeshSignList[i].list.push_front(plateStruct::chunkMeshSignListNode{ j, size, static_cast<int>(size * 1.5f) });
 					chunkMeshSignList[i].vertexsSentinel += size;
 				}
 			}
 		}
 	}
 
-
-
 	//初始化区块
-	void InitChunk(const glm::dvec3 origin, const glm::dvec3 chunkPos0) {
+	void InitChunk(const glm::dvec3& origin, const glm::dvec3& chunkPos0) {
 		originOffset	= origin;
 		chunkPos		= chunkPos0;
-		logicalWorldPos = chunkPos * (double)plateInfo::chunkLength;
+		logicalWorldPos = chunkPos * static_cast<double>(plateInfo::chunkLength);
 		actualWorldPos  = glm::ivec3(logicalWorldPos - origin);
 	}
 
 private:
-	plateStruct::chunkMeshSignNode chunkMeshSignList[6];			//区块网格标识列表，按照先0~5面再0~31层的顺序维护网格列表
-
-
-
 	//i：		朝向id
 	//faceId：	纹理id
 	//cubeId:	方块id
 	//position：	坐标
 	//length：	纹理循环长度
-	void createChunkMesh(int i, int faceId, int cubeId, glm::vec3 position, glm::vec3 length) {
+	void createChunkMesh(int i, int faceId, int cubeId, const glm::vec3& position, const glm::vec3& length) {
 		std::vector<terrainVertex::vertexNode> tempVertexs;
 
 		//四个顶点构成一个面，顶点uv绑定应按照Z画法，uv绑定朝向与画Z时相同
@@ -570,86 +564,6 @@ private:
 		//顶点输入
 		chunkVertexs.insert(chunkVertexs.end(), tempVertexs.begin(), tempVertexs.end());
 		//索引输入
-		chunkIndexs.insert(chunkIndexs.end(), { 0 + indexOffset, 1 + indexOffset, 2 + indexOffset, 2 + indexOffset, 1 + indexOffset, 3 + indexOffset });
-
-		indexOffset += 4;
-	}
-
-
-
-	//i：		朝向id
-	//faceId：	纹理id
-	//cubeId:	方块id
-	//position：	坐标
-	//length：	纹理循环长度
-	//vertexsSize：顶点长度
-	void updateChunkMesh(int i, int faceId, int cubeId, glm::vec3 position, glm::vec3 length, int vertexsSize) {
-		std::vector<terrainVertex::vertexNode> tempVertexs;
-
-		switch (i) {
-		case 0: {
-			//上, Y+
-			tempVertexs = {
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
-			};
-			break;
-		}
-		case 1: {
-			//下, Y-
-			tempVertexs = {
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
-			};
-			break;
-		}
-		case 2: {
-			//左, X+
-			tempVertexs = {
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
-			};
-			break;
-		}
-		case 3: {
-			//右, X-
-			tempVertexs = {
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
-			};
-			break;
-		}
-		case 4: {
-			//前, Z+
-			tempVertexs = {
-				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
-			};
-			break;
-		}
-		case 5: {
-			//后, Z-
-			tempVertexs = {
-				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
-				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
-			};
-			break;
-		}
-		}
-
-		chunkVertexs.insert(chunkVertexs.begin() + vertexsSize, tempVertexs.begin(), tempVertexs.end());
 		chunkIndexs.insert(chunkIndexs.end(), { 0 + indexOffset, 1 + indexOffset, 2 + indexOffset, 2 + indexOffset, 1 + indexOffset, 3 + indexOffset });
 
 		indexOffset += 4;
@@ -965,7 +879,7 @@ public:
 		for (int i = 0; i < 6; i++) {
 			for (int j = layerMin[i]; j <= layerMax[i]; j++) {
 				if (!visibleFaceMap[i][j].empty()) {
-					int size = (int)chunkVertexs.size();
+					int size = static_cast<int>(chunkVertexs.size());
 					int vertexsSize = 0;
 					bool lock = true;
 
@@ -1382,12 +1296,12 @@ public:
 					}
 
 					std::forward_list<plateStruct::chunkMeshSignListNode>::iterator it = chunkMeshSignList[i].list.before_begin();
-					size = (int)chunkVertexs.size() - size;
+					size = static_cast<int>(chunkVertexs.size()) - size;
 
 					//非列头插入
 					for (std::forward_list<plateStruct::chunkMeshSignListNode>::iterator node = chunkMeshSignList[i].list.begin(), prev = chunkMeshSignList[i].list.before_begin(); node != chunkMeshSignList[i].list.end(); prev = node, ++node) {
 						if (node->chunkLayer < j) {
-							chunkMeshSignList[i].list.insert_after(prev, plateStruct::chunkMeshSignListNode{ j, size, (int)(size * 1.5f) });
+							chunkMeshSignList[i].list.insert_after(prev, plateStruct::chunkMeshSignListNode{ j, size, static_cast<int>(size * 1.5f) });
 							lock = false;
 							break;
 						}
@@ -1397,12 +1311,95 @@ public:
 
 					//列头插入
 					if (lock) {
-						chunkMeshSignList[i].list.insert_after(it, plateStruct::chunkMeshSignListNode{ j, size, (int)(size * 1.5f) });
+						chunkMeshSignList[i].list.insert_after(it, plateStruct::chunkMeshSignListNode{ j, size, static_cast<int>(size * 1.5f) });
 					}
 
 					chunkMeshSignList[i].vertexsSentinel += size;
 				}
 			}
 		}
+	}
+
+private:
+	plateStruct::chunkMeshSignNode chunkMeshSignList[6];			//区块网格标识列表，按照先0~5面再0~31层的顺序维护网格列表
+
+
+
+	//i：		朝向id
+	//faceId：	纹理id
+	//cubeId:	方块id
+	//position：	坐标
+	//length：	纹理循环长度
+	//vertexsSize：顶点长度
+	void updateChunkMesh(int i, int faceId, int cubeId, const glm::vec3& position, const glm::vec3& length, int vertexsSize) {
+		std::vector<terrainVertex::vertexNode> tempVertexs;
+
+		switch (i) {
+		case 0: {
+			//上, Y+
+			tempVertexs = {
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
+			};
+			break;
+		}
+		case 1: {
+			//下, Y-
+			tempVertexs = {
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.z), faceId}, {vertexInfo::normalID[i]}}
+			};
+			break;
+		}
+		case 2: {
+			//左, X+
+			tempVertexs = {
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
+			};
+			break;
+		}
+		case 3: {
+			//右, X-
+			tempVertexs = {
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.z, length.y), faceId}, {vertexInfo::normalID[i]}}
+			};
+			break;
+		}
+		case 4: {
+			//前, Z+
+			tempVertexs = {
+				{{vertexInfo::vertexID[4] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[5] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[7] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[6] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
+			};
+			break;
+		}
+		case 5: {
+			//后, Z-
+			tempVertexs = {
+				{{vertexInfo::vertexID[1] * length + position}, {vertexInfo::uvID[0] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[0] * length + position}, {vertexInfo::uvID[1] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[2] * length + position}, {vertexInfo::uvID[2] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}},
+				{{vertexInfo::vertexID[3] * length + position}, {vertexInfo::uvID[3] * glm::vec2(length.x, length.y), faceId}, {vertexInfo::normalID[i]}}
+			};
+			break;
+		}
+		}
+
+		chunkVertexs.insert(chunkVertexs.begin() + vertexsSize, tempVertexs.begin(), tempVertexs.end());
+		chunkIndexs.insert(chunkIndexs.end(), { 0 + indexOffset, 1 + indexOffset, 2 + indexOffset, 2 + indexOffset, 1 + indexOffset, 3 + indexOffset });
+
+		indexOffset += 4;
 	}
 };
