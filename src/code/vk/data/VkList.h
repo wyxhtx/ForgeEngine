@@ -2,7 +2,7 @@
 
 
 
-//engine列表空间
+//engine	列表空间
 namespace engineList {
 	struct procTickNode {
 		std::vector<engineStruct::tickNode> node{};
@@ -22,9 +22,40 @@ namespace engineList {
 
 
 
-//todo 待到拆解完成后都移入pipelineList下
-//buffer列表空间
-namespace bufferList {
+//pipeline	列表空间
+namespace pipelineList {
+	//管线着色器结点：一条管线用哪套描述符布局、挂在哪个渲染模板下、采样数、用哪些着色器
+	struct pipelineShaderNode {
+		pipelineEnum::procPipelineId::type  pipeType{};          //管线 id（本行的键，表顺序无关）
+		bufferEnum::procDescriptorId::type  descriptor{};        //描述符布局
+		renderEnum::renderTemplateId::type  renderTemplate{};    //渲染模板
+		bool                                isMsaa{};            //是否用引擎的 MSAA 采样数，否则强制单采样
+		std::vector<std::string>            fileList{};          //着色器文件，索引与 pipelineEnum::shaderNodeId::vert 一致
+
+
+
+		//采样数：本行跟随引擎 MSAA 就取引擎采样数，否则强制单采样
+		VkSampleCountFlagBits getMsaa(VkSampleCountFlagBits msaa) const {
+			return isMsaa ? msaa : VK_SAMPLE_COUNT_1_BIT;
+		}
+	};
+
+	//管线 id → 着色器（每行自带 pipeType，表顺序无关）
+	//唯一来源：引擎据此建管线；反射布局据此推导"每个描述符布局用到哪些着色器"
+	const std::array<pipelineShaderNode, pipelineEnum::procPipelineId::count> procPipelineShader{ {
+		{ pipelineEnum::procPipelineId::terrain_p,   bufferEnum::procDescriptorId::scenceDeferred_d, renderEnum::renderTemplateId::deferred_rt,  false, { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag  } },
+		{ pipelineEnum::procPipelineId::model_p,     bufferEnum::procDescriptorId::scenceDeferred_d, renderEnum::renderTemplateId::deferred_rt,  false, { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag      } },
+		{ pipelineEnum::procPipelineId::skybox_p,    bufferEnum::procDescriptorId::scenceForward_d,  renderEnum::renderTemplateId::deferred_rt,  false, { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag   } },
+		{ pipelineEnum::procPipelineId::mine_p,      bufferEnum::procDescriptorId::scenceForward_d,  renderEnum::renderTemplateId::deferred_rt,  false, { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag     } },
+		{ pipelineEnum::procPipelineId::uiText_p,    bufferEnum::procDescriptorId::uiText_d,         renderEnum::renderTemplateId::swapChain_rt, true,  { fileInfo::shader::uiTextVert,   fileInfo::shader::uiTextFrag   } },
+		{ pipelineEnum::procPipelineId::osMirror_p,  bufferEnum::procDescriptorId::scenceForward_d,  renderEnum::renderTemplateId::offScreen_rt, true,  { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag } },
+		{ pipelineEnum::procPipelineId::osScence_p,  bufferEnum::procDescriptorId::scenceForward_d,  renderEnum::renderTemplateId::swapChain_rt, true,  { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag } },
+		{ pipelineEnum::procPipelineId::dsScence_p,  bufferEnum::procDescriptorId::dsScence_d,       renderEnum::renderTemplateId::swapChain_rt, true,  { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag } },
+		{ pipelineEnum::procPipelineId::shadowMap_p, bufferEnum::procDescriptorId::shadowMap_d,      renderEnum::renderTemplateId::shadowMap_rt, false, { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   } },
+	} };
+
+
+
 	struct procRenderNode {
 		std::vector<renderStruct::renderTemplateNode> renderTemplateList{};
 		std::vector<renderStruct::renderInstanceNode> renderInstanceList{};
@@ -104,38 +135,15 @@ namespace bufferList {
 			allocInfo.pNext = nullptr;
 			allocInfo.descriptorSetCount = 1;
 
-			//scenceForward_d
-			node[bufferEnum::procDescriptorId::scenceForward_d].config = {
-				{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::scenceForwardCount},    //顶点模型缓冲区描述符
-				{1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceForwardCount},    //片段光照缓冲区描述符
-				{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceForwardCount},    //片段纹理采样器描述符
-			};
+			//描述符布局：运行期反射 spv 现算，天然与着色器一致
+			reflectLayout();
 
-			//scenceDeferred_d
-			node[bufferEnum::procDescriptorId::scenceDeferred_d].config = {
-				{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_VERTEX_BIT,   bufferInfo::scenceDeferredCount},   //顶点模型
-				{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::scenceDeferredCount},   //片段纹理
-			};
-
-			//uiText_d
-			node[bufferEnum::procDescriptorId::uiText_d].config = {
-				{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::uiTextCount}            //片段纹理采样器描述符
-			};
-
-			//dsScence_d
-			node[bufferEnum::procDescriptorId::dsScence_d].config = {
-				{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段光照统一缓冲
-				{1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段阴影统一缓冲
-				{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段坐标
-				{3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段法线
-				{4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount},         //片段反射
-				{5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, bufferInfo::dsScenceCount}          //片段阴影
-			};
-
-			//shadowMap_d
-			node[bufferEnum::procDescriptorId::shadowMap_d].config = {
-				{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, bufferInfo::shadowCount}     //顶点阴影mvp映射
-			};
+			//描述符池上限属应用侧决策，spv 里没有，仍在此手写
+			node[bufferEnum::procDescriptorId::scenceForward_d] .maxSet = bufferInfo::scenceForwardCount;
+			node[bufferEnum::procDescriptorId::scenceDeferred_d].maxSet = bufferInfo::scenceDeferredCount;
+			node[bufferEnum::procDescriptorId::uiText_d]		.maxSet = bufferInfo::uiTextCount;
+			node[bufferEnum::procDescriptorId::dsScence_d]		.maxSet = bufferInfo::dsScenceCount;
+			node[bufferEnum::procDescriptorId::shadowMap_d]		.maxSet = bufferInfo::shadowCount;
 
 			for (int i = 0; i < bufferEnum::procDescriptorId::count; i++) {
 				node[i].createDescriptorNode(device);
@@ -151,6 +159,81 @@ namespace bufferList {
 		}
 
 
+
+		//反射 spv 现算描述符布局：布局不再由构建期生成，改在启动时按磁盘上的 spv 现算
+		void reflectLayout() {
+			//着色器索引 → 阶段（索引与 pipelineEnum::shaderNodeId::vert 一致：0 顶点、1 片段）
+			const std::array<VkShaderStageFlagBits, pipelineEnum::shaderNodeId::vert::count> vertStageList{ VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
+
+			//按描述符汇总着色器：同一布局常被多条管线共用，需合并去重
+			std::array<std::vector<spirvTool::reflectShaderNode>, bufferEnum::procDescriptorId::count> descriptorShader{};
+
+			//按表逐管线汇总；行自带 pipeType，与表顺序无关
+			for (const pipelineList::pipelineShaderNode& pipeline : pipelineList::procPipelineShader) {
+				if (debugInfo::LogSwitch && pipeline.fileList.size() != vertStageList.size()) {
+					Log::printError(__FILE__, __LINE__, pipelineInfo::procPipelineName[pipeline.pipeType] + " 着色器数量不是 " + std::to_string(vertStageList.size()) + " 个（当前只支持顶点加片段）");
+				}
+
+				std::vector<spirvTool::reflectShaderNode>& shaderList = descriptorShader[pipeline.descriptor];
+
+				for (size_t i = 0; i < pipeline.fileList.size(); i++) {
+					//去重：多条管线共用同一着色器时只反射一次
+					bool isExist = false;
+
+					for (const spirvTool::reflectShaderNode& exist : shaderList) {
+						if (exist.file == pipeline.fileList[i]) { isExist = true; break; }
+					}
+
+					if (!isExist) {
+						shaderList.push_back(spirvTool::reflectShaderNode{ .file = pipeline.fileList[i], .stage = vertStageList[i] });
+					}
+				}
+			}
+
+			//逐描述符反射并合并：同一绑定出现在多个阶段则阶段求并集，类型与数组长度必须一致
+			for (int descriptorId = 0; descriptorId < bufferEnum::procDescriptorId::count; descriptorId++) {
+				std::vector<bufferStruct::descriptorConfigNode> configList{};
+				std::string bindingText{};
+
+				for (const spirvTool::reflectShaderNode& shader : descriptorShader[descriptorId]) {
+					for (const spirvTool::reflectBindingNode& reflect : spirvTool::reflectFile(shader.file, shader.stage)) {
+						//当前布局只支持单集合（GLSL 无 set 语法时反射出的集合号恒为 0）
+						if (debugInfo::LogSwitch && reflect.set != 0) {
+							Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[descriptorId] + " 运行时 spv 的描述符集号非 0：" + reflect.name);
+						}
+
+						bool isMerge = false;
+
+						for (bufferStruct::descriptorConfigNode& merge : configList) {
+							if (merge.layout.binding != reflect.binding) { continue; }
+
+							if (debugInfo::LogSwitch && merge.layout.descriptorType != reflect.type) {
+								Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[descriptorId] + " 绑定 " + std::to_string(reflect.binding) + " 在不同着色器里类型不一致");
+							}
+							if (debugInfo::LogSwitch && merge.layout.descriptorCount != reflect.count) {
+								Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[descriptorId] + " 绑定 " + std::to_string(reflect.binding) + " 在不同着色器里数组长度不一致");
+							}
+
+							merge.layout.stageFlags = static_cast<VkShaderStageFlags>(merge.layout.stageFlags | reflect.stage);
+							isMerge = true;
+							break;
+						}
+
+						if (!isMerge) {
+							configList.push_back(bufferStruct::descriptorConfigNode{ reflect.binding, reflect.type, static_cast<VkShaderStageFlags>(reflect.stage), reflect.count });
+
+							//绑定之间用 → 衔接（首项不加）
+							bindingText += (bindingText.empty() ? std::string{} : std::string{ " → " }) + "b" + std::to_string(reflect.binding) + " " + reflect.name;
+						}
+					}
+				}
+
+				node[descriptorId].config = configList;
+
+				//名字按 tab 位补齐（tab 宽 8，补到第 16 列）：让各描述符的反射日志列对齐
+				Log::print(Log::tabPad(pipelineInfo::procDescriptorName[descriptorId], 16) + "描述符布局反射完成：" + std::to_string(configList.size()) + " 项 → " + bindingText);
+			}
+		}
 
 		void setAllocInfo(bufferEnum::procDescriptorId::type id) {
 			allocInfo.descriptorPool = node[id].pool;
@@ -286,10 +369,9 @@ namespace bufferList {
 			}
 		}
 	};
-}
 
-//pipeline列表空间
-namespace pipelineList {
+
+
 	struct procPipelineNode {
 		std::vector<pipelineStruct::pipeLayoutNode> nodeLayout{};
 		std::vector<pipelineStruct::pipelineNode>   node{};
@@ -302,17 +384,24 @@ namespace pipelineList {
 				nodeLayout[i].createPipeLayoutNode(device, dstList[i].layout);
 			}
 
-			/*配置node*/
+			/*配置node：着色器、渲染模板、描述符布局全部由 pipelineList::procPipelineShader 表驱动；建到 node[pipeType] 上，与表顺序无关*/
 			//node[pipelineEnum::procPipelineId::terrain_p] .createMeshPipelineNode(device, extent, msaa, bufferEnum::procDescriptorId::scenceDeferred_d, fileInfo::shader::terrainTask, fileInfo::shader::terrainMesh, fileInfo::shader::terrainFrag);
-			node[pipelineEnum::procPipelineId::terrain_p]  .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag  }, device);
-			node[pipelineEnum::procPipelineId::model_p]    .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag      }, device);
-			node[pipelineEnum::procPipelineId::skybox_p]   .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag   }, device);
-			node[pipelineEnum::procPipelineId::mine_p]     .createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::deferred_rt],  nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag     }, device);
-			node[pipelineEnum::procPipelineId::uiText_p]   .createPipelineNode(msaa,                  renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::uiText_d],         { fileInfo::shader::uitextVert,   fileInfo::shader::uitextFrag   }, device);
-			node[pipelineEnum::procPipelineId::osMirror_p] .createPipelineNode(msaa,                  renderList[renderEnum::renderTemplateId::offScreen_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag }, device);
-			node[pipelineEnum::procPipelineId::osScence_p] .createPipelineNode(msaa,                  renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d],  { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag }, device);
-			node[pipelineEnum::procPipelineId::dsScence_p] .createPipelineNode(msaa,                  renderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::dsScence_d],       { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag }, device);
-			node[pipelineEnum::procPipelineId::shadowMap_p].createPipelineNode(VK_SAMPLE_COUNT_1_BIT, renderList[renderEnum::renderTemplateId::shadowMap_rt], nodeLayout[bufferEnum::procDescriptorId::shadowMap_d],      { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   }, device);
+			for (const pipelineList::pipelineShaderNode& shader : pipelineList::procPipelineShader) {
+				node[shader.pipeType].createPipelineNode(shader.getMsaa(msaa), renderList[shader.renderTemplate], nodeLayout[shader.descriptor], shader.fileList, device);
+			}
+
+			/*开发期自检：pipeType 是表的键，重复会让后一行静默覆盖前一行（表顺序无关的代价）*/
+			if (debugInfo::LogSwitch) {
+				std::array<bool, pipelineEnum::procPipelineId::count> isUsed{};
+
+				for (const pipelineList::pipelineShaderNode& shader : pipelineList::procPipelineShader) {
+					if (isUsed[shader.pipeType]) {
+						Log::printError(__FILE__, __LINE__, pipelineInfo::procPipelineName[shader.pipeType] + " 在管线着色器表里重复，后一行会覆盖前一行");
+					}
+
+					isUsed[shader.pipeType] = true;
+				}
+			}
 
 			/*配置node.pipeConfig*/
 			//depthStencil 实现只在空白处显示

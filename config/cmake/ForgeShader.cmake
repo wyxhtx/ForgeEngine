@@ -35,7 +35,7 @@ function(forge_compile_shader INPUT_FILE OUTPUT_FILE)
 endfunction()
 
 # ============================================================================
-# 22 条编译规则（9 条管线；model/terrain 各 4 条，其余 2 条）
+# 18 条编译规则（9 条管线，每条 2 个着色器：顶点 + 片段）
 # 分组 = 渲染管线名（与 shader_src/<管线>/ 目录对应）
 # ============================================================================
 
@@ -50,8 +50,6 @@ forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/mine/mine.frag ${FORGE_SHADER_OUT
 # ---- model：模型 PBR（droid/temple 等 glTF）----
 forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/model/pbrDeferred.vert ${FORGE_SHADER_OUT_DIR}/model/pbrDeferredVert.spv)
 forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/model/pbrDeferred.frag ${FORGE_SHADER_OUT_DIR}/model/pbrDeferredFrag.spv)
-forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/model/pbrForward.vert  ${FORGE_SHADER_OUT_DIR}/model/pbrForwardVert.spv)
-forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/model/pbrForward.frag  ${FORGE_SHADER_OUT_DIR}/model/pbrForwardFrag.spv)
 
 # ---- osMirror：镜面反射----
 forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/osMirror/osMirror.vert ${FORGE_SHADER_OUT_DIR}/osMirror/osMirrorVert.spv)
@@ -69,11 +67,9 @@ forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/shadow/shadow.frag ${FORGE_SHADER
 forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/skybox/skybox.vert ${FORGE_SHADER_OUT_DIR}/skybox/skyboxVert.spv)
 forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/skybox/skybox.frag ${FORGE_SHADER_OUT_DIR}/skybox/skyboxFrag.spv)
 
-# ---- terrain：地形（deferred + forward 双通道，含 mesh shader 任务）----
+# ---- terrain：地形----
 forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/terrain/terrainDeferred.vert ${FORGE_SHADER_OUT_DIR}/terrain/terrainDeferredVert.spv)
 forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/terrain/terrainDeferred.frag ${FORGE_SHADER_OUT_DIR}/terrain/terrainDeferredFrag.spv)
-forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/terrain/terrainForward.vert  ${FORGE_SHADER_OUT_DIR}/terrain/terrainForwardVert.spv)
-forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/terrain/terrainForward.frag  ${FORGE_SHADER_OUT_DIR}/terrain/terrainForwardFrag.spv)
 
 # ---- uiText：UI 文字----
 forge_compile_shader(${FORGE_SHADER_BUILD_DIR}/uiText/uiText.vert ${FORGE_SHADER_OUT_DIR}/uiText/uiTextVert.spv)

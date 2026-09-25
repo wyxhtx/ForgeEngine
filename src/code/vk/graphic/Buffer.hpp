@@ -58,19 +58,19 @@ public:
 	cmdStruct::cmdNode cmd{ Device.device, Device.enableGpu->graphicsQueueFamily.index, uint32_t(swapStruct::swapImageList.size()) };
 
 private:
-	bufferList::procRenderNode		procRenderPass{ InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.swapExtent, InitSwapchain.msaa, Device.device, Device.memAllocator };
-	bufferList::procDescriptorNode	procDescriptor{ Device.device };
-	bufferList::procSamplerNode		procSampler{};
+	pipelineList::procRenderNode	 procRenderPass{ InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.swapExtent, InitSwapchain.msaa, Device.device, Device.memAllocator };
+	pipelineList::procDescriptorNode procDescriptor{ Device.device };
+	pipelineList::procSamplerNode	 procSampler{};
 
-	bufferStruct::pipeTerrainNode	pipeTerrain		{ true,  pipelineEnum::procPipelineId::terrain_p,   bufferEnum::procSamplerId::terrain_s };
-	bufferStruct::pipeModelNode		pipeModel		{ true,  pipelineEnum::procPipelineId::model_p };
-	bufferStruct::pipeSkyboxNode	pipeSkybox		{ true,	 pipelineEnum::procPipelineId::skybox_p	    };
-	bufferStruct::pipeMineNode		pipeMine		{ true,  pipelineEnum::procPipelineId::mine_p	    };
-	bufferStruct::pipeUITextNode	pipeUIText		{ true,  pipelineEnum::procPipelineId::uiText_p,    bufferEnum::procSamplerId::uiText_s };
-	bufferStruct::pipeOSMirrorNode	pipeOSMirror	{ false, pipelineEnum::procPipelineId::osMirror_p,  bufferEnum::procSamplerId::offScreen_s };
-	bufferStruct::pipeOSScenceNode	pipeOSScence	{ false, pipelineEnum::procPipelineId::osScence_p,  bufferEnum::procSamplerId::offScreen_s };
-	bufferStruct::pipeDSScenceNode	pipeDSScence	{ true,	 pipelineEnum::procPipelineId::dsScence_p,  bufferEnum::procSamplerId::offScreen_s };
-	bufferStruct::pipeShadowNode	pipeShadow		{ true,  pipelineEnum::procPipelineId::shadowMap_p, bufferEnum::procSamplerId::shadowMap_s };
+	bufferStruct::pipeTerrainNode	 pipeTerrain	{ true,  pipelineEnum::procPipelineId::terrain_p,   bufferEnum::procSamplerId::terrain_s };
+	bufferStruct::pipeModelNode		 pipeModel		{ true,  pipelineEnum::procPipelineId::model_p };
+	bufferStruct::pipeSkyboxNode	 pipeSkybox		{ true,	 pipelineEnum::procPipelineId::skybox_p	    };
+	bufferStruct::pipeMineNode		 pipeMine		{ true,  pipelineEnum::procPipelineId::mine_p	    };
+	bufferStruct::pipeUITextNode	 pipeUIText		{ true,  pipelineEnum::procPipelineId::uiText_p,    bufferEnum::procSamplerId::uiText_s };
+	bufferStruct::pipeOSMirrorNode	 pipeOSMirror	{ false, pipelineEnum::procPipelineId::osMirror_p,  bufferEnum::procSamplerId::offScreen_s };
+	bufferStruct::pipeOSScenceNode	 pipeOSScence	{ false, pipelineEnum::procPipelineId::osScence_p,  bufferEnum::procSamplerId::offScreen_s };
+	bufferStruct::pipeDSScenceNode	 pipeDSScence	{ true,	 pipelineEnum::procPipelineId::dsScence_p,  bufferEnum::procSamplerId::offScreen_s };
+	bufferStruct::pipeShadowNode	 pipeShadow		{ true,  pipelineEnum::procPipelineId::shadowMap_p, bufferEnum::procSamplerId::shadowMap_s };
 
 
 
@@ -144,19 +144,7 @@ private:
 			procDescriptor.setAllocInfo(bufferEnum::procDescriptorId::scenceDeferred_d);
 
 			//pipeTerrain
-			if (pipeTerrain.isEnable) {
-				if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &pipeTerrain.descriptorSet) == VK_SUCCESS) {
-					std::array<VkWriteDescriptorSet, 2> tempWrite{
-						procDescriptor.getWrite(0, pipeTerrain.descriptorSet, pipeTerrain.uniform.buffer, sizeof(pipeTerrain.ubo)),
-						procDescriptor.getWrite(1, pipeTerrain.descriptorSet, procSampler.node[pipeTerrain.samplerType], pipeTerrain.texture.imageNode.view),
-					};
-
-					vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
-				}
-				else {
-					Log::printError(__FILE__, __LINE__, "terrain分配描述符集失败");
-				}
-			}
+			pipeTerrain.createDescriptorSet(procDescriptor.node[bufferEnum::procDescriptorId::scenceDeferred_d], procSampler.node, Device.device);
 
 			//model
 			if (pipeModel.isEnable) {
@@ -500,104 +488,104 @@ public:
 
 	//重建cmd
 	void recreateCmd(int threadId, std::atomic<bool>& isEntireRebuild, const glm::dvec3& plateOriginPos, Camera& Camera, pipelineList::procPipelineNode& procPipeline) {
-		if (!pipeTerrain.isEnable) { return; }
-		if (debugInfo::LogSwitch && (playerInfo::logicOriginPos != plateOriginPos) && !isEntireRebuild) {
-			Log::printError(__FILE__, __LINE__, "原点迁移时isEntireRebuild为假");
-		}
-
-
-
-		int layer = plateEnum::terrainLayer::Layer_0;
-		cmd.waitCmd(Device.device, threadId);
-
-		//重建下一线程Lod_0地形管线，RM_0.4.6（8_32：10）
-		if (isNullTerrainMesh(layer)) {
-			pipeTerrain.mesh[threadId][layer].clear(Device.memAllocator);
-			pipeTerrain.mesh[threadId][layer].create(terrainVertex::vertexs[layer], terrainVertex::indexs[layer], cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
-
-			//重建下一线程Lod_0地形阴影
-			if (pipeShadow.isEnable) {
-								shadowVertex::loadTerrainVertexs(layer);
-				pipeShadow.shadow_t.mesh[threadId][layer].clear(Device.memAllocator);
-				pipeShadow.shadow_t.mesh[threadId][layer].create(shadowVertex::tVertexs[layer], cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+		if (pipeTerrain.isEnable) {
+			if (debugInfo::LogSwitch && (playerInfo::logicOriginPos != plateOriginPos) && !isEntireRebuild) {
+				Log::printError(__FILE__, __LINE__, "原点迁移时isEntireRebuild为假");
 			}
-		}
 
-		//重建全部线程Lod_1地形管线，RM_0.4.6（8_32：20~50）
-		if (isEntireRebuild.load()) {
-			layer = plateEnum::terrainLayer::Layer_1;
 
+
+			int layer = plateEnum::terrainLayer::Layer_0;
+			cmd.waitCmd(Device.device, threadId);
+
+			//重建下一线程Lod_0地形管线，RM_0.4.6（8_32：10）
 			if (isNullTerrainMesh(layer)) {
-				const std::vector<terrainVertex::vertexNode>& vertex = terrainVertex::vertexs[layer];
-				const std::vector<uint32_t>&				  index  = terrainVertex::indexs[layer];
-				//重建下一线程Lod_1地形管线
 				pipeTerrain.mesh[threadId][layer].clear(Device.memAllocator);
-				pipeTerrain.mesh[threadId][layer].create(vertex, index, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+				pipeTerrain.mesh[threadId][layer].create(terrainVertex::vertexs[layer], terrainVertex::indexs[layer], cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
 
-				//重建下一线程Lod_1地形阴影
+				//重建下一线程Lod_0地形阴影
 				if (pipeShadow.isEnable) {
-										shadowVertex::loadTerrainVertexs(layer);
+									shadowVertex::loadTerrainVertexs(layer);
 					pipeShadow.shadow_t.mesh[threadId][layer].clear(Device.memAllocator);
 					pipeShadow.shadow_t.mesh[threadId][layer].create(shadowVertex::tVertexs[layer], cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
 				}
-
-				//重建下一线程命令缓冲区，并切换线程
-				lockInfo::drawFuncLock.lock();
-				if (playerInfo::logicOriginPos != plateOriginPos) {
-					playerInfo::logicOriginPos = plateOriginPos;
-					Camera.updateView();
-
-					Log::print("原点迁移");
-				}
-
-				lockInfo::queueThreadLock.lock();
-				cmd.renderCmd[threadId].recreateCmdList(Device.device);
-				createCmd(threadId, procPipeline);
-				cmd.swap();
-				lockInfo::queueThreadLock.unlock();
-				lockInfo::drawFuncLock.unlock();
-
-
-
-				//重建上轮当前线程Lod_1地形管线
-				int tempThreadId = (threadId + 1) % 2;
-				cmd.waitCmd(Device.device, tempThreadId);
-
-				pipeTerrain.mesh[tempThreadId][layer].clear(Device.memAllocator);
-				pipeTerrain.mesh[tempThreadId][layer].create(vertex, index, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
-
-				//重建上轮当前线程Lod_1地形阴影
-				if (pipeShadow.isEnable) {
-										shadowVertex::loadTerrainVertexs(layer);
-					pipeShadow.shadow_t.mesh[tempThreadId][layer].clear(Device.memAllocator);
-					pipeShadow.shadow_t.mesh[tempThreadId][layer].create(shadowVertex::tVertexs[layer], cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
-				}
-
-
-				isEntireRebuild.store(false);
-				return;
 			}
 
-			isEntireRebuild.store(false);
+			//重建全部线程Lod_1地形管线，RM_0.4.6（8_32：20~50）
+			if (isEntireRebuild.load()) {
+				layer = plateEnum::terrainLayer::Layer_1;
+
+				if (isNullTerrainMesh(layer)) {
+					const std::vector<terrainVertex::vertexNode>& vertex = terrainVertex::vertexs[layer];
+					const std::vector<uint32_t>&				  index  = terrainVertex::indexs[layer];
+					//重建下一线程Lod_1地形管线
+					pipeTerrain.mesh[threadId][layer].clear(Device.memAllocator);
+					pipeTerrain.mesh[threadId][layer].create(vertex, index, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+
+					//重建下一线程Lod_1地形阴影
+					if (pipeShadow.isEnable) {
+											shadowVertex::loadTerrainVertexs(layer);
+						pipeShadow.shadow_t.mesh[threadId][layer].clear(Device.memAllocator);
+						pipeShadow.shadow_t.mesh[threadId][layer].create(shadowVertex::tVertexs[layer], cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+					}
+
+					//重建下一线程命令缓冲区，并切换线程
+					lockInfo::drawFuncLock.lock();
+					if (playerInfo::logicOriginPos != plateOriginPos) {
+						playerInfo::logicOriginPos = plateOriginPos;
+						Camera.updateView();
+
+						Log::print("原点迁移");
+					}
+
+					lockInfo::queueThreadLock.lock();
+					cmd.renderCmd[threadId].recreateCmdList(Device.device);
+					createCmd(threadId, procPipeline);
+					cmd.swap();
+					lockInfo::queueThreadLock.unlock();
+					lockInfo::drawFuncLock.unlock();
+
+
+
+					//重建上轮当前线程Lod_1地形管线
+					int tempThreadId = (threadId + 1) % 2;
+					cmd.waitCmd(Device.device, tempThreadId);
+
+					pipeTerrain.mesh[tempThreadId][layer].clear(Device.memAllocator);
+					pipeTerrain.mesh[tempThreadId][layer].create(vertex, index, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+
+					//重建上轮当前线程Lod_1地形阴影
+					if (pipeShadow.isEnable) {
+											shadowVertex::loadTerrainVertexs(layer);
+						pipeShadow.shadow_t.mesh[tempThreadId][layer].clear(Device.memAllocator);
+						pipeShadow.shadow_t.mesh[tempThreadId][layer].create(shadowVertex::tVertexs[layer], cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+					}
+
+					isEntireRebuild.store(false);
+					return;
+				}
+
+				isEntireRebuild.store(false);
+			}
+
+
+
+			//重建下一线程命令缓冲区，并切换线程
+			lockInfo::drawFuncLock.lock();
+			if (playerInfo::logicOriginPos != plateOriginPos) {
+				playerInfo::logicOriginPos = plateOriginPos;
+				Camera.updateView();
+
+				Log::print("原点迁移");
+			}
+
+			lockInfo::queueThreadLock.lock();
+			cmd.renderCmd[threadId].recreateCmdList(Device.device);
+			createCmd(threadId, procPipeline);
+			cmd.swap();
+			lockInfo::queueThreadLock.unlock();
+			lockInfo::drawFuncLock.unlock();
 		}
-
-
-
-		//重建下一线程命令缓冲区，并切换线程
-		lockInfo::drawFuncLock.lock();
-		if (playerInfo::logicOriginPos != plateOriginPos) {
-			playerInfo::logicOriginPos = plateOriginPos;
-			Camera.updateView();
-
-			Log::print("原点迁移");
-		}
-
-		lockInfo::queueThreadLock.lock();
-		cmd.renderCmd[threadId].recreateCmdList(Device.device);
-		createCmd(threadId, procPipeline);
-		cmd.swap();
-		lockInfo::queueThreadLock.unlock();
-		lockInfo::drawFuncLock.unlock();
 	}
 
 	void recreateSwapChain() {

@@ -160,8 +160,8 @@ namespace fileInfo {
 		const std::string mineVert    = root::shader + "mine/mineVert.spv";
 		const std::string mineFrag    = root::shader + "mine/mineFrag.spv";
 
-		const std::string uitextVert  = root::shader + "uiText/uitextVert.spv";
-		const std::string uitextFrag  = root::shader + "uiText/uitextFrag.spv";
+		const std::string uiTextVert  = root::shader + "uiText/uiTextVert.spv";
+		const std::string uiTextFrag  = root::shader + "uiText/uiTextFrag.spv";
 
 		const std::string osMirrorVert = root::shader + "osMirror/osMirrorVert.spv";
 		const std::string osMirrorFrag = root::shader + "osMirror/osMirrorFrag.spv";
@@ -239,4 +239,16 @@ namespace bufferInfo {
 	const uint32_t uiTextCount         = 1;     //uiText描述符池上限，         uiText
 	const uint32_t dsScenceCount       = 1;     //dsScence描述符池上限，       dsScence
 	const uint32_t shadowCount         = 6;     //shadow描述符池上限，         terrain*2，m_temple，m_droid*3
+}
+
+//pipeline信息
+namespace pipelineInfo {
+	//管线 id → 日志名字（顺序必须与 pipelineEnum::procPipelineId 一致）
+	const std::array<std::string, pipelineEnum::procPipelineId::count> procPipelineName{
+		"terrain", "model", "skybox", "mine", "uiText", "osMirror", "osScence", "dsScence", "shadowMap"
+	};
+
+	//描述符 id → 日志名字（顺序必须与 bufferEnum::procDescriptorId 一致）
+	const std::array<std::string, bufferEnum::procDescriptorId::count> procDescriptorName{ "scenceForward", "scenceDeferred", "uiText", "dsScence", "shadowMap" };
+
 }

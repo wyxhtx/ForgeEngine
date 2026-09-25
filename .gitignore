@@ -6,8 +6,6 @@ vcpkg_installed/
 
 src/assets/shader/
 storage/chunk/
-docs/chatbox-sync/
-docs/chatbox-sync-state.json
 
 *.vcxproj.user
 CMakeUserPresets.json

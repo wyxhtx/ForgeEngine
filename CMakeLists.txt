@@ -10,7 +10,6 @@ cmake_minimum_required(VERSION 3.24)                                            
 project(ForgeEngine LANGUAGES CXX)                                              # 工程名 ForgeEngine
 
 
-
 # ---- 语言标准 ----
 set(CMAKE_CXX_STANDARD 20)                                                      # C++20
 set(CMAKE_CXX_STANDARD_REQUIRED ON)                                             # 强制支持
@@ -20,12 +19,10 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/DNDEBUG /Od /Zi")                          
 set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /INCREMENTAL")                # RelWithDebInfo：增量链接WW
 
 
-
 # 1. MSVC 全局配置
 if(MSVC)
     add_compile_options(/utf-8 /W3)                                             # /utf-8：源码按 UTF-8 编译（防中文注释乱码）；/W3：警告级别 3
 endif()
-
 
 
 # 2. Vulkan SDK（系统级，走 VULKAN_SDK，不进 vcpkg）
@@ -34,7 +31,6 @@ find_program(GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/Bin")   
 if(NOT GLSLANG_VALIDATOR)                                                       # 缺失则终止
     message(FATAL_ERROR "未找到 glslangValidator（请设 VULKAN_SDK 环境变量）")
 endif()
-
 
 
 # 3. vcpkg 官方包（版本由 vcpkg.json 的 builtin-baseline 锁定）
@@ -52,7 +48,6 @@ find_package(OpenAL CONFIG REQUIRED)                                            
 find_package(FreeALUT CONFIG REQUIRED)                                          # ALUT:     音频封装库，lib
 find_package(msdfgen CONFIG REQUIRED)         # msdfgen:       MSDF 距离场生成库，lib
 find_package(msdf-atlas-gen CONFIG REQUIRED)  # msdf-atlas-gen: MSDF 图集生成库，lib
-
 
 
 # 4. 自定义库（overlay ports，REF 锁 commit）
@@ -79,8 +74,6 @@ set_target_properties(ForgeFastNoise PROPERTIES
 )
 
 
-
-
 # 5. 主程序目标（ForgeEngine.exe；游戏逻辑在 src\code\forge）
 add_executable(ForgeEngine src/code/vk/Main.cpp)                                                # 单 TU（Main.cpp 内含全部实现）
 target_compile_definitions(ForgeEngine PRIVATE UNICODE _UNICODE)                                # Unicode（WinAPI W 版）
@@ -92,15 +85,12 @@ target_link_options   (ForgeEngine PRIVATE $<$<CONFIG:Release>:/DEBUG>)         
 target_precompile_headers(ForgeEngine PRIVATE "${CMAKE_SOURCE_DIR}/src/code/vk/External.h")     # PCH：系统+三方头只编一次
 
 
-
 # ---- 解决方案资源管理器显示 ----
 # 顶层只保留两类节点：src\（代码/资产/着色器源）与 docs\（文档）
 # 根文件（.gitignore/CMakePresets.json/README.md/vcpkg.json）、cmd\、config\ 不再注入工程树；文件仍在磁盘，可直接编辑
-# 文档（排除 chatbox-sync 的同步副本，避免与 chatbox-docs 出现同名两份）
 file(GLOB_RECURSE FORGE_DOCS_FILES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/docs/*.md"
 )
-list(FILTER FORGE_DOCS_FILES EXCLUDE REGEX "/chatbox-sync/")
 source_group(TREE "${CMAKE_SOURCE_DIR}/docs" PREFIX "docs" FILES ${FORGE_DOCS_FILES})
 target_sources(ForgeEngine PRIVATE ${FORGE_DOCS_FILES})
 
@@ -128,7 +118,6 @@ source_group("构建中间文件" FILES
     "${CMAKE_BINARY_DIR}/CMakeFiles/ForgeEngine.dir/Release/cmake_pch.hxx"
     "${CMAKE_BINARY_DIR}/CMakeFiles/ForgeEngine.dir/RelWithDebInfo/cmake_pch.hxx"
 )
-
 
 
 # 运行库类型: 全静态 MT/MTd

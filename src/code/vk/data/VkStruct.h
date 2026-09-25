@@ -463,7 +463,7 @@ namespace cmdStruct {
 				srcPipeStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 				dstPipeStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			}
-			else {
+			else if (debugInfo::LogSwitch) {
 				Log::printError(__FILE__, __LINE__, "无支持的布局转换");
 			}
 
@@ -2503,6 +2503,191 @@ namespace bufferStruct {
 
 
 
+	//描述符配置结点
+	struct descriptorConfigNode {
+		VkDescriptorSetLayoutBinding layout{};
+		VkWriteDescriptorSet         write{};
+
+
+
+		descriptorConfigNode(uint32_t id, VkDescriptorType type, VkShaderStageFlags stage, uint32_t count = 1) {
+			layout.descriptorCount    = count;
+			layout.pImmutableSamplers = nullptr;
+			layout.binding            = id;
+			layout.descriptorType     = type;
+			layout.stageFlags         = stage;
+
+			write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			write.dstArrayElement = 0;
+			write.descriptorCount = 1;
+			write.dstBinding      = id;
+			write.descriptorType  = type;
+		}
+
+		descriptorConfigNode() = delete;
+
+
+
+		const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkBuffer& buffer, VkDeviceSize range) {
+			bufferInfo.offset = 0;
+			bufferInfo.buffer = buffer;
+			bufferInfo.range  = range;
+
+			write.dstSet      = dstSet;
+			write.pBufferInfo = &bufferInfo;
+
+			return write;
+		}
+
+		const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkSampler& sampler, const VkImageView& imageView) {
+			imageInfo.sampler     = sampler;
+			imageInfo.imageView   = imageView;
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+			write.dstSet     = dstSet;
+			write.pImageInfo = &imageInfo;
+
+			return write;
+		}
+
+	private:
+		VkDescriptorBufferInfo bufferInfo{};
+		VkDescriptorImageInfo  imageInfo{};
+	};
+
+	//描述符写入结点
+	struct descriptorWriteNode {
+		uint32_t         binding{};
+		VkDescriptorType type{};
+
+		VkBuffer         buffer{};
+		VkDeviceSize     range{};
+		VkSampler        sampler{};
+		VkImageView      view{};
+	};
+
+	//描述符结点
+	struct descriptorNode {
+		std::vector<bufferStruct::descriptorConfigNode> config{};
+
+		VkDescriptorPool	  pool{};		//描述符池
+		VkDescriptorSetLayout layout{};     //描述符布局
+		uint32_t			  maxSet{};		//描述符池上限
+
+
+
+		void createDescriptorNode(const VkDevice& device) {
+			createPool(device);
+			createLayout(device);
+		}
+
+		void clear(const VkDevice& device) {
+			vkDestroyDescriptorPool(device, pool, nullptr);
+			vkDestroyDescriptorSetLayout(device, layout, nullptr);
+		}
+
+
+
+		//分配
+		bool alloc(const VkDevice& device, VkDescriptorSet& dstSet, pipelineEnum::procPipelineId::type pipeType) {
+			VkDescriptorSetAllocateInfo setAllocInfo{
+				.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+				.descriptorPool     = pool,
+				.descriptorSetCount = 1,
+				.pSetLayouts        = &layout
+			};
+
+			if (vkAllocateDescriptorSets(device, &setAllocInfo, &dstSet) != VK_SUCCESS) {
+				Log::printError(__FILE__, __LINE__, pipelineInfo::procPipelineName[pipeType] + "分配描述符集失败");
+				return false;
+			}
+
+			return true;
+		}
+
+		//写入
+		void writeFrom(const VkDevice& device, const VkDescriptorSet& dstSet, const std::vector<descriptorWriteNode>& requestList) {
+			std::vector<VkWriteDescriptorSet> writeList{};
+			writeList.reserve(requestList.size());
+
+			for (const auto& request : requestList) {
+				if (debugInfo::LogSwitch && (static_cast<size_t>(request.binding) >= config.size() || config[request.binding].layout.binding != request.binding)) {
+					Log::printError(__FILE__, __LINE__, "描述符写入的 binding 与布局表不一致");
+				}
+
+				if (debugInfo::LogSwitch && config[request.binding].layout.descriptorType != request.type) {
+					Log::printError(__FILE__, __LINE__, "描述符写入的类型与布局表不一致");
+				}
+
+				if (request.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+					writeList.push_back(config[request.binding].setWrite(dstSet, request.sampler, request.view));
+				}
+				else {
+					writeList.push_back(config[request.binding].setWrite(dstSet, request.buffer, request.range));
+				}
+			}
+
+			vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeList.size()), writeList.data(), 0, nullptr);
+		}
+
+	private:
+		void createPool(const VkDevice& device) {
+			if (debugInfo::LogSwitch && maxSet == 0) {
+				Log::printError(__FILE__, __LINE__, "描述符池上限（maxSet）未设置");
+			}
+
+			//池需求 = maxSet × 每个 set 里该 binding 的数组长度；同类描述符按类型汇总
+			std::vector<VkDescriptorPoolSize> poolSize{};
+			for (const auto& i : config) {
+				uint32_t need = maxSet * i.layout.descriptorCount;
+
+				bool merged = false;
+				for (auto& size : poolSize) {
+					if (size.type == i.layout.descriptorType) {
+						size.descriptorCount += need;
+						merged = true;
+						break;
+					}
+				}
+
+				if (!merged) {
+					poolSize.push_back(VkDescriptorPoolSize{ .type = i.layout.descriptorType, .descriptorCount = need });
+				}
+			}
+
+			VkDescriptorPoolCreateInfo poolInfo{
+				.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+				.maxSets       = maxSet,
+				.poolSizeCount = static_cast<uint32_t>(poolSize.size()),
+				.pPoolSizes    = poolSize.data()
+			};
+
+			if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
+				Log::printError(__FILE__, __LINE__, "描述符池创建失败");
+			}
+		}
+
+		void createLayout(const VkDevice& device) {
+			std::vector<VkDescriptorSetLayoutBinding> layoutBinding{};
+			for (const auto& i : config) {
+				layoutBinding.push_back(i.layout);
+			}
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo{
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.pNext = nullptr,
+				.bindingCount = static_cast<uint32_t>(layoutBinding.size()),
+				.pBindings = layoutBinding.data()
+			};
+
+			if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
+				Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
+			}
+		}
+	};
+
+
+
 	/*管线缓冲区*/
 	struct pipeTerrainNode {
 		bool isEnable;																			//启用标识
@@ -2552,6 +2737,20 @@ namespace bufferStruct {
 			texture.clear(device, memAllocator);
 
 			vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
+		}
+
+
+
+		//创建描述符集
+		void createDescriptorSet(bufferStruct::descriptorNode& descriptor, const std::vector<VkSampler>& samplerList, const VkDevice& device) {
+			if (isEnable) {
+				if (descriptor.alloc(device, descriptorSet, pipelineEnum::procPipelineId::terrain_p)) {
+					descriptor.writeFrom(device, descriptorSet, {
+						{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer  = uniform.buffer,			.range = sizeof(ubo) },
+						{ .binding = 1, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = texture.imageNode.view }
+					});
+				}
+			}
 		}
 	};
 
@@ -2761,14 +2960,13 @@ namespace bufferStruct {
 				loadGltfModel(model, mesh, vertexs, indexs, shadowVertexs, uniqueVertices);
 			}
 
-			if (debugInfo::LogSwitch) {
-				if (vertexs.empty()) {
-					Log::printError(__FILE__, __LINE__, "加载的模型不包含任何顶点");
-				}
+			//资产内容自检：不放进日志开关（发布版也要能看到），用 printWarning 不挂起
+			if (vertexs.empty()) {
+				Log::printWarning(__FILE__, __LINE__, "加载的模型不包含任何顶点");
+			}
 
-				if (indexs.empty()) {
-					Log::printError(__FILE__, __LINE__, "加载的模型不包含任何索引");
-				}
+			if (indexs.empty()) {
+				Log::printWarning(__FILE__, __LINE__, "加载的模型不包含任何索引");
 			}
 		}
 
@@ -2789,14 +2987,13 @@ namespace bufferStruct {
 			for (int i = 0; i < model.meshes.size(); i++) {
 				loadGltfModel(model, model.meshes[i], vertexsList[i], indexsList[i], shadowVertexsList[i], uniqueVertices);
 
-				if (debugInfo::LogSwitch) {
-					if (vertexsList[i].empty()) {
-						Log::printError(__FILE__, __LINE__, "加载的模型不包含任何顶点");
-					}
+				//资产内容自检：同静态模型，不进日志开关
+				if (vertexsList[i].empty()) {
+					Log::printWarning(__FILE__, __LINE__, "加载的模型不包含任何顶点");
+				}
 
-					if (indexsList[i].empty()) {
-						Log::printError(__FILE__, __LINE__, "加载的模型不包含任何索引");
-					}
+				if (indexsList[i].empty()) {
+					Log::printWarning(__FILE__, __LINE__, "加载的模型不包含任何索引");
 				}
 			}
 		}
@@ -3329,120 +3526,6 @@ namespace bufferStruct {
 				for (int j = 0; j < shadow_md[i].size(); j++) {
 					shadow_md[i][j].clear(device, memAllocator);
 				}
-			}
-		}
-	};
-
-
-
-	struct descriptorConfigNode {
-		VkDescriptorPoolSize         pool{};
-		VkDescriptorSetLayoutBinding layout{};
-		VkWriteDescriptorSet         write{};
-
-
-
-		descriptorConfigNode(uint32_t id, VkDescriptorType type, VkShaderStageFlags stage, uint32_t count) {
-			pool.type = type;
-			pool.descriptorCount = count;
-
-			layout.descriptorCount = 1;
-			layout.pImmutableSamplers = nullptr;
-			layout.binding        = id;
-			layout.descriptorType = type;
-			layout.stageFlags     = stage;
-
-			write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			write.dstArrayElement = 0;
-			write.descriptorCount = 1;
-			write.dstBinding      = id;
-			write.descriptorType  = type;
-
-			bufferInfo.offset = 0;
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		}
-
-		descriptorConfigNode() = delete;
-
-
-
-		const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkBuffer& buffer, VkDeviceSize range) {
-			bufferInfo.buffer = buffer;
-			bufferInfo.range  = range;
-
-			write.dstSet      = dstSet;
-			write.pBufferInfo = &bufferInfo;
-
-			return write;
-		}
-
-		const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkSampler& sampler, const VkImageView& imageView) {
-			imageInfo.sampler   = sampler;
-			imageInfo.imageView = imageView;
-
-			write.dstSet     = dstSet;
-			write.pImageInfo = &imageInfo;
-
-			return write;
-		}
-
-	private:
-		VkDescriptorBufferInfo bufferInfo{};
-		VkDescriptorImageInfo imageInfo{};
-	};
-
-	struct descriptorNode {
-		std::vector<bufferStruct::descriptorConfigNode> config{};
-
-		VkDescriptorPool pool{};            //描述符池
-		VkDescriptorSetLayout layout{};     //描述符布局
-
-
-
-		void createDescriptorNode(const VkDevice& device) {
-			createPool(device);
-			createLayout(device);
-		}
-
-		void clear(const VkDevice& device) {
-			vkDestroyDescriptorPool(device, pool, nullptr);
-			vkDestroyDescriptorSetLayout(device, layout, nullptr);
-		}
-
-	private:
-		void createPool(const VkDevice& device) {
-			std::vector<VkDescriptorPoolSize> poolSize{};
-			for (const auto& i : config) {
-				poolSize.push_back(i.pool);
-			}
-
-			VkDescriptorPoolCreateInfo poolInfo{
-				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-				.maxSets = config[0].pool.descriptorCount,
-				.poolSizeCount = static_cast<uint32_t>(poolSize.size()),
-				.pPoolSizes = poolSize.data()
-			};
-
-			if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "描述符池创建失败");
-			}
-		}
-
-		void createLayout(const VkDevice& device) {
-			std::vector<VkDescriptorSetLayoutBinding> layoutBinding{};
-			for (const auto& i : config) {
-				layoutBinding.push_back(i.layout);
-			}
-
-			VkDescriptorSetLayoutCreateInfo layoutInfo{
-				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-				.pNext = nullptr,
-				.bindingCount = static_cast<uint32_t>(layoutBinding.size()),
-				.pBindings = layoutBinding.data()
-			};
-
-			if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
 			}
 		}
 	};

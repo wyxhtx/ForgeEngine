@@ -780,7 +780,7 @@ public:
 
 
 		//校验chunkMap长度
-		if (debugInfo::LogSwitch && true) {
+		if (debugInfo::LogSwitch) {
 			InitDebug.validateChunkMapSize(chunkMap.size());
 		}
 
@@ -790,12 +790,12 @@ public:
 		}
 
 		//校验isVisible一致性
-		if (debugInfo::LogSwitch && true && !isHandleChangeCubeList()) {
+		if (debugInfo::LogSwitch && !isHandleChangeCubeList()) {
 			InitDebug.validateIsVisibleConsistency(chunkMap);
 		}
 
 		//校验本区块与邻区块，0或33处的方块是否对应
-		if (debugInfo::LogSwitch && true) {
+		if (debugInfo::LogSwitch) {
 			InitDebug.validateExtremeCube(chunkMap);
 		}
 	}
