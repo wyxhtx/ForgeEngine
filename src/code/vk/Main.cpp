@@ -4,7 +4,7 @@
 
 
 int main() {
-	SetConsoleOutputCP(CP_UTF8);   // 控制台按 UTF-8 输出，避免中文乱码
+	SetConsoleOutputCP(CP_UTF8);	//控制台按 UTF-8 输出，避免中文乱码
 	//防止同一时间启用多个游戏进程
 	HANDLE hMutex = CreateMutexA(nullptr, TRUE, windowInfo::gameName);
 	if (GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -14,7 +14,7 @@ int main() {
 
 
 
-	//Music    InitMusic{};                       //加载音乐线程耗时长，所以先声明
+	//Music	InitMusic{}; //加载音乐线程耗时长，所以先声明
 	Window   InitWindow{};
 	Device   InitDevice{ InitWindow.window };
 	Pipeline InitPipeline{ InitDevice };
@@ -45,7 +45,7 @@ int main() {
 	while (lockInfo::updatePlateFuncLock.load()) { std::this_thread::yield(); }
 	while (lockInfo::recreateCmdFuncLock.load()) { std::this_thread::yield(); }
 	std::lock_guard<std::mutex> lock(lockInfo::queueThreadLock);
-	vkDeviceWaitIdle(InitDevice.device);    //等待所有GPU工作完成
+	vkDeviceWaitIdle(InitDevice.device);		//等待所有GPU工作完成	
 
 	return 0;
 }

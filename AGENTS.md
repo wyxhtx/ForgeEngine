@@ -12,7 +12,7 @@
 
 ## 二、核心概念（速记）
 
-Plate→Chunk(32³+34 边缘)→Cube；sightRange=8；双存储 full/delta；region 3x3x3；贪心网格+面剔除→terrainVertex→Layer_0(视距4)/Layer_1(视距8)；地形当前走 vert+frag（MeshShader 路子已留位未启用）；描述符布局在启动时反射 spv 现算。
+Plate→Chunk(32³+34 边缘)→Cube；sightRange=8；双存储 full/delta；region 3x3x3；贪心网格+面剔除→terrainVertex→Layer_0(视距4)/Layer_1(视距8)；地形当前走 vert+frag（MeshShader 路子已留位未启用）；描述符布局在启动时反射 spv 现算；管线配置（着色器/布局/模板/采样数 + 图元光栅/深度/混合/动态状态差异）全由 `pipelineList` 的表驱动，构造函数里不再硬编码逐管线赋值。
 
 ## 三、铁律（违反=严重）
 

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ForgeEngine · 管线预设七表规范（草案）</title>
+<style>
+:root{--bg:#0f1216;--panel:#161b22;--line:#26303a;--fg:#d7dee6;--dim:#8b98a5;--acc:#6cb6ff;--ok:#3fb950;--warn:#d29922;--bad:#f85149}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.75 "Maple Mono NF CN","Maple Mono","Sarasa Mono SC","Microsoft YaHei",ui-monospace,sans-serif}
+header{position:sticky;top:0;background:linear-gradient(180deg,#12171d,#0f1216);border-bottom:1px solid var(--line);padding:18px 28px;z-index:9}
+h1{margin:0;font-size:20px;letter-spacing:.5px}
+h1 small{color:var(--dim);font-weight:400;font-size:13px;margin-left:10px}
+main{max-width:1180px;margin:0 auto;padding:24px 28px 80px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 22px;margin:0 0 20px}
+h2{font-size:17px;margin:0 0 12px;color:var(--acc);border-left:3px solid var(--acc);padding-left:10px}
+h3{font-size:15px;margin:18px 0 8px;color:#cfe3ff}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}
+th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:#1b222b;color:#c9d4e0;position:sticky;top:64px}
+tbody tr:nth-child(odd){background:#141a21}
+tbody tr:hover{background:#1b2531}
+code{background:#0c1015;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12.5px;color:#9fd0ff}
+.badge{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;border:1px solid var(--line);color:var(--dim)}
+.main{color:var(--ok);border-color:#1d4327}.sub{color:var(--warn);border-color:#43391d}
+.pick{border:1px dashed var(--acc);background:#101c28;border-radius:8px;padding:14px 16px;margin:10px 0}
+.pick label{display:block;cursor:pointer;padding:6px 0}
+.pick input{margin-right:9px;transform:scale(1.15)}
+button{background:#1f6feb;color:#fff;border:0;border-radius:6px;padding:9px 16px;font:inherit;cursor:pointer}
+button.ghost{background:#21262d;color:var(--fg)}
+pre{background:#0c1015;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;font-size:13px}
+.flow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.flow i{font-style:normal;color:var(--dim)}
+.step{background:#101c28;border:1px solid #21456b;border-radius:8px;padding:8px 12px;font-size:13px}
+.note{border-left:3px solid var(--warn);background:#1d1a10;padding:10px 14px;border-radius:0 8px 8px 0;margin:10px 0}
+.ok{border-left-color:var(--ok);background:#0f1d13}
+textarea{width:100%;height:120px;background:#0c1015;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;font:13px/1.6 inherit}
+@media print{body{background:#fff;color:#000}section{border-color:#ccc}th{position:static;background:#eee;color:#000}}
+</style></head><body>
+<header><h1>ForgeEngine · 管线预设「七表」规范 <small>草案 v0.1 · 2026-09-25 · 由 VkEnum.h 现场生成</small></h1></header>
+<main>
+<section>
+<h2>0 · 口径确认（请先勾一个）</h2>
+<p>现在文件里是 <b>9 个枚举空间</b>；你的口径"七张表"有两种合理读法，先定死再写代码：</p>
+<div class="pick">
+<label><input type="radio" name="scope" value="A"> <b>A（推荐）</b>：七张表 = <code>primitiveId / rasterId / biasId / depthId / stencilId / blendId / dynamicId</code>；<code>writeMaskId</code>、<code>logicOpId</code> <b>做进 blendId</b>（当字段，不单独成表）⇒ 枚举空间 7 个</label>
+<label><input type="radio" name="scope" value="B"> <b>B</b>：维持现状 <b>9 个枚举空间</b>（writeMask / logicOp 各自独立成表，与 blend 平行）</label>
+</div>
+<div class="note">判据：若某小类<b>永远只作用于同一张 Vk 结构体</b>且<b>不需要独立替换</b> ⇒ 做进宿主表（A）；若它在总表里要<b>单独一列</b>、要能<b>独立组合</b> ⇒ 独立成表（B）。</div>
+</section>
+<section>
+<h2>1 · 四步链条（每张表都走这条）</h2>
+<div class="flow">
+<span class="step">① 枚举 <code>xxxId</code></span><i>→</i>
+<span class="step">② 预设结点 <code>createXxxNode(枚举)</code><br><small>返回背着 Vk 成品的结构体</small></span><i>→</i>
+<span class="step">③ 预设表 <code>xxxListNode</code><br><small>ctor 里 <code>for (i &lt; count)</code> 逐个建</small></span><i>→</i>
+<span class="step">④ 总表填枚举<br><small><code>pipelineList</code> 行内 7 列</small></span>
+</div>
+<p>铁律：<b>表里只有数据，派生逻辑进结点方法</b>（如 <code>getMsaa(msaa)</code>）⇒ 调用点不再复制同一个三元 / 判断。</p>
+</section>
+<section><h2>0.5 · 已定稿（本轮投票，已落地）</h2>
+<table><thead><tr><th>#</th><th>规则</th><th>落地情况</th></tr></thead><tbody>
+<tr><td>1</td><td><b>交叉引用双向可查</b>：<code>rasterId</code> 的 7 个 <code>line_*</code> 项注明「配合 dynamicId::viewportScissorLineWidth」</td><td>✅ 已改 7 处</td></tr>
+<tr><td>2</td><td><b>每表第 0 项固定为「关闭/默认」</b>：<code>primitiveId</code>=<code>triangleList</code>、<code>rasterId</code>=<code>fill_back_ccw</code>、<code>depthId</code>=<code>test_write_less</code>；其余 6 表本就合规</td><td>↩ 已撤销（保留为写新表时的规则：<b>不改现有文件</b>，避免把项拽出它所属的 <code>// ---- 分组 ----</code>）</td></tr>
+<tr><td>3</td><td>默认项<b>不单独加分组标题</b>，直接排在该表最前</td><td>↩ 已撤销</td></tr>
+</tbody></table>
+<div class="note ok">重排安全依据：<code>VkStruct.h</code> 的 27 处 <code>case</code> 按名字分支、<code>VkList.h</code> 的表按枚举名/序号建、总表填的也是枚举名 ⇒ 改顺序只动枚举值、不动代码。验证：内容校验行数不变 + 去空白多集一致，Release/Debug 各 0 错 0 警。</div>
+</section>
+</section><section><h2>2 · 现状清点（自动读自 VkEnum.h）</h2><table><thead><tr><th>#</th><th>枚举空间</th><th>角色</th><th>背的 Vk 结构体 / 字段</th><th>项数</th><th>首项（建议默认）</th><th>分组</th></tr></thead><tbody><tr><td>1</td><td><code>primitiveId</code></td><td><span class='badge main'>主表</span></td><td><code>VkPipelineInputAssemblyStateCreateInfo</code></td><td><b>11</b></td><td><code>pointList</code></td><td>3</td></tr><tr><td>2</td><td><code>rasterId</code></td><td><span class='badge main'>主表</span></td><td><code>VkPipelineRasterizationStateCreateInfo</code></td><td><b>23</b></td><td><code>fill_none_ccw</code></td><td>4</td></tr><tr><td>3</td><td><code>biasId</code></td><td><span class='badge sub'>正交小类 → rasterId</span></td><td><code>（字段住 raster：depthBias*）</code></td><td><b>3</b></td><td><code>none</code></td><td>0</td></tr><tr><td>4</td><td><code>depthId</code></td><td><span class='badge main'>主表</span></td><td><code>VkPipelineDepthStencilStateCreateInfo</code></td><td><b>18</b></td><td><code>test_never</code></td><td>4</td></tr><tr><td>5</td><td><code>stencilId</code></td><td><span class='badge sub'>正交小类 → depthId</span></td><td><code>（字段住 depth：stencil*）</code></td><td><b>7</b></td><td><code>none</code></td><td>3</td></tr><tr><td>6</td><td><code>blendId</code></td><td><span class='badge main'>主表</span></td><td><code>VkPipelineColorBlendStateCreateInfo</code></td><td><b>12</b></td><td><code>opaque</code></td><td>4</td></tr><tr><td>7</td><td><code>writeMaskId</code></td><td><span class='badge sub'>正交小类 → blendId</span></td><td><code>（字段住 blend：colorWriteMask）</code></td><td><b>4</b></td><td><code>rgba</code></td><td>0</td></tr><tr><td>8</td><td><code>logicOpId</code></td><td><span class='badge sub'>正交小类 → blendId</span></td><td><code>（字段住 blend：logicOpEnable/Op）</code></td><td><b>4</b></td><td><code>disable</code></td><td>0</td></tr><tr><td>9</td><td><code>dynamicId</code></td><td><span class='badge main'>主表</span></td><td><code>VkPipelineDynamicStateCreateInfo</code></td><td><b>7</b></td><td><code>none</code></td><td>3</td></tr></tbody></table><p>合计 <b>89</b> 项；表中「首项」应固定为 <b>关闭 / 默认</b> 语义，便于总表里表达「不要这类预设」。</p></section><section><h2>3 · <code>primitiveId</code> 项清单 <small>（主表 · VkPipelineInputAssemblyStateCreateInfo）</small></h2><table><thead><tr><th style='width:230px'>项</th><th style='width:150px'>名字</th><th style='width:260px'>功能</th><th>说明</th></tr></thead><tbody><tr><td colspan='4' style='color:#d29922'><b>— 基础图元 —</b></td></tr><tr><td><code>pointList</code></td><td>点列表</td><td>每个顶点画成一个点：</td><td>粒子、调试点云</td></tr><tr><td><code>lineList</code></td><td>线段列表</td><td>每</td><td>2 顶点一条独立线段： 线框、选择框描边</td></tr><tr><td><code>lineStrip</code></td><td>线段条带</td><td>顶点串成折线：</td><td>轨迹、曲线可视化</td></tr><tr><td><code>triangleList</code></td><td>三角形列表</td><td>每</td><td>3 顶点一个三角形： 网格/地形/模型主力</td></tr><tr><td><code>triangleStrip</code></td><td>三角形条带</td><td>连续三角形：</td><td>UI 四边形、带状网格</td></tr><tr><td><code>triangleFan</code></td><td>三角形扇</td><td>首顶点共享：</td><td>扇形/锥体网格（GL 遗留，条带 + 退化索引可替代）</td></tr><tr><td colspan='4' style='color:#d29922'><b>— 邻接图元（需 geometryShader） —</b></td></tr><tr><td><code>lineListWithAdjacency</code></td><td>邻接线段列表</td><td>每</td><td>4 顶点一条线段并带两侧邻接点： 几何着色器外扩用</td></tr><tr><td><code>lineStripWithAdjacency</code></td><td>邻接线段条带</td><td>同上，串成折线</td><td></td></tr><tr><td><code>triangleListWithAdjacency</code></td><td>邻接三角形列表</td><td>每</td><td>6 顶点一个三角形 + 3 邻接点： 轮廓/法线外扩</td></tr><tr><td><code>triangleStripWithAdjacency</code></td><td>邻接三角形条带</td><td>同上，条带形式</td><td></td></tr><tr><td colspan='4' style='color:#d29922'><b>— 细分图元（需 tessellationShader） —</b></td></tr><tr><td><code>patchList</code></td><td>面片列表</td><td>每</td><td>N 顶点一个面片： 细分着色器输入</td></tr></tbody></table></section><section><h2>3 · <code>rasterId</code> 项清单 <small>（主表 · VkPipelineRasterizationStateCreateInfo）</small></h2><table><thead><tr><th style='width:230px'>项</th><th style='width:150px'>名字</th><th style='width:260px'>功能</th><th>说明</th></tr></thead><tbody><tr><td colspan='4' style='color:#d29922'><b>— 填充模式 —</b></td></tr><tr><td><code>fill_none_ccw</code></td><td>填充·不剔·逆时针</td><td>双面薄片（树叶/旗帜）：</td><td>逆时针为正面</td></tr><tr><td><code>fill_none_cw</code></td><td>填充·不剔·顺时针</td><td>同上：</td><td>顺时针为正面</td></tr><tr><td><code>fill_front_ccw</code></td><td>填充·剔正面·逆时针</td><td>内部观察（天空盒内侧/内壁）、镜像渲染</td><td></td></tr><tr><td><code>fill_front_cw</code></td><td>填充·剔正面·顺时针</td><td>同上：</td><td>顺时针为正面</td></tr><tr><td><code>fill_back_ccw</code></td><td>填充·剔背面·逆时针</td><td>不透明实体标准配置：</td><td>省一半片元</td></tr><tr><td><code>fill_back_cw</code></td><td>填充·剔背面·顺时针</td><td>同上：</td><td>顺时针为正面（镜像资源）</td></tr><tr><td><code>fill_front_and_back</code></td><td>填充·双面·逆时针</td><td>双面都保留（绕序无效）：</td><td>厚薄片、透明排序</td></tr><tr><td colspan='4' style='color:#d29922'><b>— 线框模式（需 fillModeNonSolid） —</b></td></tr><tr><td><code>line_none_ccw</code></td><td>线框·不剔·逆时针</td><td>全边线框、可看穿：</td><td>调试/技术图；配合 dynamicId::viewportScissorLineWidth</td></tr><tr><td><code>line_none_cw</code></td><td>线框·不剔·顺时针</td><td>同上：</td><td>顺时针为正面；配合 dynamicId::viewportScissorLineWidth</td></tr><tr><td><code>line_front_ccw</code></td><td>线框·剔正面·逆时针</td><td>只画背向边：</td><td>内轮廓（少用）；配合 dynamicId::viewportScissorLineWidth</td></tr><tr><td><code>line_front_cw</code></td><td>线框·剔正面·顺时针</td><td>同上（少用）；配合</td><td>dynamicId::viewportScissorLineWidth</td></tr><tr><td><code>line_back_ccw</code></td><td>线框·剔背面·逆时针</td><td>只画正向边：</td><td>选择框描边、隐藏线；配合 dynamicId::viewportScissorLineWidth</td></tr><tr><td><code>line_back_cw</code></td><td>线框·剔背面·顺时针</td><td>同上：</td><td>顺时针为正面；配合 dynamicId::viewportScissorLineWidth</td></tr><tr><td><code>line_front_and_back</code></td><td>线框·双面·逆时针</td><td>双面都画线：</td><td>全部边线（不剔）；配合 dynamicId::viewportScissorLineWidth</td></tr><tr><td colspan='4' style='color:#d29922'><b>— 点模式（需 fillModeNonSolid；cull 与绕序仍生效） —</b></td></tr><tr><td><code>point_none_ccw</code></td><td>点·不剔·逆时针</td><td>顶点可视化：</td><td>把已有网格的顶点画成点</td></tr><tr><td><code>point_none_cw</code></td><td>点·不剔·顺时针</td><td>同上：</td><td>顺时针为正面</td></tr><tr><td><code>point_front_ccw</code></td><td>点·剔正面·逆时针</td><td>只画背向顶点：</td><td>内面顶点可视化</td></tr><tr><td><code>point_front_cw</code></td><td>点·剔正面·顺时针</td><td>同上：</td><td>顺时针为正面</td></tr><tr><td><code>point_back_ccw</code></td><td>点·剔背面·逆时针</td><td>只画正向顶点：</td><td>外表面顶点可视化</td></tr><tr><td><code>point_back_cw</code></td><td>点·剔背面·顺时针</td><td>同上：</td><td>顺时针为正面</td></tr><tr><td><code>point_front_and_back</code></td><td>点·双面·逆时针</td><td>双面都画点：</td><td>全部顶点可视化</td></tr><tr><td colspan='4' style='color:#d29922'><b>— 特殊 —</b></td></tr><tr><td><code>fill_back_ccw_clampDepth</code></td><td>填充·剔背面·逆时针·夹紧深度</td><td>深度夹紧进</td><td>[0,1]： 深度精度不足/大幅近平面时防穿透（需 depthClamp）</td></tr><tr><td><code>discardAll</code></td><td>丢弃全部图元</td><td>rasterizerDiscardEnable=true：</td><td>只走顶点/网格阶段（只写时间戳、纯测性能）</td></tr></tbody></table></section><section><h2>3 · <code>biasId</code> 项清单 <small>（正交小类 → rasterId · （字段住 raster：depthBias*））</small></h2><table><thead><tr><th style='width:230px'>项</th><th style='width:150px'>名字</th><th style='width:260px'>功能</th><th>说明</th></tr></thead><tbody><tr><td><code>none</code></td><td>不偏移</td><td>不启用深度偏移：</td><td>主通道默认</td></tr><tr><td><code>polygonOffset</code></td><td>多边形偏移</td><td>常量</td><td>1.0 / 斜率 1.0 / 不夹紧（选择框覆盖、共面贴合）</td></tr><tr><td><code>shadowOffset</code></td><td>阴影斜率偏移</td><td>常量</td><td>0.0 / 斜率 1.0 / 不夹紧（阴影贴图防 acne 常用）</td></tr></tbody></table></section><section><h2>3 · <code>depthId</code> 项清单 <small>（主表 · VkPipelineDepthStencilStateCreateInfo）</small></h2><table><thead><tr><th style='width:230px'>项</th><th style='width:150px'>名字</th><th style='width:260px'>功能</th><th>说明</th></tr></thead><tbody><tr><td colspan='4' style='color:#d29922'><b>— 测 + 写 —</b></td></tr><tr><td><code>test_never</code></td><td>测·永不通过</td><td>仅模板流程：</td><td>强制走 depthFail 分支</td></tr><tr><td><code>test_write_less</code></td><td>测·写·小于</td><td>不透明物体标准（近者胜</td><td>+ 提供可读深度）</td></tr><tr><td><code>test_write_equal</code></td><td>测·写·等于</td><td>共面/等深二次绘制</td><td></td></tr><tr><td><code>test_write_lessEqual</code></td><td>测·写·≤</td><td>共面贴合、阴影深度比较</td><td></td></tr><tr><td><code>test_write_greater</code></td><td>测·写·大于</td><td>reversed-Z（反向深度）</td><td></td></tr><tr><td><code>test_write_notEqual</code></td><td>测·写·不等</td><td>遮罩式绘制</td><td></td></tr><tr><td><code>test_write_greaterEqual</code></td><td>测·写·≥</td><td>reversed-Z</td><td>共面</td></tr><tr><td><code>test_write_always</code></td><td>测·写·始终通过</td><td>深度预通道</td><td></td></tr><tr><td colspan='4' style='color:#d29922'><b>— 测 + 不写 —</b></td></tr><tr><td><code>test_noWrite_less</code></td><td>测·不写·小于</td><td>只测不写（遮挡剔除）</td><td></td></tr><tr><td><code>test_noWrite_equal</code></td><td>测·不写·等于</td><td>等深处叠加、不改深度</td><td></td></tr><tr><td><code>test_noWrite_lessEqual</code></td><td>测·不写·≤</td><td>天空盒/背景层</td><td></td></tr><tr><td><code>test_noWrite_greater</code></td><td>测·不写·大于</td><td>reversed-Z</td><td>只测不写</td></tr><tr><td><code>test_noWrite_notEqual</code></td><td>测·不写·不等</td><td>深度不一致处显示（遮罩）</td><td></td></tr><tr><td><code>test_noWrite_greaterEqual</code></td><td>测·不写·≥</td><td>reversed-Z</td><td>只测不写（共面）</td></tr><tr><td><code>test_noWrite_always</code></td><td>测·不写·始终通过</td><td>永远可见前景层；与</td><td>noDepth 等价</td></tr><tr><td colspan='4' style='color:#d29922'><b>— 不参与深度 —</b></td></tr><tr><td><code>noDepth</code></td><td>不参与深度</td><td>纯</td><td>2D/UI 与后处理（compare 被忽略占位）</td></tr><tr><td colspan='4' style='color:#d29922'><b>— 深度范围测试（需 depthBounds feature；边界值走动态状态） —</b></td></tr><tr><td><code>test_write_less_bounds</code></td><td>测·写·小于·范围</td><td>级联阴影：</td><td>只处理本层深度切片</td></tr><tr><td><code>test_noWrite_less_bounds</code></td><td>测·不写·小于·范围</td><td>同上但不写深度</td><td></td></tr></tbody></table></section><section><h2>3 · <code>stencilId</code> 项清单 <small>（正交小类 → depthId · （字段住 depth：stencil*））</small></h2><table><thead><tr><th style='width:230px'>项</th><th style='width:150px'>名字</th><th style='width:260px'>功能</th><th>说明</th></tr></thead><tbody><tr><td colspan='4' style='color:#d29922'><b>— 默认 —</b></td></tr><tr><td><code>none</code></td><td>不测试</td><td>stencilTestEnable=false，其余字段被忽略</td><td></td></tr><tr><td colspan='4' style='color:#d29922'><b>— 遮罩类 —</b></td></tr><tr><td><code>writeRef1</code></td><td>标记通道</td><td>写参考值</td><td>1： 描边/遮罩的第一步</td></tr><tr><td><code>drawEqual1</code></td><td>仅标记处绘制</td><td>只画被标记区域（遮罩内绘制）</td><td></td></tr><tr><td><code>drawNotEqual1</code></td><td>仅未标记处绘制</td><td>描边外扩、遮罩外绘制</td><td></td></tr><tr><td><code>drawNotEqual0</code></td><td>仅已写入处绘制</td><td>通用遮罩外绘制</td><td></td></tr><tr><td colspan='4' style='color:#d29922'><b>— 阴影体 —</b></td></tr><tr><td><code>zPass</code></td><td>阴影体</td><td>Z-pass</td><td>正面 passOp=INCR_WRAP、 背面 passOp=DECR_WRAP， compare=ALWAYS</td></tr><tr><td><code>zFail</code></td><td>阴影体</td><td>Z-fail</td><td>正面 depthFailOp=INCR_WRAP、背面 depthFailOp=DECR_WRAP，compare=ALWAYS</td></tr></tbody></table></section><section><h2>3 · <code>blendId</code> 项清单 <small>（主表 · VkPipelineColorBlendStateCreateInfo）</small></h2><table><thead><tr><th style='width:230px'>项</th><th style='width:150px'>名字</th><th style='width:260px'>功能</th><th>说明</th></tr></thead><tbody><tr><td colspan='4' style='color:#d29922'><b>— 基础合成 —</b></td></tr><tr><td><code>opaque</code></td><td>不透明</td><td>直接覆盖：</td><td>enable=false，因子被忽略（占位）</td></tr><tr><td><code>alphaBlend</code></td><td>常规半透明</td><td>玻璃/水面/粒子/UI：</td><td>src*a + dst*(1-a)</td></tr><tr><td><code>premultipliedAlpha</code></td><td>预乘</td><td>Alpha</td><td>预乘纹理正确合成： src + dst*(1-a)，无黑边</td></tr><tr><td colspan='4' style='color:#d29922'><b>— 加 / 减 —</b></td></tr><tr><td><code>additive</code></td><td>alpha</td><td>调制叠加</td><td>光晕/火焰/能量： src*a + dst</td></tr><tr><td><code>additiveNoAlpha</code></td><td>纯叠加</td><td>辉光/激光/亮斑：</td><td>src + dst</td></tr><tr><td><code>subtract</code></td><td>相减</td><td>dst</td><td>- src： 差值、去色类效果</td></tr><tr><td><code>subtractAlpha</code></td><td>按</td><td>alpha</td><td>相减 dst - src*a： 遮罩相减</td></tr><tr><td colspan='4' style='color:#d29922'><b>— 乘 / 滤色 —</b></td></tr><tr><td><code>multiply</code></td><td>正片叠底</td><td>src*dst：</td><td>阴影投射、染色、暗角</td></tr><tr><td><code>multiplyAlpha</code></td><td>带</td><td>alpha</td><td>正片叠底 src*dst + dst*(1-a)： 透明贴图乘底</td></tr><tr><td><code>screen</code></td><td>滤色</td><td>src</td><td>+ dst - src*dst： 泛光、亮部叠加</td></tr><tr><td colspan='4' style='color:#d29922'><b>— 取暗 / 取亮 —</b></td></tr><tr><td><code>darken</code></td><td>变暗</td><td>逐通道取小：</td><td>NPR、光照贴图取暗部</td></tr><tr><td><code>lighten</code></td><td>变亮</td><td>逐通道取大：</td><td>NPR、光照贴图取亮部</td></tr></tbody></table></section><section><h2>3 · <code>writeMaskId</code> 项清单 <small>（正交小类 → blendId · （字段住 blend：colorWriteMask））</small></h2><table><thead><tr><th style='width:230px'>项</th><th style='width:150px'>名字</th><th style='width:260px'>功能</th><th>说明</th></tr></thead><tbody><tr><td><code>rgba</code></td><td>写</td><td>RGBA</td><td>默认：颜色与透明度都写</td></tr><tr><td><code>rgb</code></td><td>只写</td><td>RGB</td><td>保留目标 alpha（后续合成/透明度累积）</td></tr><tr><td><code>alphaOnly</code></td><td>只写</td><td>alpha</td><td>只生成透明度通道（透明通道预通道）</td></tr><tr><td><code>none</code></td><td>不写颜色</td><td>颜色附件仅供深度/模板流程用（占位）</td><td></td></tr></tbody></table></section><section><h2>3 · <code>logicOpId</code> 项清单 <small>（正交小类 → blendId · （字段住 blend：logicOpEnable/Op））</small></h2><table><thead><tr><th style='width:230px'>项</th><th style='width:150px'>名字</th><th style='width:260px'>功能</th><th>说明</th></tr></thead><tbody><tr><td><code>disable</code></td><td>不启用</td><td>走混合公式</td><td>（默认）</td></tr><tr><td><code>copy</code></td><td>直接覆盖</td><td>源颜色直接写入，不做混合运算（需</td><td>logicOp）</td></tr><tr><td><code>invert</code></td><td>颜色取反</td><td>写入取反后的目标颜色</td><td>（位运算）</td></tr><tr><td><code>xorOp</code></td><td>异或</td><td>源与目标逐位异或</td><td>（位运算，特异效果）</td></tr></tbody></table></section><section><h2>3 · <code>dynamicId</code> 项清单 <small>（主表 · VkPipelineDynamicStateCreateInfo）</small></h2><table><thead><tr><th style='width:230px'>项</th><th style='width:150px'>名字</th><th style='width:260px'>功能</th><th>说明</th></tr></thead><tbody><tr><td colspan='4' style='color:#d29922'><b>— 基础 —</b></td></tr><tr><td><code>none</code></td><td>无动态状态</td><td></td><td></td></tr><tr><td colspan='4' style='color:#d29922'><b>— 视口 + 裁剪 —</b></td></tr><tr><td><code>viewportScissor</code></td><td>视口</td><td>+</td><td>裁剪 交换链重建、多分辨率、分屏渲染无需重建管线</td></tr><tr><td colspan='4' style='color:#d29922'><b>— 按需叠加 —</b></td></tr><tr><td><code>viewportScissorLineWidth</code></td><td>+</td><td>线宽</td><td>仅 line_* 光栅预设有效： 线框按需调线宽</td></tr><tr><td><code>viewportScissorDepthBias</code></td><td>+</td><td>深度偏移</td><td>仅 depthBiasEnable=TRUE 有效： 阴影/贴花按需调偏移</td></tr><tr><td><code>viewportScissorBounds</code></td><td>+</td><td>深度范围</td><td>配合深度范围预设： 级联阴影逐级设边界</td></tr><tr><td><code>viewportScissorRasterDepth</code></td><td>+</td><td>光栅/深度批处理</td><td>一条管线服务多材质/双面/多图元（1.3 核心）</td></tr><tr><td><code>viewportScissorAll</code></td><td>+</td><td>全部可选</td><td>上述并集，再加常量混合与模板动态状态</td></tr></tbody></table></section><section>
+<h2>4 · 正交叠加规则（小类怎么盖到主表上）</h2>
+<table><thead><tr><th>小类</th><th>宿主主表</th><th>覆盖的字段</th><th>叠加时机</th></tr></thead><tbody>
+<tr><td><code>biasId</code></td><td><code>rasterId</code></td><td><code>depthBiasEnable / ConstantFactor / SlopFactor / depthBiasClamp</code></td><td><code>createPipeRasterNode()</code> 内，先建主表预设再按 biasId 覆盖</td></tr>
+<tr><td><code>stencilId</code></td><td><code>depthId</code></td><td><code>stencilTestEnable + front/back + compareMask/writeMask/reference</code></td><td><code>createPipeDepthNode()</code> 内覆盖</td></tr>
+<tr><td><code>writeMaskId</code> / <code>logicOpId</code></td><td><code>blendId</code></td><td><code>attachment.colorWriteMask</code> / <code>logicOpEnable + logicOp</code></td><td><code>createPipeBlendNode()</code> 内覆盖</td></tr>
+</tbody></table>
+<div class="note">冲突规则：<b>同一 Vk 字段只能被一个小类覆盖</b>；装配前做一次自检，发现两处写同一字段就报错（现在已有"重复 pipeType"自检，保留并扩到这里）。</div>
+</section>
+<section>
+<h2>5 · 命名与排版规范（这次的返工就是缺这条）</h2>
+<table><thead><tr><th>项</th><th>规范</th></tr></thead><tbody>
+<tr><td>项名</td><td>全小写 <code>snake_case</code>（<code>fill_back_ccw</code>），与 Vk 常量的 <code>SCREAMING_CASE</code> 一眼区分；<b>不要混用 camelCase</b>（现文件里两种混着 ✗）</td></tr>
+<tr><td>枚举类型名</td><td><code>xxxId</code>；末尾固定 <code>count</code>（表尺寸）；<code>static_assert(count == N)</code> 防漂移</td></tr>
+<tr><td>注释列</td><td>三列：<code>名字</code> │ <code>功能</code> │ <code>说明</code>；列间 <b>Tab 顶到统一目标列</b>，列内文本用<b>单个空格</b>；<b>行尾不得有空白</b></td></tr>
+<tr><td>列边界</td><td><b>作者写 Tab 的地方才是列边界</b>；工具不得新造列、不得压缩注释文本（<code>align-comments-v17.ps1</code> 已按此加固）</td></tr>
+<tr><td>对齐工具</td><td><code>cmd\align-comments-v17.ps1 -Recurse -Preview 20</code> 先看，再 <code>-Apply</code>；默认只作用 <code>src\code\vk\data</code></td></tr>
+<tr><td>编码</td><td>UTF-8 <b>无 BOM</b> / <b>CRLF</b> / <b>无尾换行</b>；<code>.ps1</code> 必须带 BOM</td></tr>
+<tr><td>谁来排</td><td><b>生成脚本负责初版排版</b>，此后手改只改内容；改完跑一次"幂等自检"（再跑 0 改动）</td></tr>
+</tbody></table>
+</section>
+<section>
+<h2>6 · 自检清单（写代码时一起落）</h2>
+<ol>
+<li>每表 <code>static_assert(count == N)</code>；<code>N</code> 集中在数据文件顶部便于对账</li>
+<li>总表每行 7（或 9）个枚举值都在各自 <code>[0, count)</code> 内 —— 编译期可查</li>
+<li>同一 Vk 字段被两个小类同时覆盖 ⇒ 装配前报错</li>
+<li>排版幂等：<code>align-comments-v17.ps1</code> 再跑 <b>0 改动</b>；<code>align-loop.ps1</code> 收敛</li>
+<li>编译 Release / Debug <b>0 错 0 警</b></li>
+<li>运行期审计：16 列管线参数与基线逐条一致（跑一次审计脚本）</li>
+</ol>
+</section>
+<section>
+<h2>7 · 待决点（勾完点下面的按钮，把结果贴给我）</h2>
+<div class="pick" id="votes">
+<label><input type="checkbox" data-k="1"> <b>1 表边界</b>：按 Vk 结构体贴合（现状）✓ ／ 改按正交语义重切</label>
+<label><input type="checkbox" data-k="2"> <b>2 默认项</b>：<span style="color:#3fb950">已定稿 ✓（见 §0.5）</span></label>
+<label><input type="checkbox" data-k="3"> <b>3 命名</b>：全部改 <code>snake_case</code>（保留旧名做别名过渡）</label>
+<label><input type="checkbox" data-k="4"> <b>4 未用项</b>：保留"能力全集"但注释标 <code>[未用]</code> ／ 直接裁掉</label>
+<label><input type="checkbox" data-k="5"> <b>5 总表形态</b>：枚举平铺（现状）+ 允许 2~3 个高频组合别名</label>
+<label><input type="checkbox" data-k="6"> <b>6 dynamic</b>：改<b>位标志</b>（viewport|scissor|lineWidth|depthBias|bounds|rasterDepth），<code>viewportScissorAll</code> 保留为别名</label>
+<label><input type="checkbox" data-k="7"> <b>7 派生表达式</b>：行派生 → 结点方法；全局能力（feature/caps）→ 单独 caps 结点</label>
+<label><input type="checkbox" data-k="8"> <b>8 编译期自检</b>：<code>static_assert(count == N)</code> + 枚举值范围检查 + 字段冲突检查，全做</label>
+</div>
+<button onclick="dump()">导出我的选择</button> <button class="ghost" onclick="document.getElementById('res').value=''">清空</button>
+<textarea id="res" placeholder="点「导出我的选择」后，把这里的内容贴回对话即可"></textarea>
+</section>
+<section>
+<h2>8 · 验收标准</h2>
+<ul>
+<li>三件套重写后，<b>管线装配路径不新增硬编码</b>：构造函数里没有逐管线赋值，全部来自表</li>
+<li>新增一条管线 = <b>只加一行总表</b>（+ 必要的枚举项），不改装配代码</li>
+<li>编译 Release/Debug 0 错 0 警；审计 16 列与基线一致；排版幂等 0 改动</li>
+</ul>
+</section>
+</main>
+<script>
+function dump(){
+  var scope=document.querySelector('input[name=scope]:checked');
+  var out=['【口径】'+(scope?scope.value:'未选')];
+  document.querySelectorAll('#votes input').forEach(function(c){ out.push('【'+c.dataset.k+'】'+(c.checked?'采取':'不采取')); });
+  document.getElementById('res').value=out.join('\n');
+  navigator.clipboard&&navigator.clipboard.writeText(out.join('\n'));
+}
+</script></body></html>

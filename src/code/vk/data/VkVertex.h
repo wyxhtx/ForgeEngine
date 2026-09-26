@@ -5,9 +5,9 @@
 //pipeTerrain
 namespace terrainVertex {
 	struct vertexNode {
-		glm::vec3 position;     //坐标
-		glm::vec3 texCoord;     //uv，xy用于循环平铺，z用于纹理数组索引
-		glm::vec3 normal;       //法线
+		glm::vec3 position;		//坐标									
+		glm::vec3 texCoord;		//uv，xy用于循环平铺，z用于纹理数组索引	
+		glm::vec3 normal;		//法线									
 
 
 
@@ -49,9 +49,9 @@ namespace terrainVertex {
 //model
 namespace modelVertex {
 	struct vertexNode {
-		glm::vec3 position;     //坐标
-		glm::vec2 texCoord;     //uv
-		glm::vec3 normal;       //法线
+		glm::vec3 position;		//坐标									
+		glm::vec2 texCoord;		//uv									
+		glm::vec3 normal;		//法线									
 
 
 
@@ -112,7 +112,7 @@ namespace std {
 //pipeSkybox
 namespace skyboxVertex {
 	struct vertexNode {
-		glm::vec3 position;     //坐标
+		glm::vec3 position;		//坐标									
 
 
 
@@ -164,7 +164,7 @@ namespace skyboxVertex {
 //pipeMine
 namespace mineVertex {
 	struct vertexNode {
-		glm::vec3 position;     //坐标
+		glm::vec3 position;		//坐标									
 
 
 
@@ -324,7 +324,7 @@ namespace offScreenVertex {
 //shadow
 namespace shadowVertex {
 	struct vertexNode {
-		glm::vec3 position;     //坐标
+		glm::vec3 position;		//坐标									
 
 
 

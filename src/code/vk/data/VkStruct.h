@@ -2130,19 +2130,22 @@ namespace pipelineStruct {
 
 	//pipeConfig结点
 	struct pipeConfigNode {
+		//创建指定
 		std::vector<VkPipelineShaderStageCreateInfo>     shaderStageList{};         //着色阶段列表（顶点模式、网格模式）
 		VkPipelineVertexInputStateCreateInfo             vertInputStage{};          //顶点配置
-		VkPipelineInputAssemblyStateCreateInfo			 primitiveState{};	        //图元配置
 		VkViewport										 viewport{};			    //视口区域
 		VkRect2D										 scissor{};				    //裁剪区域
-		VkPipelineViewportStateCreateInfo				 viewportState{};		    //视口配置
-		VkPipelineRasterizationStateCreateInfo			 rasterizer{};			    //光栅化
 		VkPipelineMultisampleStateCreateInfo			 multisampling{};		    //多重采样
-		VkPipelineDepthStencilStateCreateInfo			 depthStencil{};		    //深度和模板
 		std::vector<VkPipelineColorBlendAttachmentState> colorAttachmentList{};     //颜色附件列表（前向模式、延迟模式、阴影模式）
+
+		//枚举指定
+		VkPipelineInputAssemblyStateCreateInfo			 primitiveState{};	        //图元配置
+		VkPipelineRasterizationStateCreateInfo			 rasterizer{};			    //光栅化
+		VkPipelineDepthStencilStateCreateInfo			 depthStencil{};		    //深度和模板
 		VkPipelineColorBlendStateCreateInfo				 colorAttachmentState{};    //颜色附件配置
 		std::vector<VkDynamicState>                      pipeDynamicStageList{};    //管线动态阶段列表（Vulkan 1.4 共 48 个）
 		VkPipelineDynamicStateCreateInfo                 pipeDynamicStageState{};   //管线动态阶段配置
+		VkPipelineViewportStateCreateInfo				 viewportState{};		    //视口配置
 		VkGraphicsPipelineCreateInfo					 pipeInfo{};			    //管线信息
 
 
@@ -2385,11 +2388,11 @@ namespace pipelineStruct {
 		void createPipelineNode(VkSampleCountFlagBits msaa, const renderStruct::renderTemplateNode& renderTemplateNode, const pipelineStruct::pipeLayoutNode& pipeLayoutNode, const std::vector<std::string>& shaderFileList, const VkDevice& device) {
 			//创建shaderList
 			shaderList.resize(shaderFileList.size());
-			if (shaderFileList.size() == pipelineEnum::shaderNodeId::vert::count) {
-				shaderList[pipelineEnum::shaderNodeId::vert::vert].createShaderNode(device, shaderFileList[0], VK_SHADER_STAGE_VERTEX_BIT);
-				shaderList[pipelineEnum::shaderNodeId::vert::frag].createShaderNode(device, shaderFileList[1], VK_SHADER_STAGE_FRAGMENT_BIT);
+			if (shaderFileList.size() == pipelineEnum::shaderId::vert::count) {
+				shaderList[pipelineEnum::shaderId::vert::vert].createShaderNode(device, shaderFileList[0], VK_SHADER_STAGE_VERTEX_BIT);
+				shaderList[pipelineEnum::shaderId::vert::frag].createShaderNode(device, shaderFileList[1], VK_SHADER_STAGE_FRAGMENT_BIT);
 			}
-			else if (shaderFileList.size() == pipelineEnum::shaderNodeId::mesh::count) {
+			else if (shaderFileList.size() == pipelineEnum::shaderId::mesh::count) {
 				//todo 待写网格着色
 			}
 

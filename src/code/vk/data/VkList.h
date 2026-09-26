@@ -30,7 +30,7 @@ namespace pipelineList {
 		bufferEnum::procDescriptorId::type  descriptor{};        //描述符布局
 		renderEnum::renderTemplateId::type  renderTemplate{};    //渲染模板
 		bool                                isMsaa{};            //是否用引擎的 MSAA 采样数，否则强制单采样
-		std::vector<std::string>            fileList{};          //着色器文件，索引与 pipelineEnum::shaderNodeId::vert 一致
+		std::vector<std::string>            fileList{};          //着色器文件，索引与 pipelineEnum::shaderId::vert 一致
 
 
 
@@ -162,8 +162,8 @@ namespace pipelineList {
 
 		//反射 spv 现算描述符布局：布局不再由构建期生成，改在启动时按磁盘上的 spv 现算
 		void reflectLayout() {
-			//着色器索引 → 阶段（索引与 pipelineEnum::shaderNodeId::vert 一致：0 顶点、1 片段）
-			const std::array<VkShaderStageFlagBits, pipelineEnum::shaderNodeId::vert::count> vertStageList{ VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
+			//着色器索引 → 阶段（索引与 pipelineEnum::shaderId::vert 一致：0 顶点、1 片段）
+			const std::array<VkShaderStageFlagBits, pipelineEnum::shaderId::vert::count> vertStageList{ VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
 
 			//按描述符汇总着色器：同一布局常被多条管线共用，需合并去重
 			std::array<std::vector<spirvTool::reflectShaderNode>, bufferEnum::procDescriptorId::count> descriptorShader{};
