@@ -20,6 +20,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <execution>
 #include <filesystem>
@@ -28,6 +29,7 @@
 #include <fstream>
 #include <functional>
 #include <iomanip>
+#include <ios>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -35,13 +37,13 @@
 #include <mutex>
 #include <numeric>
 #include <queue>
-#include <set>
+#include <span>
 #include <string>
+#include <system_error>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <variant>
 #include <vector>
 #include <windows.h>
 

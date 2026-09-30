@@ -21,7 +21,7 @@ public:
 	glm::ivec3 actualWorldPos{};																				//区块实际世界坐标（对应cubeArray[0][0][0]处，i世界坐标系），用于构建网格
 
 	//由createChunkMeshData初始化
-	std::vector<terrainVertex::vertexNode> chunkVertexs{};														//区块网格顶点数组
+	std::vector<vertexStruct::terrainVertex::vertexNode> chunkVertexs{};														//区块网格顶点数组
 	std::vector<uint32_t> chunkIndexs{};																		//区块网格索引数组
 	uint32_t indexOffset = 0;																					//区块索引偏移量，用于chunkIndexs索引和优化拼接地形网格
 
@@ -495,7 +495,7 @@ private:
 	//position：	坐标
 	//length：	纹理循环长度
 	void createChunkMesh(int i, int faceId, int cubeId, const glm::vec3& position, const glm::vec3& length) {
-		std::vector<terrainVertex::vertexNode> tempVertexs;
+		std::vector<vertexStruct::terrainVertex::vertexNode> tempVertexs;
 
 		//四个顶点构成一个面，顶点uv绑定应按照Z画法，uv绑定朝向与画Z时相同
 		switch (i) {
@@ -1332,7 +1332,7 @@ private:
 	//length：	纹理循环长度
 	//vertexsSize：顶点长度
 	void updateChunkMesh(int i, int faceId, int cubeId, const glm::vec3& position, const glm::vec3& length, int vertexsSize) {
-		std::vector<terrainVertex::vertexNode> tempVertexs;
+		std::vector<vertexStruct::terrainVertex::vertexNode> tempVertexs;
 
 		switch (i) {
 		case 0: {

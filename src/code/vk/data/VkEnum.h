@@ -82,8 +82,41 @@ namespace renderEnum {
 	}
 }
 
-//pipeline		枚举空间
+//vertex    枚举空间
+namespace vertexEnum {
+	//顶点属性格式枚举
+	namespace formatId {
+		enum type {
+			float2,		//2×float：uiText 的字形位置 / 纹理坐标
+			float3,		//3×float：坐标 / uv3 / 法线
+
+			count
+		};
+	}
+
+	//顶点输入速率枚举
+	namespace rateId {
+		enum type {
+			vertex,		//逐顶点：VK_VERTEX_INPUT_RATE_VERTEX（默认）
+			instance,	//逐实例：VK_VERTEX_INPUT_RATE_INSTANCE
+
+			count
+		};
+	}
+}
+
+//pipeline	枚举空间
 namespace pipelineEnum {
+	//shaderFlow 枚举
+	namespace shaderFlowId {
+		enum type {
+			vert,					//顶点流程：VERTEX + FRAGMENT
+			mesh,					//网格流程：TASK + MESH + FRAGMENT
+
+			count
+		};
+	}
+
 	//primitive	枚举（图元）
 	namespace primitiveId {
 		enum type {
@@ -275,36 +308,10 @@ namespace pipelineEnum {
 			viewportScissorDepthBias,	// + 深度偏移 仅 depthBiasEnable=TRUE 有效：	阴影/贴花按需调偏移
 			viewportScissorBounds,		// + 深度范围 配合深度范围预设：				级联阴影逐级设边界
 			viewportScissorRasterDepth,	// + 光栅/深度批处理							一条管线服务多材质/双面/多图元（1.3 核心）
-			viewportScissorAll,			// + 全部可选									上述并集，再加常量混合与模板动态状态
+			viewportScissorAll,			// + 全部可选									上述 8 项 + 深度范围/混合常量/模板，不含线宽与深度偏移
 
 			count
 		};
-	}
-
-
-
-	//shader	枚举
-	namespace shaderId {
-		//顶点	类型
-		namespace vert {
-			enum type {
-				vert,					//顶点着色器											
-				frag,					//片段着色器											
-
-				count
-			};
-		}
-
-		//网格	类型
-		namespace mesh {
-			enum type {
-				task,					//任务着色器											
-				mesh,					//网格着色器											
-				frag,					//片段着色器											
-
-				count
-			};
-		}
 	}
 
 	//cmdDraw	枚举

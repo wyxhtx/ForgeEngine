@@ -40,11 +40,11 @@ private:
 	Plate  InitPlate{};
 	Buffer InitBuffer{ Device };
 
-	pipelineList::procPipelineNode procPipeline{ Device.device, InitBuffer.getDstList(), InitBuffer.getRenderList(), InitBuffer.getMsaa() };
-
 	pipelineStruct::asyncWorker plateWorker{};		//板块更新专用 worker
 	pipelineStruct::asyncWorker cubeWorker{};		//方块更新专用 worker
 	pipelineStruct::asyncWorker cmdWorker{};		//命令重建专用 worker
+
+	pipelineList::procPipelineNode procPipeline{ Device.device, InitBuffer.getRenderList(), InitBuffer.getDescriptor(), InitBuffer.getMsaa() };
 
 
 
@@ -53,21 +53,21 @@ private:
 		const VkExtent2D& extent = InitBuffer.getSwapExtent();
 
 		//shadowMap_rt
-		procPipeline.createPipeline<shadowVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::shadowMap_p, renderInfo::shadowMapExtent);
+		procPipeline.createPipeline(pipelineEnum::procPipelineId::shadowMap_p, renderInfo::shadowMapExtent);
 
 		/*deferred_rt*/
-		procPipeline.createPipeline<terrainVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::terrain_p, extent);
-		procPipeline.createPipeline<modelVertex::vertexNode>  (Device.device, pipelineEnum::procPipelineId::model_p,   extent);
-		procPipeline.createPipeline<skyboxVertex::vertexNode> (Device.device, pipelineEnum::procPipelineId::skybox_p,  extent);
-		procPipeline.createPipeline<mineVertex::vertexNode>   (Device.device, pipelineEnum::procPipelineId::mine_p,    extent);
-		procPipeline.createPipeline<uiTextVertex::vertexNode> (Device.device, pipelineEnum::procPipelineId::uiText_p,  extent);
+		procPipeline.createPipeline(pipelineEnum::procPipelineId::terrain_p,   extent);
+		procPipeline.createPipeline(pipelineEnum::procPipelineId::model_p,     extent);
+		procPipeline.createPipeline(pipelineEnum::procPipelineId::skybox_p,    extent);
+		procPipeline.createPipeline(pipelineEnum::procPipelineId::mine_p,      extent);
+		procPipeline.createPipeline(pipelineEnum::procPipelineId::uiText_p,    extent);
 
 		/*offScreen_rt*/
-		procPipeline.createPipeline<osMirrorVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osMirror_p, extent);
+		procPipeline.createPipeline(pipelineEnum::procPipelineId::osMirror_p,  extent);
 
 		/*swapChain_rt*/
-		procPipeline.createPipeline<offScreenVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::dsScence_p, extent);
-		procPipeline.createPipeline<offScreenVertex::vertexNode>(Device.device, pipelineEnum::procPipelineId::osScence_p, extent);
+		procPipeline.createPipeline(pipelineEnum::procPipelineId::dsScence_p,  extent);
+		procPipeline.createPipeline(pipelineEnum::procPipelineId::osScence_p,  extent);
 	}
 
 public:

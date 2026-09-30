@@ -118,7 +118,7 @@ private:
 
 		//gpuCandidateList赋值
 		gpuCandidateList.resize(gpuCount);
-		for (uint32_t i = 0; i < gpuCount; i++) {
+		for (uint32_t i = 0; i < gpuList.size(); i++) {
 			gpuCandidateList[i].gpu = gpuList[i];
 		}
 		
@@ -126,7 +126,7 @@ private:
 		std::vector<VkPhysicalDeviceProperties> gpuInfoList(gpuCount);          //todo 到时候看看能不能封装进LogSwitch里面
 		if (debugInfo::LogSwitch) {
 			Log::printTitle("可用显卡");
-			for (uint32_t i = 0; i < gpuCount; i++) {
+			for (uint32_t i = 0; i < gpuCandidateList.size(); i++) {
 				vkGetPhysicalDeviceProperties(gpuCandidateList[i].gpu, &gpuInfoList[i]);
 				Log::print(gpuInfoList[i].deviceName);
 			}
@@ -134,13 +134,13 @@ private:
 		}
 
 		//队列族索引
-		for (uint32_t i = 0; i < gpuCount; i++) {
+		for (uint32_t i = 0; i < gpuCandidateList.size(); i++) {
 			getQueueFamilyIndex(gpuCandidateList[i], gpuInfoList[i], presentSurface);
 		}
 
 		//获取最优显卡
 		uint32_t maxGraphicsQueueCount = 0;     //最大渲染队列数量
-		for (uint32_t i = 0; i < gpuCount; i++) {
+		for (uint32_t i = 0; i < gpuCandidateList.size(); i++) {
 			if (maxGraphicsQueueCount < gpuCandidateList[i].graphicsQueueFamily.count) {
 				maxGraphicsQueueCount = gpuCandidateList[i].graphicsQueueFamily.count;
 				enableGpuIndex = i;
@@ -187,7 +187,7 @@ private:
 				{ VK_QUEUE_OPTICAL_FLOW_BIT_NV,  "光流计算" },
 			};
 
-			for (uint32_t i = 0; i < queueFamilyCount; i++) {
+			for (uint32_t i = 0; i < queueFamilieList.size(); i++) {
 				VkQueueFamilyProperties queueFamilyInfo = queueFamilieList[i];
 				std::cout << std::left << "\t" << "族: " << std::setw(5) << i << "数量: " << std::setw(5) << queueFamilyInfo.queueCount << "掩码: " << std::setw(5) << queueFamilyInfo.queueFlags;
 
@@ -202,7 +202,7 @@ private:
 		}
 
 		//获取最优队列族
-		for (uint32_t i = 0; i < queueFamilyCount; i++) {
+		for (uint32_t i = 0; i < queueFamilieList.size(); i++) {
 			VkQueueFamilyProperties queueFamilyInfo = queueFamilieList[i];
 
 			if (queueFamilyInfo.queueFlags & VK_QUEUE_GRAPHICS_BIT) {

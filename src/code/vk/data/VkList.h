@@ -24,38 +24,6 @@ namespace engineList {
 
 //pipeline	列表空间
 namespace pipelineList {
-	//管线着色器结点：一条管线用哪套描述符布局、挂在哪个渲染模板下、采样数、用哪些着色器
-	struct pipelineShaderNode {
-		pipelineEnum::procPipelineId::type  pipeType{};          //管线 id（本行的键，表顺序无关）
-		bufferEnum::procDescriptorId::type  descriptor{};        //描述符布局
-		renderEnum::renderTemplateId::type  renderTemplate{};    //渲染模板
-		bool                                isMsaa{};            //是否用引擎的 MSAA 采样数，否则强制单采样
-		std::vector<std::string>            fileList{};          //着色器文件，索引与 pipelineEnum::shaderId::vert 一致
-
-
-
-		//采样数：本行跟随引擎 MSAA 就取引擎采样数，否则强制单采样
-		VkSampleCountFlagBits getMsaa(VkSampleCountFlagBits msaa) const {
-			return isMsaa ? msaa : VK_SAMPLE_COUNT_1_BIT;
-		}
-	};
-
-	//管线 id → 着色器（每行自带 pipeType，表顺序无关）
-	//唯一来源：引擎据此建管线；反射布局据此推导"每个描述符布局用到哪些着色器"
-	const std::array<pipelineShaderNode, pipelineEnum::procPipelineId::count> procPipelineShader{ {
-		{ pipelineEnum::procPipelineId::terrain_p,   bufferEnum::procDescriptorId::scenceDeferred_d, renderEnum::renderTemplateId::deferred_rt,  false, { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag  } },
-		{ pipelineEnum::procPipelineId::model_p,     bufferEnum::procDescriptorId::scenceDeferred_d, renderEnum::renderTemplateId::deferred_rt,  false, { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag      } },
-		{ pipelineEnum::procPipelineId::skybox_p,    bufferEnum::procDescriptorId::scenceForward_d,  renderEnum::renderTemplateId::deferred_rt,  false, { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag   } },
-		{ pipelineEnum::procPipelineId::mine_p,      bufferEnum::procDescriptorId::scenceForward_d,  renderEnum::renderTemplateId::deferred_rt,  false, { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag     } },
-		{ pipelineEnum::procPipelineId::uiText_p,    bufferEnum::procDescriptorId::uiText_d,         renderEnum::renderTemplateId::swapChain_rt, true,  { fileInfo::shader::uiTextVert,   fileInfo::shader::uiTextFrag   } },
-		{ pipelineEnum::procPipelineId::osMirror_p,  bufferEnum::procDescriptorId::scenceForward_d,  renderEnum::renderTemplateId::offScreen_rt, true,  { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag } },
-		{ pipelineEnum::procPipelineId::osScence_p,  bufferEnum::procDescriptorId::scenceForward_d,  renderEnum::renderTemplateId::swapChain_rt, true,  { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag } },
-		{ pipelineEnum::procPipelineId::dsScence_p,  bufferEnum::procDescriptorId::dsScence_d,       renderEnum::renderTemplateId::swapChain_rt, true,  { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag } },
-		{ pipelineEnum::procPipelineId::shadowMap_p, bufferEnum::procDescriptorId::shadowMap_d,      renderEnum::renderTemplateId::shadowMap_rt, false, { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   } },
-	} };
-
-
-
 	struct procRenderNode {
 		std::vector<renderStruct::renderTemplateNode> renderTemplateList{};
 		std::vector<renderStruct::renderInstanceNode> renderInstanceList{};
@@ -80,16 +48,14 @@ namespace pipelineList {
 
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-			for (int i = 0; i < renderEnum::renderTemplateId::count; i++) {
-				renderTemplateList[i].clear(device);
+			for (renderStruct::renderTemplateNode& renderTemplate : renderTemplateList) {
+				renderTemplate.clear(device);
 			}
 
-			for (int i = 0; i < renderEnum::renderInstanceId::count; i++) {
-				renderInstanceList[i].clear(device, memAllocator);
+			for (renderStruct::renderInstanceNode& renderInstance : renderInstanceList) {
+				renderInstance.clear(device, memAllocator);
 			}
 		}
-
-
 
 		void recreateSwapChain(const VkExtent2D& swapExtent, VkFormat colorFormat, VkFormat depthFormat, VkSampleCountFlagBits msaa, const VkDevice& device, const VmaAllocator& memAllocator) {
 			renderInstanceList[renderEnum::renderInstanceId::scScence_ri] .createRenderInstanceNode(renderTemplateList[renderEnum::renderTemplateId::swapChain_rt], colorFormat, depthFormat, swapExtent, msaa, device, memAllocator);
@@ -100,154 +66,114 @@ namespace pipelineList {
 		}
 
 		void clearSwapChain(const VkDevice& device, const VmaAllocator& memAllocator) {
-			for (int i = 0; i < renderEnum::renderInstanceId::count; i++) {
-				renderInstanceList[i].clear(device, memAllocator);
+			for (renderStruct::renderInstanceNode& renderInstance : renderInstanceList) {
+				renderInstance.clear(device, memAllocator);
 			}
 		}
 
-		//获取frameImage，为创建描述符服务
+
+
+		//获取 frameImage，为创建描述符服务
 		const VkImageView& getFrameImage(renderEnum::renderInstanceId::type renderInstanceType, renderEnum::renderFrameId::type renderFrameType, int viewId) {
 			return renderInstanceList[renderInstanceType].frameImageList[renderFrameType].imageList[viewId].view;
 		}
 
-		//获取renderBegin
+		//获取 renderBegin
 		const VkRenderPassBeginInfo& getRenderBegin(renderEnum::renderInstanceId::type renderInstanceType) {
 			return renderInstanceList[renderInstanceType].frameBufferList[0].renderBegin;
 		}
 
-		//获取renderBegin，swap版
+		//获取 renderBegin，swap版
 		const VkRenderPassBeginInfo& getRenderBegin(renderEnum::renderInstanceId::type renderInstanceType, int frameId) {
 			return renderInstanceList[renderInstanceType].frameBufferList[frameId].renderBegin;
 		}
 	};
 
 	struct procDescriptorNode {
-		VkDescriptorSetAllocateInfo allocInfo{};
-		bufferEnum::procDescriptorId::type nodeId;
-
-		std::vector<bufferStruct::descriptorNode> node{};
+		VkDescriptorSetAllocateInfo				allocInfo{};
+		bufferEnum::procDescriptorId::type		descriptorType = bufferEnum::procDescriptorId::count;
+		std::vector<descStruct::descriptorNode> node{};
 
 
 
 		procDescriptorNode(const VkDevice& device) : node(bufferEnum::procDescriptorId::count) {
-			//allocInfo
-			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocInfo.pNext = nullptr;
+			allocInfo.sType				 = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			allocInfo.pNext				 = nullptr;
 			allocInfo.descriptorSetCount = 1;
-
-			//描述符布局：运行期反射 spv 现算，天然与着色器一致
-			reflectLayout();
-
-			//描述符池上限属应用侧决策，spv 里没有，仍在此手写
-			node[bufferEnum::procDescriptorId::scenceForward_d] .maxSet = bufferInfo::scenceForwardCount;
-			node[bufferEnum::procDescriptorId::scenceDeferred_d].maxSet = bufferInfo::scenceDeferredCount;
-			node[bufferEnum::procDescriptorId::uiText_d]		.maxSet = bufferInfo::uiTextCount;
-			node[bufferEnum::procDescriptorId::dsScence_d]		.maxSet = bufferInfo::dsScenceCount;
-			node[bufferEnum::procDescriptorId::shadowMap_d]		.maxSet = bufferInfo::shadowCount;
-
-			for (int i = 0; i < bufferEnum::procDescriptorId::count; i++) {
-				node[i].createDescriptorNode(device);
-			}
+			
+			reflectLayout(bufferEnum::procDescriptorId::scenceDeferred_d, bufferInfo::scenceDeferredCount, std::vector<std::string>{ fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag, fileInfo::shader::pbrVert,  fileInfo::shader::pbrFrag }, device);
+			reflectLayout(bufferEnum::procDescriptorId::scenceForward_d,  bufferInfo::scenceForwardCount,  std::vector<std::string>{ fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag,  fileInfo::shader::mineVert, fileInfo::shader::mineFrag, fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag, fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag }, device);
+			reflectLayout(bufferEnum::procDescriptorId::uiText_d,		  bufferInfo::uiTextCount,		   std::vector<std::string>{ fileInfo::shader::uiTextVert,   fileInfo::shader::uiTextFrag   }, device);
+			reflectLayout(bufferEnum::procDescriptorId::dsScence_d,		  bufferInfo::dsScenceCount,	   std::vector<std::string>{ fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag }, device);
+			reflectLayout(bufferEnum::procDescriptorId::shadowMap_d,	  bufferInfo::shadowCount,		   std::vector<std::string>{ fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   }, device);
 		}
+
+		procDescriptorNode() = delete;
 
 
 
 		void clear(const VkDevice& device) {
-			for (int i = 0; i < bufferEnum::procDescriptorId::count; i++) {
-				node[i].clear(device);
+			for (descStruct::descriptorNode& descriptorNode : node) {
+				descriptorNode.clear(device);
 			}
 		}
 
 
 
-		//反射 spv 现算描述符布局：布局不再由构建期生成，改在启动时按磁盘上的 spv 现算
-		void reflectLayout() {
-			//着色器索引 → 阶段（索引与 pipelineEnum::shaderId::vert 一致：0 顶点、1 片段）
-			const std::array<VkShaderStageFlagBits, pipelineEnum::shaderId::vert::count> vertStageList{ VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
+		//反射 SPIR-V 提取绑定信息，创建描述符布局
+		void reflectLayout(bufferEnum::procDescriptorId::type tDescriptorType, uint32_t tMaxSet, std::span<const std::string> shaderFileList, const VkDevice& device) {
+			node[tDescriptorType].maxSet = tMaxSet;
 
-			//按描述符汇总着色器：同一布局常被多条管线共用，需合并去重
-			std::array<std::vector<spirvTool::reflectShaderNode>, bufferEnum::procDescriptorId::count> descriptorShader{};
-
-			//按表逐管线汇总；行自带 pipeType，与表顺序无关
-			for (const pipelineList::pipelineShaderNode& pipeline : pipelineList::procPipelineShader) {
-				if (debugInfo::LogSwitch && pipeline.fileList.size() != vertStageList.size()) {
-					Log::printError(__FILE__, __LINE__, pipelineInfo::procPipelineName[pipeline.pipeType] + " 着色器数量不是 " + std::to_string(vertStageList.size()) + " 个（当前只支持顶点加片段）");
-				}
-
-				std::vector<spirvTool::reflectShaderNode>& shaderList = descriptorShader[pipeline.descriptor];
-
-				for (size_t i = 0; i < pipeline.fileList.size(); i++) {
-					//去重：多条管线共用同一着色器时只反射一次
-					bool isExist = false;
-
-					for (const spirvTool::reflectShaderNode& exist : shaderList) {
-						if (exist.file == pipeline.fileList[i]) { isExist = true; break; }
+			for (const std::string& file : shaderFileList) {
+				for (const descStruct::reflectBindingNode& reflect : descStruct::reflectFile(file)) {
+					//当前布局只支持单集合（GLSL 无 set 语法时反射出的集合号恒为 0）
+					if (debugInfo::LogSwitch && reflect.set != 0) {
+						Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[tDescriptorType] + " 运行时 spv 的描述符集号非 0：" + reflect.name);
 					}
 
-					if (!isExist) {
-						shaderList.push_back(spirvTool::reflectShaderNode{ .file = pipeline.fileList[i], .stage = vertStageList[i] });
+					bool isMerge = false;
+					for (descStruct::descriptorConfigNode& merge : node[tDescriptorType].config) {
+						if (merge.layout.binding != reflect.binding) { continue; }
+
+						if (debugInfo::LogSwitch && merge.layout.descriptorType != reflect.type) {
+							Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[tDescriptorType] + " 绑定 " + std::to_string(reflect.binding) + " 在不同着色器里类型不一致");
+						}
+
+						if (debugInfo::LogSwitch && merge.layout.descriptorCount != reflect.count) {
+							Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[tDescriptorType] + " 绑定 " + std::to_string(reflect.binding) + " 在不同着色器里数组长度不一致");
+						}
+
+						merge.layout.stageFlags = static_cast<VkShaderStageFlags>(merge.layout.stageFlags | reflect.stage);
+						isMerge = true;
+						break;
+					}
+
+					if (!isMerge) {
+						node[tDescriptorType].config.push_back(descStruct::descriptorConfigNode{ reflect.binding, reflect.type, static_cast<VkShaderStageFlags>(reflect.stage), reflect.count });
 					}
 				}
 			}
 
-			//逐描述符反射并合并：同一绑定出现在多个阶段则阶段求并集，类型与数组长度必须一致
-			for (int descriptorId = 0; descriptorId < bufferEnum::procDescriptorId::count; descriptorId++) {
-				std::vector<bufferStruct::descriptorConfigNode> configList{};
-				std::string bindingText{};
-
-				for (const spirvTool::reflectShaderNode& shader : descriptorShader[descriptorId]) {
-					for (const spirvTool::reflectBindingNode& reflect : spirvTool::reflectFile(shader.file, shader.stage)) {
-						//当前布局只支持单集合（GLSL 无 set 语法时反射出的集合号恒为 0）
-						if (debugInfo::LogSwitch && reflect.set != 0) {
-							Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[descriptorId] + " 运行时 spv 的描述符集号非 0：" + reflect.name);
-						}
-
-						bool isMerge = false;
-
-						for (bufferStruct::descriptorConfigNode& merge : configList) {
-							if (merge.layout.binding != reflect.binding) { continue; }
-
-							if (debugInfo::LogSwitch && merge.layout.descriptorType != reflect.type) {
-								Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[descriptorId] + " 绑定 " + std::to_string(reflect.binding) + " 在不同着色器里类型不一致");
-							}
-							if (debugInfo::LogSwitch && merge.layout.descriptorCount != reflect.count) {
-								Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[descriptorId] + " 绑定 " + std::to_string(reflect.binding) + " 在不同着色器里数组长度不一致");
-							}
-
-							merge.layout.stageFlags = static_cast<VkShaderStageFlags>(merge.layout.stageFlags | reflect.stage);
-							isMerge = true;
-							break;
-						}
-
-						if (!isMerge) {
-							configList.push_back(bufferStruct::descriptorConfigNode{ reflect.binding, reflect.type, static_cast<VkShaderStageFlags>(reflect.stage), reflect.count });
-
-							//绑定之间用 → 衔接（首项不加）
-							bindingText += (bindingText.empty() ? std::string{} : std::string{ " → " }) + "b" + std::to_string(reflect.binding) + " " + reflect.name;
-						}
-					}
-				}
-
-				node[descriptorId].config = configList;
-
-				//名字按 tab 位补齐（tab 宽 8，补到第 16 列）：让各描述符的反射日志列对齐
-				Log::print(Log::tabPad(pipelineInfo::procDescriptorName[descriptorId], 16) + "描述符布局反射完成：" + std::to_string(configList.size()) + " 项 → " + bindingText);
-			}
+			node[tDescriptorType].createDescriptorNode(device);
 		}
 
-		void setAllocInfo(bufferEnum::procDescriptorId::type id) {
-			allocInfo.descriptorPool = node[id].pool;
-			allocInfo.pSetLayouts    = &node[id].layout;
+		void setAllocInfo(bufferEnum::procDescriptorId::type tDescriptorType) {
+			allocInfo.descriptorPool = node[tDescriptorType].pool;
+			allocInfo.pSetLayouts    = &node[tDescriptorType].layout;
 
-			nodeId = id;
+			descriptorType = tDescriptorType;
 		}
 
 		const VkWriteDescriptorSet& getWrite(int writeId, const VkDescriptorSet& dstSet, const VkBuffer& buffer, VkDeviceSize range) {
-			return node[nodeId].config[writeId].setWrite(dstSet, buffer, range);
+			if (debugInfo::LogSwitch && descriptorType >= bufferEnum::procDescriptorId::count) { Log::printError(__FILE__, __LINE__, "getWrite 前必须先 setAllocInfo（当前家族未设置）"); }
+
+			return node[descriptorType].config[writeId].setWrite(dstSet, buffer, range);
 		}
 
 		const VkWriteDescriptorSet& getWrite(int writeId, const VkDescriptorSet& dstSet, const VkSampler& sampler, const VkImageView& imageView) {
-			return node[nodeId].config[writeId].setWrite(dstSet, sampler, imageView);
+			if (debugInfo::LogSwitch && descriptorType >= bufferEnum::procDescriptorId::count) { Log::printError(__FILE__, __LINE__, "getWrite 前必须先 setAllocInfo（当前家族未设置）"); }
+
+			return node[descriptorType].config[writeId].setWrite(dstSet, sampler, imageView);
 		}
 	};
 
@@ -261,12 +187,10 @@ namespace pipelineList {
 
 
 		void clear(const VkDevice& device) {
-			for (int i = 0; i < bufferEnum::procSamplerId::count; i++) {
-				vkDestroySampler(device, node[i], nullptr);
+			for (const VkSampler& sampler : node) {
+				vkDestroySampler(device, sampler, nullptr);
 			}
 		}
-
-
 
 		void createTextureSampler(const VkDevice& device, uint32_t terrainMip, uint32_t sModelMip, uint32_t dModelMip) {
 			VkSamplerCreateInfo samplerInfo{};
@@ -376,148 +300,180 @@ namespace pipelineList {
 		std::vector<pipelineStruct::pipeLayoutNode> nodeLayout{};
 		std::vector<pipelineStruct::pipelineNode>   node{};
 
+		VkDevice device{};
 
 
-		procPipelineNode(const VkDevice& device, const std::vector<bufferStruct::descriptorNode>& dstList, const std::vector<renderStruct::renderTemplateNode>& renderList, VkSampleCountFlagBits msaa) : nodeLayout(bufferEnum::procDescriptorId::count), node(pipelineEnum::procPipelineId::count) {
-			/*配置nodeLayout*/
-			for (size_t i = 0; i < bufferEnum::procDescriptorId::count; i++) {
+
+		procPipelineNode(const VkDevice& tDevice, const std::vector<renderStruct::renderTemplateNode>& tRenderList, const std::vector<descStruct::descriptorNode>& dstList, VkSampleCountFlagBits tMsaa)
+			: nodeLayout(bufferEnum::procDescriptorId::count), node(pipelineEnum::procPipelineId::count), device(tDevice) {
+			for (int i = 0; i < bufferEnum::procDescriptorId::count; i++) {
 				nodeLayout[i].createPipeLayoutNode(device, dstList[i].layout);
 			}
 
-			/*配置node：着色器、渲染模板、描述符布局全部由 pipelineList::procPipelineShader 表驱动；建到 node[pipeType] 上，与表顺序无关*/
-			//node[pipelineEnum::procPipelineId::terrain_p] .createMeshPipelineNode(device, extent, msaa, bufferEnum::procDescriptorId::scenceDeferred_d, fileInfo::shader::terrainTask, fileInfo::shader::terrainMesh, fileInfo::shader::terrainFrag);
-			for (const pipelineList::pipelineShaderNode& shader : pipelineList::procPipelineShader) {
-				node[shader.pipeType].createPipelineNode(shader.getMsaa(msaa), renderList[shader.renderTemplate], nodeLayout[shader.descriptor], shader.fileList, device);
-			}
+			node[pipelineEnum::procPipelineId::terrain_p]  .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred_d, vertexStruct::terrainVertex::vertexNode::layout,   renderEnum::renderTemplateId::deferred_rt,  pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{  }, { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::deferred_rt], nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], device);
+			node[pipelineEnum::procPipelineId::model_p]	   .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred_d, vertexStruct::modelVertex::vertexNode::layout,     renderEnum::renderTemplateId::deferred_rt,  pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{  }, { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::deferred_rt], nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], device);
+			node[pipelineEnum::procPipelineId::skybox_p]   .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  vertexStruct::skyboxVertex::vertexNode::layout,    renderEnum::renderTemplateId::deferred_rt,  pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .depthType = pipelineEnum::depthId::test_noWrite_lessEqual }, { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::deferred_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d], device);
+			node[pipelineEnum::procPipelineId::mine_p]	   .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  vertexStruct::mineVertex::vertexNode::layout,      renderEnum::renderTemplateId::deferred_rt,  pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .primitiveType = pipelineEnum::primitiveId::lineList, .rasterType = pipelineEnum::rasterId::line_back_ccw }, { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::deferred_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d], device);
+			node[pipelineEnum::procPipelineId::uiText_p]   .createPipelineNode(bufferEnum::procDescriptorId::uiText_d,         vertexStruct::uiTextVertex::vertexNode::layout,    renderEnum::renderTemplateId::swapChain_rt, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .primitiveType = pipelineEnum::primitiveId::triangleList, .rasterType = pipelineEnum::rasterId::fill_back_cw, .depthType = pipelineEnum::depthId::noDepth, .blendType = pipelineEnum::blendId::alphaBlend }, { fileInfo::shader::uiTextVert,   fileInfo::shader::uiTextFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::uiText_d], device);
+			node[pipelineEnum::procPipelineId::osMirror_p] .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  vertexStruct::osMirrorVertex::vertexNode::layout,  renderEnum::renderTemplateId::offScreen_rt, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{  }, { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::offScreen_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d], device);
+			node[pipelineEnum::procPipelineId::osScence_p] .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  vertexStruct::offScreenVertex::vertexNode::layout, renderEnum::renderTemplateId::swapChain_rt, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .rasterType = pipelineEnum::rasterId::fill_front_ccw, .dynamicType = pipelineEnum::dynamicId::viewportScissor }, { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d], device);
+			node[pipelineEnum::procPipelineId::dsScence_p] .createPipelineNode(bufferEnum::procDescriptorId::dsScence_d,       vertexStruct::offScreenVertex::vertexNode::layout, renderEnum::renderTemplateId::swapChain_rt, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .rasterType = pipelineEnum::rasterId::fill_front_ccw, .dynamicType = pipelineEnum::dynamicId::viewportScissor }, { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::dsScence_d], device);
+			node[pipelineEnum::procPipelineId::shadowMap_p].createPipelineNode(bufferEnum::procDescriptorId::shadowMap_d,      vertexStruct::shadowVertex::vertexNode::layout,    renderEnum::renderTemplateId::shadowMap_rt, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .depthType = pipelineEnum::depthId::test_write_lessEqual }, { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::shadowMap_rt], nodeLayout[bufferEnum::procDescriptorId::shadowMap_d], device);
 
-			/*开发期自检：pipeType 是表的键，重复会让后一行静默覆盖前一行（表顺序无关的代价）*/
 			if (debugInfo::LogSwitch) {
-				std::array<bool, pipelineEnum::procPipelineId::count> isUsed{};
-
-				for (const pipelineList::pipelineShaderNode& shader : pipelineList::procPipelineShader) {
-					if (isUsed[shader.pipeType]) {
-						Log::printError(__FILE__, __LINE__, pipelineInfo::procPipelineName[shader.pipeType] + " 在管线着色器表里重复，后一行会覆盖前一行");
-					}
-
-					isUsed[shader.pipeType] = true;
-				}
+				checkPipeline();
 			}
 
-			/*配置node.pipeConfig*/
-			//depthStencil 实现只在空白处显示
-			node[pipelineEnum::procPipelineId::skybox_p].pipeConfig.depthStencil.depthWriteEnable = VK_FALSE;
-			node[pipelineEnum::procPipelineId::skybox_p].pipeConfig.depthStencil.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;
-
-			//primitiveState 线段图元，rasterizer 线填充
-			node[pipelineEnum::procPipelineId::mine_p].pipeConfig.primitiveState.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-			node[pipelineEnum::procPipelineId::mine_p].pipeConfig.rasterizer.polygonMode  = VK_POLYGON_MODE_LINE;
-			node[pipelineEnum::procPipelineId::mine_p].pipeConfig.rasterizer.lineWidth    = 1.0f;
-
-			//primitiveState 条带图元，rasterizer 顺时针，depthStencil 实现始终渲染在最上层
-			node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.primitiveState.topology       = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-			node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.rasterizer.frontFace          = VK_FRONT_FACE_CLOCKWISE;
-			node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.depthStencil.depthTestEnable  = VK_FALSE;
-			node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.depthStencil.depthWriteEnable = VK_FALSE;
-
-			//颜色附件混合：MSDF 半透明平滑（frag 输出 white*alpha，需 src_alpha 混合）
-			for (auto& blendAtt : node[pipelineEnum::procPipelineId::uiText_p].pipeConfig.colorAttachmentList) {
-				blendAtt.blendEnable         = VK_TRUE;
-				blendAtt.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-				blendAtt.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-				blendAtt.colorBlendOp        = VK_BLEND_OP_ADD;
-				blendAtt.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-				blendAtt.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-				blendAtt.alphaBlendOp        = VK_BLEND_OP_ADD;
+			for (pipelineStruct::pipelineNode& pipeNode : node) {
+				pipeNode.isRecreate = true;
 			}
 
-			//pipeDynamicStageState 动态视口与动态裁剪，rasterizer 剔除正面
-			node[pipelineEnum::procPipelineId::osScence_p].pipeConfig.setPipeDynamicStage({ VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR });
-			node[pipelineEnum::procPipelineId::osScence_p].pipeConfig.rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
-
-			//pipeDynamicStageState 动态视口与动态裁剪，rasterizer 剔除正面
-			node[pipelineEnum::procPipelineId::dsScence_p].pipeConfig.setPipeDynamicStage({ VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR });
-			node[pipelineEnum::procPipelineId::dsScence_p].pipeConfig.rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
-
-			//depthStencil 防止照射面被误判为阴影
-			node[pipelineEnum::procPipelineId::shadowMap_p].pipeConfig.depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-
-			/*创建pipeCache*/
-			createPipelineCache(device);
-		}
-
-		procPipelineNode() = delete;
-
-
-
-		void clear(const VkDevice& device) {
-			for (size_t i = 0; i < bufferEnum::procDescriptorId::count; i++) {
-				nodeLayout[i].clear(device);
-			}
-
-			for (int i = 0; i < pipelineEnum::procPipelineId::count; i++) {
-				node[i].clear(device);
-			}
-
-			vkDestroyPipelineCache(device, pipeCache, nullptr);
+			createPipeCache(device);
 		}
 
 
 
-		//创建管线
-		template<typename VertexType>
-		void createPipeline(const VkDevice& device, pipelineEnum::procPipelineId::type id, const VkExtent2D& extent) {
-			//配置vertInputStage
-			auto binding   = VertexType::getBindingDescription();
-			auto attribute = VertexType::getAttributeDescriptions();
+		void createPipeline(pipelineEnum::procPipelineId::type tPipeType, const VkExtent2D& extent) {
+			if (!node[tPipeType].isRecreate) {
+				return;
+			}
 
-			VkPipelineVertexInputStateCreateInfo vertInputStage{};
-			vertInputStage.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-			vertInputStage.vertexBindingDescriptionCount   = uint32_t(binding.size());
-			vertInputStage.vertexAttributeDescriptionCount = uint32_t(attribute.size());
-			vertInputStage.pVertexBindingDescriptions      = binding.data();
-			vertInputStage.pVertexAttributeDescriptions    = attribute.data();
-
-			//配置pipeConfig
-			pipelineStruct::pipeConfigNode& pipeConfig = node[id].pipeConfig;
+			//配置 pipeConfig
+			pipelineStruct::pipeConfigNode& pipeConfig = node[tPipeType].pipeConfig;
 			pipeConfig.viewport.width  = static_cast<float>(extent.width);
 			pipeConfig.viewport.height = static_cast<float>(extent.height);
 			pipeConfig.scissor.extent  = extent;
-			pipeConfig.pipeInfo.pVertexInputState = &vertInputStage;
 
-			//创建pipeline
-			if (vkCreateGraphicsPipelines(device, pipeCache, 1, &pipeConfig.pipeInfo, nullptr, &node[id].pipeline) != VK_SUCCESS) {
+			//创建 pipeline
+			if (vkCreateGraphicsPipelines(device, pipeCache, 1, &pipeConfig.pipeInfo, nullptr, &node[tPipeType].pipeline) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "管线创建失败");
 			}
+
+			node[tPipeType].isRecreate = false;
+		}
+
+		void clear(const VkDevice& device) {
+			for (pipelineStruct::pipelineNode& pipeNode : node) {
+				pipeNode.clear(device);
+			}
+
+			for (pipelineStruct::pipeLayoutNode& layoutNode : nodeLayout) {
+				layoutNode.clear(device); 
+			}
+
+			savePipeCache(device);
+			vkDestroyPipelineCache(device, pipeCache, nullptr);
 		}
 
 		void clearSwapChain(const VkDevice& device) {
-			for (int i = 0; i < pipelineEnum::procPipelineId::count; i++) {
-				node[i].clearSwapChain(device);
+			for (pipelineStruct::pipelineNode& pipeNode : node) {
+				if (pipeNode.renderTemplateType != renderEnum::renderTemplateId::shadowMap_rt && !isViewportDynamic(pipeNode.dynamicType)) {
+					pipeNode.isRecreate = true;
+					pipeNode.clearSwapChain(device);
+				}
 			}
 		}
 
 	private:
-		VkPipelineCache pipeCache;
+		VkPipelineCache pipeCache{};
 
 
 
-		//创建pipeCache
-		void createPipelineCache(const VkDevice& device){
+		void createPipeCache(const VkDevice& device){
+			std::vector<char> cacheData{};
+			std::ifstream	  cacheFile(fileInfo::path::pipeCacheFile, std::ios::ate | std::ios::binary);
+
+			if (cacheFile.is_open()) {
+				const size_t cacheSize = static_cast<size_t>(cacheFile.tellg());
+
+				if (cacheSize > 0) {
+					cacheData.resize(cacheSize);
+					cacheFile.seekg(0);
+					cacheFile.read(cacheData.data(), cacheSize);
+				}
+
+				cacheFile.close();
+			}
+
 			VkPipelineCacheCreateInfo pipeCacheInfo{};
-			pipeCacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+			pipeCacheInfo.sType           = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+			pipeCacheInfo.initialDataSize = cacheData.size();
+			pipeCacheInfo.pInitialData    = cacheData.empty() ? nullptr : cacheData.data();
 
-			if (vkCreatePipelineCache(device, &pipeCacheInfo, nullptr, &pipeCache)) {
-				Log::printError(__FILE__, __LINE__, "管线缓存创建失败");
+			if (vkCreatePipelineCache(device, &pipeCacheInfo, nullptr, &pipeCache) != VK_SUCCESS) {
+				pipeCache = VK_NULL_HANDLE;
+				Log::printWarning(__FILE__, __LINE__, "管线缓存创建失败，本帧起无缓存继续");
 			}
 		}
 
-	public:
-		VkPipelineLayout& getPipeLayout(pipelineEnum::procPipelineId::type id) {
-			return node[id].pipeConfig.pipeInfo.layout;
+		void savePipeCache(const VkDevice& device) {
+			if (pipeCache == VK_NULL_HANDLE) {
+				return;
+			}
+
+			size_t cacheSize = 0;
+			if (vkGetPipelineCacheData(device, pipeCache, &cacheSize, nullptr) != VK_SUCCESS || cacheSize == 0) {
+				return;
+			}
+
+			std::vector<char> cacheData(cacheSize);
+			if (vkGetPipelineCacheData(device, pipeCache, &cacheSize, cacheData.data()) != VK_SUCCESS) {
+				return;
+			}
+
+			std::error_code dirError{};
+			std::filesystem::create_directories(std::filesystem::path(fileInfo::path::pipeCacheFile).parent_path(), dirError);
+			std::ofstream cacheFile(fileInfo::path::pipeCacheFile, std::ios::binary | std::ios::trunc);
+			if (cacheFile.is_open()) {
+				cacheFile.write(cacheData.data(), static_cast<std::streamsize>(cacheSize));
+				cacheFile.close();
+			}
+		}
+		
+		void checkPipeline() {
+			for (int i = 0; i < node.size(); i++) {
+				if (node[i].shaderFileList.empty()) { 
+					Log::printError(__FILE__, __LINE__, "管线 " + std::to_string(i) + " 未配置着色器文件"); 
+				}
+			}
+		
+			for (int d = 0; d < nodeLayout.size(); d++) {
+				if (node[0].descriptorType >= bufferEnum::procDescriptorId::count) { break; }
+
+				bool used = false;
+				for (const pipelineStruct::pipelineNode& pipeNode : node) {
+					if (static_cast<int>(pipeNode.descriptorType) == d) {
+						used = true; break;
+					}
+				}
+
+				if (!used) { 
+					Log::printError(__FILE__, __LINE__, "描述符 " + std::to_string(d) + " 未被管线使用"); 
+				}
+			}
+		}
+		
+		bool isViewportDynamic(pipelineEnum::dynamicId::type dynamicType) {
+			switch (dynamicType) {
+			case pipelineEnum::dynamicId::none:							return false;
+			case pipelineEnum::dynamicId::viewportScissor:				return true;
+			case pipelineEnum::dynamicId::viewportScissorLineWidth:		return true;
+			case pipelineEnum::dynamicId::viewportScissorDepthBias:		return true;
+			case pipelineEnum::dynamicId::viewportScissorBounds:		return true;
+			case pipelineEnum::dynamicId::viewportScissorRasterDepth:	return true;
+			case pipelineEnum::dynamicId::viewportScissorAll:			return true;
+			}
+
+			return false;
 		}
 
-		VkPipeline& getPipeline(pipelineEnum::procPipelineId::type id) {
-			return node[id].pipeline;
+	public:
+		VkPipelineLayout& getPipeLayout(pipelineEnum::procPipelineId::type pipeType) {
+			return nodeLayout[node[pipeType].descriptorType].pipeLayout;
+		}
+
+		VkPipeline& getPipeline(pipelineEnum::procPipelineId::type pipeType) {
+			return node[pipeType].pipeline;
 		}
 	};
 }

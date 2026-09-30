@@ -5,7 +5,7 @@ build/*
 vcpkg_installed/
 
 src/assets/shader/
-storage/chunk/
+storage/
 
 *.vcxproj.user
 CMakeUserPresets.json

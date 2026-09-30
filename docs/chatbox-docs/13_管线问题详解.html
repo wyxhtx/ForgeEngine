@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ForgeEngine · 管线问题详解（16 张卡）</title>
+<style>
+:root{--bg:#0f1216;--panel:#161b22;--line:#26303a;--fg:#d7dee6;--dim:#8b98a5;--acc:#6cb6ff;--ok:#3fb950;--warn:#d29922;--bad:#f85149}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14.5px/1.65 "Maple Mono NF CN","Maple Mono","Sarasa Mono SC","Microsoft YaHei",ui-monospace,sans-serif}
+header{position:sticky;top:0;background:linear-gradient(180deg,#12171d,#0f1216);border-bottom:1px solid var(--line);padding:12px 26px;z-index:9}
+h1{margin:0;font-size:18px;letter-spacing:.5px}
+h1 small{color:var(--dim);font-weight:400;font-size:12px;margin-left:10px}
+main{max-width:1260px;margin:0 auto;padding:18px 26px 80px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:0 0 16px}
+h2{font-size:15.5px;margin:0 0 8px;color:var(--acc);border-left:3px solid var(--acc);padding-left:9px}
+p{margin:5px 0;font-size:13px}
+code{background:#0c1015;border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:11.5px;color:#9fd0ff}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+th{background:#1b222b;color:#c9d4e0;position:sticky;top:56px}
+tbody tr:nth-child(odd){background:#141a21}
+tbody tr:hover{background:#1b2531}
+.fcap{font-size:11.5px;color:var(--dim);margin:8px 0 4px;border-bottom:1px dashed var(--line);padding-bottom:2px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin:5px 0 2px;font-size:11.5px;color:var(--dim)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid var(--line)}
+.l-warn{background:#221b0d;border-color:var(--warn)!important}
+.l-dim{background:#1b222b;border-color:#3d4a57!important}
+.l-ok{background:#0f1d13;border-color:var(--ok)!important}
+.bar{display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px}
+.bar .track{flex:1;height:15px;background:#0c1015;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.bar .fill{display:block;height:100%}
+.bar .n{flex:0 0 96px;color:var(--dim)}
+.sev{display:inline-block;border-radius:999px;padding:0 7px;font-size:10.5px;font-weight:600;margin-right:5px}
+.sev-sug{color:#1a1405;background:#d29922;border:1px solid var(--warn)}
+.sev-log{color:var(--dim);background:#1b222b;border:1px solid var(--line)}
+.wall{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:6px 0}
+.card{border:1px solid var(--line);border-left-width:4px;border-radius:8px;padding:7px 9px;background:#141a21}
+.c-sug{border-left-color:var(--warn)}
+.c-log{border-left-color:#3d4a57}
+.ch{display:block;font-weight:600;font-size:12.5px;margin-bottom:3px}
+.fl{display:block;font-size:12px;line-height:1.5}
+.fl b{color:#cfe3ff;font-weight:600;margin-right:5px}
+.fl code{font-size:11px}
+.dia{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;font-size:11px;color:var(--dim)}
+.dia .b{border:1px solid var(--line);border-radius:6px;padding:1px 7px;background:#101c28;color:var(--fg)}
+.dia .b.bad{border-color:#4a2020;background:#1d1010}
+.dia .b.warn{border-color:#43391d;background:#221b0d}
+.dia em{font-style:normal}
+.dia .cap{color:var(--dim)}
+ul.chk{list-style:none;padding:0;margin:5px 0}
+ul.chk li{border:1px solid var(--line);border-radius:6px;padding:4px 8px;margin:3px 0;font-size:12px;background:#141a21}
+ul.chk input{margin-right:7px;transform:scale(1.05)}
+.step{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:5px 0;font-size:11.5px}
+.step em{font-style:normal;color:var(--dim)}
+.tag{border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:11px;background:#101c28}
+.ov{color:var(--ok);font-size:11px}
+@media print{body{background:#fff;color:#000}section{border-color:#ccc}th{position:static;background:#eee;color:#000}}
+</style></head><body>
+<header><h1>ForgeEngine · 管线问题详解 <small>16 张卡（建议 13 ＋ 仅记录 3）· 每卡四行＝现象／后果／触发／修法 · 只读梳理</small></h1></header>
+<main>
+
+<section>
+<h2>1 · 怎么读这页 ＋ 分布</h2>
+<div class="fcap">图 1-1 · 严重度分布</div>
+<div class="bar"><span class="n"><span class="sev sev-sug">建议</span></span><span class="track"><span class="fill" style="width:81%;background:#d29922"></span></span><span>13 张</span></div>
+<div class="bar"><span class="n"><span class="sev sev-log">仅记录</span></span><span class="track"><span class="fill" style="width:19%;background:#8b98a5"></span></span><span>3 张</span></div>
+<div class="legend"><span><i class="l-warn"></i>建议＝该修，不急</span><span><i class="l-dim"></i>仅记录＝知会，可不改</span></div>
+<p>读法：每张卡四行，依次是现象／后果／触发／修法。</p>
+<p>卡内 <code>文件:行号</code> 即证据，可直接跳代码核对。</p>
+<p>本页不含 5 张「必须修」与 6 张「已核实 OK」卡。</p>
+<p>结尾附动手顺序，并标出与已定 4 条修复的重叠。</p>
+<div class="legend"><span>已定 4 条：</span><span>①读取失败即 return</span><span>②VkPipelineCache</span><span>③vertInputStage 成员化</span><span>④交换链选择性重建</span></div>
+</section>
+
+<section>
+<h2>2 · 建议卡（13 张 · 该修不急）</h2>
+<div class="fcap">图 2-1 · 建议卡片墙（含 5 张内嵌小示意图）</div>
+<div class="wall">
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>1 · 运行期与静态字段分两处填</span>
+<span class="fl"><b>现象</b>viewport 在 <code>VkStruct.h:2165-2182</code> 与 <code>VkList.h:482-485</code> 两处写。</span>
+<span class="fl"><b>后果</b>静默错：宽度或 extent 漏填一处，视口变成 0×0 或残留上轮尺寸。</span>
+<span class="fl"><b>触发</b>交换链重建换 extent，或新增管线时忘补那一处。</span>
+<span class="fl"><b>修法</b>运行期字段集中进 fillRuntime()，静态全留 createXxx。</span>
+<div class="dia"><span class="b warn">静态填 <em>VkStruct.h:2165-2182</em></span><em>＋</em><span class="b warn">运行期填 <em>VkList.h:482-485</em></span><em>＝</em><span class="b bad">同一结构体两处写</span></div>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>2 · 成员 vertInputStage 是死成员</span>
+<span class="fl"><b>现象</b>成员先装入 pipeInfo（<code>VkStruct.h:2259</code>），又被覆盖（<code>VkList.h:485</code>）。</span>
+<span class="fl"><b>后果</b>它 sType 从未写；删掉覆盖行就拿到非法结构体去创建。</span>
+<span class="fl"><b>触发</b>想"用回成员"而删 <code>VkList.h:485</code>，或重构顶点输入时。</span>
+<span class="fl"><b>修法</b>顶点输入放成员并由模板就地填，即已定决策③。</span>
+<div class="dia"><span class="b">成员 <em>VkStruct.h:2135</em></span><em>→ 覆盖 →</em><span class="b warn">局部 <em>VkList.h:473</em></span><span class="cap">（成员从此无人用）</span></div>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>3 · 管线 id 与顶点类型无交叉校验</span>
+<span class="fl"><b>现象</b>调用点人工配对 id 与顶点类型（<code>Pipeline.hpp:56-70</code>）。</span>
+<span class="fl"><b>后果</b>花屏：id 与 VertexType 错配，顶点属性错位。</span>
+<span class="fl"><b>触发</b>复制一行调用点改漏 id，或换 VertexType 忘改 id。</span>
+<span class="fl"><b>修法</b>用 concept 或标签结构，把 id 与顶点类型绑在一处。</span>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>4 · 交换链重建全量重建 9 条</span>
+<span class="fl"><b>现象</b>重建时清空并重建全部管线（<code>Pipeline.hpp:138-141</code>）。</span>
+<span class="fl"><b>后果</b>浪费：固定 2048 的影子管线白建，重建瞬间卡一下。</span>
+<span class="fl"><b>触发</b>窗口尺寸变化，或获取图像返回过期码。</span>
+<span class="fl"><b>修法</b>只重建依赖 extent 的管线，即已定决策④。</span>
+<div class="dia"><span class="b bad">清 9 条 <em>VkList.h:493-497</em></span><em>→</em><span class="b">只重建依赖 extent 的</span><span class="cap">（影子固定 2048 <em>VkInfo.h:293</em>）</span></div>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>5 · 源码 0 处 static_assert</span>
+<span class="fl"><b>现象</b>表尺寸与枚举 count 无编译期断言（<code>VkList.h:45-55、:29</code>）。</span>
+<span class="fl"><b>后果</b>静默错：表漏行时缺省 pipeType＝0，覆盖地形管线。</span>
+<span class="fl"><b>触发</b>加行时少写一行，或挪动枚举项顺序。</span>
+<span class="fl"><b>修法</b>加 static_assert(size==count) 与取值域检查。</span>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>6 · vertStageList 长度 2 被 fileList 索引</span>
+<span class="fl"><b>现象</b>阶段表定长 2，却拿 fileList.size() 当上界（<code>VkList.h:166、179、188</code>）。</span>
+<span class="fl"><b>后果</b>崩：越界读 std::array（不检查），拿到垃圾阶段位。</span>
+<span class="fl"><b>触发</b>给某行加第 3 个着色器、走网格模式时（<code>VkEnum.h:299-307</code>）。</span>
+<span class="fl"><b>修法</b>上界改用阶段表长度，并补一条断言。</span>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>7 · 描述符池上限是手写常量</span>
+<span class="fl"><b>现象</b>池上限写死在 <code>VkInfo.h:303-307</code>，再手工绑到结点（<code>VkList.h:142-146</code>）。</span>
+<span class="fl"><b>后果</b>静默错：表加行可能触顶，只在分配时才报失败（<code>VkStruct.h:2603</code>）。</span>
+<span class="fl"><b>触发</b>新增一条与既有管线共用同一描述符布局的管线。</span>
+<span class="fl"><b>修法</b>由表行数推导上限，或分配失败时自动扩容。</span>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>8 · clear 按值遍历着色器列表</span>
+<span class="fl"><b>现象</b>clear 里按值拷贝遍历 shaderList（<code>VkStruct.h:2406</code>）。</span>
+<span class="fl"><b>后果</b>静默错：现在只销毁句柄恰好有效，改状态就改在副本上。</span>
+<span class="fl"><b>触发</b>往 clear 里加句柄置空或状态复位逻辑时。</span>
+<span class="fl"><b>修法</b>改成引用遍历 <code>for (auto&amp; n : shaderList)</code>。</span>
+<div class="dia"><span class="b">shaderList 元素</span><em>→ 拷贝 →</em><span class="b bad">副本上 clear() <em>VkStruct.h:2126-2128</em></span></div>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>9 · 同一 spv 读两遍 ＋ 路径依赖 CWD</span>
+<span class="fl"><b>现象</b>反射与着色器模块各读一次（<code>VkStruct.h:2314</code>、<code>VkStruct.h:2315</code>）。</span>
+<span class="fl"><b>后果</b>浪费：启动 IO 与解析翻倍；读失败还会挂死。</span>
+<span class="fl"><b>触发</b>工作目录不是仓库根时，路径立刻失效（<code>VkInfo.h:135</code>）。</span>
+<span class="fl"><b>修法</b>读一次缓存字节，失败即 return，与已定决策①同批。</span>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>10 · 附件数有两份平行真相</span>
+<span class="fl"><b>现象</b>附件数按 renderAttType 分两处 switch（<code>VkStruct.h:2230-2242</code>）。</span>
+<span class="fl"><b>后果</b>静默错：与渲染通道附件描述（<code>VkStruct.h:1642-1691</code>）不匹配。</span>
+<span class="fl"><b>触发</b>新增附件组合，或改某个模板的附件数量。</span>
+<span class="fl"><b>修法</b>管线附件表改为从模板附件描述派生。</span>
+<div class="dia"><span class="b warn">附件数 <em>VkStruct.h:2230-2242</em></span><em>／</em><span class="b warn">附件描述 <em>VkStruct.h:1642-1691</em></span><span class="cap">⚠ 两份平行</span></div>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>11 · 默认就开深度偏移</span>
+<span class="fl"><b>现象</b>光栅默认 depthBiasEnable＝TRUE、常量与斜率 1.0（<code>VkStruct.h:2192-2195</code>）。</span>
+<span class="fl"><b>后果</b>花屏风险：所有管线都带偏移，含 2D 的 uiText（<code>VkList.h:417-431</code>）。</span>
+<span class="fl"><b>触发</b>接九表时若默认改成 none，mine 的贴合效果会变。</span>
+<span class="fl"><b>修法</b>默认收成不偏移，由 biasId 显式开（范围测试见 <code>:2211</code>）。</span>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>12 · dynamic topology 未开 1.3 特性链</span>
+<span class="fl"><b>现象</b>设备链只挂 mesh 特性（<code>Device.hpp:65-85</code>、<code>VkEnum.h:277</code>）。</span>
+<span class="fl"><b>后果</b>能力浪费：1.3 动态图元用不上，图元只能写死。</span>
+<span class="fl"><b>触发</b>想让一条管线服务多图元、多边形模式切换时。</span>
+<span class="fl"><b>修法</b>设备创建时开 Vulkan13Features，并加动态状态。</span>
+</div>
+
+<div class="card c-sug"><span class="ch"><span class="sev sev-sug">建议</span>13 · 别再给 createPipeConfigNode 加形参（已按此方向落地）</span>
+<span class="fl"><b>现象</b>原先 5 参（<code>VkStruct.h:2153</code>）；若把九类枚举全摊进形参会到 14 参。</span>
+<span class="fl"><b>现状</b>已落地：九类预设收进一个配置结点 <code>pipeConfigParamNode</code>（只写差异），渲染目标折进 <code>renderTemplateNode</code>，着色阶段由各 spv 模块的 <code>OpEntryPoint</code> 自推 ⇒ <code>createPipeConfigNode</code> 现为 <b>7 参</b>（<code>VkStruct.h:2564</code>）。</span>
+<span class="fl"><b>触发</b>再加“每管线差异”时：先问“能不能进 <code>pipeConfigParamNode</code>、或由 spv 推”，再考虑加形参。</span>
+<span class="fl"><b>修法</b>（原建议已采纳）参数打包成 row / 喂入包，运行期项集中喂入。</span>
+</div>
+
+</div>
+<div class="legend"><span><i class="l-warn"></i>建议卡＝该修不急</span><span>内嵌小示意图 5 张（卡 1／2／4／8／10）</span></div>
+</section>
+
+<section>
+<h2>3 · 仅记录卡（3 张 · 知会，可不改）</h2>
+<div class="fcap">图 3-1 · 仅记录卡片墙</div>
+<div class="wall">
+<div class="card c-log"><span class="ch"><span class="sev sev-log">仅记录</span>14 · 管线缓存不写盘</span>
+<span class="fl"><b>现象</b>创建信息只填 sType，无 initialData（<code>VkList.h:506-511</code>）。</span>
+<span class="fl"><b>后果</b>浪费：每次启动冷编译 9 条管线，缓存不出进程。</span>
+<span class="fl"><b>触发</b>每次重启都会踩到，属性能问题、不崩。</span>
+<span class="fl"><b>修法</b>启动读盘＋退出落盘，与已定决策②同一处。</span>
+</div>
+<div class="card c-log"><span class="ch"><span class="sev sev-log">仅记录</span>15 · basePipeline 占位未用</span>
+<span class="fl"><b>现象</b>basePipelineHandle＝空、Index＝-1 固定（<code>VkStruct.h:2270-2271</code>）。</span>
+<span class="fl"><b>后果</b>无故障；5 布局 × 9 条管线的公共前缀没复用。</span>
+<span class="fl"><b>触发</b>只有想用管线派生或 GPL 共享时才需要动。</span>
+<span class="fl"><b>修法</b>先量测创建耗时占比，再决定是否做派生。</span>
+</div>
+<div class="card c-log"><span class="ch"><span class="sev sev-log">仅记录</span>16 · 澄清：反射不是每帧</span>
+<span class="fl"><b>现象</b>reflectLayout 只在描述符结点构造时调一次（<code>VkList.h:139</code>）。</span>
+<span class="fl"><b>后果</b>无性能问题；重建交换链也不重建它（<code>Buffer.hpp:591-633</code>）。</span>
+<span class="fl"><b>触发</b>不用处理，别为它加"每帧缓存"这类无效优化。</span>
+<span class="fl"><b>修法</b>无需改代码；要省启动时间就缓存反射结果。</span>
+</div>
+</div>
+<div class="legend"><span><i class="l-dim"></i>仅记录＝记录在案，不排进必做</span></div>
+</section>
+
+<section>
+<h2>4 · 建议动手顺序（16 条 · 先省事高收益，后大改）</h2>
+<div class="fcap">图 4-1 · 动手阶梯（左＝先做）</div>
+<div class="step"><span class="tag">卡2／8</span><em>→</em><span class="tag">卡5</span><em>→</em><span class="tag">卡4／14</span><em>→</em><span class="tag">卡1／10／11／13</span><em>→</em><span class="tag">卡9／3／6</span><em>→</em><span class="tag">卡7／12</span><em>→</em><span class="tag">卡16／15</span></div>
+<div class="legend"><span><i class="l-ok"></i><code>绿色序号</code>＝与已定 4 条修复重叠</span><span>重叠项：卡 1／2／4／9／13／14</span></div>
+<table><thead><tr><th>序</th><th>卡</th><th>一句话理由</th><th>已定修复重叠</th></tr></thead><tbody>
+<tr><td>1</td><td>卡 2 vertInputStage</td><td>一行级改动即消死成员与悬垂，已定决策③。</td><td><span class="ov">③ 重叠</span></td></tr>
+<tr><td>2</td><td>卡 8 clear 按值遍历</td><td>加个 &amp; 即可，零风险，顺手做掉。</td><td>无</td></tr>
+<tr><td>3</td><td>卡 5 static_assert</td><td>约 15 行换来后续大改的编译期兜底。</td><td>无</td></tr>
+<tr><td>4</td><td>卡 4 选择性重建</td><td>已定决策④，顺手消掉影子管线白建。</td><td><span class="ov">④ 重叠</span></td></tr>
+<tr><td>5</td><td>卡 14 缓存持久化</td><td>与已定决策②同一处，改一次拿两份收益。</td><td><span class="ov">② 重叠</span></td></tr>
+<tr><td>6</td><td>卡 1 运行期/静态分离</td><td>卡 2 的延伸，填错视口这类静默错一次性根除。</td><td><span class="ov">③ 延伸</span></td></tr>
+<tr><td>7</td><td>卡 13 拒绝 9 参数</td><td>先定 row 结构体，后面列化才不会返工。</td><td><span class="ov">③ 前置</span></td></tr>
+<tr><td>8</td><td>卡 10 附件单一真相</td><td>表化前先把两份 switch 合成一处，少改一遍。</td><td>无</td></tr>
+<tr><td>9</td><td>卡 11 深度偏移默认</td><td>接九表时默认值语义要改，趁早定口径。</td><td>无</td></tr>
+<tr><td>10</td><td>卡 9 spv 只读一次</td><td>与已定决策①同一条读文件路径，一次改完。</td><td><span class="ov">① 同路径</span></td></tr>
+<tr><td>11</td><td>卡 3 id 与顶点类型</td><td>加约束能挡住复制粘贴造成的错配。</td><td>无</td></tr>
+<tr><td>12</td><td>卡 6 阶段表上界</td><td>接网格着色之前必修，早改更安全。</td><td>无</td></tr>
+<tr><td>13</td><td>卡 7 池上限推导</td><td>等表列化落地再改，否则要改两遍。</td><td>无</td></tr>
+<tr><td>14</td><td>卡 12 开 1.3 特性</td><td>要动设备创建并实测驱动支持，排在后面。</td><td>无</td></tr>
+<tr><td>15</td><td>卡 16 澄清项</td><td>不写代码，只在文档里记一句就够。</td><td>无</td></tr>
+<tr><td>16</td><td>卡 15 basePipeline</td><td>收益依驱动而定，先量测再决定做不做。</td><td>无</td></tr>
+</tbody></table>
+<div class="legend"><span>已定 4 条：</span><span>①读取失败即 return</span><span>②VkPipelineCache</span><span>③vertInputStage 成员化</span><span>④交换链选择性重建</span></div>
+<p>本页只读代码整理，未执行 git 写操作、未改任何源码。</p>
+</section>
+
+</main>
+</body></html>

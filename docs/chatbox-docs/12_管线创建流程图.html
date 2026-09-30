@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ForgeEngine · 当前渲染管线的创建流程（纯流程图）</title>
+<style>
+:root{--bg:#0f1216;--panel:#161b22;--line:#26303a;--fg:#d7dee6;--dim:#8b98a5;--acc:#6cb6ff;--ok:#3fb950;--warn:#d29922;--bad:#f85149}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14.5px/1.65 "Maple Mono NF CN","Maple Mono","Sarasa Mono SC","Microsoft YaHei",ui-monospace,sans-serif}
+header{position:sticky;top:0;background:linear-gradient(180deg,#12171d,#0f1216);border-bottom:1px solid var(--line);padding:12px 26px;z-index:9}
+h1{margin:0;font-size:18px;letter-spacing:.5px}
+h1 small{color:var(--dim);font-weight:400;font-size:12px;margin-left:10px}
+main{max-width:1260px;margin:0 auto;padding:18px 26px 80px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:0 0 16px}
+h2{font-size:15.5px;margin:0 0 8px;color:var(--acc);border-left:3px solid var(--acc);padding-left:9px}
+p{margin:5px 0;font-size:13px}
+code{background:#0c1015;border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:11.5px;color:#9fd0ff}
+.fcap{font-size:11.5px;color:var(--dim);margin:8px 0 4px;border-bottom:1px dashed var(--line);padding-bottom:2px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin:5px 0 2px;font-size:11.5px;color:var(--dim)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid var(--line)}
+.l-warn{background:#221b0d;border-color:var(--warn)!important}
+.l-acc{background:#0d1b2a;border-color:var(--acc)!important}
+.l-ok{background:#0f1d13;border-color:var(--ok)!important}
+.l-dim{background:#1b222b;border-color:#3d4a57!important}
+.row5{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:5px 0}
+.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:5px 0}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:5px 0}
+.row2{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin:5px 0}
+.n{border:1px solid var(--line);border-left-width:4px;border-radius:8px;padding:5px 7px;font-size:11.5px;line-height:1.45;background:#141a21}
+.n b{display:block;font-size:12.5px}
+.n .ev{display:block;color:var(--acc);font-size:10.5px}
+.n .out{display:block;color:var(--dim);font-size:10.5px}
+.p-env{border-left-color:var(--warn);background:#221b0d}
+.p-obj{border-left-color:var(--acc);background:#0d1b2a}
+.p-asm{border-left-color:var(--ok);background:#0f1d13}
+.p-life{border-left-color:#3d4a57;background:#1b222b}
+.p-todo{border-left-color:#3d4a57;background:#1b222b;border-style:dashed}
+.arrow{text-align:center;color:var(--dim);font-size:11px;line-height:1.1;margin:1px 0}
+.decision{border:1px dashed var(--warn);border-radius:999px;padding:3px 10px;font-size:11.5px;background:#221b0d;display:inline-block}
+.decision .ev{display:block;color:var(--acc);font-size:10.5px}
+.center{text-align:center;margin:3px 0}
+.split{display:flex;justify-content:space-around;color:var(--dim);font-size:12px;margin:1px 0}
+.col{border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.col h4{margin:0 0 5px;font-size:12.5px;color:#cfe3ff}
+.chain{display:flex;align-items:center;gap:6px;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:5px 8px;margin:4px 0;font-size:11.5px}
+.chain em{font-style:normal;color:var(--dim)}
+.tag{border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:11px;background:#101c28}
+.tag .ev{color:var(--acc);font-size:10.5px}
+ul.chk{list-style:none;padding:0;margin:5px 0}
+ul.chk li{border:1px solid var(--line);border-radius:6px;padding:4px 8px;margin:3px 0;font-size:12px;background:#141a21}
+ul.chk li.done{border-color:#1d4327;background:#0f1d13}
+ul.chk input{margin-right:7px;transform:scale(1.05)}
+@media print{body{background:#fff;color:#000}section{border-color:#ccc}}
+</style></head><body>
+<header><h1>ForgeEngine · 当前渲染管线的创建流程 <small>纯流程图 · 节点＝步骤／<code>文件:行号</code>／产出物 · 只读梳理</small></h1></header>
+<main>
+
+<section>
+<h2>1 · 主干流程（四阶段）</h2>
+<div class="fcap">图 1-1 · 环境准备 → 建子对象 → 组装创建信息 → 创建与生命周期</div>
+<div class="row4">
+<div class="n p-env"><b>① main 构造三件套</b><span class="ev">Main.cpp:18-20</span><span class="out">产出：Window/Device/Pipeline</span></div>
+<div class="n p-env"><b>② Window 建窗口</b><span class="ev">Window.hpp:15、26</span><span class="out">产出：GLFWwindow*</span></div>
+<div class="n p-env"><b>③ 成员 Instance 建实例</b><span class="ev">Device.hpp:50</span><span class="out">产出：VkInstance（:45-46）</span></div>
+<div class="n p-env"><b>④ 表面 / 选卡 / 设备</b><span class="ev">Device.hpp:22、26-27、86</span><span class="out">产出：VkDevice、VkQueue</span></div>
+</div>
+<div class="arrow">▼</div>
+<div class="row5">
+<div class="n p-obj"><b>⑤ 建 4 个渲染模板</b><span class="ev">Buffer.hpp:64；VkList.h:34-37</span><span class="out">产出：4 个 VkRenderPass</span></div>
+<div class="n p-obj"><b>⑥ 反射 spv 得配置</b><span class="ev">VkList.h:86-96、133</span><span class="out">产出：各布局 binding 表</span></div>
+<div class="n p-obj"><b>⑦ 建池与描述符布局</b><span class="ev">VkStruct.h:3722</span><span class="out">产出：5 组 pool+layout</span></div>
+<div class="n p-obj"><b>⑧ 建 5 个管线布局</b><span class="ev">VkList.h:276-278（procPipelineNode 构造内直接建；Pipeline.hpp:48 注入运行期实参）</span><span class="out">产出：VkPipelineLayout</span></div>
+<div class="n p-obj"><b>⑨ 建着色器模块（阶段由 spv 自推）</b><span class="ev">VkStruct.h:3361、3386</span><span class="out">产出：18 个 ShaderModule</span></div>
+</div>
+<div class="arrow">▼</div>
+<div class="row3">
+<div class="n p-asm"><b>⑩ 填 8 个静态子状态</b><span class="ev">VkStruct.h:2565-2569</span><span class="out">产出：图元/光栅/深度等</span></div>
+<div class="n p-asm"><b>⑪ 定颜色附件数</b><span class="ev">VkStruct.h:2614-2624</span><span class="out">产出：colorAttachmentList</span></div>
+<div class="n p-asm"><b>⑫ 收口 pipeInfo</b><span class="ev">VkStruct.h:2633-2647</span><span class="out">产出：创建信息结构体</span></div>
+</div>
+<div class="arrow">▼</div>
+<div class="row4">
+<div class="n p-life"><b>⑬ 填运行期字段</b><span class="ev">VkStruct.h:2574-2610</span><span class="out">产出：顶点输入/视口/裁剪</span></div>
+<div class="n p-life"><b>⑭ 创建图形管线</b><span class="ev">VkList.h:321</span><span class="out">产出：VkPipeline ×9</span></div>
+<div class="n p-life"><b>⑮ 建管线缓存</b><span class="ev">VkList.h:292、514、536</span><span class="out">产出：VkPipelineCache</span></div>
+<div class="n p-life"><b>⑯ 重建与销毁入口</b><span class="ev">Pipeline.hpp:140-153、23-29</span><span class="out">产出：清空并重来／释放</span></div>
+</div>
+<div class="legend"><span><i class="l-warn"></i>黄＝环境准备</span><span><i class="l-acc"></i>蓝＝建子对象</span><span><i class="l-ok"></i>绿＝组装创建信息</span><span><i class="l-dim"></i>灰＝创建与生命周期</span></div>
+<p>分支详见：入口 §2、着色阶段 §3、附件数 §4、动态状态 §5。</p>
+</section>
+
+<section>
+<h2>2 · 分支 ①：两条入口 —— 启动首建 / 交换链重建</h2>
+<div class="fcap">图 2-1 · 两个入口汇合到同一个 createPipeline()</div>
+<div class="row2">
+<div class="col"><h4>A · 启动首建</h4>
+<div class="n p-env"><b>A1 Pipeline 构造</b><span class="ev">Pipeline.hpp:7-21</span><span class="out">产出：procPipeline 成员</span></div>
+<div class="arrow">▼</div>
+<div class="n p-env"><b>A2 调 createPipeline()</b><span class="ev">Pipeline.hpp:8、57</span><span class="out">产出：进入创建流程</span></div>
+</div>
+<div class="col"><h4>B · 交换链重建</h4>
+<div class="n p-life"><b>B1 drawFrame 返回 true</b><span class="ev">Pipeline.hpp:131-134</span><span class="out">产出：触发重建标志</span></div>
+<div class="arrow">▼</div>
+<div class="n p-life"><b>B2 recreateSwapChain</b><span class="ev">Pipeline.hpp:140-153</span><span class="out">产出：等待+清理资源</span></div>
+</div>
+</div>
+<div class="center">▼ &nbsp; 两路汇合 &nbsp; ▼</div>
+<div class="n p-asm"><b>汇合：createPipeline()</b><span class="ev">Pipeline.hpp:57-82</span><span class="out">产出：9 次模板调用（:56-70）</span></div>
+<div class="legend"><span><i class="l-warn"></i>黄＝启动路径</span><span><i class="l-dim"></i>灰＝重建路径</span><span><i class="l-ok"></i>绿＝汇合点</span></div>
+<p>重建触发点：vkAcquireNextImageKHR 返回过期码。</p>
+<p>证据：<code>Swapchain.hpp:109-118</code>（OUT_OF_DATE）。</p>
+<p>重建先等 GPU 空闲，再清管线与交换链资源。</p>
+<p>依据：<code>Pipeline.hpp:135</code>（waitIdle）、<code>:137-138</code>（清理）。</p>
+<p>重建后还要重录命令缓冲：<code>Pipeline.hpp:144-145</code>。</p>
+</section>
+
+<section>
+<h2>3 · 分支 ②：着色阶段（由 spv 模块自推）</h2>
+<div class="fcap">图 3-1 · 逐文件推着色阶段</div>
+<div class="center"><span class="decision"><b>判断：逐文件推阶段</b><span class="ev">VkStruct.h:3361-3408</span></span></div>
+<div class="split"><span>↙</span><span>↓</span><span>↘</span></div>
+<div class="row3">
+<div class="n p-obj"><b>= 2：顶点 + 片段</b><span class="ev">VkStruct.h:3386-3419</span><span class="out">产出：vert / frag 两个 stage</span></div>
+<div class="n p-todo"><b>= 3：task + mesh + frag</b><span class="ev">VkStruct.h:3361-3408</span><span class="out">产出：阶段自推（网格链路待写）</span></div>
+<div class="n p-todo"><b>其他值：不建 stage</b><span class="ev">VkStruct.h:3362</span><span class="out">产出：空列表早退</span></div>
+</div>
+<div class="legend"><span><i class="l-acc"></i>蓝＝已实现分支</span><span><i class="l-dim"></i>灰虚线＝占位分支</span></div>
+<p>流程枚举 <code>pipelineEnum::shaderId</code> 已删除：阶段不再由外部流程决定，而由各 spv 模块的 <code>OpEntryPoint</code> 推（<code>VkStruct.h</code> 的 <code>descStruct::reflectStage</code>）。</p>
+<p>九条接线各自给出文件表：<code>VkList.h:280-288</code>。</p>
+<p>阶段逐文件推、并做“阶段不重复”检查：<code>VkStruct.h:3361-3408</code>。</p>
+<p>顶点输入由直传的 <code>vertexLayoutNode</code> 提供：<code>VkStruct.h:2575-2582</code>。</p>
+</section>
+
+<section>
+<h2>4 · 分支 ③：渲染目标 → 颜色附件数</h2>
+<div class="fcap">图 4-1 · renderTemplateId → renderAttType → 附件数</div>
+<div class="row4">
+<div class="n p-obj"><b>swapChain_rt → forward</b><span class="ev">VkStruct.h:1898、2615-2617</span><span class="out">产出：颜色附件 1 个</span></div>
+<div class="n p-obj"><b>offScreen_rt → forward</b><span class="ev">VkStruct.h:1908、2615-2617</span><span class="out">产出：颜色附件 1 个</span></div>
+<div class="n p-obj"><b>deferred_rt → deferred</b><span class="ev">VkStruct.h:1918、2618-2620</span><span class="out">产出：颜色附件 3 个</span></div>
+<div class="n p-obj"><b>shadowMap_rt → shadow</b><span class="ev">VkStruct.h:1928、2621-2623</span><span class="out">产出：颜色附件 0 个</span></div>
+</div>
+<div class="arrow">▼</div>
+<div class="row3">
+<div class="n p-obj"><b>附件描述按同一枚举建</b><span class="ev">VkStruct.h:1637-1691</span><span class="out">产出：渲染通道附件表</span></div>
+<div class="n p-obj"><b>建 VkRenderPass</b><span class="ev">VkStruct.h:1947-1956</span><span class="out">产出：render（VkRenderPass）</span></div>
+<div class="n p-obj"><b>同一模板喂管线</b><span class="ev">VkStruct.h:2644、2564</span><span class="out">产出：pipeInfo.renderPass</span></div>
+</div>
+<div class="legend"><span><i class="l-acc"></i>蓝＝按模板分支</span><span><i class="l-ok"></i>绿＝renderPass 与管线同源</span></div>
+<p>模板 id 写在九条接线行上：<code>VkList.h:280-288</code>。</p>
+<p>附件数写进颜色混合状态：<code>VkStruct.h:2627-2628</code>。</p>
+<p>无颜色附件的模板：影子通道只挂深度附件。</p>
+</section>
+
+<section>
+<h2>5 · 分支 ④：动态状态 —— 静态值 / 动态状态</h2>
+<div class="fcap">图 5-1 · param.dynamicType → 动态状态</div>
+<div class="center"><span class="decision"><b>判断：param.dynamicType（动态状态）</b><span class="ev">VkStruct.h:2569、3305</span></span></div>
+<div class="split"><span>↙</span><span>↘</span></div>
+<div class="row2">
+<div class="n p-obj"><b>调了：挂动态状态</b><span class="ev">VkStruct.h:3305-3312</span><span class="out">产出：pDynamicState 非空</span></div>
+<div class="n p-obj"><b>没调：保持空</b><span class="ev">VkStruct.h:2569</span><span class="out">产出：pDynamicState=nullptr</span></div>
+</div>
+<div class="arrow">▼</div>
+<div class="row2">
+<div class="n p-todo"><b>运行期 vkCmdSetViewport</b><span class="ev">VkStruct.h:214-215</span><span class="out">现状：录制侧已接线</span></div>
+<div class="n p-obj"><b>静态视口与裁剪</b><span class="ev">VkStruct.h:2584-2601；VkList.h:333-336</span><span class="out">产出：定值 viewport/scissor</span></div>
+</div>
+<div class="legend"><span><i class="l-acc"></i>蓝＝已实现分支</span><span><i class="l-dim"></i>灰虚线＝当前无调用</span></div>
+<p>目前声明动态状态的两条：<code>VkList.h:286</code>、<code>:287</code>。</p>
+<p>静态分支的视口指针：<code>VkStruct.h:2597-2601</code>。</p>
+<p>dynamicId 已接线：<code>VkStruct.h:3305-3312</code>（<code>createDynamic</code>）。</p>
+</section>
+
+<section>
+<h2>6 · 构建顺序链（谁必须先于谁）</h2>
+<div class="fcap">图 6-1 · 依赖顺序（箭头＝左侧必须先完成）</div>
+<div class="chain"><span class="tag">spv 文件</span><em>→</em><span class="tag">反射 binding 配置</span><span class="tag"><span class="ev">VkList.h:86-96、133</span></span></div>
+<div class="chain"><span class="tag">binding 配置</span><em>→</em><span class="tag">VkDescriptorSetLayout</span><span class="tag"><span class="ev">VkStruct.h:3722</span></span></div>
+<div class="chain"><span class="tag">VkDescriptorSetLayout</span><em>→</em><span class="tag">VkPipelineLayout</span><span class="tag"><span class="ev">VkStruct.h:3490</span></span></div>
+<div class="chain"><span class="tag">渲染模板</span><em>→</em><span class="tag">VkRenderPass</span><span class="tag"><span class="ev">VkStruct.h:1947-1956</span></span></div>
+<div class="chain"><span class="tag">spv 文件</span><em>→</em><span class="tag">VkShaderModule</span><span class="tag"><span class="ev">VkStruct.h:3386-3419</span></span></div>
+<div class="chain"><span class="tag">layout + renderPass + 着色器</span><em>→</em><span class="tag">pipeConfig</span><span class="tag"><span class="ev">VkList.h:280-288；VkStruct.h:2564</span></span></div>
+<div class="chain"><span class="tag">Buffer 成员</span><em>→</em><span class="tag">Pipeline 成员</span><span class="tag"><span class="ev">Buffer.hpp:58-64；Pipeline.hpp:45-48</span></span></div>
+<div class="chain"><span class="tag">extent</span><em>→</em><span class="tag">viewport/scissor</span><em>→</em><span class="tag">创建管线</span><span class="tag"><span class="ev">VkList.h:321-341</span></span></div>
+<div class="chain"><span class="tag">销毁：先管线</span><em>→</em><span class="tag">后描述符/模板</span><span class="tag"><span class="ev">Pipeline.hpp:28；Buffer.hpp:34-35</span></span></div>
+<div class="legend"><span><i class="l-dim"></i>链条＝先后关系</span><span>箭头右侧必须先于左侧完成</span></div>
+<p>九条显式接线在家族布局之后、自检之前：<code>VkList.h:280-288</code>。</p>
+<p>运行期填充在所有静态子状态之后：<code>VkList.h:482-485</code>。</p>
+<p>销毁顺序与成员/局部变量相反：<code>Main.cpp:18-20</code> 声明的逆序。</p>
+</section>
+
+<section>
+<h2>7 · 一页速查：启动时创建一条管线依次做了什么</h2>
+<div class="fcap">图 7-1 · 顺序勾选清单（12 项，点一下即勾）</div>
+<ul class="chk">
+<li><input type="checkbox" class="ck"><b>1</b> main 构造三件套 <code>Main.cpp:18-20</code></li>
+<li><input type="checkbox" class="ck"><b>2</b> 交换链得出格式/extent/msaa <code>Swapchain.hpp:58-61</code></li>
+<li><input type="checkbox" class="ck"><b>3</b> 建 4 个 VkRenderPass <code>Buffer.hpp:64；VkList.h:34-37</code></li>
+<li><input type="checkbox" class="ck"><b>4</b> 反射 spv 得描述符配置 <code>VkList.h:86-96、133</code></li>
+<li><input type="checkbox" class="ck"><b>5</b> 建 pool 与描述符布局 <code>VkStruct.h:3722</code></li>
+<li><input type="checkbox" class="ck"><b>6</b> 建 5 个 VkPipelineLayout <code>VkList.h:276-278</code>（<code>procPipelineNode</code> 构造内直接建，<code>Pipeline.hpp:48</code> 注入运行期实参）</li>
+<li><input type="checkbox" class="ck"><b>7</b> 按 spv 建 VkShaderModule <code>VkStruct.h:3361、3386</code></li>
+<li><input type="checkbox" class="ck"><b>8</b> 填 8 个静态子状态 <code>VkStruct.h:2565-2569</code></li>
+<li><input type="checkbox" class="ck"><b>9</b> 按模板定颜色附件数 <code>VkStruct.h:2614-2624</code></li>
+<li><input type="checkbox" class="ck"><b>10</b> 收口 pipeInfo 指针 <code>VkStruct.h:2633-2647</code></li>
+<li><input type="checkbox" class="ck"><b>11</b> 填顶点输入与视口后创建 <code>VkStruct.h:2574-2610；VkList.h:321</code></li>
+<li><input type="checkbox" class="ck"><b>12</b> 建 VkPipelineCache <code>VkList.h:292、514、536</code></li>
+</ul>
+<div class="legend"><span><i class="l-dim"></i>勾选为纯前端交互，不写任何文件</span></div>
+<p>本页只读代码梳理流程，未执行 git 写操作、未改任何源码。</p>
+</section>
+
+</main>
+<script>
+document.querySelectorAll('.ck').forEach(function(c){
+  c.addEventListener('change',function(){ c.closest('li').classList.toggle('done',c.checked); });
+});
+</script>
+</body></html>

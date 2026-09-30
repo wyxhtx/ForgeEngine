@@ -14,12 +14,6 @@ namespace Log {
 		std::cout << text << ":" << std::endl;
 	}
 
-	//不使用科学计数法，使用固定法输出小数
-	void printFixed(auto text) {
-		std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
-		std::cout << "\t" << std::fixed << text << std::endl;
-	}
-
 	//输出坐标
 	void printPos(const glm::vec3& text) {
 		std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
@@ -63,18 +57,5 @@ namespace Log {
 	void clear() {
 		std::lock_guard<std::mutex> lock(lockInfo::logThreadLock);
 		std::cout << "\033c";
-	}
-
-	//按 tab 位补齐：补到第 column 列（tab 宽按 8 计），供多行日志的列对齐；已到/超过目标列时留 1 个 tab 作间隔
-	std::string tabPad(const std::string& text, size_t column) {
-		std::string result = text;
-
-		size_t tabs = text.size() < column ? (column - text.size() + 7) / 8 : 1;
-
-		for (size_t i = 0; i < tabs; i++) {
-			result += "\t";
-		}
-
-		return result;
 	}
 };

@@ -1,0 +1,18 @@
+# dsh-task-sound —— 任务（turn）结束提示音（2026-09-30）
+#
+# 真正生效的是 profile 的 patch：`$DSH_HOME/profiles/web/cordis.patch.yml`
+# 本文件是**仓库内版本管理副本**，语义 = 「往 profile patch 里追加一条 id 覆盖」。
+# 插件本体在 DSH home：`$DSH_HOME/plugin-sources/dsh-task-sound/`（与 dsh-archify 同落点）。
+#
+# 安装：① 插件源目录 npm pack → `dsh plugin --profile web add <tgz>`
+#       ② 把下面这段按 profile patch 的覆盖语义加进 cordis.patch.yml → 重启 dsh（或刷新 Web）
+#
+# 可调项：soundFile（默认 Windows 系统提示音；'' ⇒ 用 Beep）/ minIntervalMs（去抖，默认 1200）
+#         / enabled / logPath（填路径则每次触发写一行 ISO 时间，自查用）
+# dsh-task-sound：任务（turn）结束时播提示音。
+# 下面这段是**临时自查**：把每次触发写一行到日志文件，验证通过后可整段删掉（删掉即回到默认：只响、不记）。
+# dsh-task-sound：任务（turn）结束时播提示音（**Beep 双音**；要换系统提示音就写 soundFile 路径，如 'C:\Windows\Media\Windows Notify System Generic.wav'）。
+# dsh-task-sound：任务（turn）结束时播提示音 —— 用**插件默认音**（Windows 系统提示音 Windows Notify System Generic.wav）。
+# 要换音色/去抖就补 config（例如 soundFile: 'C:\Windows\Media\Windows Notify.wav' / minIntervalMs: 1500）。
+- id: task-sound
+  name: dsh-task-sound

@@ -28,7 +28,7 @@ public:
 	~Swapchain() {
 		vkDestroySwapchainKHR(Device.device, swapchain, nullptr);
 
-		for (size_t i = 0; i < swapSupport.swapCreateInfo.minImageCount; i++) {
+		for (size_t i = 0; i < renderDone.size(); i++) {
 			vkDestroySemaphore(Device.device, renderDone[i], nullptr);
 			vkDestroySemaphore(Device.device, imageDone[i], nullptr);
 		}
@@ -81,7 +81,7 @@ private:
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-		for (size_t i = 0; i < swapSupport.swapCreateInfo.minImageCount; i++) {
+		for (size_t i = 0; i < renderDone.size(); i++) {
 			if (vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &imageDone[i]) != VK_SUCCESS ||
 				vkCreateSemaphore(Device.device, &semaphoreInfo, nullptr, &renderDone[i]) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "信号量创建失败");

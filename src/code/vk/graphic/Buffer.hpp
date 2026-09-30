@@ -149,7 +149,7 @@ private:
 			//model
 			if (pipeModel.isEnable) {
 				//model-sNode
-				for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+				for (int i = 0; i < pipeModel.sNode.size(); i++) {
 					if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &pipeModel.sNode[i].descriptorSet) == VK_SUCCESS) {
 						std::array<VkWriteDescriptorSet, 2> tempWrite{
 							procDescriptor.getWrite(0, pipeModel.sNode[i].descriptorSet, pipeModel.sNode[i].uniform.buffer, sizeof(pipeModel.sNode[i].ubo)),
@@ -164,7 +164,7 @@ private:
 				}
 
 				//model-dNode
-				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+				for (int i = 0; i < pipeModel.dNode.size(); i++) {
 					for (int j = 0; j < pipeModel.dNode[i].node.size(); j++) {
 						if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &pipeModel.dNode[i].node[j].descriptorSet) == VK_SUCCESS) {
 							std::array<VkWriteDescriptorSet, 2> tempWrite{
@@ -245,10 +245,10 @@ private:
 			//model
 			if (pipeModel.isEnable) {
 				//shadow-sNode
-				for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-					if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &pipeShadow.shadow_ms[i].descriptorSet) == VK_SUCCESS) {
+				for (bufferStruct::shadowModelNode& shadowNode : pipeShadow.shadow_ms) {
+					if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &shadowNode.descriptorSet) == VK_SUCCESS) {
 						std::array<VkWriteDescriptorSet, 1> tempWrite{
-							procDescriptor.getWrite(0, pipeShadow.shadow_ms[i].descriptorSet, pipeShadow.shadow_ms[i].shadowMvpUniform.buffer, sizeof(pipeShadow.shadow_ms[i].shadowMvpUbo)),
+							procDescriptor.getWrite(0, shadowNode.descriptorSet, shadowNode.shadowMvpUniform.buffer, sizeof(shadowNode.shadowMvpUbo)),
 						};
 
 						vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -259,11 +259,11 @@ private:
 				}
 
 				//shadow-dNode
-				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-					for (int j = 0; j < pipeShadow.shadow_md[i].size(); j++) {
-						if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &pipeShadow.shadow_md[i][j].descriptorSet) == VK_SUCCESS) {
+				for (std::vector<bufferStruct::shadowModelNode>& shadowNodeList : pipeShadow.shadow_md) {
+					for (bufferStruct::shadowModelNode& shadowNode : shadowNodeList) {
+						if (vkAllocateDescriptorSets(Device.device, &procDescriptor.allocInfo, &shadowNode.descriptorSet) == VK_SUCCESS) {
 							std::array<VkWriteDescriptorSet, 1> tempWrite{
-								procDescriptor.getWrite(0, pipeShadow.shadow_md[i][j].descriptorSet, pipeShadow.shadow_md[i][j].shadowMvpUniform.buffer, sizeof(pipeShadow.shadow_md[i][j].shadowMvpUbo)),
+								procDescriptor.getWrite(0, shadowNode.descriptorSet, shadowNode.shadowMvpUniform.buffer, sizeof(shadowNode.shadowMvpUbo)),
 							};
 
 							vkUpdateDescriptorSets(Device.device, uint32_t(tempWrite.size()), tempWrite.data(), 0, nullptr);
@@ -300,14 +300,14 @@ private:
 		//model
 		if (pipeModel.isEnable) {
 			//model-sNode
-			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				pipeModel.sNode[i].ubo.proj = perspProj;
+			for (bufferStruct::modelStaticNode& sNode : pipeModel.sNode) {
+				sNode.ubo.proj = perspProj;
 			}
 
 			//model-dNode
-			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-				for (int j = 0; j < pipeModel.dNode[i].node.size(); j++) {
-					pipeModel.dNode[i].node[j].ubo.proj = perspProj;
+			for (bufferStruct::modelDynamicNode& dNode : pipeModel.dNode) {
+				for (bufferStruct::modelDynamicSubNode& modelNode : dNode.node) {
+					modelNode.ubo.proj = perspProj;
 				}
 			}
 		}
@@ -345,7 +345,7 @@ private:
 	}
 
 public:
-	//绘制uiText
+	//绘制 uiText
 	void drawUIText(int fps) {
 		if (pipeUIText.isEnable) {
 			pipeUIText.msdfGlyphAtlas.begin();
@@ -359,7 +359,7 @@ public:
 
 
 
-	//创建cmd
+	//创建 cmd
 	void createCmd(int threadId, pipelineList::procPipelineNode& procPipeline) {
 		for (int frameId = 0; frameId < cmd.renderCmd[threadId].size(); frameId++) {
 			cmd.recordCmd(threadId, frameId, [&](cmdStruct::cmdRecorderNode& recorder) {
@@ -372,23 +372,23 @@ public:
 						if (pipeTerrain.isEnable) {
 							for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
 								if (isNullTerrainMesh(layer)) {
-									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_t.descriptorSet, pipeShadow.shadow_t.mesh[threadId][layer].vertex.buffer, pipeTerrain.mesh[threadId][layer].index.buffer, static_cast<uint32_t>(terrainVertex::indexs[layer].size()));
+									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_t.descriptorSet, pipeShadow.shadow_t.mesh[threadId][layer].vertex.buffer, pipeTerrain.mesh[threadId][layer].index.buffer, static_cast<uint32_t>(vertexStruct::terrainVertex::mesh[layer].indexs.size()));
 								}
 							}
 						}
 
 						//model
 						if (pipeModel.isEnable) {
-							for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+							for (int nodeId = 0; nodeId < pipeModel.sNode.size(); nodeId++) {
 								if (pipeModel.sNode[nodeId].isVisible) {
-									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_ms[nodeId].descriptorSet, pipeShadow.shadow_ms[nodeId].mesh.vertex.buffer, pipeModel.sNode[nodeId].mesh.index.buffer, static_cast<uint32_t>(modelVertex::sIndexs[nodeId].size()));
+									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_ms[nodeId].descriptorSet, pipeShadow.shadow_ms[nodeId].mesh.vertex.buffer, pipeModel.sNode[nodeId].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::sMesh[nodeId].indexs.size()));
 								}
 							}
 
-							for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
+							for (int nodeId = 0; nodeId < pipeModel.dNode.size(); nodeId++) {
 								if (pipeModel.dNode[nodeId].isVisible) {
 									for (int subNode = 0; subNode < pipeShadow.shadow_md[nodeId].size(); subNode++) {
-										recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_md[nodeId][subNode].descriptorSet, pipeShadow.shadow_md[nodeId][subNode].mesh.vertex.buffer, pipeModel.dNode[nodeId].node[subNode].mesh.index.buffer, static_cast<uint32_t>(modelVertex::dIndexs[nodeId][subNode].size()));
+										recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_md[nodeId][subNode].descriptorSet, pipeShadow.shadow_md[nodeId][subNode].mesh.vertex.buffer, pipeModel.dNode[nodeId].node[subNode].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::dMesh[nodeId][subNode].indexs.size()));
 									}
 								}
 							}
@@ -406,23 +406,23 @@ public:
 					if (pipeTerrain.isEnable) {
 						for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
 							if (isNullTerrainMesh(layer)) {
-								recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeTerrain.pipeType), procPipeline.getPipeLayout(pipeTerrain.pipeType), pipeTerrain.descriptorSet, pipeTerrain.mesh[threadId][layer].vertex.buffer, pipeTerrain.mesh[threadId][layer].index.buffer, static_cast<uint32_t>(terrainVertex::indexs[layer].size()));
+								recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeTerrain.pipeType), procPipeline.getPipeLayout(pipeTerrain.pipeType), pipeTerrain.descriptorSet, pipeTerrain.mesh[threadId][layer].vertex.buffer, pipeTerrain.mesh[threadId][layer].index.buffer, static_cast<uint32_t>(vertexStruct::terrainVertex::mesh[layer].indexs.size()));
 							}
 						}
 					}
 
 					//model
 					if (pipeModel.isEnable) {
-						for (int nodeId = 0; nodeId < bufferEnum::procStaticModelId::count; nodeId++) {
+						for (int nodeId = 0; nodeId < pipeModel.sNode.size(); nodeId++) {
 							if (pipeModel.sNode[nodeId].isVisible) {
-								recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeType), procPipeline.getPipeLayout(pipeModel.pipeType), pipeModel.sNode[nodeId].descriptorSet, pipeModel.sNode[nodeId].mesh.vertex.buffer, pipeModel.sNode[nodeId].mesh.index.buffer, static_cast<uint32_t>(modelVertex::sIndexs[nodeId].size()));
+								recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeType), procPipeline.getPipeLayout(pipeModel.pipeType), pipeModel.sNode[nodeId].descriptorSet, pipeModel.sNode[nodeId].mesh.vertex.buffer, pipeModel.sNode[nodeId].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::sMesh[nodeId].indexs.size()));
 							}
 						}
 
-						for (int nodeId = 0; nodeId < bufferEnum::procDynamicModelId::count; nodeId++) {
+						for (int nodeId = 0; nodeId < pipeModel.dNode.size(); nodeId++) {
 							if (pipeModel.dNode[nodeId].isVisible) {
 								for (int subNode = 0; subNode < pipeModel.dNode[nodeId].node.size(); subNode++) {
-									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeType), procPipeline.getPipeLayout(pipeModel.pipeType), pipeModel.dNode[nodeId].node[subNode].descriptorSet, pipeModel.dNode[nodeId].node[subNode].mesh.vertex.buffer, pipeModel.dNode[nodeId].node[subNode].mesh.index.buffer, static_cast<uint32_t>(modelVertex::dIndexs[nodeId][subNode].size()));
+									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeType), procPipeline.getPipeLayout(pipeModel.pipeType), pipeModel.dNode[nodeId].node[subNode].descriptorSet, pipeModel.dNode[nodeId].node[subNode].mesh.vertex.buffer, pipeModel.dNode[nodeId].node[subNode].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::dMesh[nodeId][subNode].indexs.size()));
 								}
 							}
 						}
@@ -430,12 +430,12 @@ public:
 
 					//pipeSkybox
 					if (pipeSkybox.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeSkybox.pipeType), procPipeline.getPipeLayout(pipeSkybox.pipeType), pipeSkybox.descriptorSet, pipeSkybox.mesh.vertex.buffer, pipeSkybox.mesh.index.buffer, static_cast<uint32_t>(skyboxVertex::indexs.size()));
+						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeSkybox.pipeType), procPipeline.getPipeLayout(pipeSkybox.pipeType), pipeSkybox.descriptorSet, pipeSkybox.mesh.vertex.buffer, pipeSkybox.mesh.index.buffer, static_cast<uint32_t>(vertexStruct::skyboxVertex::indexs.size()));
 					}
 
 					//pipeMine
 					if (pipeMine.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeMine.pipeType), procPipeline.getPipeLayout(pipeMine.pipeType), pipeMine.descriptorSet, pipeMine.mesh.vertex.buffer, pipeMine.mesh.index.buffer, static_cast<uint32_t>(mineVertex::indexs.size()));
+						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeMine.pipeType), procPipeline.getPipeLayout(pipeMine.pipeType), pipeMine.descriptorSet, pipeMine.mesh.vertex.buffer, pipeMine.mesh.index.buffer, static_cast<uint32_t>(vertexStruct::mineVertex::indexs.size()));
 					}
 
 					recorder.endRender();
@@ -454,7 +454,7 @@ public:
 
 					//pipeOSMirror
 					if (pipeOSMirror.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeOSMirror.pipeType), procPipeline.getPipeLayout(pipeOSMirror.pipeType), pipeOSMirror.descriptorSet, pipeOSMirror.mesh.vertex.buffer, pipeOSMirror.mesh.index.buffer, static_cast<uint32_t>(osMirrorVertex::indexs.size()));
+						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeOSMirror.pipeType), procPipeline.getPipeLayout(pipeOSMirror.pipeType), pipeOSMirror.descriptorSet, pipeOSMirror.mesh.vertex.buffer, pipeOSMirror.mesh.index.buffer, static_cast<uint32_t>(vertexStruct::osMirrorVertex::indexs.size()));
 					}
 
 					recorder.endRender();
@@ -486,7 +486,7 @@ public:
 		}
 	}
 
-	//重建cmd
+	//重建 cmd
 	void recreateCmd(int threadId, std::atomic<bool>& isEntireRebuild, const glm::dvec3& plateOriginPos, Camera& Camera, pipelineList::procPipelineNode& procPipeline) {
 		if (pipeTerrain.isEnable) {
 			if (debugInfo::LogSwitch && (playerInfo::logicOriginPos != plateOriginPos) && !isEntireRebuild) {
@@ -501,13 +501,13 @@ public:
 			//重建下一线程Lod_0地形管线，RM_0.4.6（8_32：10）
 			if (isNullTerrainMesh(layer)) {
 				pipeTerrain.mesh[threadId][layer].clear(Device.memAllocator);
-				pipeTerrain.mesh[threadId][layer].create(terrainVertex::vertexs[layer], terrainVertex::indexs[layer], cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+				pipeTerrain.mesh[threadId][layer].create(vertexStruct::terrainVertex::mesh[layer].vertexs, vertexStruct::terrainVertex::mesh[layer].indexs, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
 
 				//重建下一线程Lod_0地形阴影
 				if (pipeShadow.isEnable) {
-									shadowVertex::loadTerrainVertexs(layer);
+					vertexStruct::shadowVertex::loadTerrainVertexs(layer);
 					pipeShadow.shadow_t.mesh[threadId][layer].clear(Device.memAllocator);
-					pipeShadow.shadow_t.mesh[threadId][layer].create(shadowVertex::tVertexs[layer], cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+					pipeShadow.shadow_t.mesh[threadId][layer].create(vertexStruct::shadowVertex::tMesh[layer].vertexs, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
 				}
 			}
 
@@ -516,17 +516,17 @@ public:
 				layer = plateEnum::terrainLayer::Layer_1;
 
 				if (isNullTerrainMesh(layer)) {
-					const std::vector<terrainVertex::vertexNode>& vertex = terrainVertex::vertexs[layer];
-					const std::vector<uint32_t>&				  index  = terrainVertex::indexs[layer];
+					const std::vector<vertexStruct::terrainVertex::vertexNode>& vertex = vertexStruct::terrainVertex::mesh[layer].vertexs;
+					const std::vector<uint32_t>& index  = vertexStruct::terrainVertex::mesh[layer].indexs;
 					//重建下一线程Lod_1地形管线
 					pipeTerrain.mesh[threadId][layer].clear(Device.memAllocator);
 					pipeTerrain.mesh[threadId][layer].create(vertex, index, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
 
 					//重建下一线程Lod_1地形阴影
 					if (pipeShadow.isEnable) {
-											shadowVertex::loadTerrainVertexs(layer);
+						vertexStruct::shadowVertex::loadTerrainVertexs(layer);
 						pipeShadow.shadow_t.mesh[threadId][layer].clear(Device.memAllocator);
-						pipeShadow.shadow_t.mesh[threadId][layer].create(shadowVertex::tVertexs[layer], cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+						pipeShadow.shadow_t.mesh[threadId][layer].create(vertexStruct::shadowVertex::tMesh[layer].vertexs, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
 					}
 
 					//重建下一线程命令缓冲区，并切换线程
@@ -556,9 +556,9 @@ public:
 
 					//重建上轮当前线程Lod_1地形阴影
 					if (pipeShadow.isEnable) {
-											shadowVertex::loadTerrainVertexs(layer);
+						vertexStruct::shadowVertex::loadTerrainVertexs(layer);
 						pipeShadow.shadow_t.mesh[tempThreadId][layer].clear(Device.memAllocator);
-						pipeShadow.shadow_t.mesh[tempThreadId][layer].create(shadowVertex::tVertexs[layer], cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
+						pipeShadow.shadow_t.mesh[tempThreadId][layer].create(vertexStruct::shadowVertex::tMesh[layer].vertexs, cmd, Device.device, Device.graphicsQueue, Device.memAllocator);
 					}
 
 					isEntireRebuild.store(false);
@@ -636,7 +636,7 @@ public:
 		procRenderPass.clearSwapChain(Device.device, Device.memAllocator);
 	}
 
-	//更新Uniform
+	//更新 Uniform
 	void updateUniform(const glm::dvec3& logicOriginPos, const playerStruct::cameraNode& camera, const playerStruct::selectBoxNode& box) {
 		static std::chrono::steady_clock::time_point time0 = std::chrono::steady_clock::now();	//游戏起始时刻
 		static std::chrono::steady_clock::time_point time1;										//游戏当前时刻
@@ -661,43 +661,43 @@ public:
 		//model
 		if (pipeModel.isEnable) {
 			//model-sNode
-			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				pipeModel.sNode[i].currentWorldPos = camera.pos;
+			for (bufferStruct::modelStaticNode& sNode : pipeModel.sNode) {
+				sNode.currentWorldPos = camera.pos;
 
-				if (glm::distance(pipeModel.sNode[i].modelWorldPos, pipeModel.sNode[i].currentWorldPos) < plateInfo::perspSightRange) {
-					pipeModel.sNode[i].ubo.model = glm::translate(glm::mat4(1), glm::vec3(pipeModel.sNode[i].modelWorldPos - logicOriginPos));	//位移
-					pipeModel.sNode[i].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));												//缩放
-					//pipeModel.sNode[i].ubo.model	*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), cameraInfo::worldUp);							//旋转
-					pipeModel.sNode[i].ubo.modelTI = glm::transpose(glm::inverse(pipeModel.sNode[i].ubo.model));
-					pipeModel.sNode[i].ubo.view = camera.view;
+				if (glm::distance(sNode.modelWorldPos, sNode.currentWorldPos) < plateInfo::perspSightRange) {
+					sNode.ubo.model = glm::translate(glm::mat4(1), glm::vec3(sNode.modelWorldPos - logicOriginPos));	//位移
+					sNode.ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));												//缩放
+					//sNode.ubo.model	*= glm::rotate(glm::mat4(1), gameTime * glm::radians(60.f), cameraInfo::worldUp);							//旋转
+					sNode.ubo.modelTI = glm::transpose(glm::inverse(sNode.ubo.model));
+					sNode.ubo.view = camera.view;
 
-					pipeModel.sNode[i].uniform.createMemMap(&pipeModel.sNode[i].ubo, sizeof(pipeModel.sNode[i].ubo), Device.memAllocator);
+					sNode.uniform.createMemMap(&sNode.ubo, sizeof(sNode.ubo), Device.memAllocator);
 
-					pipeModel.sNode[i].isVisible = true;
+					sNode.isVisible = true;
 				}
 				else {
-					pipeModel.sNode[i].isVisible = false;
+					sNode.isVisible = false;
 				}
 			}
 
 			//model-dNode
-			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-				pipeModel.dNode[i].currentWorldPos = camera.pos;
+			for (bufferStruct::modelDynamicNode& dNode : pipeModel.dNode) {
+				dNode.currentWorldPos = camera.pos;
 
-				if (glm::distance(pipeModel.dNode[i].modelWorldPos, pipeModel.dNode[i].currentWorldPos) < plateInfo::perspSightRange) {
-					for (int j = 0; j < pipeModel.dNode[i].node.size(); j++) {
-						pipeModel.dNode[i].node[j].ubo.model = glm::translate(glm::mat4(1), glm::vec3(pipeModel.dNode[i].modelWorldPos - logicOriginPos));	//位移
-						pipeModel.dNode[i].node[j].ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));												//缩放
-						pipeModel.dNode[i].node[j].ubo.modelTI = glm::transpose(glm::inverse(pipeModel.dNode[i].node[j].ubo.model));
-						pipeModel.dNode[i].node[j].ubo.view = camera.view;
+				if (glm::distance(dNode.modelWorldPos, dNode.currentWorldPos) < plateInfo::perspSightRange) {
+					for (bufferStruct::modelDynamicSubNode& modelNode : dNode.node) {
+						modelNode.ubo.model = glm::translate(glm::mat4(1), glm::vec3(dNode.modelWorldPos - logicOriginPos));	//位移
+						modelNode.ubo.model *= glm::scale(glm::mat4(1), glm::vec3(0.1f));												//缩放
+						modelNode.ubo.modelTI = glm::transpose(glm::inverse(modelNode.ubo.model));
+						modelNode.ubo.view = camera.view;
 
-						pipeModel.dNode[i].node[j].uniform.createMemMap(&pipeModel.dNode[i].node[j].ubo, sizeof(pipeModel.dNode[i].node[j].ubo), Device.memAllocator);
+						modelNode.uniform.createMemMap(&modelNode.ubo, sizeof(modelNode.ubo), Device.memAllocator);
 					}
 
-					pipeModel.dNode[i].isVisible = true;
+					dNode.isVisible = true;
 				}
 				else {
-					pipeModel.dNode[i].isVisible = false;
+					dNode.isVisible = false;
 				}
 			}
 		}
@@ -768,7 +768,7 @@ public:
 			//model
 			if (pipeModel.isEnable) {
 				//shadow-sNode
-				for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
+				for (int i = 0; i < pipeModel.sNode.size(); i++) {
 					if (pipeModel.sNode[i].isVisible) {
 						pipeShadow.shadow_ms[i].shadowMvpUbo.mvp = pipeShadow.shadowVP * pipeModel.sNode[i].ubo.model;
 						pipeShadow.shadow_ms[i].shadowMvpUniform.createMemMap(&pipeShadow.shadow_ms[i].shadowMvpUbo, sizeof(pipeShadow.shadow_ms[i].shadowMvpUbo), Device.memAllocator);
@@ -776,7 +776,7 @@ public:
 				}
 
 				//shadow-dNode
-				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+				for (int i = 0; i < pipeModel.dNode.size(); i++) {
 					if (pipeModel.dNode[i].isVisible) {
 						for (int j = 0; j < pipeShadow.shadow_md[i].size(); j++) {
 							pipeShadow.shadow_md[i][j].shadowMvpUbo.mvp = pipeShadow.shadowVP * pipeModel.dNode[i].node[j].ubo.model;
@@ -817,25 +817,27 @@ public:
 		}
 	}
 
-	//绘制frame
+	//绘制 frame
 	bool drawFrame(int threadId) {
 		return InitSwapchain.drawFrame(cmd.renderCmd[threadId].list, cmd.renderCmd[threadId].fence);
 	}
 
-	const std::vector<bufferStruct::descriptorNode>& getDstList() {
-		return procDescriptor.node;
-	}
+
 
 	const std::vector<renderStruct::renderTemplateNode>& getRenderList() {
 		return procRenderPass.renderTemplateList;
 	}
 
-	const VkExtent2D& getSwapExtent() {
-		return InitSwapchain.swapExtent;
+	const std::vector<descStruct::descriptorNode>& getDescriptor() {
+		return procDescriptor.node;
 	}
 
 	VkSampleCountFlagBits getMsaa() {
 		return InitSwapchain.msaa;
+	}
+
+	const VkExtent2D& getSwapExtent() {
+		return InitSwapchain.swapExtent;
 	}
 
 private:
@@ -845,6 +847,6 @@ private:
 
 	//地形网格是否为空
 	bool isNullTerrainMesh(int layer) {
-		return terrainVertex::vertexs[layer].size() && terrainVertex::indexs[layer].size();
+		return vertexStruct::terrainVertex::mesh[layer].vertexs.size() && vertexStruct::terrainVertex::mesh[layer].indexs.size();
 	}
 };

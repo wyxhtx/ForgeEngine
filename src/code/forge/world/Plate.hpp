@@ -21,7 +21,7 @@ public:
 
 		Log::printTitle("板块创建信息");
 		Log::print("创建用时:\t" + time.end());
-		Log::print("优化面数:\t" + std::to_string((terrainVertex::vertexs[plateEnum::terrainLayer::Layer_0].size() + terrainVertex::vertexs[plateEnum::terrainLayer::Layer_1].size()) / 4));
+		Log::print("优化面数:\t" + std::to_string((vertexStruct::terrainVertex::mesh[plateEnum::terrainLayer::Layer_0].vertexs.size() + vertexStruct::terrainVertex::mesh[plateEnum::terrainLayer::Layer_1].vertexs.size()) / 4));
 
 		if (debugInfo::LogSwitch) {
 			Log::delimiter();
@@ -360,11 +360,11 @@ private:
 	//拼接地形网格，将区块网格拼成地形网格，自动内存分配时函数耗时1.8ms，平时函数耗时0.18ms
 	void joinTerrainMesh(Chunk& chunk, const glm::dvec3& originOffset, const glm::dvec3& chunkPos, int layer) {
 		if (chunk.indexOffset) {
-			//等同(uint32_t)(terrainVertex::indexs.terrain[layer].size() / 1.5);
-			uint32_t offset = static_cast<uint32_t>(terrainVertex::vertexs[layer].size());
+			//等同(uint32_t)(vertexStruct::terrainVertex::indexs.terrain[layer].size() / 1.5);
+			uint32_t offset = static_cast<uint32_t>(vertexStruct::terrainVertex::mesh[layer].vertexs.size());
 
 			if (debugInfo::LogSwitch) {
-				if (offset != static_cast<uint32_t>(terrainVertex::indexs[layer].size() / 1.5)) {
+				if (offset != static_cast<uint32_t>(vertexStruct::terrainVertex::mesh[layer].indexs.size() / 1.5)) {
 					Log::printError(__FILE__, __LINE__, "索引偏移错误");
 				}
 			}
@@ -378,7 +378,7 @@ private:
 			if (chunk.originOffset != originOffset) {
 				glm::vec3 tempPos = chunk.originOffset - originOffset;
 
-				for (terrainVertex::vertexNode& node : chunk.chunkVertexs) {
+				for (vertexStruct::terrainVertex::vertexNode& node : chunk.chunkVertexs) {
 					node.position += tempPos;
 				}
 
@@ -386,7 +386,7 @@ private:
 			}
 
 			//拼入地形顶点数组
-			terrainVertex::vertexs[layer].insert(terrainVertex::vertexs[layer].end(), chunk.chunkVertexs.begin(), chunk.chunkVertexs.end());
+			vertexStruct::terrainVertex::mesh[layer].vertexs.insert(vertexStruct::terrainVertex::mesh[layer].vertexs.end(), chunk.chunkVertexs.begin(), chunk.chunkVertexs.end());
 
 			//处理索引偏移
 			std::vector<uint32_t> tempIndexs = chunk.chunkIndexs;
@@ -395,7 +395,7 @@ private:
 			}
 
 			//拼入地形索引数组
-			terrainVertex::indexs[layer].insert(terrainVertex::indexs[layer].end(), tempIndexs.begin(), tempIndexs.end());
+			vertexStruct::terrainVertex::mesh[layer].indexs.insert(vertexStruct::terrainVertex::mesh[layer].indexs.end(), tempIndexs.begin(), tempIndexs.end());
 		}
 	}
 
@@ -679,8 +679,8 @@ public:
 		//卸载视距外区块网格，因为原点未迁移处理耗时太高，所以全采用原点迁移处理，RM_0.4.6（8_32：20）
 		for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
 			//清空全部区块网格
-			terrainVertex::vertexs[layer].clear();
-			terrainVertex::indexs[layer].clear();
+			vertexStruct::terrainVertex::mesh[layer].vertexs.clear();
+			vertexStruct::terrainVertex::mesh[layer].indexs.clear();
 			terrainMeshSignList[layer].clear();
 		}
 
@@ -1079,8 +1079,8 @@ private:
 					++p;
 				}
 
-				terrainVertex::vertexs[layer].erase(terrainVertex::vertexs[layer].begin() + vertexsSize, terrainVertex::vertexs[layer].begin() + vertexsSize + node->vertexsSize);
-				terrainVertex::indexs[layer].erase(terrainVertex::indexs[layer].end() - node->indexsSize, terrainVertex::indexs[layer].end());
+				vertexStruct::terrainVertex::mesh[layer].vertexs.erase(vertexStruct::terrainVertex::mesh[layer].vertexs.begin() + vertexsSize, vertexStruct::terrainVertex::mesh[layer].vertexs.begin() + vertexsSize + node->vertexsSize);
+				vertexStruct::terrainVertex::mesh[layer].indexs.erase(vertexStruct::terrainVertex::mesh[layer].indexs.end() - node->indexsSize, vertexStruct::terrainVertex::mesh[layer].indexs.end());
 
 				terrainMeshSignList[layer].erase_after(prev);
 				break;

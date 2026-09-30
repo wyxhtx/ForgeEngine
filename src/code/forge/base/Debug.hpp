@@ -45,11 +45,11 @@ public:
 	//校验地形层非空
 	void validateTerrainLayerEmpty() {
 		for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
-			if (terrainVertex::vertexs[layer].size() == 0) {
+			if (vertexStruct::terrainVertex::mesh[layer].vertexs.size() == 0) {
 				Log::printWarning(__FILE__, __LINE__, std::format("Layer_{}对应顶点数组为空", layer));
 			}
 
-			if (terrainVertex::indexs[layer].size() == 0) {
+			if (vertexStruct::terrainVertex::mesh[layer].indexs.size() == 0) {
 				Log::printWarning(__FILE__, __LINE__, std::format("Layer_{}对应索引数组为空", layer));
 			}
 		}

@@ -222,9 +222,7 @@ namespace cmdStruct {
 				bindVert(tVertBuffer);
 
 				vkCmdBindVertexBuffers(cmd, 1, 1, &tVertBuffer, vertOffset.data());
-				for (uint32_t i = 0; i < tCount; i++) {
-					vkCmdDraw(cmd, 4, 1, i * 4, 0);
-				}
+				vkCmdDraw(cmd, 6 * tCount, 1, 0, 0);
 				break;
 			}
 			}
@@ -867,7 +865,7 @@ namespace uiStruct {
 			return (it == map.end()) ? nullptr : &it->second;
 		}
 
-		//设置 msdfGlyphNode，单个字形 → 顶点，写四顶点、推进光标、计数
+		//设置 msdfGlyphNode，单个字形 → 顶点，写六顶点（两三角形）、推进光标、计数
 		void setGlyph(glm::vec4*& mapped, uint32_t& letterCount, const msdfGlyphNode& glyph, float& cursorX, float baselineY, float scale) const {
 			//像素 → NDC（左上(-1,-1)，y 向下为正）
 			const float ndcX   = 2.0f / windowInfo::width;
@@ -881,9 +879,12 @@ namespace uiStruct {
 			const float u1     = glyph.uvBounds.z;
 			const float v1     = glyph.uvBounds.w;
 
+			//两三角形（绕序一致，配合 fill_back_cw）：左上→右上→左下、左下→右上→右下
 			mapped->x = left;  mapped->y = top;    mapped->z = u0; mapped->w = v0; mapped++;
 			mapped->x = right; mapped->y = top;    mapped->z = u1; mapped->w = v0; mapped++;
 			mapped->x = left;  mapped->y = bottom; mapped->z = u0; mapped->w = v1; mapped++;
+			mapped->x = left;  mapped->y = bottom; mapped->z = u0; mapped->w = v1; mapped++;
+			mapped->x = right; mapped->y = top;    mapped->z = u1; mapped->w = v0; mapped++;
 			mapped->x = right; mapped->y = bottom; mapped->z = u1; mapped->w = v1; mapped++;
 
 			cursorX += glyph.advance * scale;
@@ -896,7 +897,7 @@ namespace uiStruct {
 		}
 
 		//设置 文本，指定布局
-		void setText(glm::vec4*& mapped, uint32_t& letterCount, const std::string& text, float positionX, float positionY, bufferEnum::textAlignId::type align, float fontSizePx) const {
+		void setText(glm::vec4*& mapped, uint32_t& letterCount, const std::string& text, float positionX, float positionY, bufferEnum::textAlignId::type alignType, float fontSizePx) const {
 			if (map.empty() || !mapped) {
 				return;
 			}
@@ -905,7 +906,7 @@ namespace uiStruct {
 			float       originX = positionX;
 
 			//对齐
-			switch (align) {
+			switch (alignType) {
 			case bufferEnum::textAlignId::right:
 				originX -= getStringWidthPx(text, fontSizePx);
 				break;
@@ -2052,8 +2053,8 @@ namespace renderStruct {
 			frameImageList.clear();
 
 			//清理frameBufferList
-			for (int i = 0; i < frameBufferList.size(); i++) {
-				frameBufferList[i].clear(device);
+			for (renderStruct::renderFrameNode& frameNode : frameBufferList) {
+				frameNode.clear(device);
 			}
 			frameBufferList.clear();
 		}
@@ -2075,92 +2076,1023 @@ namespace renderStruct {
 			std::vector<VkImageView> viewList = conv.getViewList();
 			viewList.push_back({});     //预留 swap 槽位
 
-			for (int i = 0; i < swap.imageList.size(); i++) {
-				viewList.back() = swap.imageList[i].view;
+			for (const bufferStruct::imageBufferNode& imageNode : swap.imageList) {
+				viewList.back() = imageNode.view;
 				frameBufferList.push_back(renderStruct::renderFrameNode{ render, viewList, clearValueList, extent, device });
 			}
 		}
 	};
 }
 
-//pipeline  结构空间
-namespace pipelineStruct {
-	//shader结点
-	struct shaderNode {
-		VkShaderModule shader{};                            //着色器
-		VkPipelineShaderStageCreateInfo shaderStage{};      //着色器状态
+//desc		结构空间
+namespace descStruct {
+	//描述符配置结点
+	struct descriptorConfigNode {
+		VkDescriptorSetLayoutBinding layout{};
+		VkWriteDescriptorSet         write{};
 
 
 
-		//创建着色器结点
-		void createShaderNode(const VkDevice& device, const std::string& filename, VkShaderStageFlagBits stage) {
-			//读取着色器文件
-			std::ifstream fileData(filename, std::ios::ate | std::ios::binary);
-			if (!fileData.is_open()) {
-				Log::printError(__FILE__, __LINE__, "着色器文件打开失败");
-			}
+		descriptorConfigNode(uint32_t id, VkDescriptorType type, VkShaderStageFlags stage, uint32_t count = 1) {
+			layout.descriptorCount	  = count;
+			layout.pImmutableSamplers = nullptr;
+			layout.binding			  = id;
+			layout.descriptorType	  = type;
+			layout.stageFlags		  = stage;
 
-			//创建着色器代码
-			size_t fileSize = static_cast<size_t>(fileData.tellg());
-			std::vector<char> shaderCode(fileSize);
-			fileData.seekg(0);
-			fileData.read(shaderCode.data(), fileSize);
-			fileData.close();
+			write.sType			  = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			write.dstArrayElement = 0;
+			write.descriptorCount = 1;
+			write.dstBinding	  = id;
+			write.descriptorType  = type;
+		}
 
-			//创建着色器
-			VkShaderModuleCreateInfo createInfo{};
-			createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-			createInfo.codeSize = shaderCode.size();
-			createInfo.pCode    = reinterpret_cast<const uint32_t*>(shaderCode.data());
-			if (vkCreateShaderModule(device, &createInfo, nullptr, &shader) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "着色器创建失败");
-			}
+		descriptorConfigNode() = delete;
 
-			//配置着色器状态
-			shaderStage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-			shaderStage.pName  = "main";
-			shaderStage.stage  = stage;
-			shaderStage.module = shader;
+
+
+		const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkBuffer& buffer, VkDeviceSize range) {
+			bufferInfo.offset = 0;
+			bufferInfo.buffer = buffer;
+			bufferInfo.range  = range;
+
+			write.dstSet	  = dstSet;
+			write.pBufferInfo = &bufferInfo;
+
+			return write;
+		}
+
+		const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkSampler& sampler, const VkImageView& imageView) {
+			imageInfo.sampler	  = sampler;
+			imageInfo.imageView	  = imageView;
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+			write.dstSet	 = dstSet;
+			write.pImageInfo = &imageInfo;
+
+			return write;
+		}
+
+	private:
+		VkDescriptorBufferInfo bufferInfo{};
+		VkDescriptorImageInfo  imageInfo{};
+	};
+
+	//描述符写入结点
+	struct descriptorWriteNode {
+		uint32_t         binding{};
+		VkDescriptorType type{};
+
+		VkBuffer         buffer{};
+		VkDeviceSize     range{};
+		VkSampler        sampler{};
+		VkImageView      view{};
+	};
+
+	//描述符结点
+	struct descriptorNode {
+		std::vector<descStruct::descriptorConfigNode> config{};
+
+		VkDescriptorPool	  pool{};		//描述符池
+		VkDescriptorSetLayout layout{};     //描述符布局
+		uint32_t			  maxSet{};		//描述符池上限
+
+
+
+		void createDescriptorNode(const VkDevice& device) {
+			createPool(device);
+			createLayout(device);
 		}
 
 		void clear(const VkDevice& device) {
-			vkDestroyShaderModule(device, shader, nullptr);
+			vkDestroyDescriptorPool(device, pool, nullptr);
+			vkDestroyDescriptorSetLayout(device, layout, nullptr);
+		}
+
+
+
+		//分配
+		bool alloc(const VkDevice& device, VkDescriptorSet& dstSet, pipelineEnum::procPipelineId::type pipeType) {
+			VkDescriptorSetAllocateInfo setAllocInfo{
+				.sType				= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+				.descriptorPool		= pool,
+				.descriptorSetCount = 1,
+				.pSetLayouts	    = &layout
+			};
+
+			if (vkAllocateDescriptorSets(device, &setAllocInfo, &dstSet) != VK_SUCCESS) {
+				Log::printError(__FILE__, __LINE__, pipelineInfo::procPipelineName[pipeType] + "分配描述符集失败");
+				return false;
+			}
+
+			return true;
+		}
+
+		//写入
+		void writeFrom(const VkDevice& device, const VkDescriptorSet& dstSet, const std::vector<descriptorWriteNode>& requestList) {
+			std::vector<VkWriteDescriptorSet> writeList{};
+			writeList.reserve(requestList.size());
+
+			for (const auto& request : requestList) {
+				if (debugInfo::LogSwitch && (static_cast<size_t>(request.binding) >= config.size() || config[request.binding].layout.binding != request.binding)) {
+					Log::printError(__FILE__, __LINE__, "描述符写入的 binding 与布局表不一致");
+				}
+
+				if (debugInfo::LogSwitch && config[request.binding].layout.descriptorType != request.type) {
+					Log::printError(__FILE__, __LINE__, "描述符写入的类型与布局表不一致");
+				}
+
+				if (request.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+					writeList.push_back(config[request.binding].setWrite(dstSet, request.sampler, request.view));
+				}
+				else {
+					writeList.push_back(config[request.binding].setWrite(dstSet, request.buffer, request.range));
+				}
+			}
+
+			vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeList.size()), writeList.data(), 0, nullptr);
+		}
+
+	private:
+		void createPool(const VkDevice& device) {
+			if (debugInfo::LogSwitch && maxSet == 0) {
+				Log::printError(__FILE__, __LINE__, "描述符池上限（maxSet）未设置");
+			}
+
+			//池需求 = maxSet × 每个 set 里该 binding 的数组长度；同类描述符按类型汇总
+			std::vector<VkDescriptorPoolSize> poolSize{};
+			for (const auto& i : config) {
+				uint32_t need = maxSet * i.layout.descriptorCount;
+
+				bool merged = false;
+				for (auto& size : poolSize) {
+					if (size.type == i.layout.descriptorType) {
+						size.descriptorCount += need;
+						merged = true;
+						break;
+					}
+				}
+
+				if (!merged) {
+					poolSize.push_back(VkDescriptorPoolSize{ .type = i.layout.descriptorType, .descriptorCount = need });
+				}
+			}
+
+			VkDescriptorPoolCreateInfo poolInfo{
+				.sType		   = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+				.maxSets	   = maxSet,
+				.poolSizeCount = static_cast<uint32_t>(poolSize.size()),
+				.pPoolSizes	   = poolSize.data()
+			};
+
+			if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
+				Log::printError(__FILE__, __LINE__, "描述符池创建失败");
+			}
+		}
+
+		void createLayout(const VkDevice& device) {
+			std::vector<VkDescriptorSetLayoutBinding> layoutBinding{};
+			for (const auto& i : config) {
+				layoutBinding.push_back(i.layout);
+			}
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo{
+				.sType		  = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.pNext		  = nullptr,
+				.bindingCount = static_cast<uint32_t>(layoutBinding.size()),
+				.pBindings	  = layoutBinding.data()
+			};
+
+			if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
+				Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
+			}
 		}
 	};
 
-	//pipeConfig结点
-	struct pipeConfigNode {
-		//创建指定
-		std::vector<VkPipelineShaderStageCreateInfo>     shaderStageList{};         //着色阶段列表（顶点模式、网格模式）
-		VkPipelineVertexInputStateCreateInfo             vertInputStage{};          //顶点配置
-		VkViewport										 viewport{};			    //视口区域
-		VkRect2D										 scissor{};				    //裁剪区域
-		VkPipelineMultisampleStateCreateInfo			 multisampling{};		    //多重采样
-		std::vector<VkPipelineColorBlendAttachmentState> colorAttachmentList{};     //颜色附件列表（前向模式、延迟模式、阴影模式）
 
-		//枚举指定
+
+	//反射绑定结点
+	struct reflectBindingNode {
+		uint32_t              set{};       //描述符集号，GLSL 无 set 语法故恒为 0
+		uint32_t              binding{};   //绑定号
+		uint32_t              count{1};    //数组长度，非数组为 1
+		VkDescriptorType      type{};      //描述符类型
+		VkShaderStageFlagBits stage{};     //使用该绑定的阶段：由模块入口点执行模型推出（唯一来源是 spv 自身）
+		std::string           name{};      //变量名，仅用于日志
+	};
+
+	//反射顶点结点
+	struct reflectInputNode {
+		uint32_t              location{};  //Location 装饰：与顶点属性的 location 对应
+		VkFormat              format{};    //由分量数与标量类型译出（与 vertexLayoutNode 同一套 VkFormat 语言，便于直接比）
+		VkShaderStageFlagBits stage{};     //入口点执行模型推出的阶段：片段着色器的 in 也是 Input 存储类，必须靠它区分
+		std::string           name{};      //变量名，仅用于日志
+	};
+
+	//获取 着色阶段
+	VkShaderStageFlagBits getStage(uint32_t model) {
+		if (model == spirvInfo::executionModel::vertex)   { return VK_SHADER_STAGE_VERTEX_BIT; }
+		if (model == spirvInfo::executionModel::fragment) { return VK_SHADER_STAGE_FRAGMENT_BIT; }
+		if (model == spirvInfo::executionModel::compute)  { return VK_SHADER_STAGE_COMPUTE_BIT; }
+		if (model == spirvInfo::executionModel::task)     { return VK_SHADER_STAGE_TASK_BIT_NV; }
+		if (model == spirvInfo::executionModel::mesh)     { return VK_SHADER_STAGE_MESH_BIT_NV; }
+
+		return static_cast<VkShaderStageFlagBits>(0);
+	}
+
+	//读取 spv 字节
+	std::vector<uint32_t> readSpirv(const std::string& filename) {
+		std::ifstream fileData(filename, std::ios::ate | std::ios::binary);
+		if (!fileData.is_open()) {
+			Log::printError(__FILE__, __LINE__, filename + " 反射失败：着色器文件打开失败");
+		}
+
+		size_t fileSize = static_cast<size_t>(fileData.tellg());
+		std::vector<char> byteList(fileSize);
+		fileData.seekg(0);
+		fileData.read(byteList.data(), fileSize);
+		fileData.close();
+
+		//按 SPIR-V 字流解释：头 5 字 + 指令流，每字 4 字节
+		if (fileSize < 20 || fileSize % 4 != 0) {
+			Log::printError(__FILE__, __LINE__, filename + " 反射失败：字节码长度非法");
+		}
+
+		std::vector<uint32_t> code(fileSize / 4);
+		std::memcpy(code.data(), byteList.data(), fileSize);
+		if (code[0] != spirvInfo::magicNumber) {
+			Log::printError(__FILE__, __LINE__, filename + " 反射失败：不是 SPIR-V 字节码");
+		}
+
+		return code;
+	}
+
+	//读取 spv 字流
+	uint32_t reflectModel(const std::vector<uint32_t>& code) {
+		for (size_t offset = 5; offset < code.size(); ) {		//头 5 字之后是指令流
+			const uint32_t wordCount = code[offset] >> 16;		//高 16 位＝字长
+			const uint32_t opcode    = code[offset] & 0xFFFF;		//低 16 位＝操作码
+			if (opcode == spirvInfo::opCode::entryPoint && wordCount >= 3) { return code[offset + 1]; }
+			offset += wordCount;
+		}
+
+		return spirvInfo::invalidId;
+	}
+
+	//读取 spv 文件
+	uint32_t reflectModel(const std::string& filename) { return reflectModel(readSpirv(filename)); }
+
+	//文件 → 着色阶段
+	VkShaderStageFlagBits reflectStage(const std::string& filename) {
+		const VkShaderStageFlagBits stage = getStage(reflectModel(filename));
+		if (stage == 0) { Log::printError(__FILE__, __LINE__, filename + " 入口点执行模型未知（spv 里没有有效 OpEntryPoint？）"); }
+		return stage;
+	}
+
+	//spv 文件 → 描述绑定表
+	std::vector<reflectBindingNode> reflectFile(const std::string& filename) {
+		//读字节码
+		std::vector<uint32_t> code = readSpirv(filename);
+
+		//id 取值 1 到 bound-1，故开 bound 长的表，槽位留着哨兵表示未定义
+		uint32_t bound = code[3];
+
+		std::vector<uint32_t>    bindingList(bound, spirvInfo::invalidId);       //Binding 装饰
+		std::vector<uint32_t>    setList(bound, spirvInfo::invalidId);           //DescriptorSet 装饰
+		std::vector<uint32_t>    blockList(bound, spirvInfo::invalidId);         //Block 或 BufferBlock 装饰
+		std::vector<uint32_t>    elementList(bound, spirvInfo::invalidId);       //数组元素类型
+		std::vector<uint32_t>    lengthList(bound, spirvInfo::invalidId);        //数组长度常量 id
+		std::vector<uint32_t>    valueList(bound, spirvInfo::invalidId);         //常量值
+		std::vector<uint32_t>    pointeeList(bound, spirvInfo::invalidId);       //指针指向的类型
+		std::vector<uint32_t>    imageDimList(bound, spirvInfo::invalidId);      //图像维度
+		std::vector<uint32_t>    imageSampledList(bound, spirvInfo::invalidId);  //图像采样标记
+		std::vector<uint32_t>    sampledImageList(bound, spirvInfo::invalidId);  //组合采样器包着的图像
+		std::vector<uint32_t>    samplerList(bound, spirvInfo::invalidId);       //采样器标记
+		std::vector<uint32_t>    structList(bound, spirvInfo::invalidId);        //结构体标记
+		std::vector<uint32_t>    varTypeList(bound, spirvInfo::invalidId);       //变量的指针类型
+		std::vector<uint32_t>    varStorageList(bound, spirvInfo::invalidId);    //变量的存储类
+		std::vector<std::string> nameList(bound);                     //id 名字
+
+		const uint32_t model = reflectModel(code);		//入口点执行模型（唯一扫描点：reflectModel）
+		const VkShaderStageFlagBits modelStage = getStage(model);		//本文件阶段只此一处推出，循环内复用
+
+		//指令流每字：高 16 位是字长，低 16 位是操作码
+		for (size_t offset = 5; offset < code.size(); ) {
+			uint32_t wordCount = code[offset] >> 16;
+			uint32_t opcode    = code[offset] & 0xFFFF;
+
+			if (wordCount == 0 || offset + wordCount > code.size()) {
+				Log::printError(__FILE__, __LINE__, filename + " 反射失败：指令越界");
+			}
+
+			//第一趟只收装饰、名字、常量、入口点，它们都在指令流前段，供后面两趟查表
+			if (opcode == spirvInfo::opCode::decorate && wordCount >= 3) {
+				uint32_t target = code[offset + 1];
+				uint32_t kind   = code[offset + 2];
+
+				if (target < bound) {
+					if (kind == spirvInfo::decoration::block || kind == spirvInfo::decoration::bufferBlock) { blockList[target] = kind; }
+					else if (kind == spirvInfo::decoration::binding && wordCount >= 4)           { bindingList[target] = code[offset + 3]; }
+					else if (kind == spirvInfo::decoration::descriptorSet && wordCount >= 4)     { setList[target] = code[offset + 3]; }
+				}
+			}
+			else if (opcode == spirvInfo::opCode::name && wordCount >= 3) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) {
+					const char* text = reinterpret_cast<const char*>(&code[offset + 2]);
+					nameList[target] = std::string(text, strnlen(text, (wordCount - 2) * 4));
+				}
+			}
+			else if (opcode == spirvInfo::opCode::constant && wordCount >= 4) {
+				uint32_t target = code[offset + 2];
+
+				if (target < bound) {
+					valueList[target] = code[offset + 3];
+				}
+			}
+
+			offset += wordCount;
+		}
+
+		//第二趟收类型与变量
+		for (size_t offset = 5; offset < code.size(); ) {
+			uint32_t wordCount = code[offset] >> 16;
+			uint32_t opcode    = code[offset] & 0xFFFF;
+
+			if (opcode == spirvInfo::opCode::typePointer && wordCount >= 4) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) {
+					pointeeList[target] = code[offset + 3];
+				}
+			}
+			else if (opcode == spirvInfo::opCode::typeArray && wordCount >= 4) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) {
+					elementList[target] = code[offset + 2];
+					lengthList[target]  = code[offset + 3];
+				}
+			}
+			else if (opcode == spirvInfo::opCode::typeRuntimeArray && wordCount >= 3) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) {
+					elementList[target] = code[offset + 2];
+				}
+			}
+			else if (opcode == spirvInfo::opCode::typeSampledImage && wordCount >= 3) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) {
+					sampledImageList[target] = code[offset + 2];
+				}
+			}
+			else if (opcode == spirvInfo::opCode::typeImage && wordCount >= 8) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) {
+					imageDimList[target]     = code[offset + 3];
+					imageSampledList[target] = code[offset + 7];
+				}
+			}
+			else if (opcode == spirvInfo::opCode::typeSampler && wordCount >= 2) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) {
+					samplerList[target] = target;
+				}
+			}
+			else if (opcode == spirvInfo::opCode::typeStruct && wordCount >= 2) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) {
+					structList[target] = target;
+				}
+			}
+			else if (opcode == spirvInfo::opCode::variable && wordCount >= 4) {
+				uint32_t varId = code[offset + 2];
+
+				if (varId < bound) {
+					varTypeList[varId]    = code[offset + 1];
+					varStorageList[varId] = code[offset + 3];
+				}
+			}
+
+			offset += wordCount;
+		}
+
+		//第三趟按变量分类出描述符
+		std::vector<reflectBindingNode> result{};
+
+		for (uint32_t id = 1; id < bound; id++) {
+			//只看描述符存储类且带 binding 装饰的全局变量，push constant 无 binding 天然排除
+			if (varTypeList[id] == spirvInfo::invalidId || bindingList[id] == spirvInfo::invalidId) { continue; }
+			if (varStorageList[id] != spirvInfo::storageClass::uniformConstant && varStorageList[id] != spirvInfo::storageClass::uniform && varStorageList[id] != spirvInfo::storageClass::storageBuffer) { continue; }
+
+			//剥掉数组，拿到元素类型与数组长度
+			uint32_t elementId = pointeeList[varTypeList[id]];
+			uint32_t count     = 1;
+
+			if (elementId != spirvInfo::invalidId && elementList[elementId] != spirvInfo::invalidId) {
+				uint32_t lengthId = lengthList[elementId];
+				count     = (lengthId != spirvInfo::invalidId && valueList[lengthId] != spirvInfo::invalidId) ? valueList[lengthId] : 1;
+				elementId = elementList[elementId];
+			}
+
+			if (elementId == spirvInfo::invalidId) {
+				Log::printError(__FILE__, __LINE__, filename + " 反射失败：描述符类型解析不出：" + nameList[id]);
+			}
+
+			//按元素类型分类
+			bool isKnown = false;
+			VkDescriptorType type{};
+
+			if (sampledImageList[elementId] != spirvInfo::invalidId) {
+				type    = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				isKnown = true;
+			}
+			else if (samplerList[elementId] != spirvInfo::invalidId) {
+				type    = VK_DESCRIPTOR_TYPE_SAMPLER;
+				isKnown = true;
+			}
+			else if (imageDimList[elementId] != spirvInfo::invalidId) {
+				if (imageDimList[elementId] == spirvInfo::dimSubpassData)          { type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT; }
+				else if (imageSampledList[elementId] == spirvInfo::sampledStorage) { type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; }
+				else                                                    { type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; }
+				isKnown = true;
+			}
+			else if (structList[elementId] != spirvInfo::invalidId) {
+				if (varStorageList[id] == spirvInfo::storageClass::storageBuffer || blockList[elementId] == spirvInfo::decoration::bufferBlock) { type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; }
+				else                                                                                                     { type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; }
+				isKnown = true;
+			}
+
+			if (!isKnown) {
+				Log::printError(__FILE__, __LINE__, filename + " 反射失败：描述符类型不认识：" + nameList[id]);
+			}
+
+			result.push_back(reflectBindingNode{
+				.set     = (setList[id] == spirvInfo::invalidId) ? 0u : setList[id],
+				.binding = bindingList[id],
+				.count   = count,
+				.type    = type,
+				.stage   = modelStage,
+				.name    = nameList[id],
+			});
+		}
+
+		//入口点执行模型必须可识别（阶段由模块自推，已无"传入阶段"可对）
+		if (modelStage == 0) {
+			Log::printError(__FILE__, __LINE__, filename + " 入口点执行模型未知（spv 里没有有效 OpEntryPoint？）");
+		}
+
+		//按绑定号升序
+		std::sort(result.begin(), result.end(), [](const reflectBindingNode& left, const reflectBindingNode& right) { return left.binding < right.binding; });
+
+		return result;
+	}
+
+	//spv 文件 → 顶点输入表
+	std::vector<reflectInputNode> reflectInput(const std::string& filename) {
+		std::vector<uint32_t> code = readSpirv(filename);
+		uint32_t bound = code[3];
+
+		std::vector<uint32_t>    locationList(bound, spirvInfo::invalidId);    //Location 装饰
+		std::vector<uint32_t>    vectorCountList(bound, spirvInfo::invalidId); //OpTypeVector 的分量数
+		std::vector<uint32_t>    vectorCompList(bound, spirvInfo::invalidId);  //OpTypeVector 的标量类型 id
+		std::vector<uint32_t>    floatList(bound, spirvInfo::invalidId);       //OpTypeFloat 标记
+		std::vector<uint32_t>    pointeeList(bound, spirvInfo::invalidId);     //指针指向的类型
+		std::vector<uint32_t>    varTypeList(bound, spirvInfo::invalidId);     //变量的指针类型
+		std::vector<uint32_t>    varStorageList(bound, spirvInfo::invalidId);  //变量的存储类
+		std::vector<std::string> nameList(bound);                   //id 名字
+		const uint32_t model = reflectModel(code);		//入口点执行模型（唯一扫描点：reflectModel）
+
+		for (size_t offset = 5; offset < code.size(); ) {
+			uint32_t wordCount = code[offset] >> 16;
+			uint32_t opcode    = code[offset] & 0xFFFF;
+
+			if (wordCount == 0 || offset + wordCount > code.size()) {
+				Log::printError(__FILE__, __LINE__, filename + " 反射失败：指令越界");
+			}
+
+			if (opcode == spirvInfo::opCode::decorate && wordCount >= 4) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound && code[offset + 2] == spirvInfo::decoration::location) { locationList[target] = code[offset + 3]; }
+			}
+			else if (opcode == spirvInfo::opCode::typeFloat && wordCount >= 3) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) { floatList[target] = target; }
+			}
+			else if (opcode == spirvInfo::opCode::typeVector && wordCount >= 4) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) { vectorCompList[target] = code[offset + 2]; vectorCountList[target] = code[offset + 3]; }
+			}
+			else if (opcode == spirvInfo::opCode::typePointer && wordCount >= 4) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) { pointeeList[target] = code[offset + 3]; }
+			}
+			else if (opcode == spirvInfo::opCode::variable && wordCount >= 4) {
+				uint32_t varId = code[offset + 2];
+
+				if (varId < bound) { varTypeList[varId] = code[offset + 1]; varStorageList[varId] = code[offset + 3]; }
+			}
+			else if (opcode == spirvInfo::opCode::name && wordCount >= 3) {
+				uint32_t target = code[offset + 1];
+
+				if (target < bound) {
+					const char* text = reinterpret_cast<const char*>(&code[offset + 2]);
+					nameList[target] = std::string(text, strnlen(text, (wordCount - 2) * 4));
+				}
+			}
+
+			offset += wordCount;
+		}
+
+		VkShaderStageFlagBits stage = getStage(model);
+		std::vector<reflectInputNode> result{};
+
+		for (uint32_t id = 1; id < bound; id++) {
+			//只看 Input 存储类且带 Location 装饰的全局变量
+			if (varTypeList[id] == spirvInfo::invalidId || locationList[id] == spirvInfo::invalidId) { continue; }
+			if (varStorageList[id] != spirvInfo::storageClass::input) { continue; }
+
+			uint32_t typeId = pointeeList[varTypeList[id]];
+
+			//本引擎的顶点属性都是向量（float2/float3）；标量输入不在对拍范围内
+			if (typeId == spirvInfo::invalidId || vectorCountList[typeId] == spirvInfo::invalidId) { continue; }
+
+			VkFormat format = VK_FORMAT_UNDEFINED;
+
+			if (floatList[vectorCompList[typeId]] != spirvInfo::invalidId) {
+				if (vectorCountList[typeId] == 2)      { format = VK_FORMAT_R32G32_SFLOAT; }
+				else if (vectorCountList[typeId] == 3) { format = VK_FORMAT_R32G32B32_SFLOAT; }
+				else if (vectorCountList[typeId] == 4) { format = VK_FORMAT_R32G32B32A32_SFLOAT; }
+			}
+
+			if (format == VK_FORMAT_UNDEFINED) {
+				Log::printWarning(__FILE__, __LINE__, filename + " 顶点输入对拍：不认识的输入类型：" + nameList[id]);
+			}
+
+			result.push_back(reflectInputNode{
+				.location = locationList[id],
+				.format   = format,
+				.stage    = stage,
+				.name     = nameList[id],
+			});
+		}
+
+		//按 location 升序
+		std::sort(result.begin(), result.end(), [](const reflectInputNode& left, const reflectInputNode& right) { return left.location < right.location; });
+
+		return result;
+	}
+}
+
+//vertex	结构空间
+namespace vertexStruct {
+	//顶点绑定配置结点
+	struct vertexBindingConfigNode {
+		size_t						stride = 0;								//绑定步长
+		vertexEnum::rateId::type	rateType = vertexEnum::rateId::vertex;	//输入速率
+	};
+	
+	//顶点属性配置结点
+	struct vertexAttributeConfigNode {
+		vertexEnum::formatId::type formatType = vertexEnum::formatId::float3;	//格式
+		uint32_t				   binding	  = 0;								//绑定，通过不同的 offset 和 format 从同一个 buffer 里“切”出不同的字段，如果数据都在同一个 buffer 里，binding 都是 0
+		uint32_t				   offset	  = 0;								//偏移
+	};
+
+	//顶点布局配置结点
+	struct vertexLayoutConfigNode {
+		std::vector<vertexBindingConfigNode>   binding{};
+		std::vector<vertexAttributeConfigNode> attrib{};
+	};
+
+	//顶点布局结点
+	struct vertexLayoutNode {
+		std::vector<VkVertexInputBindingDescription>   bindingList{};	//绑定列表
+		std::vector<VkVertexInputAttributeDescription> attributeList{};	//属性列表
+
+
+
+		void createVertexLayoutNode(const vertexLayoutConfigNode& tLayoutConfig) {
+			bindingList.resize(tLayoutConfig.binding.size());
+			for (size_t i = 0; i < tLayoutConfig.binding.size(); i++) {
+				bindingList[i].binding   = static_cast<uint32_t>(i);
+				bindingList[i].stride    = static_cast<uint32_t>(tLayoutConfig.binding[i].stride);
+				bindingList[i].inputRate = createRate(tLayoutConfig.binding[i].rateType);
+			}
+
+			attributeList.resize(tLayoutConfig.attrib.size());
+			for (size_t i = 0; i < tLayoutConfig.attrib.size(); i++) {
+				attributeList[i].binding  = tLayoutConfig.attrib[i].binding;
+				attributeList[i].location = static_cast<uint32_t>(i);
+				attributeList[i].format   = createFormat(tLayoutConfig.attrib[i].formatType);
+				attributeList[i].offset   = tLayoutConfig.attrib[i].offset;
+			}
+		}
+
+	private:
+		VkVertexInputRate createRate(vertexEnum::rateId::type tRateType) {
+			VkVertexInputRate rate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+			switch (tRateType) {
+			case vertexEnum::rateId::vertex:   { rate = VK_VERTEX_INPUT_RATE_VERTEX;	break; }	//逐顶点
+			case vertexEnum::rateId::instance: { rate = VK_VERTEX_INPUT_RATE_INSTANCE;	break; }	//逐实例
+			default: {
+				Log::printError(__FILE__, __LINE__, "rateId 未写预设处理：值 " + std::to_string(static_cast<int>(tRateType)));
+				break;
+			}}
+
+			return rate;
+		}
+
+		VkFormat createFormat(vertexEnum::formatId::type formatType) {
+			VkFormat format = VK_FORMAT_UNDEFINED;
+
+			switch (formatType) {
+			case vertexEnum::formatId::float2: { format = VK_FORMAT_R32G32_SFLOAT;		break; }	//2×float：uiText 字形位置/纹理坐标
+			case vertexEnum::formatId::float3: { format = VK_FORMAT_R32G32B32_SFLOAT;	break; }	//3×float：坐标 / uv3 / 法线
+			default: {
+				Log::printError(__FILE__, __LINE__, "formatId 未写预设处理：值 " + std::to_string(static_cast<int>(formatType)));
+				break;
+			}}
+
+			return format;
+		}
+	};
+
+	//顶点网格结点：CPU 侧网格 = 顶点 + 索引
+	template<typename VertexNode>
+	struct vertexMeshNode {
+		std::vector<VertexNode>	vertexs{};	//顶点数组
+		std::vector<uint32_t>	indexs{};	//索引数组
+	};
+
+
+
+	//pipeTerrain
+	namespace terrainVertex {
+		struct vertexNode {
+			glm::vec3 position;		//坐标									
+			glm::vec3 texCoord;		//uv，xy用于循环平铺，z用于纹理数组索引	
+			glm::vec3 normal;		//法线									
+
+
+
+			static vertexLayoutNode createLayout() {
+				vertexLayoutNode layout{};
+				layout.createVertexLayoutNode(vertexLayoutConfigNode{
+					.binding = { vertexBindingConfigNode{ .stride = sizeof(vertexNode) } },
+					.attrib = {
+						vertexAttributeConfigNode{ .offset = static_cast<uint32_t>(offsetof(vertexNode, position)) },
+						vertexAttributeConfigNode{ .offset = static_cast<uint32_t>(offsetof(vertexNode, texCoord)) },
+						vertexAttributeConfigNode{ .offset = static_cast<uint32_t>(offsetof(vertexNode, normal)) },
+					},
+				});
+
+				return layout;
+			}
+
+			inline static const vertexLayoutNode layout{ createLayout() };
+		};
+
+		vertexMeshNode<vertexNode> mesh[plateEnum::terrainLayer::count];	//顶点网格（按层）
+	}
+
+	//model
+	namespace modelVertex {
+		struct vertexNode {
+			glm::vec3 position;		//坐标									
+			glm::vec2 texCoord;		//uv									
+			glm::vec3 normal;		//法线									
+
+
+
+			static vertexLayoutNode createLayout() {
+				vertexLayoutNode layout{};
+				layout.createVertexLayoutNode(vertexLayoutConfigNode{
+					.binding = { vertexBindingConfigNode{ .stride = sizeof(vertexNode) } },
+					.attrib   = {
+						vertexAttributeConfigNode{ .offset = static_cast<uint32_t>(offsetof(vertexNode, position)) },
+						vertexAttributeConfigNode{ .formatType = vertexEnum::formatId::float2, .offset = static_cast<uint32_t>(offsetof(vertexNode, texCoord)) },
+						vertexAttributeConfigNode{ .offset = static_cast<uint32_t>(offsetof(vertexNode, normal)) },
+					},
+				});
+
+				return layout;
+			}
+
+			inline static const vertexLayoutNode layout{ createLayout() };
+
+			//服务loadModel
+			bool operator==(const vertexNode& other) const {
+				return position == other.position && texCoord == other.texCoord && normal == other.normal;
+			}
+		};
+
+		//服务loadModel：顶点去重用的哈希（原 std::hash<vertexNode> 特化，改为本命名空间内的自定义 hasher）
+		struct vertexNodeHash {
+			size_t operator()(const vertexNode& vertex) const {
+				return (std::hash<glm::vec3>()(vertex.position) ^ (std::hash<glm::vec3>()(vertex.normal) << 1) ^ (std::hash<glm::vec2>()(vertex.texCoord) << 2));
+			}
+		};
+
+		vertexMeshNode<vertexNode>				sMesh[bufferEnum::procStaticModelId::count];	//静态模型网格
+		std::vector<vertexMeshNode<vertexNode>>	dMesh[bufferEnum::procDynamicModelId::count];	//动态模型网格
+	}
+
+	//pipeSkybox
+	namespace skyboxVertex {
+		struct vertexNode {
+			glm::vec3 position;		//坐标									
+
+
+
+			static vertexLayoutNode createLayout() {
+				vertexLayoutNode layout{};
+				layout.createVertexLayoutNode(vertexLayoutConfigNode{
+					.binding = { vertexBindingConfigNode{ .stride = sizeof(vertexNode) } },
+					.attrib   = {
+						vertexAttributeConfigNode{ .offset = static_cast<uint32_t>(offsetof(vertexNode, position)) },
+					},
+				});
+
+				return layout;
+			}
+
+			inline static const vertexLayoutNode layout{ createLayout() };
+		};
+
+		//顶点数组
+		std::vector<vertexNode> vertexs = {
+			{glm::vec3{ 16.0f, 16.0f,-16.0f}},
+			{glm::vec3{-16.0f, 16.0f,-16.0f}},
+			{glm::vec3{-16.0f,-16.0f,-16.0f}},
+			{glm::vec3{ 16.0f,-16.0f,-16.0f}},
+						
+			{glm::vec3{ 16.0f, 16.0f, 16.0f}},
+			{glm::vec3{-16.0f, 16.0f, 16.0f}},
+			{glm::vec3{-16.0f,-16.0f, 16.0f}},
+			{glm::vec3{ 16.0f,-16.0f, 16.0f}}
+		};
+
+		//索引数组
+		std::vector<uint32_t> indexs = {
+			1,4,5,0,4,1,
+			6,3,2,7,3,6,
+			3,4,0,7,4,3,
+			6,1,5,2,1,6,
+			7,5,4,6,5,7,
+			2,0,1,3,0,2,
+		};
+	}
+
+	//pipeMine
+	namespace mineVertex {
+		struct vertexNode {
+			glm::vec3 position;		//坐标									
+
+
+
+			static vertexLayoutNode createLayout() {
+				vertexLayoutNode layout{};
+				layout.createVertexLayoutNode(vertexLayoutConfigNode{
+					.binding = { vertexBindingConfigNode{ .stride = sizeof(vertexNode) } },
+					.attrib   = {
+						vertexAttributeConfigNode{ .offset = static_cast<uint32_t>(offsetof(vertexNode, position)) },
+					},
+				});
+
+				return layout;
+			}
+
+			inline static const vertexLayoutNode layout{ createLayout() };
+		};
+
+		//顶点数组
+		std::vector<vertexNode> vertexs = { 
+			{vertexInfo::vertexID[0]},
+			{vertexInfo::vertexID[1]},
+			{vertexInfo::vertexID[2]},
+			{vertexInfo::vertexID[3]},
+
+			{vertexInfo::vertexID[4]},
+			{vertexInfo::vertexID[5]},
+			{vertexInfo::vertexID[6]},
+			{vertexInfo::vertexID[7]}
+		};
+
+		//索引数组 面
+		/*std::vector<uint32_t> indexs = {
+			5,4,1,1,4,0,
+			2,3,6,6,3,7,
+			0,4,3,3,4,7,
+			5,1,6,6,1,2,
+			4,5,7,7,5,6,
+			1,0,2,2,0,3
+		};*/
+
+		//索引数组 线
+		std::vector<uint32_t> indexs = {
+			0,1,1,5,5,4,4,0,
+			6,2,2,3,3,7,7,6,
+			7,3,3,0,0,4,4,7,
+			1,2,2,6,6,5,5,1,
+			2,3,3,0,0,1,1,2,
+			4,5,5,6,6,7,7,4
+		};
+	}
+
+	//pipeUIText
+	namespace uiTextVertex {
+		struct vertexNode {
+			static vertexLayoutNode createLayout() {
+				vertexLayoutNode layout{};
+				layout.createVertexLayoutNode(vertexLayoutConfigNode{
+					.binding = { vertexBindingConfigNode{ .stride = sizeof(glm::vec4) }, vertexBindingConfigNode{ .stride = sizeof(glm::vec4) } },
+					.attrib   = {
+						vertexAttributeConfigNode{ .formatType = vertexEnum::formatId::float2, .offset = 0 },
+						vertexAttributeConfigNode{ .formatType = vertexEnum::formatId::float2, .binding = 1, .offset = sizeof(glm::vec2) },
+					},
+				});
+
+				return layout;
+			}
+
+			inline static const vertexLayoutNode layout{ createLayout() };
+		};
+	}
+
+	//pipeOSMirror
+	namespace osMirrorVertex {
+		struct vertexNode {
+			glm::vec3 position;
+
+
+
+			static vertexLayoutNode createLayout() {
+				vertexLayoutNode layout{};
+				layout.createVertexLayoutNode(vertexLayoutConfigNode{
+					.binding = { vertexBindingConfigNode{ .stride = sizeof(vertexNode) } },
+					.attrib   = {
+						vertexAttributeConfigNode{ .offset = static_cast<uint32_t>(offsetof(vertexNode, position)) },
+					},
+				});
+
+				return layout;
+			}
+
+			inline static const vertexLayoutNode layout{ createLayout() };
+		};
+
+		//顶点数组
+		std::vector<vertexNode> vertexs = {
+			{vertexInfo::vertexID[0]},
+			{vertexInfo::vertexID[1]},
+			{vertexInfo::vertexID[2]},
+			{vertexInfo::vertexID[3]},
+
+			{vertexInfo::vertexID[4]},
+			{vertexInfo::vertexID[5]},
+			{vertexInfo::vertexID[6]},
+			{vertexInfo::vertexID[7]}
+		};
+
+		//索引数组 面
+		std::vector<uint32_t> indexs = {
+			4,5,7,7,5,6,
+		};
+	}
+
+	//offScreen
+	namespace offScreenVertex {
+		struct vertexNode {
+			static vertexLayoutNode createLayout() {
+				vertexLayoutNode layout{};
+				layout.createVertexLayoutNode(vertexLayoutConfigNode{});
+
+				return layout;
+			}
+
+			inline static const vertexLayoutNode layout{ createLayout() };
+		};
+	}
+
+	//shadow
+	namespace shadowVertex {
+		struct vertexNode {
+			glm::vec3 position;		//坐标									
+
+
+
+			static vertexLayoutNode createLayout() {
+				vertexLayoutNode layout{};
+				layout.createVertexLayoutNode(vertexLayoutConfigNode{
+					.binding = { vertexBindingConfigNode{ .stride = sizeof(vertexNode) } },
+					.attrib   = {
+						vertexAttributeConfigNode{ .offset = static_cast<uint32_t>(offsetof(vertexNode, position)) },
+					},
+				});
+
+				return layout;
+			}
+
+			inline static const vertexLayoutNode layout{ createLayout() };
+		};
+
+		vertexMeshNode<vertexNode> tMesh[plateEnum::terrainLayer::count];						//地形网格
+		vertexMeshNode<vertexNode> sMesh[bufferEnum::procStaticModelId::count];					//静态模型网格
+		std::vector<vertexMeshNode<vertexNode>> dMesh[bufferEnum::procDynamicModelId::count];	//动态模型网格
+
+
+
+		//缩位生成地形阴影顶点（只保位置）；shadow 是"有意的第二份"⇒ 生成后必须与源网格对拍
+		void loadTerrainVertexs(int layer) {
+			const std::vector<terrainVertex::vertexNode>& sourceVerts = terrainVertex::mesh[layer].vertexs;
+			std::vector<vertexNode>&					  targetVerts = tMesh[layer].vertexs;
+
+			const size_t vertCount = sourceVerts.size();
+			targetVerts.clear();
+			targetVerts.reserve(vertCount);
+
+			for (size_t i = 0; i < vertCount; ++i) {
+				targetVerts.push_back(vertexNode{ sourceVerts[i].position });
+			}
+
+			if (targetVerts.size() != vertCount) {
+				Log::printError(__FILE__, __LINE__, "地形阴影顶点缩位条数与源网格不一致：" + std::to_string(targetVerts.size()) + " ≠ " + std::to_string(vertCount));
+			}
+		}
+	}
+}
+
+//pipeline  结构空间
+namespace pipelineStruct {
+	//pipeConfig 传参结点
+	struct pipeConfigParamNode {
+		pipelineEnum::primitiveId::type     primitiveType = pipelineEnum::primitiveId::triangleList;	//图元
+		pipelineEnum::rasterId::type        rasterType	  = pipelineEnum::rasterId::fill_back_ccw;		//光栅
+		pipelineEnum::biasId::type          biasType	  = pipelineEnum::biasId::polygonOffset;		//深度偏移
+		pipelineEnum::depthId::type         depthType	  = pipelineEnum::depthId::test_write_less;		//深度
+		pipelineEnum::stencilId::type       stencilType	  = pipelineEnum::stencilId::none;				//模板
+		pipelineEnum::blendId::type         blendType	  = pipelineEnum::blendId::opaque;				//颜色混合
+		pipelineEnum::writeMaskId::type     writeMaskType = pipelineEnum::writeMaskId::rgba;			//颜色写入
+		pipelineEnum::logicOpId::type       logicOpType	  = pipelineEnum::logicOpId::disable;			//颜色运算
+		pipelineEnum::dynamicId::type       dynamicType	  = pipelineEnum::dynamicId::none;				//动态状态
+	};
+
+	//pipeConfig 结点
+	struct pipeConfigNode {
+		//预设指定
 		VkPipelineInputAssemblyStateCreateInfo			 primitiveState{};	        //图元配置
 		VkPipelineRasterizationStateCreateInfo			 rasterizer{};			    //光栅化
 		VkPipelineDepthStencilStateCreateInfo			 depthStencil{};		    //深度和模板
 		VkPipelineColorBlendStateCreateInfo				 colorAttachmentState{};    //颜色附件配置
-		std::vector<VkDynamicState>                      pipeDynamicStageList{};    //管线动态阶段列表（Vulkan 1.4 共 48 个）
+		std::vector<VkPipelineColorBlendAttachmentState> colorAttachmentList{};     //颜色附件列表（前向模式、延迟模式、阴影模式）
+		std::vector<VkDynamicState>                      pipeDynamicStageList{};    //管线动态阶段列表
 		VkPipelineDynamicStateCreateInfo                 pipeDynamicStageState{};   //管线动态阶段配置
+
+		//运行指定
+		std::vector<VkPipelineShaderStageCreateInfo>     shaderStageList{};         //着色阶段列表（顶点模式、网格模式）
+		VkPipelineVertexInputStateCreateInfo             vertInputStage{};          //顶点配置
+		std::vector<VkVertexInputBindingDescription>     vertBindingList{};         //顶点绑定
+		std::vector<VkVertexInputAttributeDescription>   vertAttributeList{};       //顶点属性
+		VkViewport										 viewport{};			    //视口区域
+		VkRect2D										 scissor{};				    //裁剪区域
 		VkPipelineViewportStateCreateInfo				 viewportState{};		    //视口配置
+		VkPipelineMultisampleStateCreateInfo			 multisampling{};		    //多重采样
 		VkGraphicsPipelineCreateInfo					 pipeInfo{};			    //管线信息
 
 
+		
+		//创建 管线配置
+		void createPipeConfigNode(std::span<const std::string> shaderFileList, const vertexStruct::vertexLayoutNode& vertexLayout, VkSampleCountFlagBits msaa, const renderStruct::renderTemplateNode& tRenderTemplateNode, VkPipelineLayout pipeLayout, const pipeConfigParamNode& param, const VkDevice& device) {
+			primitiveState        = createPrimitive   (param.primitiveType);										//图元
+			rasterizer            = createRaster	  (param.rasterType, param.biasType);							//光栅
+			depthStencil          = createDepthStencil(param.depthType, param.stencilType);							//深度 + 模板
+			colorAttachmentState  = createBlend       (param.blendType, param.writeMaskType, param.logicOpType);	//颜色混合
+			pipeDynamicStageState = createDynamic     (param.dynamicType);											//动态状态
 
-		void createPipeConfigNode(const std::vector<pipelineStruct::shaderNode>& shaderList, VkSampleCountFlagBits msaa, renderEnum::renderAttId::type renderAttType, const VkRenderPass& render, const VkPipelineLayout& pipeLayout) {
 			//着色阶段列表
-			shaderStageList.resize(shaderList.size());
-			for (int i = 0; i < shaderList.size(); i++) {
-				shaderStageList[i] = shaderList[i].shaderStage;
-			}
+			createShaderStageList(shaderFileList, device);
 
-			//图元配置
-			primitiveState.sType					 = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-			primitiveState.topology				 = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;		//图元装配方式
-			primitiveState.primitiveRestartEnable = VK_FALSE;
+			//顶点输入
+			vertBindingList   = vertexLayout.bindingList;
+			vertAttributeList = vertexLayout.attributeList;
+
+			vertInputStage.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+			vertInputStage.vertexBindingDescriptionCount   = static_cast<uint32_t>(vertBindingList.size());
+			vertInputStage.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertAttributeList.size());
+			vertInputStage.pVertexBindingDescriptions	   = vertBindingList.data();
+			vertInputStage.pVertexAttributeDescriptions    = vertAttributeList.data();
 
 			//视口区域
 			viewport.x		  = 0.0f;
@@ -2181,19 +3113,6 @@ namespace pipelineStruct {
 			viewportState.scissorCount	= 1;
 			viewportState.pScissors		= &scissor;
 
-			//光栅化
-			rasterizer.sType				   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-			rasterizer.depthClampEnable		   = VK_FALSE;
-			rasterizer.rasterizerDiscardEnable = VK_FALSE;
-			rasterizer.polygonMode			   = VK_POLYGON_MODE_FILL;				//决定几何产生图片的内容
-			rasterizer.lineWidth			   = 1.0f;
-			rasterizer.cullMode				   = VK_CULL_MODE_BACK_BIT;				//面剔除
-			rasterizer.frontFace			   = VK_FRONT_FACE_COUNTER_CLOCKWISE;	//面的加载顺序
-			rasterizer.depthBiasEnable		   = VK_TRUE;							//启用深度偏移，让mine能覆盖方块
-			rasterizer.depthBiasConstantFactor = 1.0f;								//常量偏移量
-			rasterizer.depthBiasClamp		   = 0.0f;								//不限制最小偏移
-			rasterizer.depthBiasSlopeFactor    = 1.0f;								//基于斜率的深度偏移
-
 			//多重采样
 			multisampling.sType					= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 			multisampling.sampleShadingEnable	= VK_FALSE;
@@ -2203,54 +3122,24 @@ namespace pipelineStruct {
 			multisampling.alphaToCoverageEnable = VK_FALSE;											
 			multisampling.alphaToOneEnable		= VK_FALSE;												
 
-			//深度和模板
-			depthStencil.sType				   = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-			depthStencil.depthTestEnable	   = VK_TRUE;							//指定是否应该将新的深度缓冲区与深度缓冲区进行比较，以确认是否应该被丢弃
-			depthStencil.depthWriteEnable	   = VK_TRUE;							//指定通过深度测试的新的片段深度是否应该被实际写入深度缓冲区
-			depthStencil.depthCompareOp		   = VK_COMPARE_OP_LESS;				//指定执行保留或者丢弃片段的比较细节
-			depthStencil.depthBoundsTestEnable = VK_FALSE;							//depthBoundsTestEnable, minDepthBounds 和 maxDepthBounds 字段用于可选择的优化深度绑定测试
-			depthStencil.minDepthBounds		   = 0.0f;
-			depthStencil.maxDepthBounds		   = 1.0f;
-			depthStencil.stencilTestEnable	   = VK_FALSE;							//用于配置模版缓冲区的操作
-			depthStencil.front				   = {};
-			depthStencil.back				   = {};
-
-			//颜色附件列表
-			VkPipelineColorBlendAttachmentState colorAttachmentNode{
-				.blendEnable         = VK_FALSE,
-				.srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
-				.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,
-				.colorBlendOp		 = VK_BLEND_OP_ADD,
-				.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-				.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-				.alphaBlendOp		 = VK_BLEND_OP_ADD,
-				.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
-			};
-
-			switch (renderAttType) {
+			//颜色附件：按渲染目标模式决定数量，前向 1、延迟 3、阴影 0，并用第 1 项（createBlend 铺的配置模板）填充
+			uint32_t attachCount = 0;
+			switch (tRenderTemplateNode.renderAttType) {
 			case renderEnum::renderAttId::forward_ra:
-				colorAttachmentList.push_back(colorAttachmentNode);
+				attachCount = 1;
 				break;
 			case renderEnum::renderAttId::deferred_ra:
-				colorAttachmentList.push_back(colorAttachmentNode);
-				colorAttachmentList.push_back(colorAttachmentNode);
-				colorAttachmentList.push_back(colorAttachmentNode);
+				attachCount = 3;
 				break;
 			case renderEnum::renderAttId::shadowMap_ra:
-				//阴影管线无需颜色附件
+				attachCount = 0;
 				break;
 			}
 
-			//颜色附件配置
-			colorAttachmentState.sType			   = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-			colorAttachmentState.logicOpEnable	   = VK_FALSE;
-			colorAttachmentState.logicOp		   = VK_LOGIC_OP_COPY;		
-			colorAttachmentState.attachmentCount   = static_cast<uint32_t>(colorAttachmentList.size());
-			colorAttachmentState.pAttachments	   = colorAttachmentList.data();
-			colorAttachmentState.blendConstants[0] = 0.0f;				
-			colorAttachmentState.blendConstants[1] = 0.0f;				
-			colorAttachmentState.blendConstants[2] = 0.0f;				
-			colorAttachmentState.blendConstants[3] = 0.0f;				
+			VkPipelineColorBlendAttachmentState attachmentTemplate = colorAttachmentList.empty() ? VkPipelineColorBlendAttachmentState{} : colorAttachmentList[0];
+			colorAttachmentList.resize(attachCount, attachmentTemplate);
+			colorAttachmentState.attachmentCount = static_cast<uint32_t>(colorAttachmentList.size());
+			colorAttachmentState.pAttachments	 = colorAttachmentList.data();
 
 			//管线信息
 			pipeInfo.sType				 = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -2263,24 +3152,835 @@ namespace pipelineStruct {
 			pipeInfo.pMultisampleState	 = &multisampling;
 			pipeInfo.pDepthStencilState  = &depthStencil;
 			pipeInfo.pColorBlendState	 = &colorAttachmentState;
-			pipeInfo.pDynamicState		 = nullptr;					
+			pipeInfo.pDynamicState		 = &pipeDynamicStageState;
 			pipeInfo.layout			     = pipeLayout;
-			pipeInfo.renderPass          = render;
+			pipeInfo.renderPass          = tRenderTemplateNode.render;
 			pipeInfo.subpass			 = 0;
 			pipeInfo.basePipelineHandle  = VK_NULL_HANDLE;		
 			pipeInfo.basePipelineIndex	 = -1;
 		}
 
+		void clear(const VkDevice& device) {
+			for (const VkPipelineShaderStageCreateInfo& shaderStage : shaderStageList) {
+				if (shaderStage.module != VK_NULL_HANDLE) { vkDestroyShaderModule(device, shaderStage.module, nullptr); }
+			}
+
+			shaderStageList.clear();
+		}
+
+	private:
+		//创建 图元
+		VkPipelineInputAssemblyStateCreateInfo createPrimitive(pipelineEnum::primitiveId::type primitiveType) {
+			VkPipelineInputAssemblyStateCreateInfo primitive{};
+			primitive.sType					 = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+			primitive.primitiveRestartEnable = VK_FALSE;				//关闭图元重启（仅对 triangleStrip / lineStrip 生效）
+
+			switch (primitiveType) {
+			case pipelineEnum::primitiveId::pointList:                  { primitive.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;					break; }	//点列表：		粒子、调试点云
+			case pipelineEnum::primitiveId::lineList:                   { primitive.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;						break; }	//线段列表：	线框、选择框描边
+			case pipelineEnum::primitiveId::lineStrip:                  { primitive.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;					break; }	//线段条带：	轨迹、曲线可视化
+			case pipelineEnum::primitiveId::triangleList:               { primitive.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;					break; }	//三角形列表：	网格/地形/模型主力（＝现有硬编码）
+			case pipelineEnum::primitiveId::triangleStrip:              { primitive.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;				break; }	//三角形条带：	UI 四边形、带状网格
+			case pipelineEnum::primitiveId::triangleFan:                { primitive.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;					break; }	//三角形扇：	扇形/锥体（GL 遗留，条带+退化索引可替代）
+			case pipelineEnum::primitiveId::lineListWithAdjacency:      { primitive.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;		break; }	//邻接线段列表（需 geometryShader）
+			case pipelineEnum::primitiveId::lineStripWithAdjacency:     { primitive.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;		break; }	//邻接线段条带
+			case pipelineEnum::primitiveId::triangleListWithAdjacency:  { primitive.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;	break; }	//邻接三角形列表：轮廓/法线外扩
+			case pipelineEnum::primitiveId::triangleStripWithAdjacency: { primitive.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY; break; }	//邻接三角形条带
+			case pipelineEnum::primitiveId::patchList:                  { primitive.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;					break; }	//面片列表（需 tessellationShader）
+			default: {
+				Log::printError(__FILE__, __LINE__, "primitiveId 未写预设处理：值 " + std::to_string(static_cast<int>(primitiveType)));
+				break;
+			}}
+
+			return primitive;
+		}
+
+		//创建 光栅
+		VkPipelineRasterizationStateCreateInfo createRaster(pipelineEnum::rasterId::type rasterType, pipelineEnum::biasId::type biasType) {
+			VkPipelineRasterizationStateCreateInfo rasterState{};
+			rasterState.sType					= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+			rasterState.lineWidth				= 1.0f;				//固定常量：线宽
+			rasterState.depthClampEnable		= VK_FALSE;			//仅 fill_back_ccw_clampDepth 会改：夹紧深度
+			rasterState.rasterizerDiscardEnable	= VK_FALSE;			//仅 discardAll				  会改：丢弃全部图元
+
+			switch (rasterType) {
+			case pipelineEnum::rasterId::fill_none_ccw: {					//填充·不剔·逆时针：双面薄片
+				rasterState.polygonMode = VK_POLYGON_MODE_FILL;
+				rasterState.cullMode    = VK_CULL_MODE_NONE;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::fill_none_cw: {					//填充·不剔·顺时针
+				rasterState.polygonMode = VK_POLYGON_MODE_FILL;
+				rasterState.cullMode    = VK_CULL_MODE_NONE;
+				rasterState.frontFace   = VK_FRONT_FACE_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::fill_front_ccw: {					//填充·剔正面·逆时针：天空盒内侧/镜像
+				rasterState.polygonMode = VK_POLYGON_MODE_FILL;
+				rasterState.cullMode    = VK_CULL_MODE_FRONT_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::fill_front_cw: {					//填充·剔正面·顺时针
+				rasterState.polygonMode = VK_POLYGON_MODE_FILL;
+				rasterState.cullMode    = VK_CULL_MODE_FRONT_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::fill_back_ccw: {					//填充·剔背面·逆时针：不透明实体标准（＝现有硬编码）
+				rasterState.polygonMode = VK_POLYGON_MODE_FILL;
+				rasterState.cullMode    = VK_CULL_MODE_BACK_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::fill_back_cw: {					//填充·剔背面·顺时针：镜像资源
+				rasterState.polygonMode = VK_POLYGON_MODE_FILL;
+				rasterState.cullMode    = VK_CULL_MODE_BACK_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::fill_front_and_back: {				//填充·双面·逆时针：厚薄片/透明排序
+				rasterState.polygonMode = VK_POLYGON_MODE_FILL;
+				rasterState.cullMode    = VK_CULL_MODE_FRONT_AND_BACK;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::line_none_ccw: {					//线框·不剔·逆时针：调试/技术图
+				rasterState.polygonMode = VK_POLYGON_MODE_LINE;
+				rasterState.cullMode    = VK_CULL_MODE_NONE;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::line_none_cw: {					//线框·不剔·顺时针
+				rasterState.polygonMode = VK_POLYGON_MODE_LINE;
+				rasterState.cullMode    = VK_CULL_MODE_NONE;
+				rasterState.frontFace   = VK_FRONT_FACE_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::line_front_ccw: {					//线框·剔正面·逆时针：内轮廓
+				rasterState.polygonMode = VK_POLYGON_MODE_LINE;
+				rasterState.cullMode    = VK_CULL_MODE_FRONT_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::line_front_cw: {					//线框·剔正面·顺时针
+				rasterState.polygonMode = VK_POLYGON_MODE_LINE;
+				rasterState.cullMode    = VK_CULL_MODE_FRONT_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::line_back_ccw: {					//线框·剔背面·逆时针：选择框描边/隐藏线
+				rasterState.polygonMode = VK_POLYGON_MODE_LINE;
+				rasterState.cullMode    = VK_CULL_MODE_BACK_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::line_back_cw: {					//线框·剔背面·顺时针
+				rasterState.polygonMode = VK_POLYGON_MODE_LINE;
+				rasterState.cullMode    = VK_CULL_MODE_BACK_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::line_front_and_back: {				//线框·双面·逆时针：全部边线
+				rasterState.polygonMode = VK_POLYGON_MODE_LINE;
+				rasterState.cullMode    = VK_CULL_MODE_FRONT_AND_BACK;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::point_none_ccw: {					//点·不剔·逆时针：顶点可视化
+				rasterState.polygonMode = VK_POLYGON_MODE_POINT;
+				rasterState.cullMode    = VK_CULL_MODE_NONE;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::point_none_cw: {					//点·不剔·顺时针
+				rasterState.polygonMode = VK_POLYGON_MODE_POINT;
+				rasterState.cullMode    = VK_CULL_MODE_NONE;
+				rasterState.frontFace   = VK_FRONT_FACE_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::point_front_ccw: {					//点·剔正面·逆时针：内面顶点可视化
+				rasterState.polygonMode = VK_POLYGON_MODE_POINT;
+				rasterState.cullMode    = VK_CULL_MODE_FRONT_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::point_front_cw: {					//点·剔正面·顺时针
+				rasterState.polygonMode = VK_POLYGON_MODE_POINT;
+				rasterState.cullMode    = VK_CULL_MODE_FRONT_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::point_back_ccw: {					//点·剔背面·逆时针：外表面顶点可视化
+				rasterState.polygonMode = VK_POLYGON_MODE_POINT;
+				rasterState.cullMode    = VK_CULL_MODE_BACK_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::point_back_cw: {					//点·剔背面·顺时针
+				rasterState.polygonMode = VK_POLYGON_MODE_POINT;
+				rasterState.cullMode    = VK_CULL_MODE_BACK_BIT;
+				rasterState.frontFace   = VK_FRONT_FACE_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::point_front_and_back: {			//点·双面·逆时针：全部顶点可视化
+				rasterState.polygonMode = VK_POLYGON_MODE_POINT;
+				rasterState.cullMode    = VK_CULL_MODE_FRONT_AND_BACK;
+				rasterState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				break;
+			}
+			case pipelineEnum::rasterId::fill_back_ccw_clampDepth: {		//填充·剔背面·逆时针·夹紧深度（需 depthClamp）
+				rasterState.polygonMode      = VK_POLYGON_MODE_FILL;
+				rasterState.cullMode         = VK_CULL_MODE_BACK_BIT;
+				rasterState.frontFace        = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				rasterState.depthClampEnable = VK_TRUE;
+				break;
+			}
+			case pipelineEnum::rasterId::discardAll: {						//丢弃全部图元：只走顶点/网格阶段（光栅三字段为占位）
+				rasterState.polygonMode             = VK_POLYGON_MODE_FILL;
+				rasterState.cullMode                = VK_CULL_MODE_NONE;
+				rasterState.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				rasterState.rasterizerDiscardEnable = VK_TRUE;
+				break;
+			}
+			default: {
+				Log::printError(__FILE__, __LINE__, "rasterId 未写预设处理：值 " + std::to_string(static_cast<int>(rasterType)));
+				break;
+			}}
+
+			switch (biasType) {
+			case pipelineEnum::biasId::none: {						//不偏移：主通道默认
+				rasterState.depthBiasEnable         = VK_FALSE;
+				rasterState.depthBiasConstantFactor = 0.0f;
+				rasterState.depthBiasSlopeFactor    = 0.0f;
+				rasterState.depthBiasClamp          = 0.0f;
+				break;
+			}
+			case pipelineEnum::biasId::polygonOffset: {				//多边形偏移：常量 1.0/斜率 1.0/不夹紧（＝现有硬编码）
+				rasterState.depthBiasEnable         = VK_TRUE;
+				rasterState.depthBiasConstantFactor = 1.0f;
+				rasterState.depthBiasSlopeFactor    = 1.0f;
+				rasterState.depthBiasClamp          = 0.0f;
+				break;
+			}
+			case pipelineEnum::biasId::shadowOffset: {				//阴影斜率偏移：常量 0.0/斜率 1.0/不夹紧
+				rasterState.depthBiasEnable         = VK_TRUE;
+				rasterState.depthBiasConstantFactor = 0.0f;
+				rasterState.depthBiasSlopeFactor    = 1.0f;
+				rasterState.depthBiasClamp          = 0.0f;
+				break;
+			}
+			default: {
+				Log::printError(__FILE__, __LINE__, "biasId 未写预设处理：值 " + std::to_string(static_cast<int>(biasType)));
+				break;
+			}}
+
+			return rasterState;
+		}
+
+		//创建 深度模板
+		VkPipelineDepthStencilStateCreateInfo  createDepthStencil(pipelineEnum::depthId::type depthType, pipelineEnum::stencilId::type stencilType) {
+			VkPipelineDepthStencilStateCreateInfo depthState{};
+			depthState.sType		  = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+			depthState.front		  = {};				//固定常量：模板 front/back 归零（stencil 预设只改其中子字段）
+			depthState.back			  = {};				//固定常量：模板 front/back 归零（stencil 预设只改其中子字段）
+			depthState.minDepthBounds = 0.0f;			//仅 *_bounds 深度预设会改：深度范围下界
+			depthState.maxDepthBounds = 1.0f;			//仅 *_bounds 深度预设会改：深度范围上界
+
+			switch (depthType) {
+			case pipelineEnum::depthId::test_never: {					//测·永不通过：强制走模板 depthFail 分支
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_TRUE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_NEVER;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_write_less: {				//测·写·小于：不透明物体标准（＝现有硬编码）
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_TRUE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_LESS;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_write_equal: {				//测·写·等于：共面/等深二次绘制
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_TRUE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_EQUAL;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_write_lessEqual: {			//测·写·≤：共面贴合、阴影深度比较
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_TRUE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_LESS_OR_EQUAL;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_write_greater: {			//测·写·大于：reversed-Z
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_TRUE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_GREATER;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_write_notEqual: {			//测·写·不等：遮罩式绘制
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_TRUE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_NOT_EQUAL;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_write_greaterEqual: {		//测·写·≥：reversed-Z 共面
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_TRUE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_GREATER_OR_EQUAL;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_write_always: {			//测·写·始终通过：深度预通道
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_TRUE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_ALWAYS;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_noWrite_less: {			//测·不写·小于：只测不写（遮挡剔除）
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_FALSE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_LESS;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_noWrite_equal: {			//测·不写·等于：等深处叠加、不改深度
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_FALSE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_EQUAL;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_noWrite_lessEqual: {		//测·不写·≤：天空盒/背景层
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_FALSE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_LESS_OR_EQUAL;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_noWrite_greater: {			//测·不写·大于：reversed-Z 只测不写
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_FALSE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_GREATER;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_noWrite_notEqual: {		//测·不写·不等：深度不一致处显示（遮罩）
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_FALSE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_NOT_EQUAL;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_noWrite_greaterEqual: {	//测·不写·≥：reversed-Z 只测不写（共面）
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_FALSE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_GREATER_OR_EQUAL;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_noWrite_always: {			//测·不写·始终通过：永远可见前景层
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_FALSE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_ALWAYS;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::noDepth: {						//不参与深度：纯 2D/UI 与后处理（compare 为占位）
+				depthState.depthTestEnable         = VK_FALSE;
+				depthState.depthWriteEnable        = VK_FALSE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_LESS;
+				depthState.depthBoundsTestEnable   = VK_FALSE;
+				break;
+			}
+			case pipelineEnum::depthId::test_write_less_bounds: {		//测·写·小于·范围：级联阴影深度切片（需 depthBounds）
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_TRUE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_LESS;
+				depthState.depthBoundsTestEnable   = VK_TRUE;
+				depthState.minDepthBounds          = 0.0f;				//(0,1) 静态空操作兜底：配 viewportScissorBounds 时被动态值覆盖，无影响
+				depthState.maxDepthBounds          = 1.0f;
+				break;
+			}
+			case pipelineEnum::depthId::test_noWrite_less_bounds: {		//测·不写·小于·范围：同上但不写深度
+				depthState.depthTestEnable         = VK_TRUE;
+				depthState.depthWriteEnable        = VK_FALSE;
+				depthState.depthCompareOp          = VK_COMPARE_OP_LESS;
+				depthState.depthBoundsTestEnable   = VK_TRUE;
+				depthState.minDepthBounds          = 0.0f;				//(0,1) 静态空操作兜底：配 viewportScissorBounds 时被动态值覆盖，无影响
+				depthState.maxDepthBounds          = 1.0f;
+				break;
+			}
+			default: {
+				Log::printError(__FILE__, __LINE__, "depthId 未写预设处理：值 " + std::to_string(static_cast<int>(depthType)));
+				break;
+			}}
+
+			switch (stencilType) {
+			case pipelineEnum::stencilId::none: {						//不测试：其余字段被忽略（保持默认全 0＝KEEP）
+				depthState.stencilTestEnable = VK_FALSE; 
+				break; 
+			}	
+			case pipelineEnum::stencilId::writeRef1: {					//标记通道：写参考值 1，描边/遮罩第一步
+				depthState.stencilTestEnable    = VK_TRUE;
+				depthState.front.passOp         = VK_STENCIL_OP_REPLACE;
+				depthState.front.compareOp      = VK_COMPARE_OP_ALWAYS;
+				depthState.front.compareMask    = 0xFF;
+				depthState.front.writeMask      = 0xFF;
+				depthState.front.reference      = 1;
+				depthState.back.passOp          = VK_STENCIL_OP_REPLACE;
+				depthState.back.compareOp       = VK_COMPARE_OP_ALWAYS;
+				depthState.back.compareMask     = 0xFF;
+				depthState.back.writeMask       = 0xFF;
+				depthState.back.reference       = 1;
+				break;
+			}
+			case pipelineEnum::stencilId::drawEqual1: {					//仅标记处绘制：compare=EQUAL 1，模板不改写
+				depthState.stencilTestEnable    = VK_TRUE;
+				depthState.front.compareOp      = VK_COMPARE_OP_EQUAL;
+				depthState.front.compareMask    = 0xFF;
+				depthState.front.reference      = 1;
+				depthState.back.compareOp       = VK_COMPARE_OP_EQUAL;
+				depthState.back.compareMask     = 0xFF;
+				depthState.back.reference       = 1;
+				break;
+			}
+			case pipelineEnum::stencilId::drawNotEqual1: {				//仅未标记处绘制：compare=NOT_EQUAL 1（描边外扩）
+				depthState.stencilTestEnable    = VK_TRUE;
+				depthState.front.compareOp      = VK_COMPARE_OP_NOT_EQUAL;
+				depthState.front.compareMask    = 0xFF;
+				depthState.front.reference      = 1;
+				depthState.back.compareOp       = VK_COMPARE_OP_NOT_EQUAL;
+				depthState.back.compareMask     = 0xFF;
+				depthState.back.reference       = 1;
+				break;
+			}
+			case pipelineEnum::stencilId::drawNotEqual0: {				//仅已写入处绘制：compare=NOT_EQUAL 0
+				depthState.stencilTestEnable    = VK_TRUE;
+				depthState.front.compareOp      = VK_COMPARE_OP_NOT_EQUAL;
+				depthState.front.compareMask    = 0xFF;
+				depthState.front.reference      = 0;
+				depthState.back.compareOp       = VK_COMPARE_OP_NOT_EQUAL;
+				depthState.back.compareMask     = 0xFF;
+				depthState.back.reference       = 0;
+				break;
+			}
+			case pipelineEnum::stencilId::zPass: {						//阴影体 Z-pass：正面 INCR_WRAP、背面 DECR_WRAP，compare=ALWAYS
+				depthState.stencilTestEnable    = VK_TRUE;
+				depthState.front.passOp         = VK_STENCIL_OP_INCREMENT_AND_WRAP;
+				depthState.front.compareOp      = VK_COMPARE_OP_ALWAYS;
+				depthState.front.compareMask    = 0xFF;
+				depthState.front.writeMask      = 0xFF;
+				depthState.back.passOp          = VK_STENCIL_OP_DECREMENT_AND_WRAP;
+				depthState.back.compareOp       = VK_COMPARE_OP_ALWAYS;
+				depthState.back.compareMask     = 0xFF;
+				depthState.back.writeMask       = 0xFF;
+				break;
+			}
+			case pipelineEnum::stencilId::zFail: {						//阴影体 Z-fail：正面 depthFailOp=INCR_WRAP、背面=DECR_WRAP
+				depthState.stencilTestEnable    = VK_TRUE;
+				depthState.front.depthFailOp    = VK_STENCIL_OP_INCREMENT_AND_WRAP;
+				depthState.front.compareOp      = VK_COMPARE_OP_ALWAYS;
+				depthState.front.compareMask    = 0xFF;
+				depthState.front.writeMask      = 0xFF;
+				depthState.back.depthFailOp     = VK_STENCIL_OP_DECREMENT_AND_WRAP;
+				depthState.back.compareOp       = VK_COMPARE_OP_ALWAYS;
+				depthState.back.compareMask     = 0xFF;
+				depthState.back.writeMask       = 0xFF;
+				break;
+			}
+			default: {
+				Log::printError(__FILE__, __LINE__, "stencilId 未写预设处理：值 " + std::to_string(static_cast<int>(stencilType)));
+				break;
+			}}
+
+			return depthState;
+		}
+
+		//创建 颜色混合
+		VkPipelineColorBlendStateCreateInfo    createBlend(pipelineEnum::blendId::type blendType, pipelineEnum::writeMaskId::type writeMaskType, pipelineEnum::logicOpId::type logicOpType) {
+			VkPipelineColorBlendAttachmentState attachment{};
+			attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_ONE;		//仅 blendId 预设会改：源颜色因子
+			attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ZERO;		//仅 blendId 预设会改：目标颜色因子
+			attachment.colorBlendOp         = VK_BLEND_OP_ADD;			//仅 blendId 预设会改：颜色混合运算
+
+			attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;		//仅 blendId 预设会改：源 alpha 因子
+			attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ZERO;		//仅 blendId 预设会改：目标 alpha 因子
+			attachment.alphaBlendOp         = VK_BLEND_OP_ADD;			//仅 blendId 预设会改：alpha 混合运算
+
+			switch (blendType) {
+			case pipelineEnum::blendId::opaque: {						//不透明：直接覆盖，因子被忽略（占位＝上方默认 ONE/ZERO/ADD）
+				attachment.blendEnable = VK_FALSE; 
+				break; 
+			}	
+			case pipelineEnum::blendId::alphaBlend: {					//常规半透明：src*a + dst*(1-a)（玻璃/水面/粒子/UI）
+				attachment.blendEnable          = VK_TRUE;
+
+				attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_SRC_ALPHA;
+				attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+				attachment.colorBlendOp         = VK_BLEND_OP_ADD;
+
+				attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ZERO;
+				attachment.alphaBlendOp         = VK_BLEND_OP_ADD;
+				break;
+			}
+			case pipelineEnum::blendId::premultipliedAlpha: {			//预乘：src + dst*(1-a)，无黑边
+				attachment.blendEnable          = VK_TRUE;
+
+				attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+				attachment.colorBlendOp         = VK_BLEND_OP_ADD;
+
+				attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+				attachment.alphaBlendOp         = VK_BLEND_OP_ADD;
+				break;
+			}
+			case pipelineEnum::blendId::additive: {						//alpha 调制叠加：src*a + dst（光晕/火焰/能量）
+				attachment.blendEnable          = VK_TRUE;
+
+				attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_SRC_ALPHA;
+				attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.colorBlendOp         = VK_BLEND_OP_ADD;
+
+				attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ZERO;
+				attachment.alphaBlendOp         = VK_BLEND_OP_ADD;
+				break;
+			}
+			case pipelineEnum::blendId::additiveNoAlpha: {				//纯叠加：src + dst（辉光/激光/亮斑）
+				attachment.blendEnable          = VK_TRUE;
+
+				attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.colorBlendOp         = VK_BLEND_OP_ADD;
+
+				attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ZERO;
+				attachment.alphaBlendOp         = VK_BLEND_OP_ADD;
+				break;
+			}
+			case pipelineEnum::blendId::subtract: {						//相减：dst - src（差值、去色）
+				attachment.blendEnable          = VK_TRUE;
+
+				attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.colorBlendOp         = VK_BLEND_OP_REVERSE_SUBTRACT;
+
+				attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ZERO;
+				attachment.alphaBlendOp         = VK_BLEND_OP_ADD;
+				break;
+			}
+			case pipelineEnum::blendId::subtractAlpha: {				//按 alpha 相减：dst - src*a（遮罩相减）
+				attachment.blendEnable          = VK_TRUE;
+
+				attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_SRC_ALPHA;
+				attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.colorBlendOp         = VK_BLEND_OP_REVERSE_SUBTRACT;
+
+				attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ZERO;
+				attachment.alphaBlendOp         = VK_BLEND_OP_ADD;
+				break;
+			}
+			case pipelineEnum::blendId::multiply: {						//正片叠底：src*dst（阴影投射/染色/暗角）
+				attachment.blendEnable          = VK_TRUE;
+
+				attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_DST_COLOR;
+				attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ZERO;
+				attachment.colorBlendOp         = VK_BLEND_OP_ADD;
+
+				attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ZERO;
+				attachment.alphaBlendOp         = VK_BLEND_OP_ADD;
+				break;
+			}
+			case pipelineEnum::blendId::multiplyAlpha: {				//带 alpha 正片叠底：src*dst + dst*(1-a)
+				attachment.blendEnable          = VK_TRUE;
+
+				attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_DST_COLOR;
+				attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+				attachment.colorBlendOp         = VK_BLEND_OP_ADD;
+
+				attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ZERO;
+				attachment.alphaBlendOp         = VK_BLEND_OP_ADD;
+				break;
+			}
+			case pipelineEnum::blendId::screen: {						//滤色：src + dst*(1-src)（泛光/亮部叠加）
+				attachment.blendEnable          = VK_TRUE;
+
+				attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+				attachment.colorBlendOp         = VK_BLEND_OP_ADD;
+
+				attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ZERO;
+				attachment.alphaBlendOp         = VK_BLEND_OP_ADD;
+				break;
+			}
+			case pipelineEnum::blendId::darken: {						//变暗：逐通道取小（NPR/光照贴图暗部）
+				attachment.blendEnable          = VK_TRUE;
+
+				attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.colorBlendOp         = VK_BLEND_OP_MIN;
+
+				attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ZERO;
+				attachment.alphaBlendOp         = VK_BLEND_OP_ADD;		//alpha 统一 ADD（因子 ONE/ZERO ⇒ alpha=srcA），与其余 11 项一致
+				break;
+			}
+			case pipelineEnum::blendId::lighten: {						//变亮：逐通道取大（NPR/光照贴图亮部）
+				attachment.blendEnable          = VK_TRUE;
+
+				attachment.srcColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstColorBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.colorBlendOp         = VK_BLEND_OP_MAX;
+
+				attachment.srcAlphaBlendFactor  = VK_BLEND_FACTOR_ONE;
+				attachment.dstAlphaBlendFactor  = VK_BLEND_FACTOR_ZERO;
+				attachment.alphaBlendOp         = VK_BLEND_OP_ADD;		//alpha 统一 ADD（因子 ONE/ZERO ⇒ alpha=srcA），与其余 11 项一致
+				break;
+			}
+			default: {
+				Log::printError(__FILE__, __LINE__, "blendId 未写预设处理：值 " + std::to_string(static_cast<int>(blendType)));
+				break;
+			}}
+
+			switch (writeMaskType) {
+			case pipelineEnum::writeMaskId::rgba:      { attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT; break; }	//写 RGBA：颜色与透明度都写
+			case pipelineEnum::writeMaskId::rgb:       { attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT; break; }								//只写 RGB：保留目标 alpha（透明度累积）
+			case pipelineEnum::writeMaskId::alphaOnly: { attachment.colorWriteMask = VK_COLOR_COMPONENT_A_BIT; break; }																						//只写 alpha：透明通道预通道
+			case pipelineEnum::writeMaskId::none:      { attachment.colorWriteMask = 0; break; }																											//不写颜色：颜色附件仅供深度/模板流程
+			default: {
+				Log::printError(__FILE__, __LINE__, "writeMaskId 未写预设处理：值 " + std::to_string(static_cast<int>(writeMaskType)));
+				break;
+			}}
+
+			//logicOp 与混合公式互斥（spec）：启用逻辑运算时统一收口，强制关掉附件混合
+			if (logicOpType != pipelineEnum::logicOpId::disable) {
+				attachment.blendEnable  = VK_FALSE;
+			}
+
+			//此处只初始化，在createPipeConfigNode配置
+			colorAttachmentList.assign(1, attachment);
 
 
-		//设置管线动态处理的阶段
-		void setPipeDynamicStage(const std::vector<VkDynamicState>& list) {
-			pipeDynamicStageList                    = list;
-			pipeDynamicStageState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			pipeDynamicStageState.dynamicStateCount = static_cast<uint32_t>(pipeDynamicStageList.size());
-			pipeDynamicStageState.pDynamicStates    = pipeDynamicStageList.data();
 
-			pipeInfo.pDynamicState = &pipeDynamicStageState;
+			VkPipelineColorBlendStateCreateInfo blendState{};
+			blendState.sType			 = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+			blendState.blendConstants[0] = 0.0f;			//固定常量：混合常量（无对应预设项）
+			blendState.blendConstants[1] = 0.0f;			//固定常量：混合常量（无对应预设项）
+			blendState.blendConstants[2] = 0.0f;			//固定常量：混合常量（无对应预设项）
+			blendState.blendConstants[3] = 0.0f;			//固定常量：混合常量（无对应预设项）
+
+			switch (logicOpType) {
+			case pipelineEnum::logicOpId::disable: {		//不启用：	走混合公式（默认）
+				blendState.logicOpEnable        = VK_FALSE;
+				blendState.logicOp              = VK_LOGIC_OP_COPY;
+				break;
+			}
+			case pipelineEnum::logicOpId::copy: {			//直接覆盖：源颜色直接写入（需 logicOp）
+				blendState.logicOpEnable        = VK_TRUE;
+				blendState.logicOp              = VK_LOGIC_OP_COPY;
+				break;
+			}
+			case pipelineEnum::logicOpId::invert: {			//颜色取反：写入取反后的目标颜色
+				blendState.logicOpEnable        = VK_TRUE;
+				blendState.logicOp              = VK_LOGIC_OP_INVERT;
+				break;
+			}
+			case pipelineEnum::logicOpId::xorOp: {			//异或：	源与目标逐位异或
+				blendState.logicOpEnable        = VK_TRUE;
+				blendState.logicOp              = VK_LOGIC_OP_XOR;
+				break;
+			}
+			default: {
+				Log::printError(__FILE__, __LINE__, "logicOpId 未写预设处理：值 " + std::to_string(static_cast<int>(logicOpType)));
+				break;
+			}}
+
+			return blendState;
+		}
+
+		//创建 动态状态
+		VkPipelineDynamicStateCreateInfo       createDynamic(pipelineEnum::dynamicId::type dynamicType) {
+			switch (dynamicType) {
+			case pipelineEnum::dynamicId::none:                       { pipeDynamicStageList = {}; break; }																						//无动态状态
+			case pipelineEnum::dynamicId::viewportScissor:            { pipeDynamicStageList = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR }; break; }								//视口 + 裁剪（交换链重建/多分辨率/分屏）
+			case pipelineEnum::dynamicId::viewportScissorLineWidth:   { pipeDynamicStageList = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_LINE_WIDTH }; break; }	// + 线宽	 （仅 line_* 光栅预设有效）
+			case pipelineEnum::dynamicId::viewportScissorDepthBias:   { pipeDynamicStageList = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS }; break; }	// + 深度偏移（仅 depthBiasEnable=TRUE 有效）
+			case pipelineEnum::dynamicId::viewportScissorBounds:      { pipeDynamicStageList = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BOUNDS }; break; }	// + 深度范围（配合深度范围预设，级联阴影逐级设边界）
+			case pipelineEnum::dynamicId::viewportScissorRasterDepth: {	//+ 光栅/深度批处理：一条管线服务多材质/双面/多图元
+				pipeDynamicStageList = {
+					VK_DYNAMIC_STATE_VIEWPORT,
+					VK_DYNAMIC_STATE_SCISSOR,
+					VK_DYNAMIC_STATE_CULL_MODE,
+					VK_DYNAMIC_STATE_FRONT_FACE,
+					VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+					VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
+					VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
+					VK_DYNAMIC_STATE_DEPTH_COMPARE_OP
+				};
+				break;
+			}
+			case pipelineEnum::dynamicId::viewportScissorAll: {			//+ 全部可选：上述并集 + 深度范围 + 常量混合 + 模板动态状态
+				pipeDynamicStageList = {
+					VK_DYNAMIC_STATE_VIEWPORT,
+					VK_DYNAMIC_STATE_SCISSOR,
+					VK_DYNAMIC_STATE_CULL_MODE,
+					VK_DYNAMIC_STATE_FRONT_FACE,
+					VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+					VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
+					VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
+					VK_DYNAMIC_STATE_DEPTH_COMPARE_OP,
+					VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+					VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+					VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE,
+					VK_DYNAMIC_STATE_STENCIL_OP,
+					VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+					VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+					VK_DYNAMIC_STATE_STENCIL_REFERENCE
+				};
+				break;
+			}
+			default: {
+				Log::printError(__FILE__, __LINE__, "dynamicId 未写预设处理：值 " + std::to_string(static_cast<int>(dynamicType)));
+				break;
+			}}
+
+			VkPipelineDynamicStateCreateInfo dynamicState{};
+			dynamicState.sType			   = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+			dynamicState.dynamicStateCount = static_cast<uint32_t>(pipeDynamicStageList.size());	//固定规则：按本结点持有的动态状态表
+			dynamicState.pDynamicStates	   = pipeDynamicStageList.data();							//固定规则：指向本结点持有的动态状态表
+
+			return dynamicState;
+		}
+
+
+		
+		//创建 着色阶段列表
+		void createShaderStageList(std::span<const std::string> shaderFileList, const VkDevice& device) {
+			//校验 shaderFileList非空
+			if (shaderFileList.empty()) { return; }
+
+			for (const VkPipelineShaderStageCreateInfo& shaderStage : shaderStageList) {
+				if (shaderStage.module != VK_NULL_HANDLE) { vkDestroyShaderModule(device, shaderStage.module, nullptr); }
+			}
+
+			shaderStageList.clear();
+			shaderStageList.resize(shaderFileList.size());
+
+			for (size_t i = 0; i < shaderFileList.size(); i++) {
+				createShaderStage(shaderFileList[i], descStruct::reflectStage(shaderFileList[i]), static_cast<uint32_t>(i), device);
+			}
+
+			//校验 着色阶段不重复
+			if (debugInfo::LogSwitch) {
+				for (size_t i = 0; i < shaderStageList.size(); i++) {
+					for (size_t j = i + 1; j < shaderStageList.size(); j++) {
+						if (shaderStageList[i].stage == shaderStageList[j].stage) { Log::printError(__FILE__, __LINE__, "着色器文件列表阶段重复：" + shaderFileList[i] + " / " + shaderFileList[j]); }
+					}
+				}
+			}
+		}
+
+		//创建 单个着色阶段：读 spv → 建模块 → 填阶段
+		void createShaderStage(const std::string& filename, VkShaderStageFlagBits stage, int index, const VkDevice& device) {
+			//读取着色器文件
+			std::ifstream fileData(filename, std::ios::ate | std::ios::binary);
+			if (!fileData.is_open()) {
+				Log::printError(__FILE__, __LINE__, "着色器文件打开失败");
+			}
+
+			//创建着色器代码
+			size_t fileSize = static_cast<size_t>(fileData.tellg());
+			std::vector<char> shaderCode(fileSize);
+			fileData.seekg(0);
+			fileData.read(shaderCode.data(), fileSize);
+			fileData.close();
+
+			//创建着色器
+			VkShaderModuleCreateInfo createInfo{};
+			createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			createInfo.codeSize = shaderCode.size();
+			createInfo.pCode    = reinterpret_cast<const uint32_t*>(shaderCode.data());
+			if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderStageList[index].module) != VK_SUCCESS) {
+				Log::printError(__FILE__, __LINE__, "着色器创建失败");
+			}
+
+			//配置着色器状态
+			shaderStageList[index].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			shaderStageList[index].pName  = "main";
+			shaderStageList[index].stage  = stage;
+		}
+
+	public:
+		//校验 顶点输入布局
+		void checkVertexInput(std::span<const std::string> tShaderFileList) {
+			//片段着色器的 in 同样是 Input 存储类 + Location ⇒ 必须按执行模型过滤出顶点阶段
+			std::vector<descStruct::reflectInputNode> inputList{};
+			for (const std::string& file : tShaderFileList) {
+				for (const descStruct::reflectInputNode& input : descStruct::reflectInput(file)) {
+					if (input.stage == VK_SHADER_STAGE_VERTEX_BIT) { inputList.push_back(input); }
+				}
+			}
+
+			for (const VkVertexInputAttributeDescription& attribute : vertAttributeList) {
+				const descStruct::reflectInputNode* found = nullptr;
+
+				for (const descStruct::reflectInputNode& input : inputList) {
+					if (input.location == attribute.location) { found = &input; break; }
+				}
+
+				if (found == nullptr) {
+					Log::printError(__FILE__, __LINE__, "顶点输入对拍：声明了 location " + std::to_string(attribute.location) + " 但顶点着色器没有该输入");
+					continue;
+				}
+
+				if (found->format != attribute.format) {
+					Log::printError(__FILE__, __LINE__, "顶点输入对拍：location " + std::to_string(attribute.location) + " 格式不符（声明 " + std::to_string(static_cast<int>(attribute.format)) + " / 着色器 " + std::to_string(static_cast<int>(found->format)) + "）");
+				}
+			}
+		}
+
+		//校验 着色阶段列表
+		void checkShaderStageList(pipelineEnum::shaderFlowId::type shaderFlowType) {
+			const std::vector<VkPipelineShaderStageCreateInfo>& actual = shaderStageList;
+			const std::vector<VkShaderStageFlagBits>&			expect = getShaderStageList(shaderFlowType);
+
+			if (expect.size() != actual.size()) {
+				Log::printError(__FILE__, __LINE__, "着色阶段数不符：期望 " + std::to_string(expect.size()) + " / 实得 " + std::to_string(actual.size()));
+				return;
+			}
+
+			for (size_t i = 0; i < expect.size(); i++) {
+				if (expect[i] != actual[i].stage) {
+					Log::printError(__FILE__, __LINE__, "第 " + std::to_string(i) + " 个着色阶段不符：期望 " + std::to_string(static_cast<int>(expect[i])) + " / 实得 " + std::to_string(static_cast<int>(actual[i].stage)));
+				}
+			}
+		}
+
+		//获取 着色阶段列表
+		std::vector<VkShaderStageFlagBits> getShaderStageList(pipelineEnum::shaderFlowId::type shaderFlowType) {
+			switch (shaderFlowType) {
+			case pipelineEnum::shaderFlowId::vert: { return { VK_SHADER_STAGE_VERTEX_BIT,  VK_SHADER_STAGE_FRAGMENT_BIT }; }									//顶点流程
+			case pipelineEnum::shaderFlowId::mesh: { return { VK_SHADER_STAGE_TASK_BIT_NV, VK_SHADER_STAGE_MESH_BIT_NV, VK_SHADER_STAGE_FRAGMENT_BIT }; }		//网格流程
+			default: {
+				Log::printError(__FILE__, __LINE__, "shaderFlowId 未写预设处理：值 " + std::to_string(static_cast<int>(shaderFlowType)));
+				return {};
+			}}
 		}
 	};
 
@@ -2354,7 +4054,7 @@ namespace pipelineStruct {
 
 	//pipeLayout结点
 	struct pipeLayoutNode {
-		VkPipelineLayout pipeLayout{};      //管线布局
+		VkPipelineLayout				   pipeLayout{};											//管线布局
 
 
 
@@ -2378,34 +4078,41 @@ namespace pipelineStruct {
 
 	//pipe结点
 	struct pipelineNode {
-		std::vector<pipelineStruct::shaderNode> shaderList{};   //着色器列表
-		pipelineStruct::pipeConfigNode          pipeConfig{};   //管线配置
-		VkPipeline                              pipeline{};     //管线
+		pipelineEnum::shaderFlowId::type	  shaderFlowType{};			//着色流程类型
+		std::vector<std::string>              shaderFileList{};			//着色文件
+		const vertexStruct::vertexLayoutNode* vertexLayout{};			//顶点布局
+		renderEnum::renderTemplateId::type    renderTemplateType{};		//渲染类型
+		bufferEnum::procDescriptorId::type    descriptorType{};			//描述类型
+		pipelineEnum::dynamicId::type         dynamicType{};			//动态类型
+		pipelineStruct::pipeConfigParamNode   param{};					//管线配置参数
+
+		pipelineStruct::pipeConfigNode		  pipeConfig{};				//管线配置
+		VkPipeline							  pipeline{};				//管线
+		bool							      isRecreate = true;		//重建标识
 
 
 
-		//创建顶点管线结点
-		void createPipelineNode(VkSampleCountFlagBits msaa, const renderStruct::renderTemplateNode& renderTemplateNode, const pipelineStruct::pipeLayoutNode& pipeLayoutNode, const std::vector<std::string>& shaderFileList, const VkDevice& device) {
-			//创建shaderList
-			shaderList.resize(shaderFileList.size());
-			if (shaderFileList.size() == pipelineEnum::shaderId::vert::count) {
-				shaderList[pipelineEnum::shaderId::vert::vert].createShaderNode(device, shaderFileList[0], VK_SHADER_STAGE_VERTEX_BIT);
-				shaderList[pipelineEnum::shaderId::vert::frag].createShaderNode(device, shaderFileList[1], VK_SHADER_STAGE_FRAGMENT_BIT);
+		void createPipelineNode(bufferEnum::procDescriptorId::type tDescriptorType, const vertexStruct::vertexLayoutNode& tVertexLayout, renderEnum::renderTemplateId::type tRenderTemplateType, pipelineEnum::shaderFlowId::type tShaderFlowType, const pipelineStruct::pipeConfigParamNode& tParam, const std::vector<std::string>& tShaderFileList, VkSampleCountFlagBits tMsaa, const renderStruct::renderTemplateNode& tRenderTemplateNode, const pipelineStruct::pipeLayoutNode& tPipeLayout, const VkDevice& tDevice) {
+			shaderFlowType     = tShaderFlowType;
+			shaderFileList     = tShaderFileList;
+			vertexLayout       = &tVertexLayout;
+			renderTemplateType = tRenderTemplateType;
+			descriptorType     = tDescriptorType;
+			dynamicType        = tParam.dynamicType;
+			param              = tParam;
+
+			VkSampleCountFlagBits msaa = tRenderTemplateNode.renderAttType == renderEnum::renderAttId::forward_ra ? tMsaa : VK_SAMPLE_COUNT_1_BIT;
+			pipeConfig.createPipeConfigNode(shaderFileList, tVertexLayout, msaa, tRenderTemplateNode, tPipeLayout.pipeLayout, tParam, tDevice);
+
+			if (debugInfo::LogSwitch) {
+				pipeConfig.checkVertexInput(shaderFileList);			//校验 顶点输入
+				pipeConfig.checkShaderStageList(shaderFlowType);		//校验 着色阶段
 			}
-			else if (shaderFileList.size() == pipelineEnum::shaderId::mesh::count) {
-				//todo 待写网格着色
-			}
-
-			//创建pipeConfig
-			pipeConfig.createPipeConfigNode(shaderList, msaa, renderTemplateNode.renderAttType, renderTemplateNode.render, pipeLayoutNode.pipeLayout);
 		}
 
 		void clear(const VkDevice& device) {
 			vkDestroyPipeline(device, pipeline, nullptr);
-
-			for (auto shaderNode : shaderList) {
-				shaderNode.clear(device);
-			}
+			pipeConfig.clear(device);
 		}
 
 		void clearSwapChain(const VkDevice& device) {
@@ -2506,191 +4213,6 @@ namespace bufferStruct {
 
 
 
-	//描述符配置结点
-	struct descriptorConfigNode {
-		VkDescriptorSetLayoutBinding layout{};
-		VkWriteDescriptorSet         write{};
-
-
-
-		descriptorConfigNode(uint32_t id, VkDescriptorType type, VkShaderStageFlags stage, uint32_t count = 1) {
-			layout.descriptorCount    = count;
-			layout.pImmutableSamplers = nullptr;
-			layout.binding            = id;
-			layout.descriptorType     = type;
-			layout.stageFlags         = stage;
-
-			write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			write.dstArrayElement = 0;
-			write.descriptorCount = 1;
-			write.dstBinding      = id;
-			write.descriptorType  = type;
-		}
-
-		descriptorConfigNode() = delete;
-
-
-
-		const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkBuffer& buffer, VkDeviceSize range) {
-			bufferInfo.offset = 0;
-			bufferInfo.buffer = buffer;
-			bufferInfo.range  = range;
-
-			write.dstSet      = dstSet;
-			write.pBufferInfo = &bufferInfo;
-
-			return write;
-		}
-
-		const VkWriteDescriptorSet& setWrite(const VkDescriptorSet& dstSet, const VkSampler& sampler, const VkImageView& imageView) {
-			imageInfo.sampler     = sampler;
-			imageInfo.imageView   = imageView;
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			write.dstSet     = dstSet;
-			write.pImageInfo = &imageInfo;
-
-			return write;
-		}
-
-	private:
-		VkDescriptorBufferInfo bufferInfo{};
-		VkDescriptorImageInfo  imageInfo{};
-	};
-
-	//描述符写入结点
-	struct descriptorWriteNode {
-		uint32_t         binding{};
-		VkDescriptorType type{};
-
-		VkBuffer         buffer{};
-		VkDeviceSize     range{};
-		VkSampler        sampler{};
-		VkImageView      view{};
-	};
-
-	//描述符结点
-	struct descriptorNode {
-		std::vector<bufferStruct::descriptorConfigNode> config{};
-
-		VkDescriptorPool	  pool{};		//描述符池
-		VkDescriptorSetLayout layout{};     //描述符布局
-		uint32_t			  maxSet{};		//描述符池上限
-
-
-
-		void createDescriptorNode(const VkDevice& device) {
-			createPool(device);
-			createLayout(device);
-		}
-
-		void clear(const VkDevice& device) {
-			vkDestroyDescriptorPool(device, pool, nullptr);
-			vkDestroyDescriptorSetLayout(device, layout, nullptr);
-		}
-
-
-
-		//分配
-		bool alloc(const VkDevice& device, VkDescriptorSet& dstSet, pipelineEnum::procPipelineId::type pipeType) {
-			VkDescriptorSetAllocateInfo setAllocInfo{
-				.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-				.descriptorPool     = pool,
-				.descriptorSetCount = 1,
-				.pSetLayouts        = &layout
-			};
-
-			if (vkAllocateDescriptorSets(device, &setAllocInfo, &dstSet) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, pipelineInfo::procPipelineName[pipeType] + "分配描述符集失败");
-				return false;
-			}
-
-			return true;
-		}
-
-		//写入
-		void writeFrom(const VkDevice& device, const VkDescriptorSet& dstSet, const std::vector<descriptorWriteNode>& requestList) {
-			std::vector<VkWriteDescriptorSet> writeList{};
-			writeList.reserve(requestList.size());
-
-			for (const auto& request : requestList) {
-				if (debugInfo::LogSwitch && (static_cast<size_t>(request.binding) >= config.size() || config[request.binding].layout.binding != request.binding)) {
-					Log::printError(__FILE__, __LINE__, "描述符写入的 binding 与布局表不一致");
-				}
-
-				if (debugInfo::LogSwitch && config[request.binding].layout.descriptorType != request.type) {
-					Log::printError(__FILE__, __LINE__, "描述符写入的类型与布局表不一致");
-				}
-
-				if (request.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
-					writeList.push_back(config[request.binding].setWrite(dstSet, request.sampler, request.view));
-				}
-				else {
-					writeList.push_back(config[request.binding].setWrite(dstSet, request.buffer, request.range));
-				}
-			}
-
-			vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeList.size()), writeList.data(), 0, nullptr);
-		}
-
-	private:
-		void createPool(const VkDevice& device) {
-			if (debugInfo::LogSwitch && maxSet == 0) {
-				Log::printError(__FILE__, __LINE__, "描述符池上限（maxSet）未设置");
-			}
-
-			//池需求 = maxSet × 每个 set 里该 binding 的数组长度；同类描述符按类型汇总
-			std::vector<VkDescriptorPoolSize> poolSize{};
-			for (const auto& i : config) {
-				uint32_t need = maxSet * i.layout.descriptorCount;
-
-				bool merged = false;
-				for (auto& size : poolSize) {
-					if (size.type == i.layout.descriptorType) {
-						size.descriptorCount += need;
-						merged = true;
-						break;
-					}
-				}
-
-				if (!merged) {
-					poolSize.push_back(VkDescriptorPoolSize{ .type = i.layout.descriptorType, .descriptorCount = need });
-				}
-			}
-
-			VkDescriptorPoolCreateInfo poolInfo{
-				.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-				.maxSets       = maxSet,
-				.poolSizeCount = static_cast<uint32_t>(poolSize.size()),
-				.pPoolSizes    = poolSize.data()
-			};
-
-			if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "描述符池创建失败");
-			}
-		}
-
-		void createLayout(const VkDevice& device) {
-			std::vector<VkDescriptorSetLayoutBinding> layoutBinding{};
-			for (const auto& i : config) {
-				layoutBinding.push_back(i.layout);
-			}
-
-			VkDescriptorSetLayoutCreateInfo layoutInfo{
-				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-				.pNext = nullptr,
-				.bindingCount = static_cast<uint32_t>(layoutBinding.size()),
-				.pBindings = layoutBinding.data()
-			};
-
-			if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
-			}
-		}
-	};
-
-
-
 	/*管线缓冲区*/
 	struct pipeTerrainNode {
 		bool isEnable;																			//启用标识
@@ -2721,7 +4243,7 @@ namespace bufferStruct {
 
 				for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
 					for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
-						mesh[thread][layer].create(terrainVertex::vertexs[layer], terrainVertex::indexs[layer], cmd, device, graphicsQueue, memAllocator);
+						mesh[thread][layer].create(vertexStruct::terrainVertex::mesh[layer].vertexs, vertexStruct::terrainVertex::mesh[layer].indexs, cmd, device, graphicsQueue, memAllocator);
 					}
 				}
 
@@ -2745,7 +4267,7 @@ namespace bufferStruct {
 
 
 		//创建描述符集
-		void createDescriptorSet(bufferStruct::descriptorNode& descriptor, const std::vector<VkSampler>& samplerList, const VkDevice& device) {
+		void createDescriptorSet(descStruct::descriptorNode& descriptor, const std::vector<VkSampler>& samplerList, const VkDevice& device) {
 			if (isEnable) {
 				if (descriptor.alloc(device, descriptorSet, pipelineEnum::procPipelineId::terrain_p)) {
 					descriptor.writeFrom(device, descriptorSet, {
@@ -2783,7 +4305,7 @@ namespace bufferStruct {
 			modelWorldPos = tModelWorldPos;
 		}
 
-		modelStaticNode() = delete;
+		modelStaticNode() {}
 
 
 
@@ -2838,13 +4360,13 @@ namespace bufferStruct {
 			modelWorldPos = tModelWorldPos;
 		}
 
-		modelDynamicNode() = delete;
+		modelDynamicNode() {}
 
 
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-			for (int i = 0; i < node.size(); i++) {
-				node[i].clear(device, memAllocator);
+			for (bufferStruct::modelDynamicSubNode& subNode : node) {
+				subNode.clear(device, memAllocator);
 			}
 		}
 	};
@@ -2864,69 +4386,77 @@ namespace bufferStruct {
 
 
 
-		//创建模型纹理与网格缓冲（含 glTF 加载）
 		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
-			sNode.emplace_back(bufferEnum::procSamplerId::staticModel_sn, glm::dvec3(0, 32, 0), fileInfo::image::temple);
+			sNode.resize(bufferEnum::procStaticModelId::count);
+			dNode.resize(bufferEnum::procDynamicModelId::count);
 
-			dNode.emplace_back(bufferEnum::procSamplerId::dynamicModel_sl, glm::dvec3(0, 32, 0), std::vector<std::string>{ fileInfo::image::droidBodyC, fileInfo::image::droidHeadC, fileInfo::image::droidMiscC } /*, std::vector<std::string>{ fileInfo::image::droidBodyN, fileInfo::image::droidHeadN, fileInfo::image::droidMiscN }*/);
+			sNode[bufferEnum::procStaticModelId::temple_m] = bufferStruct::modelStaticNode { bufferEnum::procSamplerId::staticModel_sn,  glm::dvec3(0, 32, 0), fileInfo::image::temple };
+			dNode[bufferEnum::procDynamicModelId::droid_m] = bufferStruct::modelDynamicNode{ bufferEnum::procSamplerId::dynamicModel_sl, glm::dvec3(0, 32, 0), std::vector<std::string>{ fileInfo::image::droidBodyC, fileInfo::image::droidHeadC, fileInfo::image::droidMiscC } /*, std::vector<std::string>{ fileInfo::image::droidBodyN, fileInfo::image::droidHeadN, fileInfo::image::droidMiscN }*/ };
 
+			if (debugInfo::LogSwitch) {
+				for (int i = 0; i < sNode.size(); i++) {
+					if (sNode[i].texture.textureFile.empty()) { Log::printError(__FILE__, __LINE__, "静态模型槽位未落位：id = " + std::to_string(i)); }
+				}
 
+				for (int i = 0; i < dNode.size(); i++) {
+					if (dNode[i].node.empty()) { Log::printError(__FILE__, __LINE__, "动态模型槽位未落位：id = " + std::to_string(i)); }
+				}
+			}
 
-			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-				modelVertex::dVertexs[i].resize(dNode[i].node.size());
-				modelVertex::dIndexs[i].resize(dNode[i].node.size());
+			for (int i = 0; i < dNode.size(); i++) {
+				vertexStruct::modelVertex::dMesh[i].resize(dNode[i].node.size());
 			}
 
 			if (isEnable) {
 				//model-sNode
-				for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-					sNode[i].texture.createKtx(cmd, device, graphicsQueue, memAllocator);
+				for (bufferStruct::modelStaticNode& modelNode : sNode) {
+					modelNode.texture.createKtx(cmd, device, graphicsQueue, memAllocator);
 				}
 
 				//model-dNode
-				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-					for (int j = 0; j < dNode[i].node.size(); j++) {
-						dNode[i].node[j].texture.createKtx(cmd, device, graphicsQueue, memAllocator);
+				for (bufferStruct::modelDynamicNode& dynamicNode : dNode) {
+					for (bufferStruct::modelDynamicSubNode& subNode : dynamicNode.node) {
+						subNode.texture.createKtx(cmd, device, graphicsQueue, memAllocator);
 					}
 				}
 
 				//网格缓冲
-				for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-					loadStaticModel(fileInfo::model::staticList[i], modelVertex::sVertexs[i], modelVertex::sIndexs[i], shadowVertex::sVertexs[i]);
+				for (int i = 0; i < sNode.size(); i++) {
+					loadStaticModel(fileInfo::model::staticList[i], vertexStruct::modelVertex::sMesh[i], vertexStruct::shadowVertex::sMesh[i]);
 
-					sNode[i].mesh.create(modelVertex::sVertexs[i], modelVertex::sIndexs[i], cmd, device, graphicsQueue, memAllocator);
+					sNode[i].mesh.create(vertexStruct::modelVertex::sMesh[i].vertexs, vertexStruct::modelVertex::sMesh[i].indexs, cmd, device, graphicsQueue, memAllocator);
 				}
 
-				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-					shadowVertex::dVertexs[i].resize(modelVertex::dIndexs[i].size());
+				for (int i = 0; i < dNode.size(); i++) {
+					vertexStruct::shadowVertex::dMesh[i].resize(vertexStruct::modelVertex::dMesh[i].size());
 
-					loadDynamicModel(fileInfo::model::dynamicList[i], modelVertex::dVertexs[i], modelVertex::dIndexs[i], shadowVertex::dVertexs[i]);
+					loadDynamicModel(fileInfo::model::dynamicList[i], vertexStruct::modelVertex::dMesh[i], vertexStruct::shadowVertex::dMesh[i]);
 
 					for (int j = 0; j < dNode[i].node.size(); j++) {
-						dNode[i].node[j].mesh.create(modelVertex::dVertexs[i][j], modelVertex::dIndexs[i][j], cmd, device, graphicsQueue, memAllocator);
+						dNode[i].node[j].mesh.create(vertexStruct::modelVertex::dMesh[i][j].vertexs, vertexStruct::modelVertex::dMesh[i][j].indexs, cmd, device, graphicsQueue, memAllocator);
 					}
 				}
 
 				//统一缓冲
-				for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-					sNode[i].uniform = baseBufferNode{ sizeof(sNode[i].ubo), memAllocator };
+				for (bufferStruct::modelStaticNode& modelNode : sNode) {
+					modelNode.uniform = baseBufferNode{ sizeof(modelNode.ubo), memAllocator };
 				}
 
-				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-					for (int j = 0; j < dNode[i].node.size(); j++) {
-						dNode[i].node[j].uniform = baseBufferNode{ sizeof(dNode[i].node[j].ubo), memAllocator };
+				for (bufferStruct::modelDynamicNode& dynamicNode : dNode) {
+					for (bufferStruct::modelDynamicSubNode& subNode : dynamicNode.node) {
+						subNode.uniform = baseBufferNode{ sizeof(subNode.ubo), memAllocator };
 					}
 				}
 			}
 		}
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-			for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-				sNode[i].clear(device, memAllocator);
+			for (bufferStruct::modelStaticNode& modelNode : sNode) {
+				modelNode.clear(device, memAllocator);
 			}
 
-			for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-				dNode[i].clear(device, memAllocator);
+			for (bufferStruct::modelDynamicNode& dynamicNode : dNode) {
+				dynamicNode.clear(device, memAllocator);
 			}
 		}
 
@@ -2951,51 +4481,51 @@ namespace bufferStruct {
 		}
 
 		//加载静态模型
-		void loadStaticModel(const std::string& filename, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::vector<shadowVertex::vertexNode>& shadowVertexs) {
+		void loadStaticModel(const std::string& filename, vertexStruct::vertexMeshNode<vertexStruct::modelVertex::vertexNode>& meshNode, vertexStruct::vertexMeshNode<vertexStruct::shadowVertex::vertexNode>& shadowMeshNode) {
 			tinygltf::Model model;
 
 			if (!openGltf(filename, model)) { return; }
 
 			//遍历所有mesh和primitive
-			std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
+			std::unordered_map<vertexStruct::modelVertex::vertexNode, uint32_t, vertexStruct::modelVertex::vertexNodeHash> uniqueVertices{};
 
 			for (const tinygltf::Mesh& mesh : model.meshes) {
-				loadGltfModel(model, mesh, vertexs, indexs, shadowVertexs, uniqueVertices);
+				loadGltfModel(model, mesh, meshNode, shadowMeshNode, uniqueVertices);
 			}
 
 			//资产内容自检：不放进日志开关（发布版也要能看到），用 printWarning 不挂起
-			if (vertexs.empty()) {
+			if (meshNode.vertexs.empty()) {
 				Log::printWarning(__FILE__, __LINE__, "加载的模型不包含任何顶点");
 			}
 
-			if (indexs.empty()) {
+			if (meshNode.indexs.empty()) {
 				Log::printWarning(__FILE__, __LINE__, "加载的模型不包含任何索引");
 			}
 		}
 
 		//加载动态模型
-		void loadDynamicModel(const std::string& filename, std::vector<std::vector<modelVertex::vertexNode>>& vertexsList, std::vector<std::vector<uint32_t>>& indexsList, std::vector<std::vector<shadowVertex::vertexNode>>& shadowVertexsList) {
+		void loadDynamicModel(const std::string& filename, std::vector<vertexStruct::vertexMeshNode<vertexStruct::modelVertex::vertexNode>>& meshList, std::vector<vertexStruct::vertexMeshNode<vertexStruct::shadowVertex::vertexNode>>& shadowMeshList) {
 			tinygltf::Model model;
 
 			if (!openGltf(filename, model)) { return; }
 
 			//mesh 数与子结点数必须一一对应，否则下面按下标写入会越界
-			if (model.meshes.size() != vertexsList.size()) {
+			if (model.meshes.size() != meshList.size()) {
 				Log::printError(__FILE__, __LINE__, "glTF的mesh数量与子结点数量不一致: \t" + filename);
 			}
 
 			//遍历所有mesh和primitive
-			std::unordered_map<modelVertex::vertexNode, uint32_t> uniqueVertices{};
+			std::unordered_map<vertexStruct::modelVertex::vertexNode, uint32_t, vertexStruct::modelVertex::vertexNodeHash> uniqueVertices{};
 
 			for (int i = 0; i < model.meshes.size(); i++) {
-				loadGltfModel(model, model.meshes[i], vertexsList[i], indexsList[i], shadowVertexsList[i], uniqueVertices);
+				loadGltfModel(model, model.meshes[i], meshList[i], shadowMeshList[i], uniqueVertices);
 
 				//资产内容自检：同静态模型，不进日志开关
-				if (vertexsList[i].empty()) {
+				if (meshList[i].vertexs.empty()) {
 					Log::printWarning(__FILE__, __LINE__, "加载的模型不包含任何顶点");
 				}
 
-				if (indexsList[i].empty()) {
+				if (meshList[i].indexs.empty()) {
 					Log::printWarning(__FILE__, __LINE__, "加载的模型不包含任何索引");
 				}
 			}
@@ -3044,7 +4574,7 @@ namespace bufferStruct {
 		}
 
 		//加载glTF模型
-		void loadGltfModel(const tinygltf::Model& model, const tinygltf::Mesh& mesh, std::vector<modelVertex::vertexNode>& vertexs, std::vector<uint32_t>& indexs, std::vector<shadowVertex::vertexNode>& shadowVertexs, std::unordered_map<modelVertex::vertexNode, uint32_t>& uniqueVertices) {
+		void loadGltfModel(const tinygltf::Model& model, const tinygltf::Mesh& mesh, vertexStruct::vertexMeshNode<vertexStruct::modelVertex::vertexNode>& meshNode, vertexStruct::vertexMeshNode<vertexStruct::shadowVertex::vertexNode>& shadowMeshNode, std::unordered_map<vertexStruct::modelVertex::vertexNode, uint32_t, vertexStruct::modelVertex::vertexNodeHash>& uniqueVertices) {
 			for (const auto& primitive : mesh.primitives) {
 				//获取顶点数据  
 				const float* positions = nullptr;
@@ -3096,7 +4626,7 @@ namespace bufferStruct {
 				std::vector<uint32_t> primitiveVertexIndices;
 
 				for (size_t i = 0; i < vertexCount; i++) {
-					modelVertex::vertexNode vertex{};
+					vertexStruct::modelVertex::vertexNode vertex{};
 
 					//坐标系转换：从glTF的Y向上转换为本引擎的Z向上
 					vertex.position = {
@@ -3145,10 +4675,10 @@ namespace bufferStruct {
 
 					//使用顶点去重
 					if (uniqueVertices.count(vertex) == 0) {
-						uniqueVertices[vertex] = static_cast<uint32_t>(vertexs.size());
+						uniqueVertices[vertex] = static_cast<uint32_t>(meshNode.vertexs.size());
 
-						vertexs.push_back(vertex);
-						shadowVertexs.push_back(shadowVertex::vertexNode{ vertex.position });
+						meshNode.vertexs.push_back(vertex);
+						shadowMeshNode.vertexs.push_back(vertexStruct::shadowVertex::vertexNode{ vertex.position });
 					}
 
 					//记录原始顶点到去重后顶点的映射
@@ -3169,7 +4699,7 @@ namespace bufferStruct {
 						for (size_t i = 0; i < indexCount; i++) {
 							uint32_t originalVertexIndex = indices[i];
 							if (originalVertexIndex < primitiveVertexIndices.size()) {
-								indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
+								meshNode.indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
 							}
 						}
 					}
@@ -3179,7 +4709,7 @@ namespace bufferStruct {
 						for (size_t i = 0; i < indexCount; i++) {
 							uint32_t originalVertexIndex = indices[i];
 							if (originalVertexIndex < primitiveVertexIndices.size()) {
-								indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
+								meshNode.indexs.push_back(primitiveVertexIndices[originalVertexIndex]);
 							}
 						}
 					}
@@ -3190,9 +4720,9 @@ namespace bufferStruct {
 				else {
 					//如果没有索引，生成三角形索引
 					for (size_t i = 0; i < vertexCount; i += 3) {
-						indexs.push_back(primitiveVertexIndices[i]);
-						indexs.push_back(primitiveVertexIndices[i + 1]);
-						indexs.push_back(primitiveVertexIndices[i + 2]);
+						meshNode.indexs.push_back(primitiveVertexIndices[i]);
+						meshNode.indexs.push_back(primitiveVertexIndices[i + 1]);
+						meshNode.indexs.push_back(primitiveVertexIndices[i + 2]);
 					}
 				}
 			}
@@ -3224,7 +4754,7 @@ namespace bufferStruct {
 		//创建网格缓冲
 		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			if (isEnable) {
-				mesh.create(skyboxVertex::vertexs, skyboxVertex::indexs, cmd, device, graphicsQueue, memAllocator);
+				mesh.create(vertexStruct::skyboxVertex::vertexs, vertexStruct::skyboxVertex::indexs, cmd, device, graphicsQueue, memAllocator);
 
 				//统一缓冲
 				uniform      = baseBufferNode{ sizeof(ubo),      memAllocator };
@@ -3261,7 +4791,7 @@ namespace bufferStruct {
 		//创建网格缓冲
 		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			if (isEnable) {
-				mesh.create(mineVertex::vertexs, mineVertex::indexs, cmd, device, graphicsQueue, memAllocator);
+				mesh.create(vertexStruct::mineVertex::vertexs, vertexStruct::mineVertex::indexs, cmd, device, graphicsQueue, memAllocator);
 
 				//统一缓冲
 				uniform = baseBufferNode{ sizeof(ubo), memAllocator };
@@ -3297,7 +4827,7 @@ namespace bufferStruct {
 		//创建字体图集纹理与顶点缓冲
 		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			if (isEnable) {
-				vertex = baseBufferNode{ 2048 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+				vertex = baseBufferNode{ 3072 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };	//6 顶点/字形 × 512 字形上限
 
 				texture.createText(msdfGlyphAtlas.data.data(), msdfGlyphAtlas.data.size(), static_cast<uint32_t>(msdfGlyphAtlas.width), static_cast<uint32_t>(msdfGlyphAtlas.height), cmd, device, graphicsQueue, memAllocator);
 			}
@@ -3333,7 +4863,7 @@ namespace bufferStruct {
 		//创建网格缓冲
 		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			if (isEnable) {
-				mesh.create(osMirrorVertex::vertexs, osMirrorVertex::indexs, cmd, device, graphicsQueue, memAllocator);
+				mesh.create(vertexStruct::osMirrorVertex::vertexs, vertexStruct::osMirrorVertex::indexs, cmd, device, graphicsQueue, memAllocator);
 
 				//统一缓冲
 				uniform      = baseBufferNode{ sizeof(ubo),      memAllocator };
@@ -3467,8 +4997,8 @@ namespace bufferStruct {
 			shadow_md.resize(bufferEnum::procDynamicModelId::count);
 
 			if (modelEnable) {
-				for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-					shadow_md[i].resize(modelVertex::dIndexs[i].size());
+				for (int i = 0; i < shadow_md.size(); i++) {
+					shadow_md[i].resize(vertexStruct::modelVertex::dMesh[i].size());
 				}
 			}
 
@@ -3476,10 +5006,10 @@ namespace bufferStruct {
 				//shadow-pipeTerrain
 				if (terrainEnable) {
 					for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
-						shadowVertex::loadTerrainVertexs(layer);
+						vertexStruct::shadowVertex::loadTerrainVertexs(layer);
 
 						for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
-							shadow_t.mesh[thread][layer].create(shadowVertex::tVertexs[layer], cmd, device, graphicsQueue, memAllocator);
+							shadow_t.mesh[thread][layer].create(vertexStruct::shadowVertex::tMesh[layer].vertexs, cmd, device, graphicsQueue, memAllocator);
 						}
 					}
 				}
@@ -3487,14 +5017,14 @@ namespace bufferStruct {
 				//shadow-model
 				if (modelEnable) {
 					//shadow-sNode
-					for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-						shadow_ms[i].mesh.create(shadowVertex::sVertexs[i], cmd, device, graphicsQueue, memAllocator);
+					for (int i = 0; i < shadow_ms.size(); i++) {
+						shadow_ms[i].mesh.create(vertexStruct::shadowVertex::sMesh[i].vertexs, cmd, device, graphicsQueue, memAllocator);
 					}
 
 					//shadow-dNode
-					for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
+					for (int i = 0; i < shadow_md.size(); i++) {
 						for (int j = 0; j < shadow_md[i].size(); j++) {
-							shadow_md[i][j].mesh.create(shadowVertex::dVertexs[i][j], cmd, device, graphicsQueue, memAllocator);
+							shadow_md[i][j].mesh.create(vertexStruct::shadowVertex::dMesh[i][j].vertexs, cmd, device, graphicsQueue, memAllocator);
 						}
 					}
 				}
@@ -3505,13 +5035,13 @@ namespace bufferStruct {
 				}
 
 				if (modelEnable) {
-					for (int i = 0; i < bufferEnum::procStaticModelId::count; i++) {
-						shadow_ms[i].shadowMvpUniform = baseBufferNode{ sizeof(shadow_ms[i].shadowMvpUbo), memAllocator };
+					for (bufferStruct::shadowModelNode& shadowNode : shadow_ms) {
+						shadowNode.shadowMvpUniform = baseBufferNode{ sizeof(shadowNode.shadowMvpUbo), memAllocator };
 					}
 
-					for (int i = 0; i < bufferEnum::procDynamicModelId::count; i++) {
-						for (int j = 0; j < shadow_md[i].size(); j++) {
-							shadow_md[i][j].shadowMvpUniform = baseBufferNode{ sizeof(shadow_md[i][j].shadowMvpUbo), memAllocator };
+					for (std::vector<bufferStruct::shadowModelNode>& shadowNodeList : shadow_md) {
+						for (bufferStruct::shadowModelNode& shadowNode : shadowNodeList) {
+							shadowNode.shadowMvpUniform = baseBufferNode{ sizeof(shadowNode.shadowMvpUbo), memAllocator };
 						}
 					}
 				}
@@ -3521,13 +5051,13 @@ namespace bufferStruct {
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
 			shadow_t.clear(device, memAllocator);
 
-			for (int i = 0; i < shadow_ms.size(); i++) {
-				shadow_ms[i].clear(device, memAllocator);
+			for (bufferStruct::shadowModelNode& shadowNode : shadow_ms) {
+				shadowNode.clear(device, memAllocator);
 			}
 
-			for (int i = 0; i < shadow_md.size(); i++) {
-				for (int j = 0; j < shadow_md[i].size(); j++) {
-					shadow_md[i][j].clear(device, memAllocator);
+			for (std::vector<bufferStruct::shadowModelNode>& shadowNodeList : shadow_md) {
+				for (bufferStruct::shadowModelNode& shadowNode : shadowNodeList) {
+					shadowNode.clear(device, memAllocator);
 				}
 			}
 		}

@@ -12,7 +12,7 @@
 
 ## 二、核心概念（速记）
 
-Plate→Chunk(32³+34 边缘)→Cube；sightRange=8；双存储 full/delta；region 3x3x3；贪心网格+面剔除→terrainVertex→Layer_0(视距4)/Layer_1(视距8)；地形当前走 vert+frag（MeshShader 路子已留位未启用）；描述符布局在启动时反射 spv 现算；管线配置（着色器/布局/模板/采样数 + 图元光栅/深度/混合/动态状态差异）全由 `pipelineList` 的表驱动，构造函数里不再硬编码逐管线赋值。
+管线配置（着色器/布局/模板/采样数 + 图元光栅/深度/混合/动态状态差异）在 `procPipelineNode` 构造里由 **九条手写 `node[管线].createPipelineNode(家族id, 顶点布局, 模板id, 流程, 预设, { 文件 }, 采样数, 渲染模板对象, 家族布局对象, device)` 调用（都在 `pipelineNode::createPipelineNode` 内：7 项元数据 + 1 个状态位落账（含期望流程 `shaderFlowType`）→ 采样数规则 → `pipeConfig.createPipeConfigNode(...)`（着色阶段由各 spv 模块自身的 `OpEntryPoint` 推）→ dev 期 `pipeConfig.checkShaderStageList(shaderFlowType)`（映射与对拍都搬进了 `pipeConfigNode`，期望以**形参**传入 ⇒ 装配函数仍 7 参、审计路径零影响）把期望流程与自推阶段**逐项顺序对拍**；建 VkPipeline 走 `buildPipeline(id, extent)`）**驱动（原表 `procPipelineShader` 与 `pipelineShaderNode` 结构体均已删）（表 `procPipelineShader` 已删；`procDescriptorNode` **自足**（构造里手写 5 条 `reflectLayout(家族, { 文件并集 })` → `createDescriptorNode(device)`；家族 `VkPipelineLayout ×5` 归 `procPipelineNode::nodeLayout`）⇒ `Buffer(Device&)` **单参**、`procDescriptor(tDevice.device)` 作**第一个成员**（拥有者＝使用者）⇒ `procPipelineNode` 四参构造注入运行期上下文（`device` / 描述符结点.node / renderList / msaa），并在构造体内**一次建成**：`createPipeLayoutNode ×5` → 九条 `node[管线].createPipelineNode(...)`（元数据 + 装配都在子结点；运行期对象由本层解析后随调用行传入）→ 自检 → 标脏 → 管线缓存（**无 `isLayoutBuilt`**）；声明顺序 `Buffer → procPipeline` 决定销毁顺序（管线先于 setLayout ✓）；模板参数 `Id`、`pipeVertexType` 映射表亦已删），管线 ↔ 顶点类型/布局写在九条构造实参上（原 `pipeVertexType` 编译期映射表已删，改为直接把 `vertexLayoutNode` 传进 `createPipelineNode`）（8 种顶点格式收在 `VkStruct.h` 的 `vertexStruct`，原 `data\VkVertex.h` 已删）；描述符布局反射/交换链重建都从 `pipelineStruct::pipelineNode` 的接线元数据取。
 
 ## 三、铁律（违反=严重）
 
@@ -28,6 +28,7 @@ Plate→Chunk(32³+34 边缘)→Cube；sightRange=8；双存储 full/delta；reg
 
 - 临时件与备份件 → `build\temp\`（`bak` 改前备份 / `log` 校验输出 / `probe` 原型件 / `work` 中间目录）；不散落到 `build\` 顶层或仓库根。
 - 构建期小工具（自带 `main`、不进 exe）→ `config\tool\`；其 CMake 接线规则 → `config\cmake\`。
+- DSH 预设与权限补丁：**真正生效的是 profile 的 `cordis.patch.yml`**（手改覆盖补丁，`config` 整体替换、不深合并）；仓库内版本管理副本 → `config\dsh\`。
 - 引擎运行时辅助件（被单 TU 聚合的头，如 `Log`/`Camera`/`Music`）→ `src\code\vk\tool\`。
 - **别把构建期工具放进 `src\code\`**：那里 `*.cpp` 被 GLOB 收进引擎工程，会撞 `main` 与 `Log::printError` 符号。
 - 生成物与构建产物 → `build\`（已被 git 忽略）：输出 `build\vs\bin\output\x64\<Config>\`、中间 `build\vs\bin\intermediate\x64\<Config>\`。
