@@ -311,7 +311,8 @@ namespace pipelineInfo {
 		"terrain", "model", "skybox", "mine", "uiText", "osMirror", "osScence", "dsScence", "shadowMap"
 	};
 
-	//描述符 id → 日志名字（顺序必须与 bufferEnum::procDescriptorId 一致）
-	const std::array<std::string, bufferEnum::procDescriptorId::count> procDescriptorName{ "scenceForward", "scenceDeferred", "uiText", "dsScence", "shadowMap" };
-
+	//描述符 id → 日志名字（顺序必须与 bufferEnum::procDescType 一致）
+	const std::array<std::string, bufferEnum::procDescType::count> procDescName{ 
+		"scenceForward", "scenceDeferred", "uiText", "dsScence", "shadowMap" 
+	};
 }

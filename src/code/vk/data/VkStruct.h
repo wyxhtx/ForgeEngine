@@ -2086,14 +2086,14 @@ namespace renderStruct {
 
 //desc		结构空间
 namespace descStruct {
-	//描述符配置结点
-	struct descriptorConfigNode {
+	//描述符 配置结点
+	struct descConfigNode {
 		VkDescriptorSetLayoutBinding layout{};
 		VkWriteDescriptorSet         write{};
 
 
 
-		descriptorConfigNode(uint32_t id, VkDescriptorType type, VkShaderStageFlags stage, uint32_t count = 1) {
+		descConfigNode(uint32_t id, VkDescriptorType type, VkShaderStageFlags stage, uint32_t count = 1) {
 			layout.descriptorCount	  = count;
 			layout.pImmutableSamplers = nullptr;
 			layout.binding			  = id;
@@ -2107,7 +2107,7 @@ namespace descStruct {
 			write.descriptorType  = type;
 		}
 
-		descriptorConfigNode() = delete;
+		descConfigNode() = delete;
 
 
 
@@ -2138,8 +2138,8 @@ namespace descStruct {
 		VkDescriptorImageInfo  imageInfo{};
 	};
 
-	//描述符写入结点
-	struct descriptorWriteNode {
+	//描述符 写入结点
+	struct descWriteNode {
 		uint32_t         binding{};
 		VkDescriptorType type{};
 
@@ -2149,17 +2149,104 @@ namespace descStruct {
 		VkImageView      view{};
 	};
 
-	//描述符结点
-	struct descriptorNode {
-		std::vector<descStruct::descriptorConfigNode> config{};
+	//描述符 反射配置结点
+	struct descReflectConfigNode {
+		pipelineEnum::procPipelineId::type pipeType{};
+		std::vector<std::string>           shaderFileList{};
+	};
 
-		VkDescriptorPool	  pool{};		//描述符池
-		VkDescriptorSetLayout layout{};     //描述符布局
-		uint32_t			  maxSet{};		//描述符池上限
+	//spv 数据结点
+	struct spvDataNode {
+		const spvStruct::moduleNode* module(const std::string& file) const {
+			for (const spvStruct::moduleNode* module : spvStruct::moduleList) {
+				if (module->file == file) { return module; }
+			}
+
+			if (debugInfo::LogSwitch) { 
+				Log::printError(__FILE__, __LINE__, "该 spv 不在反射表里（请重新构建）：" + file); 
+			}
+
+			return nullptr;
+		}
+	};
+
+	inline spvDataNode spvData{};
+
+	//spv 文件 → 着色器阶段
+	VkShaderStageFlagBits reflectStage(const std::string& filename) {
+		const spvStruct::moduleNode* module = spvData.module(filename);
+
+		return module == nullptr ? static_cast<VkShaderStageFlagBits>(0) : module->stage;
+	}
+	
+	//spv 文件 → 顶点输入表
+	std::span<const spvStruct::inputNode> reflectInput(const std::string& filename) {
+		const spvStruct::moduleNode* module = spvData.module(filename);
+
+		return module == nullptr ? std::span<const spvStruct::inputNode>{} : std::span<const spvStruct::inputNode>{ module->inputList, module->inputCount };
+	}
+
+	//spv 文件 → 描述绑定表
+	std::span<const spvStruct::bindingNode> reflectFile(const std::string& filename) {
+		const spvStruct::moduleNode* module = spvData.module(filename);
+
+		return module == nullptr ? std::span<const spvStruct::bindingNode>{} : std::span<const spvStruct::bindingNode>{ module->bindingList, module->bindingCount };
+	}
 
 
 
-		void createDescriptorNode(const VkDevice& device) {
+	//描述符 结点
+	struct descNode {
+		std::vector<descStruct::descConfigNode> descConfig{};
+		std::vector<descReflectConfigNode>		descReflectConfigList{};
+
+		VkDescriptorPool	  pool{};			//描述符池
+		VkDescriptorSetLayout layout{};			//描述符布局
+		uint32_t			  maxSet{};			//描述符池上限
+
+
+
+		void createReflectConfig(pipelineEnum::procPipelineId::type tPipeType, std::vector<std::string> tShaderFileList) {
+			descReflectConfigList.push_back(descReflectConfigNode{ tPipeType, std::move(tShaderFileList) });
+		}
+		
+		void createReflectLayout(bufferEnum::procDescType::type tDescType, const VkDevice& device) {
+			for (const descReflectConfigNode& reflectConfig : descReflectConfigList) {
+				for (const std::string& file : reflectConfig.shaderFileList) {
+					for (const spvStruct::bindingNode& reflect : descStruct::reflectFile(file)) {
+						//当前布局只支持单集合（GLSL 无 set 语法时反射出的集合号恒为 0）
+						if (debugInfo::LogSwitch && reflect.set != 0) {
+							Log::printError(__FILE__, __LINE__, pipelineInfo::procDescName[tDescType] + " 运行时 spv 的描述符集号非 0：" + reflect.name);
+						}
+
+						bool isMerge = false;
+						for (descStruct::descConfigNode& merge : descConfig) {
+							if (merge.layout.binding != reflect.binding) { continue; }
+
+							if (debugInfo::LogSwitch && merge.layout.descriptorType != reflect.type) {
+								Log::printError(__FILE__, __LINE__, pipelineInfo::procDescName[tDescType] + " 绑定 " + std::to_string(reflect.binding) + " 在不同着色器里类型不一致");
+							}
+
+							if (debugInfo::LogSwitch && merge.layout.descriptorCount != reflect.count) {
+								Log::printError(__FILE__, __LINE__, pipelineInfo::procDescName[tDescType] + " 绑定 " + std::to_string(reflect.binding) + " 在不同着色器里数组长度不一致");
+							}
+
+							merge.layout.stageFlags = static_cast<VkShaderStageFlags>(merge.layout.stageFlags | reflect.stage);
+							isMerge = true;
+							break;
+						}
+
+						if (!isMerge) {
+							descConfig.push_back(descStruct::descConfigNode{ reflect.binding, reflect.type, static_cast<VkShaderStageFlags>(reflect.stage), reflect.count });
+						}
+					}
+				}
+			}
+
+			createDescNode(device);
+		}
+
+		void createDescNode(const VkDevice& device) {
 			createPool(device);
 			createLayout(device);
 		}
@@ -2189,28 +2276,40 @@ namespace descStruct {
 		}
 
 		//写入
-		void writeFrom(const VkDevice& device, const VkDescriptorSet& dstSet, const std::vector<descriptorWriteNode>& requestList) {
+		void writeFrom(const VkDevice& device, const VkDescriptorSet& dstSet, const std::vector<descWriteNode>& requestList) {
 			std::vector<VkWriteDescriptorSet> writeList{};
 			writeList.reserve(requestList.size());
 
 			for (const auto& request : requestList) {
-				if (debugInfo::LogSwitch && (static_cast<size_t>(request.binding) >= config.size() || config[request.binding].layout.binding != request.binding)) {
+				if (debugInfo::LogSwitch && (static_cast<size_t>(request.binding) >= descConfig.size() || descConfig[request.binding].layout.binding != request.binding)) {
 					Log::printError(__FILE__, __LINE__, "描述符写入的 binding 与布局表不一致");
 				}
 
-				if (debugInfo::LogSwitch && config[request.binding].layout.descriptorType != request.type) {
+				if (debugInfo::LogSwitch && descConfig[request.binding].layout.descriptorType != request.type) {
 					Log::printError(__FILE__, __LINE__, "描述符写入的类型与布局表不一致");
 				}
 
 				if (request.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
-					writeList.push_back(config[request.binding].setWrite(dstSet, request.sampler, request.view));
+					writeList.push_back(descConfig[request.binding].setWrite(dstSet, request.sampler, request.view));
 				}
 				else {
-					writeList.push_back(config[request.binding].setWrite(dstSet, request.buffer, request.range));
+					writeList.push_back(descConfig[request.binding].setWrite(dstSet, request.buffer, request.range));
 				}
 			}
 
 			vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeList.size()), writeList.data(), 0, nullptr);
+		}
+
+		//获取 着色器文件列表
+		const std::vector<std::string>& getShaderFileList(pipelineEnum::procPipelineId::type tPipeType) const {
+			for (const descReflectConfigNode& reflectConfig : descReflectConfigList) {
+				if (reflectConfig.pipeType == tPipeType) { return reflectConfig.shaderFileList; }
+			}
+
+			if (debugInfo::LogSwitch) { Log::printError(__FILE__, __LINE__, "描述符家族未登记该管线的着色器文件：" + pipelineInfo::procPipelineName[tPipeType]); }
+
+			static const std::vector<std::string> emptyList{};
+			return emptyList;
 		}
 
 	private:
@@ -2221,7 +2320,7 @@ namespace descStruct {
 
 			//池需求 = maxSet × 每个 set 里该 binding 的数组长度；同类描述符按类型汇总
 			std::vector<VkDescriptorPoolSize> poolSize{};
-			for (const auto& i : config) {
+			for (const auto& i : descConfig) {
 				uint32_t need = maxSet * i.layout.descriptorCount;
 
 				bool merged = false;
@@ -2252,7 +2351,7 @@ namespace descStruct {
 
 		void createLayout(const VkDevice& device) {
 			std::vector<VkDescriptorSetLayoutBinding> layoutBinding{};
-			for (const auto& i : config) {
+			for (const auto& i : descConfig) {
 				layoutBinding.push_back(i.layout);
 			}
 
@@ -2268,390 +2367,6 @@ namespace descStruct {
 			}
 		}
 	};
-
-
-
-	//反射绑定结点
-	struct reflectBindingNode {
-		uint32_t              set{};       //描述符集号，GLSL 无 set 语法故恒为 0
-		uint32_t              binding{};   //绑定号
-		uint32_t              count{1};    //数组长度，非数组为 1
-		VkDescriptorType      type{};      //描述符类型
-		VkShaderStageFlagBits stage{};     //使用该绑定的阶段：由模块入口点执行模型推出（唯一来源是 spv 自身）
-		std::string           name{};      //变量名，仅用于日志
-	};
-
-	//反射顶点结点
-	struct reflectInputNode {
-		uint32_t              location{};  //Location 装饰：与顶点属性的 location 对应
-		VkFormat              format{};    //由分量数与标量类型译出（与 vertexLayoutNode 同一套 VkFormat 语言，便于直接比）
-		VkShaderStageFlagBits stage{};     //入口点执行模型推出的阶段：片段着色器的 in 也是 Input 存储类，必须靠它区分
-		std::string           name{};      //变量名，仅用于日志
-	};
-
-	//获取 着色阶段
-	VkShaderStageFlagBits getStage(uint32_t model) {
-		if (model == spirvInfo::executionModel::vertex)   { return VK_SHADER_STAGE_VERTEX_BIT; }
-		if (model == spirvInfo::executionModel::fragment) { return VK_SHADER_STAGE_FRAGMENT_BIT; }
-		if (model == spirvInfo::executionModel::compute)  { return VK_SHADER_STAGE_COMPUTE_BIT; }
-		if (model == spirvInfo::executionModel::task)     { return VK_SHADER_STAGE_TASK_BIT_NV; }
-		if (model == spirvInfo::executionModel::mesh)     { return VK_SHADER_STAGE_MESH_BIT_NV; }
-
-		return static_cast<VkShaderStageFlagBits>(0);
-	}
-
-	//读取 spv 字节
-	std::vector<uint32_t> readSpirv(const std::string& filename) {
-		std::ifstream fileData(filename, std::ios::ate | std::ios::binary);
-		if (!fileData.is_open()) {
-			Log::printError(__FILE__, __LINE__, filename + " 反射失败：着色器文件打开失败");
-		}
-
-		size_t fileSize = static_cast<size_t>(fileData.tellg());
-		std::vector<char> byteList(fileSize);
-		fileData.seekg(0);
-		fileData.read(byteList.data(), fileSize);
-		fileData.close();
-
-		//按 SPIR-V 字流解释：头 5 字 + 指令流，每字 4 字节
-		if (fileSize < 20 || fileSize % 4 != 0) {
-			Log::printError(__FILE__, __LINE__, filename + " 反射失败：字节码长度非法");
-		}
-
-		std::vector<uint32_t> code(fileSize / 4);
-		std::memcpy(code.data(), byteList.data(), fileSize);
-		if (code[0] != spirvInfo::magicNumber) {
-			Log::printError(__FILE__, __LINE__, filename + " 反射失败：不是 SPIR-V 字节码");
-		}
-
-		return code;
-	}
-
-	//读取 spv 字流
-	uint32_t reflectModel(const std::vector<uint32_t>& code) {
-		for (size_t offset = 5; offset < code.size(); ) {		//头 5 字之后是指令流
-			const uint32_t wordCount = code[offset] >> 16;		//高 16 位＝字长
-			const uint32_t opcode    = code[offset] & 0xFFFF;		//低 16 位＝操作码
-			if (opcode == spirvInfo::opCode::entryPoint && wordCount >= 3) { return code[offset + 1]; }
-			offset += wordCount;
-		}
-
-		return spirvInfo::invalidId;
-	}
-
-	//读取 spv 文件
-	uint32_t reflectModel(const std::string& filename) { return reflectModel(readSpirv(filename)); }
-
-	//文件 → 着色阶段
-	VkShaderStageFlagBits reflectStage(const std::string& filename) {
-		const VkShaderStageFlagBits stage = getStage(reflectModel(filename));
-		if (stage == 0) { Log::printError(__FILE__, __LINE__, filename + " 入口点执行模型未知（spv 里没有有效 OpEntryPoint？）"); }
-		return stage;
-	}
-
-	//spv 文件 → 描述绑定表
-	std::vector<reflectBindingNode> reflectFile(const std::string& filename) {
-		//读字节码
-		std::vector<uint32_t> code = readSpirv(filename);
-
-		//id 取值 1 到 bound-1，故开 bound 长的表，槽位留着哨兵表示未定义
-		uint32_t bound = code[3];
-
-		std::vector<uint32_t>    bindingList(bound, spirvInfo::invalidId);       //Binding 装饰
-		std::vector<uint32_t>    setList(bound, spirvInfo::invalidId);           //DescriptorSet 装饰
-		std::vector<uint32_t>    blockList(bound, spirvInfo::invalidId);         //Block 或 BufferBlock 装饰
-		std::vector<uint32_t>    elementList(bound, spirvInfo::invalidId);       //数组元素类型
-		std::vector<uint32_t>    lengthList(bound, spirvInfo::invalidId);        //数组长度常量 id
-		std::vector<uint32_t>    valueList(bound, spirvInfo::invalidId);         //常量值
-		std::vector<uint32_t>    pointeeList(bound, spirvInfo::invalidId);       //指针指向的类型
-		std::vector<uint32_t>    imageDimList(bound, spirvInfo::invalidId);      //图像维度
-		std::vector<uint32_t>    imageSampledList(bound, spirvInfo::invalidId);  //图像采样标记
-		std::vector<uint32_t>    sampledImageList(bound, spirvInfo::invalidId);  //组合采样器包着的图像
-		std::vector<uint32_t>    samplerList(bound, spirvInfo::invalidId);       //采样器标记
-		std::vector<uint32_t>    structList(bound, spirvInfo::invalidId);        //结构体标记
-		std::vector<uint32_t>    varTypeList(bound, spirvInfo::invalidId);       //变量的指针类型
-		std::vector<uint32_t>    varStorageList(bound, spirvInfo::invalidId);    //变量的存储类
-		std::vector<std::string> nameList(bound);                     //id 名字
-
-		const uint32_t model = reflectModel(code);		//入口点执行模型（唯一扫描点：reflectModel）
-		const VkShaderStageFlagBits modelStage = getStage(model);		//本文件阶段只此一处推出，循环内复用
-
-		//指令流每字：高 16 位是字长，低 16 位是操作码
-		for (size_t offset = 5; offset < code.size(); ) {
-			uint32_t wordCount = code[offset] >> 16;
-			uint32_t opcode    = code[offset] & 0xFFFF;
-
-			if (wordCount == 0 || offset + wordCount > code.size()) {
-				Log::printError(__FILE__, __LINE__, filename + " 反射失败：指令越界");
-			}
-
-			//第一趟只收装饰、名字、常量、入口点，它们都在指令流前段，供后面两趟查表
-			if (opcode == spirvInfo::opCode::decorate && wordCount >= 3) {
-				uint32_t target = code[offset + 1];
-				uint32_t kind   = code[offset + 2];
-
-				if (target < bound) {
-					if (kind == spirvInfo::decoration::block || kind == spirvInfo::decoration::bufferBlock) { blockList[target] = kind; }
-					else if (kind == spirvInfo::decoration::binding && wordCount >= 4)           { bindingList[target] = code[offset + 3]; }
-					else if (kind == spirvInfo::decoration::descriptorSet && wordCount >= 4)     { setList[target] = code[offset + 3]; }
-				}
-			}
-			else if (opcode == spirvInfo::opCode::name && wordCount >= 3) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) {
-					const char* text = reinterpret_cast<const char*>(&code[offset + 2]);
-					nameList[target] = std::string(text, strnlen(text, (wordCount - 2) * 4));
-				}
-			}
-			else if (opcode == spirvInfo::opCode::constant && wordCount >= 4) {
-				uint32_t target = code[offset + 2];
-
-				if (target < bound) {
-					valueList[target] = code[offset + 3];
-				}
-			}
-
-			offset += wordCount;
-		}
-
-		//第二趟收类型与变量
-		for (size_t offset = 5; offset < code.size(); ) {
-			uint32_t wordCount = code[offset] >> 16;
-			uint32_t opcode    = code[offset] & 0xFFFF;
-
-			if (opcode == spirvInfo::opCode::typePointer && wordCount >= 4) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) {
-					pointeeList[target] = code[offset + 3];
-				}
-			}
-			else if (opcode == spirvInfo::opCode::typeArray && wordCount >= 4) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) {
-					elementList[target] = code[offset + 2];
-					lengthList[target]  = code[offset + 3];
-				}
-			}
-			else if (opcode == spirvInfo::opCode::typeRuntimeArray && wordCount >= 3) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) {
-					elementList[target] = code[offset + 2];
-				}
-			}
-			else if (opcode == spirvInfo::opCode::typeSampledImage && wordCount >= 3) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) {
-					sampledImageList[target] = code[offset + 2];
-				}
-			}
-			else if (opcode == spirvInfo::opCode::typeImage && wordCount >= 8) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) {
-					imageDimList[target]     = code[offset + 3];
-					imageSampledList[target] = code[offset + 7];
-				}
-			}
-			else if (opcode == spirvInfo::opCode::typeSampler && wordCount >= 2) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) {
-					samplerList[target] = target;
-				}
-			}
-			else if (opcode == spirvInfo::opCode::typeStruct && wordCount >= 2) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) {
-					structList[target] = target;
-				}
-			}
-			else if (opcode == spirvInfo::opCode::variable && wordCount >= 4) {
-				uint32_t varId = code[offset + 2];
-
-				if (varId < bound) {
-					varTypeList[varId]    = code[offset + 1];
-					varStorageList[varId] = code[offset + 3];
-				}
-			}
-
-			offset += wordCount;
-		}
-
-		//第三趟按变量分类出描述符
-		std::vector<reflectBindingNode> result{};
-
-		for (uint32_t id = 1; id < bound; id++) {
-			//只看描述符存储类且带 binding 装饰的全局变量，push constant 无 binding 天然排除
-			if (varTypeList[id] == spirvInfo::invalidId || bindingList[id] == spirvInfo::invalidId) { continue; }
-			if (varStorageList[id] != spirvInfo::storageClass::uniformConstant && varStorageList[id] != spirvInfo::storageClass::uniform && varStorageList[id] != spirvInfo::storageClass::storageBuffer) { continue; }
-
-			//剥掉数组，拿到元素类型与数组长度
-			uint32_t elementId = pointeeList[varTypeList[id]];
-			uint32_t count     = 1;
-
-			if (elementId != spirvInfo::invalidId && elementList[elementId] != spirvInfo::invalidId) {
-				uint32_t lengthId = lengthList[elementId];
-				count     = (lengthId != spirvInfo::invalidId && valueList[lengthId] != spirvInfo::invalidId) ? valueList[lengthId] : 1;
-				elementId = elementList[elementId];
-			}
-
-			if (elementId == spirvInfo::invalidId) {
-				Log::printError(__FILE__, __LINE__, filename + " 反射失败：描述符类型解析不出：" + nameList[id]);
-			}
-
-			//按元素类型分类
-			bool isKnown = false;
-			VkDescriptorType type{};
-
-			if (sampledImageList[elementId] != spirvInfo::invalidId) {
-				type    = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				isKnown = true;
-			}
-			else if (samplerList[elementId] != spirvInfo::invalidId) {
-				type    = VK_DESCRIPTOR_TYPE_SAMPLER;
-				isKnown = true;
-			}
-			else if (imageDimList[elementId] != spirvInfo::invalidId) {
-				if (imageDimList[elementId] == spirvInfo::dimSubpassData)          { type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT; }
-				else if (imageSampledList[elementId] == spirvInfo::sampledStorage) { type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; }
-				else                                                    { type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; }
-				isKnown = true;
-			}
-			else if (structList[elementId] != spirvInfo::invalidId) {
-				if (varStorageList[id] == spirvInfo::storageClass::storageBuffer || blockList[elementId] == spirvInfo::decoration::bufferBlock) { type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; }
-				else                                                                                                     { type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; }
-				isKnown = true;
-			}
-
-			if (!isKnown) {
-				Log::printError(__FILE__, __LINE__, filename + " 反射失败：描述符类型不认识：" + nameList[id]);
-			}
-
-			result.push_back(reflectBindingNode{
-				.set     = (setList[id] == spirvInfo::invalidId) ? 0u : setList[id],
-				.binding = bindingList[id],
-				.count   = count,
-				.type    = type,
-				.stage   = modelStage,
-				.name    = nameList[id],
-			});
-		}
-
-		//入口点执行模型必须可识别（阶段由模块自推，已无"传入阶段"可对）
-		if (modelStage == 0) {
-			Log::printError(__FILE__, __LINE__, filename + " 入口点执行模型未知（spv 里没有有效 OpEntryPoint？）");
-		}
-
-		//按绑定号升序
-		std::sort(result.begin(), result.end(), [](const reflectBindingNode& left, const reflectBindingNode& right) { return left.binding < right.binding; });
-
-		return result;
-	}
-
-	//spv 文件 → 顶点输入表
-	std::vector<reflectInputNode> reflectInput(const std::string& filename) {
-		std::vector<uint32_t> code = readSpirv(filename);
-		uint32_t bound = code[3];
-
-		std::vector<uint32_t>    locationList(bound, spirvInfo::invalidId);    //Location 装饰
-		std::vector<uint32_t>    vectorCountList(bound, spirvInfo::invalidId); //OpTypeVector 的分量数
-		std::vector<uint32_t>    vectorCompList(bound, spirvInfo::invalidId);  //OpTypeVector 的标量类型 id
-		std::vector<uint32_t>    floatList(bound, spirvInfo::invalidId);       //OpTypeFloat 标记
-		std::vector<uint32_t>    pointeeList(bound, spirvInfo::invalidId);     //指针指向的类型
-		std::vector<uint32_t>    varTypeList(bound, spirvInfo::invalidId);     //变量的指针类型
-		std::vector<uint32_t>    varStorageList(bound, spirvInfo::invalidId);  //变量的存储类
-		std::vector<std::string> nameList(bound);                   //id 名字
-		const uint32_t model = reflectModel(code);		//入口点执行模型（唯一扫描点：reflectModel）
-
-		for (size_t offset = 5; offset < code.size(); ) {
-			uint32_t wordCount = code[offset] >> 16;
-			uint32_t opcode    = code[offset] & 0xFFFF;
-
-			if (wordCount == 0 || offset + wordCount > code.size()) {
-				Log::printError(__FILE__, __LINE__, filename + " 反射失败：指令越界");
-			}
-
-			if (opcode == spirvInfo::opCode::decorate && wordCount >= 4) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound && code[offset + 2] == spirvInfo::decoration::location) { locationList[target] = code[offset + 3]; }
-			}
-			else if (opcode == spirvInfo::opCode::typeFloat && wordCount >= 3) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) { floatList[target] = target; }
-			}
-			else if (opcode == spirvInfo::opCode::typeVector && wordCount >= 4) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) { vectorCompList[target] = code[offset + 2]; vectorCountList[target] = code[offset + 3]; }
-			}
-			else if (opcode == spirvInfo::opCode::typePointer && wordCount >= 4) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) { pointeeList[target] = code[offset + 3]; }
-			}
-			else if (opcode == spirvInfo::opCode::variable && wordCount >= 4) {
-				uint32_t varId = code[offset + 2];
-
-				if (varId < bound) { varTypeList[varId] = code[offset + 1]; varStorageList[varId] = code[offset + 3]; }
-			}
-			else if (opcode == spirvInfo::opCode::name && wordCount >= 3) {
-				uint32_t target = code[offset + 1];
-
-				if (target < bound) {
-					const char* text = reinterpret_cast<const char*>(&code[offset + 2]);
-					nameList[target] = std::string(text, strnlen(text, (wordCount - 2) * 4));
-				}
-			}
-
-			offset += wordCount;
-		}
-
-		VkShaderStageFlagBits stage = getStage(model);
-		std::vector<reflectInputNode> result{};
-
-		for (uint32_t id = 1; id < bound; id++) {
-			//只看 Input 存储类且带 Location 装饰的全局变量
-			if (varTypeList[id] == spirvInfo::invalidId || locationList[id] == spirvInfo::invalidId) { continue; }
-			if (varStorageList[id] != spirvInfo::storageClass::input) { continue; }
-
-			uint32_t typeId = pointeeList[varTypeList[id]];
-
-			//本引擎的顶点属性都是向量（float2/float3）；标量输入不在对拍范围内
-			if (typeId == spirvInfo::invalidId || vectorCountList[typeId] == spirvInfo::invalidId) { continue; }
-
-			VkFormat format = VK_FORMAT_UNDEFINED;
-
-			if (floatList[vectorCompList[typeId]] != spirvInfo::invalidId) {
-				if (vectorCountList[typeId] == 2)      { format = VK_FORMAT_R32G32_SFLOAT; }
-				else if (vectorCountList[typeId] == 3) { format = VK_FORMAT_R32G32B32_SFLOAT; }
-				else if (vectorCountList[typeId] == 4) { format = VK_FORMAT_R32G32B32A32_SFLOAT; }
-			}
-
-			if (format == VK_FORMAT_UNDEFINED) {
-				Log::printWarning(__FILE__, __LINE__, filename + " 顶点输入对拍：不认识的输入类型：" + nameList[id]);
-			}
-
-			result.push_back(reflectInputNode{
-				.location = locationList[id],
-				.format   = format,
-				.stage    = stage,
-				.name     = nameList[id],
-			});
-		}
-
-		//按 location 升序
-		std::sort(result.begin(), result.end(), [](const reflectInputNode& left, const reflectInputNode& right) { return left.location < right.location; });
-
-		return result;
-	}
 }
 
 //vertex	结构空间
@@ -3930,17 +3645,17 @@ namespace pipelineStruct {
 		//校验 顶点输入布局
 		void checkVertexInput(std::span<const std::string> tShaderFileList) {
 			//片段着色器的 in 同样是 Input 存储类 + Location ⇒ 必须按执行模型过滤出顶点阶段
-			std::vector<descStruct::reflectInputNode> inputList{};
+			std::vector<spvStruct::inputNode> inputList{};
 			for (const std::string& file : tShaderFileList) {
-				for (const descStruct::reflectInputNode& input : descStruct::reflectInput(file)) {
+				for (const spvStruct::inputNode& input : descStruct::reflectInput(file)) {
 					if (input.stage == VK_SHADER_STAGE_VERTEX_BIT) { inputList.push_back(input); }
 				}
 			}
 
 			for (const VkVertexInputAttributeDescription& attribute : vertAttributeList) {
-				const descStruct::reflectInputNode* found = nullptr;
+				const spvStruct::inputNode* found = nullptr;
 
-				for (const descStruct::reflectInputNode& input : inputList) {
+				for (const spvStruct::inputNode& input : inputList) {
 					if (input.location == attribute.location) { found = &input; break; }
 				}
 
@@ -4082,7 +3797,7 @@ namespace pipelineStruct {
 		std::vector<std::string>              shaderFileList{};			//着色文件
 		const vertexStruct::vertexLayoutNode* vertexLayout{};			//顶点布局
 		renderEnum::renderTemplateId::type    renderTemplateType{};		//渲染类型
-		bufferEnum::procDescriptorId::type    descriptorType{};			//描述类型
+		bufferEnum::procDescType::type		  descType{};				//描述类型
 		pipelineEnum::dynamicId::type         dynamicType{};			//动态类型
 		pipelineStruct::pipeConfigParamNode   param{};					//管线配置参数
 
@@ -4092,12 +3807,12 @@ namespace pipelineStruct {
 
 
 
-		void createPipelineNode(bufferEnum::procDescriptorId::type tDescriptorType, const vertexStruct::vertexLayoutNode& tVertexLayout, renderEnum::renderTemplateId::type tRenderTemplateType, pipelineEnum::shaderFlowId::type tShaderFlowType, const pipelineStruct::pipeConfigParamNode& tParam, const std::vector<std::string>& tShaderFileList, VkSampleCountFlagBits tMsaa, const renderStruct::renderTemplateNode& tRenderTemplateNode, const pipelineStruct::pipeLayoutNode& tPipeLayout, const VkDevice& tDevice) {
+		void createPipelineNode(pipelineEnum::shaderFlowId::type tShaderFlowType, const std::vector<std::string>& tShaderFileList, const vertexStruct::vertexLayoutNode& tVertexLayout, renderEnum::renderTemplateId::type tRenderTemplateType, bufferEnum::procDescType::type tDescType, VkSampleCountFlagBits tMsaa, const renderStruct::renderTemplateNode& tRenderTemplateNode, const pipelineStruct::pipeLayoutNode& tPipeLayout, const pipelineStruct::pipeConfigParamNode& tParam, const VkDevice& tDevice) {
 			shaderFlowType     = tShaderFlowType;
 			shaderFileList     = tShaderFileList;
 			vertexLayout       = &tVertexLayout;
 			renderTemplateType = tRenderTemplateType;
-			descriptorType     = tDescriptorType;
+			descType		   = tDescType;
 			dynamicType        = tParam.dynamicType;
 			param              = tParam;
 
@@ -4267,7 +3982,7 @@ namespace bufferStruct {
 
 
 		//创建描述符集
-		void createDescriptorSet(descStruct::descriptorNode& descriptor, const std::vector<VkSampler>& samplerList, const VkDevice& device) {
+		void createDescSet(descStruct::descNode& descriptor, const std::vector<VkSampler>& samplerList, const VkDevice& device) {
 			if (isEnable) {
 				if (descriptor.alloc(device, descriptorSet, pipelineEnum::procPipelineId::terrain_p)) {
 					descriptor.writeFrom(device, descriptorSet, {

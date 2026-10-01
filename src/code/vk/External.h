@@ -84,3 +84,6 @@
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <alut.h>
+
+//着色器反射数据，构建期工具 config\tool\reflect-gen 生成 → build\vs\generated\ShaderReflectData.inc
+#include "ShaderReflectData.inc"

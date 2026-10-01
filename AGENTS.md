@@ -12,7 +12,7 @@
 
 ## 二、核心概念（速记）
 
-管线配置（着色器/布局/模板/采样数 + 图元光栅/深度/混合/动态状态差异）在 `procPipelineNode` 构造里由 **九条手写 `node[管线].createPipelineNode(家族id, 顶点布局, 模板id, 流程, 预设, { 文件 }, 采样数, 渲染模板对象, 家族布局对象, device)` 调用（都在 `pipelineNode::createPipelineNode` 内：7 项元数据 + 1 个状态位落账（含期望流程 `shaderFlowType`）→ 采样数规则 → `pipeConfig.createPipeConfigNode(...)`（着色阶段由各 spv 模块自身的 `OpEntryPoint` 推）→ dev 期 `pipeConfig.checkShaderStageList(shaderFlowType)`（映射与对拍都搬进了 `pipeConfigNode`，期望以**形参**传入 ⇒ 装配函数仍 7 参、审计路径零影响）把期望流程与自推阶段**逐项顺序对拍**；建 VkPipeline 走 `buildPipeline(id, extent)`）**驱动（原表 `procPipelineShader` 与 `pipelineShaderNode` 结构体均已删）（表 `procPipelineShader` 已删；`procDescriptorNode` **自足**（构造里手写 5 条 `reflectLayout(家族, { 文件并集 })` → `createDescriptorNode(device)`；家族 `VkPipelineLayout ×5` 归 `procPipelineNode::nodeLayout`）⇒ `Buffer(Device&)` **单参**、`procDescriptor(tDevice.device)` 作**第一个成员**（拥有者＝使用者）⇒ `procPipelineNode` 四参构造注入运行期上下文（`device` / 描述符结点.node / renderList / msaa），并在构造体内**一次建成**：`createPipeLayoutNode ×5` → 九条 `node[管线].createPipelineNode(...)`（元数据 + 装配都在子结点；运行期对象由本层解析后随调用行传入）→ 自检 → 标脏 → 管线缓存（**无 `isLayoutBuilt`**）；声明顺序 `Buffer → procPipeline` 决定销毁顺序（管线先于 setLayout ✓）；模板参数 `Id`、`pipeVertexType` 映射表亦已删），管线 ↔ 顶点类型/布局写在九条构造实参上（原 `pipeVertexType` 编译期映射表已删，改为直接把 `vertexLayoutNode` 传进 `createPipelineNode`）（8 种顶点格式收在 `VkStruct.h` 的 `vertexStruct`，原 `data\VkVertex.h` 已删）；描述符布局反射/交换链重建都从 `pipelineStruct::pipelineNode` 的接线元数据取。
+管线配置（着色器/布局/模板/采样数 + 图元光栅/深度/混合/动态状态差异）在 `procPipelineNode` 构造里由 **九条手写 `createPipelineNode(管线id, 模板id, 家族id, 顶点布局, 流程, 预设)` 调用（`procPipelineNode` 上的包装：`renderTemplateList` / `descList` / `msaa` / `device` 已由四参构造存为成员 ⇒ 不再逐行重复传；包装内部转调 `node[管线].createPipelineNode(流程, getShaderFileList(管线), 顶点布局, 模板id, 家族id, 采样数, 渲染模板对象, 家族布局对象, 预设, device)`）（都在 `pipelineNode::createPipelineNode` 内：7 项元数据 + 1 个状态位落账（含期望流程 `shaderFlowType`）→ 采样数规则 → `pipeConfig.createPipeConfigNode(...)`（着色阶段由各 spv 模块自身的 `OpEntryPoint` 推）→ dev 期 `pipeConfig.checkShaderStageList(shaderFlowType)`（映射与对拍都搬进了 `pipeConfigNode`，期望以**形参**传入 ⇒ 装配函数仍 7 参、审计路径零影响）把期望流程与自推阶段**逐项顺序对拍**；建 VkPipeline 走 `buildPipeline(id, extent)`）**驱动（原表 `procPipelineShader` 与 `pipelineShaderNode` 结构体均已删）（表 `procPipelineShader` 已删；`procDescNode` 构造里 **9 条 `node[家族].create(管线, { 文件 })` 登记**（着色器文件唯一来源）→ `descStruct::descNode::createReflectLayout(家族, device)` 按使用者并集聚合 + 建池/布局；家族 `VkPipelineLayout ×5` 归 `procPipelineNode::nodeLayout`）⇒ `Buffer(Device&)` **单参**、`procDesc(tDevice.device)` 作**第一个成员**（拥有者＝使用者）⇒ `procPipelineNode` 四参构造注入运行期上下文（`device` / 描述符结点.node / renderList / msaa），并在构造体内**一次建成**：`createPipeLayoutNode ×5` → 九条 `node[管线].createPipelineNode(...)`（元数据 + 装配都在子结点；运行期对象由本层解析后随调用行传入）→ 自检 → 标脏 → 管线缓存（**无 `isLayoutBuilt`**）；声明顺序 `Buffer → procPipeline` 决定销毁顺序（管线先于 setLayout ✓）；模板参数 `Id`、`pipeVertexType` 映射表亦已删），管线 ↔ 顶点类型/布局写在九条构造实参上（原 `pipeVertexType` 编译期映射表已删，改为直接把 `vertexLayoutNode` 传进 `createPipelineNode`）（8 种顶点格式收在 `VkStruct.h` 的 `vertexStruct`，原 `data\VkVertex.h` 已删）；描述符布局反射/交换链重建都从 `pipelineStruct::pipelineNode` 的接线元数据取。
 
 ## 三、铁律（违反=严重）
 
@@ -23,6 +23,7 @@
 5. 修改 `src\code` 后如新增 `src\assets` 目录，提醒确认 VS 工程树可见性。
 6. `docs\chatbox-docs\` 是本机 AI 知识库：**改动直接生效、无同步步骤**（Chatbox 已弃用，`fe-sync-kb` 退役）。
 7. **破坏性动作（清理/删除/覆盖）等用户发话**，不做静默删除。
+8. **先探讨 → 确认 → 再动手**：任何改动（代码 / 文档 / 脚本 / CMake / 生成物 / 临时件）前，必须把方案讲清并取得用户**明确确认**；**未确认不得擅动**（未确认时只允许只读探查与汇报）。用户说「改 / 做 / 继续」才算确认；确认前先出影响卡（文件 / 逻辑 / 风险）与回滚点。
 
 ## 四、落点约定（速查）
 
@@ -31,6 +32,7 @@
 - DSH 预设与权限补丁：**真正生效的是 profile 的 `cordis.patch.yml`**（手改覆盖补丁，`config` 整体替换、不深合并）；仓库内版本管理副本 → `config\dsh\`。
 - 引擎运行时辅助件（被单 TU 聚合的头，如 `Log`/`Camera`/`Music`）→ `src\code\vk\tool\`。
 - **别把构建期工具放进 `src\code\`**：那里 `*.cpp` 被 GLOB 收进引擎工程，会撞 `main` 与 `Log::printError` 符号。
+- 反射数据表（`ShaderReflectData.inc`）＝**构建产物** → `build\vs\generated\`（git 忽略、不入库）；生成器 `config\tool\reflect-gen`（`--verify` 已接入，与 SDK `spirv-reflect` 对拍）、构建接线 `config\cmake\reflect-data.cmake`
 - 生成物与构建产物 → `build\`（已被 git 忽略）：输出 `build\vs\bin\output\x64\<Config>\`、中间 `build\vs\bin\intermediate\x64\<Config>\`。
 
 ## 五、Obsidian 库同步（预授权，2026-09-23 用户授权）

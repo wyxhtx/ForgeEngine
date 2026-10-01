@@ -44,7 +44,7 @@ private:
 	pipelineStruct::asyncWorker cubeWorker{};		//方块更新专用 worker
 	pipelineStruct::asyncWorker cmdWorker{};		//命令重建专用 worker
 
-	pipelineList::procPipelineNode procPipeline{ Device.device, InitBuffer.getRenderList(), InitBuffer.getDescriptor(), InitBuffer.getMsaa() };
+	pipelineList::procPipelineNode procPipeline{ InitBuffer.getRenderList(), InitBuffer.getDesc(), InitBuffer.getMsaa(), Device.device };
 
 
 

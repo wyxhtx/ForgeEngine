@@ -358,7 +358,7 @@ namespace bufferEnum {
 		};
 	}
 
-	namespace procDescriptorId {
+	namespace procDescType {
 		enum type {
 			scenceForward_d,    //场景前向描述符
 			scenceDeferred_d,   //场景延迟描述符，用于将纹理贴图和法线贴图转换为3大附件

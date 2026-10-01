@@ -89,91 +89,66 @@ namespace pipelineList {
 		}
 	};
 
-	struct procDescriptorNode {
-		VkDescriptorSetAllocateInfo				allocInfo{};
-		bufferEnum::procDescriptorId::type		descriptorType = bufferEnum::procDescriptorId::count;
-		std::vector<descStruct::descriptorNode> node{};
+	struct procDescNode {
+		VkDescriptorSetAllocateInfo		  allocInfo{};
+		bufferEnum::procDescType::type    descType = bufferEnum::procDescType::count;
+		std::vector<descStruct::descNode> node{};
 
 
 
-		procDescriptorNode(const VkDevice& device) : node(bufferEnum::procDescriptorId::count) {
+		procDescNode(const VkDevice& device) : node(bufferEnum::procDescType::count) {
 			allocInfo.sType				 = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 			allocInfo.pNext				 = nullptr;
 			allocInfo.descriptorSetCount = 1;
 			
-			reflectLayout(bufferEnum::procDescriptorId::scenceDeferred_d, bufferInfo::scenceDeferredCount, std::vector<std::string>{ fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag, fileInfo::shader::pbrVert,  fileInfo::shader::pbrFrag }, device);
-			reflectLayout(bufferEnum::procDescriptorId::scenceForward_d,  bufferInfo::scenceForwardCount,  std::vector<std::string>{ fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag,  fileInfo::shader::mineVert, fileInfo::shader::mineFrag, fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag, fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag }, device);
-			reflectLayout(bufferEnum::procDescriptorId::uiText_d,		  bufferInfo::uiTextCount,		   std::vector<std::string>{ fileInfo::shader::uiTextVert,   fileInfo::shader::uiTextFrag   }, device);
-			reflectLayout(bufferEnum::procDescriptorId::dsScence_d,		  bufferInfo::dsScenceCount,	   std::vector<std::string>{ fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag }, device);
-			reflectLayout(bufferEnum::procDescriptorId::shadowMap_d,	  bufferInfo::shadowCount,		   std::vector<std::string>{ fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   }, device);
+			node[bufferEnum::procDescType::scenceForward_d] .maxSet = bufferInfo::scenceForwardCount;
+			node[bufferEnum::procDescType::scenceDeferred_d].maxSet = bufferInfo::scenceDeferredCount;
+			node[bufferEnum::procDescType::uiText_d]		.maxSet = bufferInfo::uiTextCount;
+			node[bufferEnum::procDescType::dsScence_d]		.maxSet = bufferInfo::dsScenceCount;
+			node[bufferEnum::procDescType::shadowMap_d]		.maxSet = bufferInfo::shadowCount;
+
+			node[bufferEnum::procDescType::scenceDeferred_d].createReflectConfig(pipelineEnum::procPipelineId::terrain_p,    { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag  });
+			node[bufferEnum::procDescType::scenceDeferred_d].createReflectConfig(pipelineEnum::procPipelineId::model_p,      { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag	  });
+			node[bufferEnum::procDescType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::skybox_p,     { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag   });
+			node[bufferEnum::procDescType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::mine_p,       { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag	  });
+			node[bufferEnum::procDescType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::osMirror_p,   { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag });
+			node[bufferEnum::procDescType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::osScence_p,   { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag });
+			node[bufferEnum::procDescType::uiText_d]		.createReflectConfig(pipelineEnum::procPipelineId::uiText_p,     { fileInfo::shader::uiTextVert,   fileInfo::shader::uiTextFrag   });
+			node[bufferEnum::procDescType::dsScence_d]		.createReflectConfig(pipelineEnum::procPipelineId::dsScence_p,   { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag });
+			node[bufferEnum::procDescType::shadowMap_d]		.createReflectConfig(pipelineEnum::procPipelineId::shadowMap_p,  { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   });
+
+			for (int i = 0; i < bufferEnum::procDescType::count; i++) {
+				node[i].createReflectLayout(static_cast<bufferEnum::procDescType::type>(i), device);
+			}
 		}
 
-		procDescriptorNode() = delete;
+		procDescNode() = delete;
 
 
 
 		void clear(const VkDevice& device) {
-			for (descStruct::descriptorNode& descriptorNode : node) {
-				descriptorNode.clear(device);
+			for (descStruct::descNode& desc : node) {
+				desc.clear(device);
 			}
 		}
 
+		void setAllocInfo(bufferEnum::procDescType::type tDescType) {
+			allocInfo.descriptorPool = node[tDescType].pool;
+			allocInfo.pSetLayouts    = &node[tDescType].layout;
 
-
-		//反射 SPIR-V 提取绑定信息，创建描述符布局
-		void reflectLayout(bufferEnum::procDescriptorId::type tDescriptorType, uint32_t tMaxSet, std::span<const std::string> shaderFileList, const VkDevice& device) {
-			node[tDescriptorType].maxSet = tMaxSet;
-
-			for (const std::string& file : shaderFileList) {
-				for (const descStruct::reflectBindingNode& reflect : descStruct::reflectFile(file)) {
-					//当前布局只支持单集合（GLSL 无 set 语法时反射出的集合号恒为 0）
-					if (debugInfo::LogSwitch && reflect.set != 0) {
-						Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[tDescriptorType] + " 运行时 spv 的描述符集号非 0：" + reflect.name);
-					}
-
-					bool isMerge = false;
-					for (descStruct::descriptorConfigNode& merge : node[tDescriptorType].config) {
-						if (merge.layout.binding != reflect.binding) { continue; }
-
-						if (debugInfo::LogSwitch && merge.layout.descriptorType != reflect.type) {
-							Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[tDescriptorType] + " 绑定 " + std::to_string(reflect.binding) + " 在不同着色器里类型不一致");
-						}
-
-						if (debugInfo::LogSwitch && merge.layout.descriptorCount != reflect.count) {
-							Log::printError(__FILE__, __LINE__, pipelineInfo::procDescriptorName[tDescriptorType] + " 绑定 " + std::to_string(reflect.binding) + " 在不同着色器里数组长度不一致");
-						}
-
-						merge.layout.stageFlags = static_cast<VkShaderStageFlags>(merge.layout.stageFlags | reflect.stage);
-						isMerge = true;
-						break;
-					}
-
-					if (!isMerge) {
-						node[tDescriptorType].config.push_back(descStruct::descriptorConfigNode{ reflect.binding, reflect.type, static_cast<VkShaderStageFlags>(reflect.stage), reflect.count });
-					}
-				}
-			}
-
-			node[tDescriptorType].createDescriptorNode(device);
-		}
-
-		void setAllocInfo(bufferEnum::procDescriptorId::type tDescriptorType) {
-			allocInfo.descriptorPool = node[tDescriptorType].pool;
-			allocInfo.pSetLayouts    = &node[tDescriptorType].layout;
-
-			descriptorType = tDescriptorType;
+			descType = tDescType;
 		}
 
 		const VkWriteDescriptorSet& getWrite(int writeId, const VkDescriptorSet& dstSet, const VkBuffer& buffer, VkDeviceSize range) {
-			if (debugInfo::LogSwitch && descriptorType >= bufferEnum::procDescriptorId::count) { Log::printError(__FILE__, __LINE__, "getWrite 前必须先 setAllocInfo（当前家族未设置）"); }
+			if (debugInfo::LogSwitch && descType >= bufferEnum::procDescType::count) { Log::printError(__FILE__, __LINE__, "getWrite 前必须先 setAllocInfo（当前家族未设置）"); }
 
-			return node[descriptorType].config[writeId].setWrite(dstSet, buffer, range);
+			return node[descType].descConfig[writeId].setWrite(dstSet, buffer, range);
 		}
 
 		const VkWriteDescriptorSet& getWrite(int writeId, const VkDescriptorSet& dstSet, const VkSampler& sampler, const VkImageView& imageView) {
-			if (debugInfo::LogSwitch && descriptorType >= bufferEnum::procDescriptorId::count) { Log::printError(__FILE__, __LINE__, "getWrite 前必须先 setAllocInfo（当前家族未设置）"); }
+			if (debugInfo::LogSwitch && descType >= bufferEnum::procDescType::count) { Log::printError(__FILE__, __LINE__, "getWrite 前必须先 setAllocInfo（当前家族未设置）"); }
 
-			return node[descriptorType].config[writeId].setWrite(dstSet, sampler, imageView);
+			return node[descType].descConfig[writeId].setWrite(dstSet, sampler, imageView);
 		}
 	};
 
@@ -297,28 +272,31 @@ namespace pipelineList {
 
 
 	struct procPipelineNode {
-		std::vector<pipelineStruct::pipeLayoutNode> nodeLayout{};
-		std::vector<pipelineStruct::pipelineNode>   node{};
+		const std::vector<renderStruct::renderTemplateNode>& renderTemplateList;
+		const std::vector<descStruct::descNode>&			 descList;
+		VkSampleCountFlagBits                                msaa{};
+		VkDevice											 device{};
 
-		VkDevice device{};
+		std::vector<pipelineStruct::pipeLayoutNode>			 nodeLayout{};
+		std::vector<pipelineStruct::pipelineNode>			 node{};
 
 
 
-		procPipelineNode(const VkDevice& tDevice, const std::vector<renderStruct::renderTemplateNode>& tRenderList, const std::vector<descStruct::descriptorNode>& dstList, VkSampleCountFlagBits tMsaa)
-			: nodeLayout(bufferEnum::procDescriptorId::count), node(pipelineEnum::procPipelineId::count), device(tDevice) {
-			for (int i = 0; i < bufferEnum::procDescriptorId::count; i++) {
-				nodeLayout[i].createPipeLayoutNode(device, dstList[i].layout);
+		procPipelineNode(const std::vector<renderStruct::renderTemplateNode>& tRenderList, const std::vector<descStruct::descNode>& tDescList, VkSampleCountFlagBits tMsaa, const VkDevice& tDevice)
+			: nodeLayout(bufferEnum::procDescType::count), node(pipelineEnum::procPipelineId::count), renderTemplateList(tRenderList), descList(tDescList), msaa(tMsaa), device(tDevice) {
+			for (int i = 0; i < bufferEnum::procDescType::count; i++) {
+				nodeLayout[i].createPipeLayoutNode(device, tDescList[i].layout);
 			}
 
-			node[pipelineEnum::procPipelineId::terrain_p]  .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred_d, vertexStruct::terrainVertex::vertexNode::layout,   renderEnum::renderTemplateId::deferred_rt,  pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{  }, { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::deferred_rt], nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], device);
-			node[pipelineEnum::procPipelineId::model_p]	   .createPipelineNode(bufferEnum::procDescriptorId::scenceDeferred_d, vertexStruct::modelVertex::vertexNode::layout,     renderEnum::renderTemplateId::deferred_rt,  pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{  }, { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::deferred_rt], nodeLayout[bufferEnum::procDescriptorId::scenceDeferred_d], device);
-			node[pipelineEnum::procPipelineId::skybox_p]   .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  vertexStruct::skyboxVertex::vertexNode::layout,    renderEnum::renderTemplateId::deferred_rt,  pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .depthType = pipelineEnum::depthId::test_noWrite_lessEqual }, { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::deferred_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d], device);
-			node[pipelineEnum::procPipelineId::mine_p]	   .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  vertexStruct::mineVertex::vertexNode::layout,      renderEnum::renderTemplateId::deferred_rt,  pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .primitiveType = pipelineEnum::primitiveId::lineList, .rasterType = pipelineEnum::rasterId::line_back_ccw }, { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::deferred_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d], device);
-			node[pipelineEnum::procPipelineId::uiText_p]   .createPipelineNode(bufferEnum::procDescriptorId::uiText_d,         vertexStruct::uiTextVertex::vertexNode::layout,    renderEnum::renderTemplateId::swapChain_rt, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .primitiveType = pipelineEnum::primitiveId::triangleList, .rasterType = pipelineEnum::rasterId::fill_back_cw, .depthType = pipelineEnum::depthId::noDepth, .blendType = pipelineEnum::blendId::alphaBlend }, { fileInfo::shader::uiTextVert,   fileInfo::shader::uiTextFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::uiText_d], device);
-			node[pipelineEnum::procPipelineId::osMirror_p] .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  vertexStruct::osMirrorVertex::vertexNode::layout,  renderEnum::renderTemplateId::offScreen_rt, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{  }, { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::offScreen_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d], device);
-			node[pipelineEnum::procPipelineId::osScence_p] .createPipelineNode(bufferEnum::procDescriptorId::scenceForward_d,  vertexStruct::offScreenVertex::vertexNode::layout, renderEnum::renderTemplateId::swapChain_rt, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .rasterType = pipelineEnum::rasterId::fill_front_ccw, .dynamicType = pipelineEnum::dynamicId::viewportScissor }, { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::scenceForward_d], device);
-			node[pipelineEnum::procPipelineId::dsScence_p] .createPipelineNode(bufferEnum::procDescriptorId::dsScence_d,       vertexStruct::offScreenVertex::vertexNode::layout, renderEnum::renderTemplateId::swapChain_rt, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .rasterType = pipelineEnum::rasterId::fill_front_ccw, .dynamicType = pipelineEnum::dynamicId::viewportScissor }, { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::swapChain_rt], nodeLayout[bufferEnum::procDescriptorId::dsScence_d], device);
-			node[pipelineEnum::procPipelineId::shadowMap_p].createPipelineNode(bufferEnum::procDescriptorId::shadowMap_d,      vertexStruct::shadowVertex::vertexNode::layout,    renderEnum::renderTemplateId::shadowMap_rt, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .depthType = pipelineEnum::depthId::test_write_lessEqual }, { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag }, tMsaa, tRenderList[renderEnum::renderTemplateId::shadowMap_rt], nodeLayout[bufferEnum::procDescriptorId::shadowMap_d], device);
+			createPipelineNode(pipelineEnum::procPipelineId::terrain_p,   renderEnum::renderTemplateId::deferred_rt,  bufferEnum::procDescType::scenceDeferred_d, vertexStruct::terrainVertex::vertexNode::layout,   pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{  });
+			createPipelineNode(pipelineEnum::procPipelineId::model_p,	  renderEnum::renderTemplateId::deferred_rt,  bufferEnum::procDescType::scenceDeferred_d, vertexStruct::modelVertex::vertexNode::layout,     pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{  });
+			createPipelineNode(pipelineEnum::procPipelineId::skybox_p,	  renderEnum::renderTemplateId::deferred_rt,  bufferEnum::procDescType::scenceForward_d,  vertexStruct::skyboxVertex::vertexNode::layout,    pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .depthType = pipelineEnum::depthId::test_noWrite_lessEqual });
+			createPipelineNode(pipelineEnum::procPipelineId::mine_p,	  renderEnum::renderTemplateId::deferred_rt,  bufferEnum::procDescType::scenceForward_d,  vertexStruct::mineVertex::vertexNode::layout,      pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .primitiveType = pipelineEnum::primitiveId::lineList, .rasterType = pipelineEnum::rasterId::line_back_ccw });
+			createPipelineNode(pipelineEnum::procPipelineId::uiText_p,	  renderEnum::renderTemplateId::swapChain_rt, bufferEnum::procDescType::uiText_d,		  vertexStruct::uiTextVertex::vertexNode::layout,    pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .primitiveType = pipelineEnum::primitiveId::triangleList, .rasterType = pipelineEnum::rasterId::fill_back_cw, .depthType = pipelineEnum::depthId::noDepth, .blendType = pipelineEnum::blendId::alphaBlend });
+			createPipelineNode(pipelineEnum::procPipelineId::osMirror_p,  renderEnum::renderTemplateId::offScreen_rt, bufferEnum::procDescType::scenceForward_d,  vertexStruct::osMirrorVertex::vertexNode::layout,  pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{  });
+			createPipelineNode(pipelineEnum::procPipelineId::osScence_p,  renderEnum::renderTemplateId::swapChain_rt, bufferEnum::procDescType::scenceForward_d,  vertexStruct::offScreenVertex::vertexNode::layout, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .rasterType = pipelineEnum::rasterId::fill_front_ccw, .dynamicType = pipelineEnum::dynamicId::viewportScissor });
+			createPipelineNode(pipelineEnum::procPipelineId::dsScence_p,  renderEnum::renderTemplateId::swapChain_rt, bufferEnum::procDescType::dsScence_d,		  vertexStruct::offScreenVertex::vertexNode::layout, pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .rasterType = pipelineEnum::rasterId::fill_front_ccw, .dynamicType = pipelineEnum::dynamicId::viewportScissor });
+			createPipelineNode(pipelineEnum::procPipelineId::shadowMap_p, renderEnum::renderTemplateId::shadowMap_rt, bufferEnum::procDescType::shadowMap_d,	  vertexStruct::shadowVertex::vertexNode::layout,	 pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{ .depthType = pipelineEnum::depthId::test_write_lessEqual });
 
 			if (debugInfo::LogSwitch) {
 				checkPipeline();
@@ -332,6 +310,10 @@ namespace pipelineList {
 		}
 
 
+
+		void createPipelineNode(pipelineEnum::procPipelineId::type tPipeType, renderEnum::renderTemplateId::type tRenderTemplateType, bufferEnum::procDescType::type tDescType, const vertexStruct::vertexLayoutNode& tVertexLayout, pipelineEnum::shaderFlowId::type tShaderFlowType, const pipelineStruct::pipeConfigParamNode& tParam) {
+			node[tPipeType].createPipelineNode(tShaderFlowType, descList[tDescType].getShaderFileList(tPipeType), tVertexLayout, tRenderTemplateType, tDescType, msaa, renderTemplateList[tRenderTemplateType], nodeLayout[tDescType], tParam, device);
+		}
 
 		void createPipeline(pipelineEnum::procPipelineId::type tPipeType, const VkExtent2D& extent) {
 			if (!node[tPipeType].isRecreate) {
@@ -437,18 +419,18 @@ namespace pipelineList {
 				}
 			}
 		
-			for (int d = 0; d < nodeLayout.size(); d++) {
-				if (node[0].descriptorType >= bufferEnum::procDescriptorId::count) { break; }
+			for (int descId = 0; descId < nodeLayout.size(); descId++) {
+				if (node[0].descType >= bufferEnum::procDescType::count) { break; }
 
 				bool used = false;
 				for (const pipelineStruct::pipelineNode& pipeNode : node) {
-					if (static_cast<int>(pipeNode.descriptorType) == d) {
+					if (static_cast<int>(pipeNode.descType) == descId) {
 						used = true; break;
 					}
 				}
 
 				if (!used) { 
-					Log::printError(__FILE__, __LINE__, "描述符 " + std::to_string(d) + " 未被管线使用"); 
+					Log::printError(__FILE__, __LINE__, "描述符 " + std::to_string(descId) + " 未被管线使用"); 
 				}
 			}
 		}
@@ -469,7 +451,7 @@ namespace pipelineList {
 
 	public:
 		VkPipelineLayout& getPipeLayout(pipelineEnum::procPipelineId::type pipeType) {
-			return nodeLayout[node[pipeType].descriptorType].pipeLayout;
+			return nodeLayout[node[pipeType].descType].pipeLayout;
 		}
 
 		VkPipeline& getPipeline(pipelineEnum::procPipelineId::type pipeType) {

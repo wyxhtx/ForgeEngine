@@ -154,6 +154,7 @@ configure_file(config/cmake/ForgeIntermediate.targets "${CMAKE_BINARY_DIR}/Direc
 
 # 着色器编译
 include(config/cmake/ForgeShader.cmake)     # 编译规则
+include(config/cmake/reflect-data.cmake)     # 反射数据生成（构建期）
 add_dependencies(ForgeEngine ForgeShader)   # 先编译着色器
 
 
