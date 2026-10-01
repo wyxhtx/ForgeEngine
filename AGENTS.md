@@ -33,6 +33,7 @@
 - 引擎运行时辅助件（被单 TU 聚合的头，如 `Log`/`Camera`/`Music`）→ `src\code\vk\tool\`。
 - **别把构建期工具放进 `src\code\`**：那里 `*.cpp` 被 GLOB 收进引擎工程，会撞 `main` 与 `Log::printError` 符号。
 - 反射数据表（`ShaderReflectData.inc`）＝**构建产物** → `build\vs\generated\`（git 忽略、不入库）；生成器 `config\tool\reflect-gen`（`--verify` 已接入，与 SDK `spirv-reflect` 对拍）、构建接线 `config\cmake\reflect-data.cmake`
+- 贴图 BC7 缓存（`storage/local/cache/ktx/`，`fileInfo::path::ktxCachePath`）＝**运行产物**（随进程工作目录；删了会重建）；开关 `engineInfo::ktxCacheSwitch`，超压缩写入（`ktxTexture2_DeflateZstd`）
 - 生成物与构建产物 → `build\`（已被 git 忽略）：输出 `build\vs\bin\output\x64\<Config>\`、中间 `build\vs\bin\intermediate\x64\<Config>\`。
 
 ## 五、Obsidian 库同步（预授权，2026-09-23 用户授权）
