@@ -1,0 +1,7 @@
+# dsh-forge-gate 组合包：向 profile 插入插件行（安装后按包名引用）。
+- insert:
+    - id: forge-gate
+      name: dsh-forge-gate
+      config:
+        rootDir: 'E:\code\graphicsAPI\vulkan\ForgeEngine'
+        script: 'config\tool\gate\gate.ps1'
