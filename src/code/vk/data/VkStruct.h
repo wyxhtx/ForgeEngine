@@ -4594,15 +4594,15 @@ namespace bufferStruct {
 	};
 
 	struct pipeUITextNode {
-		bool isEnable;																	//启用标识
-		pipelineEnum::procPipelineId::type pipeType;									//管线索引
-		bufferEnum::procSamplerId::type samplerType;									//采样索引
+		bool isEnable;																		//启用标识
+		pipelineEnum::procPipelineId::type pipeType;										//管线索引
+		bufferEnum::procSamplerId::type samplerType;										//采样索引
 
-		baseBufferNode vertex{};														//网格缓冲
-		uiStruct::msdfGlyphAtlasNode msdfGlyphAtlas{ fileInfo::font::sourceHanSansSC };	//字体图集
-		textureBufferNode texture{};													//纹理缓冲，MTSDF 图集，RGBA8，mip=1
+		baseBufferNode vertex{};															//网格缓冲
+		uiStruct::msdfGlyphAtlasNode msdfGlyphAtlas{ fileInfo::font::mapleMonoNormalNFCN };	//字体图集
+		textureBufferNode texture{};														//纹理缓冲，MTSDF 图集，RGBA8，mip=1
 
-		VkDescriptorSet descriptorSet;													//描述缓冲
+		VkDescriptorSet descriptorSet;														//描述缓冲
 
 
 

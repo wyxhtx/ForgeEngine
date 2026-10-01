@@ -150,7 +150,8 @@ namespace fileInfo {
 	}
 
 	namespace font {
-		const std::string sourceHanSansSC = path::fontPath + "SourceHanSansSC/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf";
+		const std::string sourceHanSansSC	  = path::fontPath + "SourceHanSansSC/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf";
+		const std::string mapleMonoNormalNFCN = path::fontPath + "MapleMonoNormalNFCN/TTF/MapleMonoNormal-NFCN-Regular.ttf";	//UI 字体（等宽，Nerd Font CN 变体）
 	}
 
 	namespace shader {
