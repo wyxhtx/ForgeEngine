@@ -169,26 +169,20 @@ function global:fe-code {
 
 # 启动 dsh（DeepSeek Harness）Web 界面 → http://127.0.0.1:3080
 # 依赖：Node（PATH 或 E:\tool\app\node）、DSH_HOME=E:\tool\app\dsHarness；工作区=仓库根
+# 启动 dsh（DeepSeek Harness）Web 界面 → http://127.0.0.1:3080
+# 单一入口：内部转调 config\tool\gate\start-dsh.ps1（设 DSH_PERMISSION_MODE=danger-full-access、补 PATH、日志、8 秒复查）
+# 关闭用：fe-dsh-end　·　自检用：fe-dsh -DryRun
 function fe-dsh {
-    $npx = (Get-Command npx -ErrorAction SilentlyContinue).Source
-    if (-not $npx) {
-        $npx = Join-Path 'E:\tool\app\node' 'npx.cmd'
-    }
-    if (-not (Test-Path $npx)) {
-        Write-Host "未找到 npx：$npx（检查 Node 安装，或重启终端补 PATH）" -ForegroundColor Red
+    $script = Join-Path (Split-Path -Parent $PSScriptRoot) 'config\tool\gate\start-dsh.ps1'
+    if (-not (Test-Path $script)) {
+        Write-Host "未找到启动脚本：$script" -ForegroundColor Red
         return
     }
-
-    if ([string]::IsNullOrWhiteSpace($env:DSH_HOME)) {
-        $env:DSH_HOME = 'E:\tool\app\dsHarness'
-    }
-
-    $busy = Get-NetTCPConnection -LocalPort 3080 -State Listen -ErrorAction SilentlyContinue
-    if ($busy) {
-        Write-Host "端口 3080 已被 PID $($busy.OwningProcess) 占用——dsh 可能已在运行" -ForegroundColor Yellow
-    }
-
-    Write-Host "启动 dsh  DSH_HOME=$env:DSH_HOME  工作区=$PWD" -ForegroundColor Cyan
-    Write-Host "浏览器打开：http://127.0.0.1:3080  （Ctrl+C 停止）" -ForegroundColor Cyan
-    & $npx '@deepseek-ai/dsh' web
+    if ([string]::IsNullOrWhiteSpace($env:DSH_HOME)) { $env:DSH_HOME = 'E:\tool\app\dsHarness' }
+    Write-Host '启动 dsh（权限档 danger-full-access；关闭用 fe-dsh-end）' -ForegroundColor Cyan
+    & pwsh -NoProfile -File $script @args
 }
+
+# fe-dsh-end：关闭 DSH web（重启用：config\tool\gate\start-dsh.ps1）
+$feCmdRoot = Split-Path -Parent $PSScriptRoot
+function fe-dsh-end { & pwsh -NoProfile -File (Join-Path $feCmdRoot 'config\tool\gate\fe-dsh-end.ps1') @args }
