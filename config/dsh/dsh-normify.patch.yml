@@ -1,0 +1,19 @@
+# dsh-normify —— 归一化框架图构建器（2026-10-01 安装）
+#
+# 真正生效的是 profile 的 patch：`$DSH_HOME/profiles/web/cordis.patch.yml`
+# 本文件是**仓库内版本管理副本**，语义 = 「往 profile patch 里追加一条 id 覆盖」。
+# 插件本体在 DSH home：`$DSH_HOME/plugin-sources/dsh-normify/`（与 dsh-task-sound / dsh-archify 同落点）。
+#
+# 安装：① 插件源目录 npm pack → `dsh plugin --profile web add <tgz>`
+#       ② 把下面这段加进 profile patch → 重启 dsh（或刷新 Web）
+# 卸载：profile patch 删本段 → `dsh plugin --profile web remove @dsh-external/dsh-normify` → 删 plugin-sources\dsh-normify\
+#
+# ⚠️ 版本：normify 0.5.4 声明 dsh >=0.1.5-rc.2 <0.2.0；本机 dsh = 0.2.0-rc.2（安装时报 peer 警告）。
+#    上游 tag 只到 v0.5.4（无 0.2.x 适配版）⇒ 若加载异常，按上面「卸载」回滚。
+# 取向提醒：它会注册 31 个工具 + 1 个技能，与 forge-engine 预设「精简工具集」相反（每轮工具清单变大）。
+
+# dsh-normify：归一化框架图构建器（模块树校验/编译/渲染 + AI 结构数据生成）。
+- insert:
+    - id: dsh-normify
+      name: '@dsh-external/dsh-normify'
+      config: {}
