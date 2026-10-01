@@ -20,7 +20,8 @@ namespace engineInfo {
 		VK_EXT_MESH_SHADER_EXTENSION_NAME
 	};
 
-	const bool ktxCacheSwitch = true;		//ktx缓存开关（开：首次启动转码并缓存，之后命中缓存；关：每次启动运行期转码 ⇒ 不产生缓存）
+	const bool ktxCacheSwitch  = true;		//ktx缓存开关		（开：首次启动转码并缓存，之后命中缓存；关：每次启动运行期转码 ⇒ 不产生缓存）
+	const bool msdfCacheSwitch = true;		//MSDF图集缓存开关	（开：首次烘焙落盘，之后命中缓存；关：每次启动都烘焙 ⇒ 不产生缓存）
 }
 
 //debug		信息，全局
@@ -144,14 +145,16 @@ namespace fileInfo {
 		const std::string chunkPath		= gamePath + "chunk/";			//区块存档路径
 		const std::string localPath		= "storage/local/";				//运行产物路径	（缓存/日志/截图；删了无损失、不随包发布）
 		const std::string cachePath		= localPath + "cache/";			//缓存路径		（管线缓存 pipeline.bin）
-		const std::string ktxCachePath  = cachePath + "ktx/";			//ktx BC7 缓存	（运行期自建；删了会重建）
+		const std::string ktxCachePath  = cachePath + "ktx/";			//ktx BC7 缓存	（运行期自建；命中即跳过，删了会重建）
+		const std::string msdfCachePath = cachePath + "msdf/";			//MSDF 图集缓存	（运行期自建；命中即跳过，删了会重建）
 
-		const std::string pipeCacheFile = cachePath + "pipeline.bin";	//管线缓存文件	（运行期自建；删了会重建，只影响一次冷启动）
+		const std::string pipeCacheFile = cachePath + "pipeline.bin";	//管线缓存文件	（运行期自建；命中即跳过，删了会重建）
 	}
 
 	namespace font {
 		const std::string sourceHanSansSC	  = path::fontPath + "SourceHanSansSC/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf";
 		const std::string mapleMonoNormalNFCN = path::fontPath + "MapleMonoNormalNFCN/TTF/MapleMonoNormal-NFCN-Regular.ttf";	//UI 字体（等宽，Nerd Font CN 变体）
+		const std::string uiTextCharset       = path::fontPath + "uiText/charset.txt";										//UI 图集字集表（UTF-8，每行汉字）
 	}
 
 	namespace shader {
@@ -298,17 +301,6 @@ namespace renderInfo {
 	const VkClearValue depthClearValue = { .depthStencil = { 1.0f, 0u } };                                          //深度清理值
 }
 
-//buffer	信息
-namespace bufferInfo {
-	const int commandThreadCount = 2;									//命令线程数															
-
-	const uint32_t scenceForwardCount  = 4;								//scenceForward描述符池上限，	skybox，mine，osMirror，osScence
-	const uint32_t scenceDeferredCount = 5;								//scenceDeferred描述符池上限，	terrain，m_temple，m_droid*3
-	const uint32_t uiTextCount         = 1;								//uiText描述符池上限，			uiText
-	const uint32_t dsScenceCount       = 1;								//dsScence描述符池上限，		dsScence
-	const uint32_t shadowCount         = 6;								//shadow描述符池上限，			terrain*2，m_temple，m_droid*3
-}
-
 //pipeline	信息
 namespace pipelineInfo {
 	//管线 id → 日志名字（顺序必须与 pipelineEnum::procPipelineId 一致）
@@ -320,4 +312,14 @@ namespace pipelineInfo {
 	const std::array<std::string, bufferEnum::procDescType::count> procDescName{ 
 		"scenceForward", "scenceDeferred", "uiText", "dsScence", "shadowMap" 
 	};
+
+	const int commandThreadCount	   = 2;								//命令线程数		
+
+	const uint32_t scenceForwardCount  = 4;								//scenceForward描述符池上限，	skybox，mine，osMirror，osScence
+	const uint32_t scenceDeferredCount = 5;								//scenceDeferred描述符池上限，	terrain，m_temple，m_droid*3
+	const uint32_t uiTextCount         = 1;								//uiText描述符池上限，			uiText
+	const uint32_t dsScenceCount       = 1;								//dsScence描述符池上限，		dsScence
+	const uint32_t shadowCount         = 6;								//shadow描述符池上限，			terrain*2，m_temple，m_droid*3
+	
+	const uint32_t uiTextGlyphCount    = 512;							//uiText 顶点缓冲字形上限，	6 顶点/字形
 }

@@ -101,11 +101,11 @@ namespace pipelineList {
 			allocInfo.pNext				 = nullptr;
 			allocInfo.descriptorSetCount = 1;
 			
-			node[bufferEnum::procDescType::scenceForward_d] .maxSet = bufferInfo::scenceForwardCount;
-			node[bufferEnum::procDescType::scenceDeferred_d].maxSet = bufferInfo::scenceDeferredCount;
-			node[bufferEnum::procDescType::uiText_d]		.maxSet = bufferInfo::uiTextCount;
-			node[bufferEnum::procDescType::dsScence_d]		.maxSet = bufferInfo::dsScenceCount;
-			node[bufferEnum::procDescType::shadowMap_d]		.maxSet = bufferInfo::shadowCount;
+			node[bufferEnum::procDescType::scenceForward_d] .maxSet = pipelineInfo::scenceForwardCount;
+			node[bufferEnum::procDescType::scenceDeferred_d].maxSet = pipelineInfo::scenceDeferredCount;
+			node[bufferEnum::procDescType::uiText_d]		.maxSet = pipelineInfo::uiTextCount;
+			node[bufferEnum::procDescType::dsScence_d]		.maxSet = pipelineInfo::dsScenceCount;
+			node[bufferEnum::procDescType::shadowMap_d]		.maxSet = pipelineInfo::shadowCount;
 
 			node[bufferEnum::procDescType::scenceDeferred_d].createReflectConfig(pipelineEnum::procPipelineId::terrain_p,    { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag  });
 			node[bufferEnum::procDescType::scenceDeferred_d].createReflectConfig(pipelineEnum::procPipelineId::model_p,      { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag	  });

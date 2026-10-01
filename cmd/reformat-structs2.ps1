@@ -166,6 +166,14 @@ function TestDataMemberRaw([string]$x) {
     return $true
 }
 function NonBlank([string[]]$arr) { return @($arr | Where-Object { $_.Trim() -ne '' }) }
+# 段的访问级别：显式标签优先；无标签段按类型默认（class = private，struct = public）
+function SegAccess([string]$label, [bool]$isClass) {
+    if ($label -eq 'public:')    { return 'public' }
+    if ($label -eq 'protected:') { return 'protected' }
+    if ($label -eq 'private:')   { return 'private' }
+    return $(if ($isClass) { 'private' } else { 'public' })
+}
+
 function InitKeyOf([string]$t2) {
     # 初始化 '=' 的下标（==/!=/<=/>=/+= 等运算符里的 '=' 不算），无则 -1
     for ($i = 1; $i -lt $t2.Length; $i++) {
@@ -395,6 +403,7 @@ foreach ($s in ($structs | Sort-Object Start -Descending)) {
     foreach ($sd in $segParsed) {
         foreach ($it in $sd.Items) {
             $it | Add-Member -NotePropertyName SIdx -NotePropertyValue $sidx -Force
+            $it | Add-Member -NotePropertyName Access -NotePropertyValue (SegAccess $sd.Label $s.IsClass) -Force
             $sidx++
             [void]$allFn.Add($it)
         }
@@ -423,6 +432,7 @@ foreach ($s in ($structs | Sort-Object Start -Descending)) {
     # ---------- 创建族扩展：② 调用层条件 + 兜底（无构造函数） ----------
     # ① = 上面 $isCrud（本结构体自己的生命周期入口：裸 create/recreate/clear 或 create<结构名>/<去Node基名>）
     # ② = 名字以 create/recreate/clear 开头的同族辅助，且其**全部**直接调用者都是构造函数或 ① 类入口（至少一个调用者）
+    #      规则B（2026-10-01）：**私有段**的 create*/recreate*/clear* 一律不走②（无外部引用 = 纯内部辅助，留其余私有）
     #      → "只服务于本结构体创建流程"的辅助（如 imageBufferListNode::createSwapImageList/clearView）。
     #      反例：Plate::createChunk 虽由 createPlate 调用，但还被 updatePlate 调用 → 不满足"全部" → 不入创建族，
     #      仍由调用层/成对规则分组（用户要求它与 joinTerrainMesh 同组）。
@@ -436,7 +446,7 @@ foreach ($s in ($structs | Sort-Object Start -Descending)) {
     }
     $famAdd = @{}
     if ($famCand.Count -gt 0) {
-        if (-not $hasCtor) { foreach ($it in $famCand) { $famAdd[$it.Name] = $true } }
+        if (-not $hasCtor) { foreach ($it in $famCand) { if ($it.Access -eq 'private') { continue }; $famAdd[$it.Name] = $true } }
         else {
             $nmAll = @{}
             foreach ($it in $allFn) { if ($it.CallN -ne '') { $nmAll[$it.CallN] = $true } }
@@ -449,6 +459,9 @@ foreach ($s in ($structs | Sort-Object Start -Descending)) {
                 }
             }
             foreach ($it in $famCand) {
+                # 规则B（2026-10-01）：私有 create*/recreate*/clear* = 纯内部辅助（不可能被本结构体外引用）
+                #   ⇒ 不入创建族，留在本段「其余私有」；公开/保护段仍按条件② 判
+                if ($it.Access -eq 'private') { continue }
                 $cs = $callers[$it.Name]
                 if ($null -eq $cs -or $cs.Count -eq 0) { continue }
                 $ok = $true
@@ -471,7 +484,10 @@ foreach ($s in ($structs | Sort-Object Start -Descending)) {
     $nFn += $allFn.Count
     # struct 走"成对优先"排序：分层分量（ELayer/EOrd）稍后会被整体清零，分层结果对 struct 的排序毫无影响
     # → 整段调用图分析（建 nameMap / BFS 边扫描 / 不可达统计 / 分层明细）对 struct 全部跳过（性能优化，输出排序不变）
-    if ($s.IsClass) {
+    $hasPrivateSeg = $false
+    foreach ($sd0 in $segParsed) { if ((SegAccess $sd0.Label $s.IsClass) -eq 'private') { $hasPrivateSeg = $true; break } }
+    # 规则C（2026-10-01）：struct 的**私有段**也走分层（入口 = 构造族 ＋ 公开/保护段函数项，见下 $isEntry）
+    if ($s.IsClass -or $hasPrivateSeg) {
         $nameMap = @{}
         foreach ($it in $allFn) {
             if ($it.CallN -eq '') { continue }
@@ -481,7 +497,9 @@ foreach ($s in ($structs | Sort-Object Start -Descending)) {
         $queue = New-Object System.Collections.ArrayList
         $seq = 0.0
         foreach ($it in $allFn) {
-            if ($it.Grp -eq 0) { $it.Layer = 0.0; $it.Ord = $seq; $seq++; [void]$queue.Add($it) }
+            # 规则C 入口口径 B：class = 构造族；struct = 构造族 ＋ 公开/保护段的函数项
+            $isEntry = ($it.Grp -eq 0) -or ((-not $s.IsClass) -and ($it.Access -ne 'private'))
+            if ($isEntry) { $it.Layer = 0.0; $it.Ord = $seq; $seq++; [void]$queue.Add($it) }
         }
         $qi = 0
         while ($qi -lt $queue.Count) {
@@ -499,6 +517,20 @@ foreach ($s in ($structs | Sort-Object Start -Descending)) {
             }
         }
         foreach ($it in $allFn) { if ($it.Layer -ge $BIG) { $nUnreach++ } }
+        # 规则C（Q3）：struct 的成对族（get/set 同 Base）强制同层、同一 EOrd ⇒ 不被分层拆散
+        if (-not $s.IsClass) {
+            $pairLayer = @{}; $pairOrd = @{}
+            foreach ($it in $allFn) {
+                if ($it.Kind -gt 1) { continue }
+                $pb = $it.Base
+                if (-not $pairLayer.ContainsKey($pb) -or $it.Layer -lt $pairLayer[$pb]) { $pairLayer[$pb] = $it.Layer }
+                if (-not $pairOrd.ContainsKey($pb) -or $it.Ord -lt $pairOrd[$pb]) { $pairOrd[$pb] = $it.Ord }
+            }
+            foreach ($it in $allFn) {
+                if ($it.Kind -gt 1) { continue }
+                $it.Layer = $pairLayer[$it.Base]; $it.Ord = $pairOrd[$it.Base]
+            }
+        }
         if ($Layers) { foreach ($it in $allFn) { [void]$layerDump.Add([pscustomobject]@{ S = $s.Name; G = $it.Grp; L = $it.Layer; O = $it.Ord; N = $it.Name }) } }
     }
 
@@ -507,6 +539,8 @@ foreach ($s in ($structs | Sort-Object Start -Descending)) {
     $reordered = $false
     for ($si = 0; $si -lt $segParsed.Count; $si++) {
         $sd = $segParsed[$si]
+        # 规则C：class 全段分层；struct 只有私有段分层（其余段仍"成对优先"）
+        $isLayeredSeg = $s.IsClass -or ((SegAccess $sd.Label $s.IsClass) -eq 'private')
         # ---------- 同后缀家族：同一访问段内"末位驼峰词"相同、彼此不互相调用的兄弟函数
         #   例：Camera 的 mouseHandle / keyHandle / scrollHandle（三个同族处理器）→ 视为一个子块：
         #   整体落在族内"已知调用层"（不可达成员并入该层），块内按原顺序压缩 Ord（保证紧挨、块内 1 空行）；
@@ -516,7 +550,7 @@ foreach ($s in ($structs | Sort-Object Start -Descending)) {
         #        只有"同一已知层 + 不可达成员"（或全不可达）才成族，避免把深层函数上拉到浅层
         #   排除③ 族内互相调用（createVertexBuffer → createBuffer 之类，本来就不是并列兄弟）
         #   排除④ 构造/创建族（Grp≠2）、get/set 成对族（Kind≤1）、调用名不可解析（CallN 空）
-        if ($s.IsClass) {
+        if ($isLayeredSeg) {
             $famOf = @{}
             foreach ($it in $sd.Items) {
                 if ($null -eq $it) { continue }
@@ -627,7 +661,7 @@ foreach ($s in ($structs | Sort-Object Start -Descending)) {
         #         → Sub → Ord（层内被上层调用的先后）→ EPairKey/EKind/EFrom（既有 get/set 成对与位置兜底）
         # struct 不参与层优先：其 ELayer 已清零（< 2）→ EGrpK 恒等于 EGrp，
         #         排序键退化为 Grp → Sub → PairKey → Kind → 原位置（与旧键逐项等价，struct 排序不变）
-        if (-not $s.IsClass) { foreach ($e2 in $emit) { $e2.ELayer = 0.0; $e2.EOrd = 0.0 } }
+        if (-not $isLayeredSeg) { foreach ($e2 in $emit) { $e2.ELayer = 0.0; $e2.EOrd = 0.0 } }
         foreach ($e2 in $emit) { $e2.EGrpK = $(if ($e2.ELayer -ge 2.0) { 0.0 } else { [double]$e2.EGrp }) }
         # 排序键已是发射时算好的普通属性（ELayer/EGrpK/ESub/EOrd/EPairKey/EKind/EFrom），直接按属性名排序；
         # 不再用 @{Expression = {...}} 脚本块键（脚本块键每比较一次就调用一次，开销远大于属性取值）

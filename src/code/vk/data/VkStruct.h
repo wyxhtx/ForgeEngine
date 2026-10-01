@@ -562,6 +562,11 @@ namespace uiStruct {
 		int   width  = 0;                                   //图集宽度
 		int   height = 0;                                   //图集高度
 
+		//烘焙参数（改这些等于改图集 ⇒ 缓存指纹随之变化，旧缓存自动失效）
+		double cornerAngle = 3.0;                           //边缘着色夹角阈值（度），小于该值视为直角
+		double pixelRange  = 2.0;                           //SDF 边缘带宽
+		double miterLimit  = 1.0;                           //尖角斜接上限
+
 		//HUD 默认参数
 		float defaultFontSizePx      = 14.0f;               //默认屏幕字号
 		float defaultLineHeightRatio = 1.3f;                //默认行距系数
@@ -575,47 +580,57 @@ namespace uiStruct {
 
 
 
-		msdfGlyphAtlasNode(const std::string& fontPath) {
-			//1、初始化 FreeType 库，该库的单例操作不能多线程
+		msdfGlyphAtlasNode(const std::string& fontPath, const std::string& charsetPath) {
+			//1、字集表：读原文（缺失/读空回退纯 ASCII），原文兼作缓存指纹
+			const std::string charsetText = readCharsetText(charsetPath);
+
+			//2、缓存指纹：字体 size/mtime + 字集表字节 + 烘焙参数（配魔数末位格式版本一起判缓存是否可用）
+			const uint64_t fingerprint = createFingerprint(fontPath, charsetText);
+
+			//3、命中缓存：直接读回像素与字形度量，连 FreeType 都不必初始化
+			engineStruct::timeNode cacheTime;
+			if (loadCache(fontPath, fingerprint)) {
+				Log::print("uiText 图集：" + getAtlasText() + "（缓存命中 " + cacheTime.end() + " ms）");
+				return;
+			}
+
+			//4、初始化 FreeType 库，该库的单例操作不能多线程
 			msdfgen::FreetypeHandle* ft = msdfgen::initializeFreetype();
 			if (!ft) {
 				Log::printError(__FILE__, __LINE__, "freetype库初始化失败");
 			}
 
-			//2、加载字体
+			//5、加载字体
 			msdfgen::FontHandle* font = msdfgen::loadFont(ft, fontPath.c_str());
 			if (!font) {
 				msdfgen::deinitializeFreetype(ft);
 				Log::printError(__FILE__, __LINE__, "字体加载失败");
 			}
 
-			//3、取字符集：生成字形几何列表
-			//缩放系数：1.0
-			//Charset::ASCII 只覆盖西文，要中文需换 GB2312/自定义字符集
+			//6、取字符集：ASCII + 字集表（中文），生成字形几何列表
+			engineStruct::timeNode bakeTime;
 			std::vector<msdf_atlas::GlyphGeometry> glyphs;
 			msdf_atlas::FontGeometry fontGeometry(&glyphs);
-			fontGeometry.loadCharset(font, 1.0, msdf_atlas::Charset::ASCII);
+			fontGeometry.loadCharset(font, 1.0, createCharset(charsetText, charsetPath));
 
-			//4、边缘着色：让直角/尖角保持锐利，不被圆角化
-			//maxCornerAngle = 3.0°，夹角小于该值视为直角
-			//默认seed：0 
-			const double maxCornerAngle = 3.0;
+			//7、边缘着色：让直角/尖角保持锐利，不被圆角化
+			//cornerAngle = 3.0°，夹角小于该值视为直角
 			for (msdf_atlas::GlyphGeometry& glyph : glyphs) {
-				glyph.edgeColoring(&msdfgen::edgeColoringInkTrap, maxCornerAngle, 0);
+				glyph.edgeColoring(&msdfgen::edgeColoringInkTrap, cornerAngle, 0);
 			}
 
 
 
-			//5、打包：把全部字形塞进一张图集
+			//8、打包：把全部字形塞进一张图集
 			//POWER_OF_TWO_RECTANGLE：尺寸取 2 的幂矩形，便于采样/mip
-			//setScale(emSize)          ：烘焙尺度，像素/em
-			//setPixelRange(2.0)    ：SDF 边缘带宽 → 渲染端需用 pixelRange × scale
-			//setMiterLimit(1.0)    ：尖角斜接上限
+			//setScale(emSize)         ：烘焙尺度，像素/em
+			//setPixelRange(pixelRange)：SDF 边缘带宽 → 渲染端需用 pixelRange × scale
+			//setMiterLimit(miterLimit)：尖角斜接上限
 			msdf_atlas::TightAtlasPacker packer;
 			packer.setDimensionsConstraint(msdf_atlas::DimensionsConstraint::POWER_OF_TWO_RECTANGLE);
 			packer.setScale(emSize);
-			packer.setPixelRange(2.0);
-			packer.setMiterLimit(1.0);
+			packer.setPixelRange(pixelRange);
+			packer.setMiterLimit(miterLimit);
 			if (packer.pack(glyphs.data(), static_cast<int>(glyphs.size())) != 0) {
 				msdfgen::destroyFont(font);
 				msdfgen::deinitializeFreetype(ft);
@@ -623,14 +638,14 @@ namespace uiStruct {
 			}
 			packer.getDimensions(width, height);
 
-			//6、生成 MTSDF 位图，4 通道：RGB 三向距离 + A 真实距离，线程 4 只用于栅格化，与 FreeType 生命周期无关
+			//9、生成 MTSDF 位图，4 通道：RGB 三向距离 + A 真实距离，线程 4 只用于栅格化，与 FreeType 生命周期无关
 			msdf_atlas::ImmediateAtlasGenerator<float, 4, msdf_atlas::mtsdfGenerator, msdf_atlas::BitmapAtlasStorage<unsigned char, 4>> generator(width, height);
 			msdf_atlas::GeneratorAttributes attributes;
 			generator.setAttributes(attributes);
 			generator.setThreadCount(4);
 			generator.generate(glyphs.data(), static_cast<int>(glyphs.size()));
 
-			//7、取位图只读视图，逐行翻转拷贝成RGBA8，因为原点在左下，所以下面翻成左上，原因：FreeType/msdfgen 位图原点在左下，Vulkan 纹理上传按左上
+			//10、取位图只读视图，逐行翻转拷贝成RGBA8，因为原点在左下，所以下面翻成左上，原因：FreeType/msdfgen 位图原点在左下，Vulkan 纹理上传按左上
 			msdfgen::BitmapConstRef<unsigned char, 4> bitmap = generator.atlasStorage();
 			data.resize(static_cast<size_t>(width) * height * 4);
 			for (int rowDown = 0; rowDown < height; ++rowDown) {
@@ -647,7 +662,7 @@ namespace uiStruct {
 				}
 			}
 
-			//8、逐字形填度量表
+			//11、逐字形填度量表
 			//planeBounds：平面边界（em 单位）→ × emSize 得像素；y 取负 = 屏幕 y 向下
 			//uvBounds   ：图集 UV，按像素归一化；y 用 (高 - top) 做上下翻转
 			//advance    ：步进（em → 像素）
@@ -680,6 +695,11 @@ namespace uiStruct {
 			//清理
 			msdfgen::destroyFont(font);
 			msdfgen::deinitializeFreetype(ft);
+
+			//12、落盘缓存：下次启动直接命中
+			const std::string bakeMs  = bakeTime.end();
+			const bool        isSaved = saveCache(fontPath, fingerprint);
+			Log::print("uiText 图集：" + getAtlasText() + "（烘焙 " + bakeMs + " ms，" + (isSaved ? "已写缓存" : "缓存写入失败") + "）");
 		}
 
 		msdfGlyphAtlasNode() = delete;
@@ -815,11 +835,220 @@ namespace uiStruct {
 
 				vmaUnmapMemory(memAllocator, bufferMem);
 				vertCursor = nullptr;
+
+				//字形数达顶点缓冲上限：已截断，此处统一告警一次
+				if (glyphCount >= pipelineInfo::uiTextGlyphCount) {
+					Log::printWarning(__FILE__, __LINE__, "uiText 字形数达顶点缓冲上限，已截断");
+				}
+
 				uiTextLayout.prevHash = hash;
 			}
 		}
 
 	private:
+		//读取 字集表原文（缺失时告警并返回空串 ⇒ 调用方回退纯 ASCII）
+		std::string readCharsetText(const std::string& charsetPath) const {
+			std::ifstream file(charsetPath);
+			if (!file.is_open()) {
+				Log::printWarning(__FILE__, __LINE__, "字集表打开失败，回退 ASCII：" + charsetPath);
+				return {};
+			}
+
+			std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+			file.close();
+
+			return text;
+		}
+
+		//创建 缓存指纹：字体 size/mtime + 字集表字节 + 烘焙参数（FNV-1a 64，逐字节确定性）
+		uint64_t createFingerprint(const std::string& fontPath, const std::string& charsetText) const {
+			uint64_t hash = 0xcbf29ce484222325ull;
+
+			auto mix = [&hash](const void* bytes, const size_t size) {
+				const uint8_t* pointer = static_cast<const uint8_t*>(bytes);
+
+				for (size_t i = 0; i < size; ++i) {
+					hash ^= pointer[i];
+					hash *= 0x100000001b3ull;
+				}
+			};
+
+			std::error_code errorCode{};
+			const uintmax_t fontSize = std::filesystem::file_size(fontPath, errorCode);
+			const int64_t   fontTime = static_cast<int64_t>(std::filesystem::last_write_time(fontPath, errorCode).time_since_epoch().count());
+
+			mix(&fontSize, sizeof(fontSize));
+			mix(&fontTime, sizeof(fontTime));
+			mix(charsetText.data(), charsetText.size());
+			mix(&emSize, sizeof(emSize));
+			mix(&cornerAngle, sizeof(cornerAngle));
+			mix(&pixelRange, sizeof(pixelRange));
+			mix(&miterLimit, sizeof(miterLimit));
+
+			return hash;
+		}
+
+		//读取 图集缓存（魔数/指纹不符或内容不完整一律当未命中；失败不抛，交给调用方烘焙）
+		bool loadCache(const std::string& fontPath, const uint64_t fingerprint) {
+			if (!engineInfo::msdfCacheSwitch) { return false; }
+
+			const std::string cacheFile = getCacheFile(fontPath);
+			std::ifstream file(cacheFile, std::ios::binary);
+			if (!file.is_open()) { return false; }
+
+			char     magic[8]{};
+			uint64_t fileFingerprint = 0;
+			float    fileEmSize      = 0.0f;
+			uint32_t fileWidth       = 0;
+			uint32_t fileHeight      = 0;
+			uint32_t fileGlyphCount  = 0;
+			uint32_t filePixelBytes  = 0;
+
+			file.read(magic, 8);
+			readValue(file, fileFingerprint);
+			readValue(file, fileEmSize);
+			readValue(file, fileWidth);
+			readValue(file, fileHeight);
+			readValue(file, fileGlyphCount);
+			readValue(file, filePixelBytes);
+
+			//魔数（含格式版本）/指纹/尺寸自检
+			const bool isValid = file && std::memcmp(magic, getCacheMagic(), 8) == 0 && fileFingerprint == fingerprint && fileEmSize == emSize && fileWidth && fileHeight && fileGlyphCount && filePixelBytes == fileWidth * fileHeight * 4;
+			if (!isValid) {
+				Log::print("uiText 图集缓存已失效，重新烘焙：" + cacheFile);
+				return false;
+			}
+
+			std::unordered_map<uint32_t, msdfGlyphNode> fileMap;
+			std::vector<uint8_t>                        fileData(filePixelBytes);
+
+			for (uint32_t i = 0; i < fileGlyphCount; ++i) {
+				uint32_t  codepoint = 0;
+				glm::vec4 planeBounds{};
+				glm::vec4 uvBounds{};
+				float     advance = 0.0f;
+
+				readValue(file, codepoint);
+				readValue(file, planeBounds);
+				readValue(file, uvBounds);
+				readValue(file, advance);
+				if (!file) {
+					Log::printWarning(__FILE__, __LINE__, "图集缓存内容不完整，重新烘焙：" + cacheFile);
+					return false;
+				}
+
+				msdfGlyphNode node;
+				node.planeBounds   = planeBounds;
+				node.uvBounds      = uvBounds;
+				node.advance       = advance;
+				fileMap[codepoint] = node;
+			}
+
+			file.read(reinterpret_cast<char*>(fileData.data()), static_cast<std::streamsize>(filePixelBytes));
+			if (!file || file.gcount() != static_cast<std::streamsize>(filePixelBytes)) {
+				Log::printWarning(__FILE__, __LINE__, "图集缓存像素不完整，重新烘焙：" + cacheFile);
+				return false;
+			}
+			file.close();
+
+			emSize = fileEmSize;
+			width  = static_cast<int>(fileWidth);
+			height = static_cast<int>(fileHeight);
+			map    = std::move(fileMap);
+			data   = std::move(fileData);
+
+			return true;
+		}
+
+		//写入 图集缓存（先写临时件再改名，避免半截缓存；失败只告警、不影响本次运行）
+		bool saveCache(const std::string& fontPath, const uint64_t fingerprint) const {
+			if (!engineInfo::msdfCacheSwitch) { return false; }
+
+			const std::string cacheFile = getCacheFile(fontPath);
+			const std::string tempFile  = cacheFile + ".tmp";
+
+			std::error_code errorCode{};
+			std::filesystem::create_directories(fileInfo::path::msdfCachePath, errorCode);
+
+			std::ofstream file(tempFile, std::ios::binary | std::ios::trunc);
+			if (!file.is_open()) {
+				Log::printWarning(__FILE__, __LINE__, "图集缓存打开失败（不影响本次运行）：" + tempFile);
+				return false;
+			}
+
+			file.write(getCacheMagic(), 8);
+			writeValue(file, fingerprint);
+			writeValue(file, emSize);
+			writeValue(file, static_cast<uint32_t>(width));
+			writeValue(file, static_cast<uint32_t>(height));
+			writeValue(file, static_cast<uint32_t>(map.size()));
+			writeValue(file, static_cast<uint32_t>(data.size()));
+
+			for (const auto& [codepoint, glyph] : map) {
+				writeValue(file, codepoint);
+				writeValue(file, glyph.planeBounds);
+				writeValue(file, glyph.uvBounds);
+				writeValue(file, glyph.advance);
+			}
+
+			file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+			const bool isWritten = static_cast<bool>(file);
+			file.close();
+
+			if (!isWritten) {
+				Log::printWarning(__FILE__, __LINE__, "图集缓存写入失败（不影响本次运行）：" + tempFile);
+				std::filesystem::remove(tempFile, errorCode);
+				return false;
+			}
+
+			std::filesystem::remove(cacheFile, errorCode);          //Windows 改名不覆盖已存在目标，先删旧件
+			std::filesystem::rename(tempFile, cacheFile, errorCode);
+			if (errorCode) {
+				Log::printWarning(__FILE__, __LINE__, "图集缓存改名失败（不影响本次运行）：" + cacheFile);
+				return false;
+			}
+
+			return true;
+		}
+
+		//获取 图集描述文本（日志用）
+		std::string getAtlasText() const {
+			return std::to_string(width) + "×" + std::to_string(height) + " RGBA8，" + std::to_string(static_cast<size_t>(width) * height * 4 / 1024 / 1024) + " MB";
+		}
+
+		//创建 图集字集：ASCII + 字集表（每行汉字，读取跳过空白与控制字符）
+		msdf_atlas::Charset createCharset(const std::string& charsetText, const std::string& charsetPath) const {
+			msdf_atlas::Charset charset = msdf_atlas::Charset::ASCII;
+
+			const size_t beforeCount = charset.size();
+			for (uint32_t codepoint : utf8ToCodepoints(charsetText)) {
+				if (codepoint < 0x21) { continue; }
+
+				charset.add(codepoint);
+			}
+
+			const size_t addCount = charset.size() - beforeCount;
+			if (!addCount) {
+				Log::printWarning(__FILE__, __LINE__, "字集表无有效字符：" + charsetPath);
+			}
+			else {
+				Log::print("uiText 字集：" + std::to_string(addCount) + " 字");
+			}
+
+			return charset;
+		}
+
+		//固定宽度，填充空格
+		std::string padFixedWidth(const std::string& text, size_t width) {
+			std::string result = text;
+
+			if (result.size() < width) {
+				result.append(width - result.size(), ' ');
+			}
+
+			return result;
+		}
+
 		//获取 lineHeight
 		float getLineHeight() const {
 			return defaultFontSizePx * defaultLineHeightRatio;
@@ -858,37 +1087,30 @@ namespace uiStruct {
 			return glyph ? glyph->advance * (fontSizePx / emSize) : 0.0f;
 		}
 
-		//获取 msdfGlyphNode
-		const msdfGlyphNode* getGlyph(uint32_t codepoint) const {
-			const auto it = map.find(codepoint);
+		//整数千分位，保留负号
+		std::string formatThousand(double value) {
+			long long  number   = static_cast<long long>(value);
+			const bool negative = number < 0;
+			unsigned long long absolute = negative ? static_cast<unsigned long long>(-(number + 1)) + 1ull : static_cast<unsigned long long>(number);
 
-			return (it == map.end()) ? nullptr : &it->second;
-		}
+			std::string digits = std::to_string(absolute);
+			std::string output;
+			int groupCount = 0;
 
-		//设置 msdfGlyphNode，单个字形 → 顶点，写六顶点（两三角形）、推进光标、计数
-		void setGlyph(glm::vec4*& mapped, uint32_t& letterCount, const msdfGlyphNode& glyph, float& cursorX, float baselineY, float scale) const {
-			//像素 → NDC（左上(-1,-1)，y 向下为正）
-			const float ndcX   = 2.0f / windowInfo::width;
-			const float ndcY   = 2.0f / windowInfo::height;
-			const float left   = (cursorX   + glyph.planeBounds.x * scale) * ndcX - 1.0f;
-			const float right  = (cursorX   + glyph.planeBounds.z * scale) * ndcX - 1.0f;
-			const float top    = (baselineY + glyph.planeBounds.y * scale) * ndcY - 1.0f;
-			const float bottom = (baselineY + glyph.planeBounds.w * scale) * ndcY - 1.0f;
-			const float u0     = glyph.uvBounds.x;
-			const float v0     = glyph.uvBounds.y;
-			const float u1     = glyph.uvBounds.z;
-			const float v1     = glyph.uvBounds.w;
+			for (int i = static_cast<int>(digits.size()) - 1; i >= 0; --i) {
+				output.insert(output.begin(), digits[i]);
 
-			//两三角形（绕序一致，配合 fill_back_cw）：左上→右上→左下、左下→右上→右下
-			mapped->x = left;  mapped->y = top;    mapped->z = u0; mapped->w = v0; mapped++;
-			mapped->x = right; mapped->y = top;    mapped->z = u1; mapped->w = v0; mapped++;
-			mapped->x = left;  mapped->y = bottom; mapped->z = u0; mapped->w = v1; mapped++;
-			mapped->x = left;  mapped->y = bottom; mapped->z = u0; mapped->w = v1; mapped++;
-			mapped->x = right; mapped->y = top;    mapped->z = u1; mapped->w = v0; mapped++;
-			mapped->x = right; mapped->y = bottom; mapped->z = u1; mapped->w = v1; mapped++;
+				if (++groupCount == 3 && i > 0) {
+					output.insert(output.begin(), ',');
+					groupCount = 0;
+				}
+			}
 
-			cursorX += glyph.advance * scale;
-			letterCount++;
+			if (negative) {
+				output.insert(output.begin(), '-');
+			}
+
+			return output;
 		}
 
 		//设置 文本，默认布局
@@ -926,8 +1148,35 @@ namespace uiStruct {
 					continue;
 				}
 
+				//顶点缓冲上限：字形数写满即停（越界会写坏显存），由 build 统一告警
+				if (letterCount >= pipelineInfo::uiTextGlyphCount) {
+					break;
+				}
+
 				setGlyph(mapped, letterCount, *glyph, cursorX, positionY, scale);
 			}
+		}
+
+
+
+		//获取 缓存文件路径：storage/local/cache/msdf/<字体名>.msdf.bin
+		std::string getCacheFile(const std::string& fontPath) const {
+			return fileInfo::path::msdfCachePath + std::filesystem::path(fontPath).stem().string() + ".msdf.bin";
+		}
+
+		//写入 缓存字段（POD 原样落盘，同机同版本读回）
+		void writeValue(std::ofstream& file, const auto& value) const {
+			file.write(reinterpret_cast<const char*>(&value), sizeof(value));
+		}
+
+		//读取 缓存字段
+		void readValue(std::ifstream& file, auto& value) const {
+			file.read(reinterpret_cast<char*>(&value), sizeof(value));
+		}
+
+		//获取 缓存魔数（末位 = 缓存格式版本：改磁盘布局就 +1，旧缓存自动失效）
+		const char* getCacheMagic() const {
+			return "FEATLAS1";
 		}
 
 		//UTF-8 → 码点流
@@ -989,41 +1238,37 @@ namespace uiStruct {
 			return codepoints;
 		}
 
-		//固定宽度，填充空格
-		std::string padFixedWidth(const std::string& text, size_t width) {
-			std::string result = text;
+		//获取 msdfGlyphNode
+		const msdfGlyphNode* getGlyph(uint32_t codepoint) const {
+			const auto it = map.find(codepoint);
 
-			if (result.size() < width) {
-				result.append(width - result.size(), ' ');
-			}
-
-			return result;
+			return (it == map.end()) ? nullptr : &it->second;
 		}
 
-		//整数千分位，保留负号
-		std::string formatThousand(double value) {
-			long long  number   = static_cast<long long>(value);
-			const bool negative = number < 0;
-			unsigned long long absolute = negative ? static_cast<unsigned long long>(-(number + 1)) + 1ull : static_cast<unsigned long long>(number);
+		//设置 msdfGlyphNode，单个字形 → 顶点，写六顶点（两三角形）、推进光标、计数
+		void setGlyph(glm::vec4*& mapped, uint32_t& letterCount, const msdfGlyphNode& glyph, float& cursorX, float baselineY, float scale) const {
+			//像素 → NDC（左上(-1,-1)，y 向下为正）
+			const float ndcX   = 2.0f / windowInfo::width;
+			const float ndcY   = 2.0f / windowInfo::height;
+			const float left   = (cursorX   + glyph.planeBounds.x * scale) * ndcX - 1.0f;
+			const float right  = (cursorX   + glyph.planeBounds.z * scale) * ndcX - 1.0f;
+			const float top    = (baselineY + glyph.planeBounds.y * scale) * ndcY - 1.0f;
+			const float bottom = (baselineY + glyph.planeBounds.w * scale) * ndcY - 1.0f;
+			const float u0     = glyph.uvBounds.x;
+			const float v0     = glyph.uvBounds.y;
+			const float u1     = glyph.uvBounds.z;
+			const float v1     = glyph.uvBounds.w;
 
-			std::string digits = std::to_string(absolute);
-			std::string output;
-			int groupCount = 0;
+			//两三角形（绕序一致，配合 fill_back_cw）：左上→右上→左下、左下→右上→右下
+			mapped->x = left;  mapped->y = top;    mapped->z = u0; mapped->w = v0; mapped++;
+			mapped->x = right; mapped->y = top;    mapped->z = u1; mapped->w = v0; mapped++;
+			mapped->x = left;  mapped->y = bottom; mapped->z = u0; mapped->w = v1; mapped++;
+			mapped->x = left;  mapped->y = bottom; mapped->z = u0; mapped->w = v1; mapped++;
+			mapped->x = right; mapped->y = top;    mapped->z = u1; mapped->w = v0; mapped++;
+			mapped->x = right; mapped->y = bottom; mapped->z = u1; mapped->w = v1; mapped++;
 
-			for (int i = static_cast<int>(digits.size()) - 1; i >= 0; --i) {
-				output.insert(output.begin(), digits[i]);
-
-				if (++groupCount == 3 && i > 0) {
-					output.insert(output.begin(), ',');
-					groupCount = 0;
-				}
-			}
-
-			if (negative) {
-				output.insert(output.begin(), '-');
-			}
-
-			return output;
+			cursorX += glyph.advance * scale;
+			letterCount++;
 		}
 	};
 }
@@ -3993,7 +4238,7 @@ namespace bufferStruct {
 		pipelineEnum::procPipelineId::type pipeType;											//管线索引
 		bufferEnum::procSamplerId::type samplerType;											//采样索引
 
-		meshBufferNode    mesh[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];	//网格缓冲
+		meshBufferNode    mesh[pipelineInfo::commandThreadCount][plateEnum::terrainLayer::count];	//网格缓冲
 		textureBufferNode texture{};															//纹理缓冲
 		baseBufferNode    uniform;																//统一缓冲
 		mvpUBO            ubo;
@@ -4015,7 +4260,7 @@ namespace bufferStruct {
 			if (isEnable) {
 				texture.createKtxArray(colorFormat, tileExtent, atlasExtent, cmd, device, graphicsQueue, memAllocator);
 
-				for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
+				for (int thread = 0; thread < pipelineInfo::commandThreadCount; thread++) {
 					for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
 						mesh[thread][layer].create(vertexStruct::terrainVertex::mesh[layer].vertexs, vertexStruct::terrainVertex::mesh[layer].indexs, cmd, device, graphicsQueue, memAllocator);
 					}
@@ -4027,7 +4272,7 @@ namespace bufferStruct {
 
 		//清理结构体，descriptorSet由描述符池管理，无需手动清理
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-			for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
+			for (int thread = 0; thread < pipelineInfo::commandThreadCount; thread++) {
 				for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
 					mesh[thread][layer].clear(memAllocator);
 				}
@@ -4599,7 +4844,7 @@ namespace bufferStruct {
 		bufferEnum::procSamplerId::type samplerType;										//采样索引
 
 		baseBufferNode vertex{};															//网格缓冲
-		uiStruct::msdfGlyphAtlasNode msdfGlyphAtlas{ fileInfo::font::mapleMonoNormalNFCN };	//字体图集
+		uiStruct::msdfGlyphAtlasNode msdfGlyphAtlas{ fileInfo::font::mapleMonoNormalNFCN, fileInfo::font::uiTextCharset };	//字体图集
 		textureBufferNode texture{};														//纹理缓冲，MTSDF 图集，RGBA8，mip=1
 
 		VkDescriptorSet descriptorSet;														//描述缓冲
@@ -4615,7 +4860,7 @@ namespace bufferStruct {
 		//创建字体图集纹理与顶点缓冲
 		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
 			if (isEnable) {
-				vertex = baseBufferNode{ 3072 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };	//6 顶点/字形 × 512 字形上限
+				vertex = baseBufferNode{ pipelineInfo::uiTextGlyphCount * 6 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };	//6 顶点/字形 × uiTextGlyphCount 字形上限
 
 				texture.createText(msdfGlyphAtlas.data.data(), msdfGlyphAtlas.data.size(), static_cast<uint32_t>(msdfGlyphAtlas.width), static_cast<uint32_t>(msdfGlyphAtlas.height), cmd, device, graphicsQueue, memAllocator);
 			}
@@ -4724,7 +4969,7 @@ namespace bufferStruct {
 
 
 	struct shadowTerrainNode {
-		meshBufferNode mesh[bufferInfo::commandThreadCount][plateEnum::terrainLayer::count];	//网格缓冲，索引直接用源网格的
+		meshBufferNode mesh[pipelineInfo::commandThreadCount][plateEnum::terrainLayer::count];	//网格缓冲，索引直接用源网格的
 		baseBufferNode shadowMvpUniform;														//统一缓冲
 		shadowMvpUBO   shadowMvpUbo;
 
@@ -4733,7 +4978,7 @@ namespace bufferStruct {
 
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
-			for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
+			for (int thread = 0; thread < pipelineInfo::commandThreadCount; thread++) {
 				for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
 					mesh[thread][layer].clear(memAllocator);
 				}
@@ -4796,7 +5041,7 @@ namespace bufferStruct {
 					for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
 						vertexStruct::shadowVertex::loadTerrainVertexs(layer);
 
-						for (int thread = 0; thread < bufferInfo::commandThreadCount; thread++) {
+						for (int thread = 0; thread < pipelineInfo::commandThreadCount; thread++) {
 							shadow_t.mesh[thread][layer].create(vertexStruct::shadowVertex::tMesh[layer].vertexs, cmd, device, graphicsQueue, memAllocator);
 						}
 					}

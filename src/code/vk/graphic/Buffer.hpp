@@ -349,10 +349,10 @@ public:
 	void drawUIText(int fps) {
 		if (pipeUIText.isEnable) {
 			pipeUIText.msdfGlyphAtlas.begin();
-			pipeUIText.msdfGlyphAtlas.addVec3 (uiEnum::uiTextAnchorEnum::topLeft,  "worldpos",   showUIText.pos);
-			pipeUIText.msdfGlyphAtlas.addVec3 (uiEnum::uiTextAnchorEnum::topLeft,  "chunkpos",   showUIText.chunkPos);
-			pipeUIText.msdfGlyphAtlas.addVec3 (uiEnum::uiTextAnchorEnum::topLeft,  "mineboxpos", showUIText.minepos);
-			pipeUIText.msdfGlyphAtlas.addValue(uiEnum::uiTextAnchorEnum::topRight, "fps",		 std::to_string(fps), 8);
+			pipeUIText.msdfGlyphAtlas.addVec3 (uiEnum::uiTextAnchorEnum::topLeft,  "世界坐标",   showUIText.pos);
+			pipeUIText.msdfGlyphAtlas.addVec3 (uiEnum::uiTextAnchorEnum::topLeft,  "区块坐标",   showUIText.chunkPos);
+			pipeUIText.msdfGlyphAtlas.addVec3 (uiEnum::uiTextAnchorEnum::topLeft,  "准星方块",   showUIText.minepos);
+			pipeUIText.msdfGlyphAtlas.addValue(uiEnum::uiTextAnchorEnum::topRight, "FPS",		 std::to_string(fps), 8);
 			pipeUIText.msdfGlyphAtlas.build(pipeUIText.vertex.bufferMem, Device.memAllocator);
 		}
 	}
