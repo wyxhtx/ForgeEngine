@@ -19,6 +19,8 @@ namespace engineInfo {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 		VK_EXT_MESH_SHADER_EXTENSION_NAME
 	};
+
+	const bool ktxCacheSwitch = true;		//ktx缓存开关（开：首次启动转码并缓存，之后命中缓存；关：每次启动运行期转码 ⇒ 不产生缓存）
 }
 
 //debug		信息，全局
@@ -139,10 +141,12 @@ namespace fileInfo {
 		const std::string musicPath		= assetPath + "music/";
 
 		const std::string gamePath		= "storage/game/";				//游戏存储路径	（chunk 存档、玩家配置；发布后与 exe 同级）
-		const std::string chunkPath		= gamePath + "chunk/";			//区块存档路径	（不在 assets 下）
+		const std::string chunkPath		= gamePath + "chunk/";			//区块存档路径
 		const std::string localPath		= "storage/local/";				//运行产物路径	（缓存/日志/截图；删了无损失、不随包发布）
 		const std::string cachePath		= localPath + "cache/";			//缓存路径		（管线缓存 pipeline.bin）
-		const std::string pipeCacheFile = cachePath + "pipeline.bin";	//管线缓存落盘	（运行期自建；删了会重建，只影响一次冷启动）
+		const std::string ktxCachePath  = cachePath + "ktx/";			//ktx BC7 缓存	（运行期自建；删了会重建）
+
+		const std::string pipeCacheFile = cachePath + "pipeline.bin";	//管线缓存文件	（运行期自建；删了会重建，只影响一次冷启动）
 	}
 
 	namespace font {

@@ -1032,7 +1032,7 @@ namespace uiStruct {
 
 //buffer    结构空间
 namespace bufferStruct {
-	//baseBuffer结点
+	//baseBuffer		结点
 	struct baseBufferNode {
 		VkBuffer      buffer{};
 		VmaAllocation bufferMem{};
@@ -1091,7 +1091,7 @@ namespace bufferStruct {
 		}
 	};
 
-	//meshBuffer结点
+	//meshBuffer		结点
 	struct meshBufferNode {
 		baseBufferNode vertex{};        //顶点缓冲
 		baseBufferNode index{};         //索引缓冲
@@ -1138,7 +1138,7 @@ namespace bufferStruct {
 
 
 
-	//imageBuffer结点
+	//imageBuffer		结点
 	struct imageBufferNode {
 		VkImage       image{};          //在renderEnum::renderFrameId::swap_rf类型下无用
 		VmaAllocation imageMem{};
@@ -1207,7 +1207,7 @@ namespace bufferStruct {
 		}
 	};
 
-	//imageBufferList结点
+	//imageBufferList	结点
 	struct imageBufferListNode {
 		std::vector<bufferStruct::imageBufferNode> imageList{};
 
@@ -1264,7 +1264,15 @@ namespace bufferStruct {
 		}
 	};
 
-	//textureBuffer结点
+	//ktx				加载结点
+	struct ktxLoadNode {
+		ktxTexture2*		  ktxTexture{};
+		bool                  needWriteCache{ false };
+		std::filesystem::path cacheFile{};
+		std::string           error{};
+	};
+
+	//textureBuffer		结点
 	struct textureBufferNode {
 		uint32_t mipLevel   = 1;                    //mip级别
 		uint32_t arrayLayer = 1;                    //纹理数组层数
@@ -1302,35 +1310,13 @@ namespace bufferStruct {
 
 		//创建 KTX 纹理，微损压缩 BC7 + mip
 		void createKtx(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
-			if (textureFile.empty() || !std::filesystem::exists(textureFile)) {
-				Log::printError(__FILE__, __LINE__, "贴图文件不存在");
-				return;
+			ktxLoadNode load = loadKtx();
+			if (!load.error.empty()) { 
+				Log::printError(__FILE__, __LINE__, load.error); 
+				return; 
 			}
 
-			ktxTexture2* ktxTexture{};
-			ktxResult result = ktxTexture2_CreateFromNamedFile(textureFile.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
-			if (result != KTX_SUCCESS) {
-				Log::printError(__FILE__, __LINE__, "KTX贴图加载失败");
-				return;
-			}
-
-			result = ktxTexture2_TranscodeBasis(ktxTexture, KTX_TTF_BC7_RGBA, 0);
-			if (result != KTX_SUCCESS) {
-				ktxTexture2_Destroy(ktxTexture);
-				Log::printError(__FILE__, __LINE__, "KTX贴图转码失败");
-				return;
-			}
-
-
-
-			mipLevel   = ktxTexture->numLevels;
-			arrayLayer = 1;
-			imageNode.create(VK_IMAGE_TYPE_2D, VK_FORMAT_BC7_UNORM_BLOCK, VkExtent2D{ ktxTexture->baseWidth, ktxTexture->baseHeight }, mipLevel, arrayLayer, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
-
-			baseBufferNode cpuBuffer{ ktxTexture->pData, ktxTexture->dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
-			cmd.copyBufferToImage(device, graphicsQueue, cpuBuffer.buffer, imageNode.image, makeImageCopyRegion(ktxTexture->baseWidth, ktxTexture->baseHeight, mipLevel, ktxTexture), mipLevel, arrayLayer, VK_FORMAT_BC7_UNORM_BLOCK);
-			cpuBuffer.clear(memAllocator);
-			ktxTexture2_Destroy(ktxTexture);
+			uploadKtx(load, cmd, device, graphicsQueue, memAllocator);
 		}
 
 		//创建 文本纹理
@@ -1354,6 +1340,79 @@ namespace bufferStruct {
 
 
 
+		ktxLoadNode loadKtx() {
+			ktxLoadNode load{};
+			if (textureFile.empty() || !std::filesystem::exists(textureFile)) { 
+				load.error = "贴图文件不存在"; 
+				return load; 
+			}
+
+			std::string cacheName = textureFile;
+			for (char& ch : cacheName) { 
+				if (ch == '/' || ch == '\\' || ch == ':') { 
+					ch = '_'; 
+				} 
+			}
+
+			if (cacheName.size() > 5 && cacheName.compare(cacheName.size() - 5, 5, ".ktx2") == 0) { 
+				cacheName.erase(cacheName.size() - 5); 
+			}
+
+			load.cacheFile = std::filesystem::path(fileInfo::path::ktxCachePath) / (cacheName + ".bc7.ktx2");
+
+
+
+			ktxResult result = KTX_SUCCESS;
+
+			//有缓存：直接读缓存
+			if (engineInfo::ktxCacheSwitch && std::filesystem::exists(load.cacheFile)) {		
+				result = ktxTexture2_CreateFromNamedFile(load.cacheFile.string().c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &load.ktxTexture);
+
+				//缓存自校验：仍需转码当未命中
+				if (result == KTX_SUCCESS && ktxTexture2_NeedsTranscoding(load.ktxTexture)) {	
+					ktxTexture2_Destroy(load.ktxTexture);
+					load.ktxTexture = nullptr;
+					Log::printWarning(__FILE__, __LINE__, "KTX 缓存仍需转码，回退源贴图：" + load.cacheFile.string());
+				}
+			}
+
+			//无缓存（或缓存不可用）：解码源 → 转码 BC7
+			if (load.ktxTexture == nullptr) {				
+				result = ktxTexture2_CreateFromNamedFile(textureFile.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &load.ktxTexture);
+				if (result != KTX_SUCCESS) { load.error = "KTX贴图加载失败"; return load; }
+
+				result = ktxTexture2_TranscodeBasis(load.ktxTexture, KTX_TTF_BC7_RGBA, 0);
+				if (result != KTX_SUCCESS) { ktxTexture2_Destroy(load.ktxTexture); load.ktxTexture = nullptr; load.error = "KTX贴图转码失败"; return load; }
+
+				load.needWriteCache = engineInfo::ktxCacheSwitch;
+			}
+
+			return load;
+		}
+
+		void uploadKtx(ktxLoadNode& load, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+			mipLevel   = load.ktxTexture->numLevels;
+			arrayLayer = 1;
+			imageNode.create(VK_IMAGE_TYPE_2D, VK_FORMAT_BC7_UNORM_BLOCK, VkExtent2D{ load.ktxTexture->baseWidth, load.ktxTexture->baseHeight }, mipLevel, arrayLayer, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT, device, memAllocator);
+
+			baseBufferNode cpuBuffer{ load.ktxTexture->pData, load.ktxTexture->dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };
+			cmd.copyBufferToImage(device, graphicsQueue, cpuBuffer.buffer, imageNode.image, makeImageCopyRegion(load.ktxTexture->baseWidth, load.ktxTexture->baseHeight, mipLevel, load.ktxTexture), mipLevel, arrayLayer, VK_FORMAT_BC7_UNORM_BLOCK);
+			cpuBuffer.clear(memAllocator);
+
+			//上传完成后：ZSTD 超压缩写缓存
+			if (load.needWriteCache) {				
+				std::filesystem::create_directories(load.cacheFile.parent_path());
+				ktxTexture2_DeflateZstd(load.ktxTexture, 3);
+
+				if (ktxTexture2_WriteToNamedFile(load.ktxTexture, load.cacheFile.string().c_str()) != KTX_SUCCESS) {
+					Log::printWarning(__FILE__, __LINE__, "KTX 缓存写入失败（不影响本次运行）：" + load.cacheFile.string());
+				}
+			}
+
+			ktxTexture2_Destroy(load.ktxTexture);
+		}
+
+	private:
 		//构建图像拷贝区域，KTX 图集
 		std::vector<VkBufferImageCopy> makeImageCopyRegion(uint32_t tileWidth, uint32_t tileHeight, uint32_t atlasWidth, uint32_t atlasHeight, uint32_t texWidth, uint32_t texHeight, uint32_t arrayLayer) {
 			std::vector<VkBufferImageCopy> regions{ arrayLayer };
@@ -4123,16 +4182,30 @@ namespace bufferStruct {
 			}
 
 			if (isEnable) {
-				//model-sNode
-				for (bufferStruct::modelStaticNode& modelNode : sNode) {
-					modelNode.texture.createKtx(cmd, device, graphicsQueue, memAllocator);
+				//model-sNode + model-dNode：**并行转码**（A 段 loadKtx 纯 CPU 并发；B 段 uploadKtx 回主线程做 Vulkan）
+				std::vector<decltype(&sNode[0].texture)> textureList{};		//要加载的贴图结点（顺序 sNode → dNode，与原串行一致）
+				for (bufferStruct::modelStaticNode& modelNode : sNode) { textureList.push_back(&modelNode.texture); }
+				for (bufferStruct::modelDynamicNode& dynamicNode : dNode) {
+					for (bufferStruct::modelDynamicSubNode& subNode : dynamicNode.node) { textureList.push_back(&subNode.texture); }
 				}
 
-				//model-dNode
-				for (bufferStruct::modelDynamicNode& dynamicNode : dNode) {
-					for (bufferStruct::modelDynamicSubNode& subNode : dynamicNode.node) {
-						subNode.texture.createKtx(cmd, device, graphicsQueue, memAllocator);
-					}
+				std::vector<ktxLoadNode> loadList(textureList.size());		//每张贴图的 A 段结果
+				std::atomic<size_t>      loadCursor{ 0 };
+				std::vector<std::thread> loadThread{};
+				const size_t             threadCount = std::min<size_t>(std::max(1u, std::thread::hardware_concurrency()), textureList.size());
+
+				for (size_t t = 0; t < threadCount; t++) {				//工作窃取：谁空谁取下一条
+					loadThread.emplace_back([&] {
+						for (size_t i = loadCursor.fetch_add(1); i < textureList.size(); i = loadCursor.fetch_add(1)) { loadList[i] = textureList[i]->loadKtx(); }
+					});
+				}
+
+				for (std::thread& loadWorker : loadThread) { loadWorker.join(); }
+
+				for (size_t i = 0; i < textureList.size(); i++) {		//B 段：主线程上传（失败按原语义 printError 挂起）
+					if (!loadList[i].error.empty()) { Log::printError(__FILE__, __LINE__, loadList[i].error); continue; }
+
+					textureList[i]->uploadKtx(loadList[i], cmd, device, graphicsQueue, memAllocator);
 				}
 
 				//网格缓冲
