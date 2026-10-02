@@ -17,7 +17,7 @@ public:
 
 
 		auto [sModelMip, dModelMip] = pipeModel.getMaxModelMip();
-		procSampler.createTextureSampler(Device.device, pipeTerrain.texture.mipLevel, sModelMip, dModelMip);
+		procSampler.createSamplerList(Device.device, Device.enableGpuInfo.limits, pipeTerrain.texture.mipLevel, sModelMip, dModelMip);
 		createDescSet();
 
 		initUniformBuffer();	//初始化Uniform
@@ -62,22 +62,22 @@ private:
 	pipelineList::procDescNode     procDesc{ Device.device };
 	pipelineList::procSamplerNode  procSampler{};
 
-	bufferStruct::pipeTerrainNode  pipeTerrain	{ true,  pipelineEnum::procPipelineId::terrain_p,   bufferEnum::procSamplerId::terrain_s };
+	bufferStruct::pipeTerrainNode  pipeTerrain	{ true,  pipelineEnum::procPipelineId::terrain_p,   samplerEnum::procSamplerId::terrain_s };
 	bufferStruct::pipeModelNode	   pipeModel	{ true,  pipelineEnum::procPipelineId::model_p		};
 	bufferStruct::pipeSkyboxNode   pipeSkybox	{ true,	 pipelineEnum::procPipelineId::skybox_p	    };
 	bufferStruct::pipeMineNode	   pipeMine		{ true,  pipelineEnum::procPipelineId::mine_p	    };
-	bufferStruct::pipeUITextNode   pipeUIText   { true,  pipelineEnum::procPipelineId::uiText_p,    bufferEnum::procSamplerId::uiText_s };
-	bufferStruct::pipeOSMirrorNode pipeOSMirror	{ false, pipelineEnum::procPipelineId::osMirror_p,  bufferEnum::procSamplerId::offScreen_s };
-	bufferStruct::pipeOSScenceNode pipeOSScence	{ false, pipelineEnum::procPipelineId::osScence_p,  bufferEnum::procSamplerId::offScreen_s };
-	bufferStruct::pipeDSScenceNode pipeDSScence	{ true,	 pipelineEnum::procPipelineId::dsScence_p,  bufferEnum::procSamplerId::offScreen_s };
-	bufferStruct::pipeShadowNode   pipeShadow   { true,  pipelineEnum::procPipelineId::shadowMap_p, bufferEnum::procSamplerId::shadowMap_s };
+	bufferStruct::pipeUITextNode   pipeUIText   { true,  pipelineEnum::procPipelineId::uiText_p,    samplerEnum::procSamplerId::uiText_s };
+	bufferStruct::pipeOSMirrorNode pipeOSMirror	{ false, pipelineEnum::procPipelineId::osMirror_p,  samplerEnum::procSamplerId::offScreen_s };
+	bufferStruct::pipeOSScenceNode pipeOSScence	{ false, pipelineEnum::procPipelineId::osScence_p,  samplerEnum::procSamplerId::offScreen_s };
+	bufferStruct::pipeDSScenceNode pipeDSScence	{ true,	 pipelineEnum::procPipelineId::dsScence_p,  samplerEnum::procSamplerId::offScreen_s };
+	bufferStruct::pipeShadowNode   pipeShadow   { true,  pipelineEnum::procPipelineId::shadowMap_p, samplerEnum::procSamplerId::shadowMap_s };
 
 
 
 	void createDescSet() {
 		/*scenceForward_d*/
 		{
-			procDesc.setAllocInfo(bufferEnum::procDescType::scenceForward_d);
+			procDesc.setAllocInfo(descEnum::descType::scenceForward_d);
 
 			//pipeSkybox
 			if (pipeSkybox.isEnable) {
@@ -141,10 +141,10 @@ private:
 
 		/*scenceDeferred_d*/
 		{
-			procDesc.setAllocInfo(bufferEnum::procDescType::scenceDeferred_d);
+			procDesc.setAllocInfo(descEnum::descType::scenceDeferred_d);
 
 			//pipeTerrain
-			pipeTerrain.createDescSet(procDesc.node[bufferEnum::procDescType::scenceDeferred_d], procSampler.node, Device.device);
+			pipeTerrain.createDescSet(procDesc.node[descEnum::descType::scenceDeferred_d], procSampler.node, Device.device);
 
 			//model
 			if (pipeModel.isEnable) {
@@ -184,7 +184,7 @@ private:
 
 		/*uiText_d*/
 		{
-			procDesc.setAllocInfo(bufferEnum::procDescType::uiText_d);
+			procDesc.setAllocInfo(descEnum::descType::uiText_d);
 
 			//pipeUIText
 			if (pipeUIText.isEnable) {
@@ -203,7 +203,7 @@ private:
 
 		/*dsScence_d*/
 		if (pipeDSScence.isEnable) {
-			procDesc.setAllocInfo(bufferEnum::procDescType::dsScence_d);
+			procDesc.setAllocInfo(descEnum::descType::dsScence_d);
 
 			//pipeDSScence
 			if (vkAllocateDescriptorSets(Device.device, &procDesc.allocInfo, &pipeDSScence.descriptorSet) == VK_SUCCESS) {
@@ -225,7 +225,7 @@ private:
 
 		/*shadowMap_d*/
 		if (pipeShadow.isEnable) {
-			procDesc.setAllocInfo(bufferEnum::procDescType::shadowMap_d);
+			procDesc.setAllocInfo(descEnum::descType::shadowMap_d);
 
 			//pipeTerrain
 			if (pipeTerrain.isEnable) {
@@ -276,8 +276,6 @@ private:
 			}
 		}
 	}
-
-
 
 	void initUniformBuffer() {
 		//设置透视投影，参数依次是视野角度、宽高比、近裁剪面和远裁剪面，以及proj[1][1] *= -1轴向修正
@@ -370,7 +368,7 @@ public:
 					if (pipeShadow.isEnable) {
 						//pipeTerrain
 						if (pipeTerrain.isEnable) {
-							for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
+							for (int layer = 0; layer < plateEnum::terrainLayer::enumCount; layer++) {
 								if (isNullTerrainMesh(layer)) {
 									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_t.descriptorSet, pipeShadow.shadow_t.mesh[threadId][layer].vertex.buffer, pipeTerrain.mesh[threadId][layer].index.buffer, static_cast<uint32_t>(vertexStruct::terrainVertex::mesh[layer].indexs.size()));
 								}
@@ -404,7 +402,7 @@ public:
 
 					//pipeTerrain
 					if (pipeTerrain.isEnable) {
-						for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
+						for (int layer = 0; layer < plateEnum::terrainLayer::enumCount; layer++) {
 							if (isNullTerrainMesh(layer)) {
 								recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeTerrain.pipeType), procPipeline.getPipeLayout(pipeTerrain.pipeType), pipeTerrain.descriptorSet, pipeTerrain.mesh[threadId][layer].vertex.buffer, pipeTerrain.mesh[threadId][layer].index.buffer, static_cast<uint32_t>(vertexStruct::terrainVertex::mesh[layer].indexs.size()));
 							}
@@ -595,7 +593,7 @@ public:
 
 
 		//重建离屏描述符，因为交换链重建后osView也得重建
-		procDesc.setAllocInfo(bufferEnum::procDescType::scenceForward_d);
+		procDesc.setAllocInfo(descEnum::descType::scenceForward_d);
 
 		//pipeOSMirror
 		if (pipeOSMirror.isEnable) {
@@ -615,7 +613,7 @@ public:
 			vkUpdateDescriptorSets(Device.device, uint32_t(osScenceWrite.size()), osScenceWrite.data(), 0, nullptr);
 		}
 
-		procDesc.setAllocInfo(bufferEnum::procDescType::dsScence_d);
+		procDesc.setAllocInfo(descEnum::descType::dsScence_d);
 
 		//pipeDSScence
 		if (pipeDSScence.isEnable) {

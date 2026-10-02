@@ -71,7 +71,7 @@ namespace deviceStruct {
 
 //cmd       结构空间
 namespace cmdStruct {
-	//cmd线程结点
+	//cmd	线程结点
 	struct cmdThreadNode {
 		std::mutex lock{};                  //线程锁：保护 flip/swap 的读改写
 		std::atomic<int> current{ 0 };      //当前线程
@@ -97,8 +97,7 @@ namespace cmdStruct {
 		}
 	};
 
-	//todo后续写成pipe结点
-	//cmd配置结点
+	//cmd	配置结点
 	struct cmdConfigNode {
 		VkPipeline       pipe        = VK_NULL_HANDLE;
 		VkPipelineLayout layout      = VK_NULL_HANDLE;
@@ -118,7 +117,7 @@ namespace cmdStruct {
 		}
 	};
 
-	//cmd录制结点
+	//cmd	录制结点
 	struct cmdRecorderNode {
 		VkCommandBuffer           cmd = VK_NULL_HANDLE;     //命令
 		VkCommandBufferBeginInfo  cmdBegin{};               //命令开始
@@ -268,7 +267,7 @@ namespace cmdStruct {
 		}
 	};
 	
-	//cmd缓冲结点
+	//cmd	缓冲结点
 	struct cmdBufferNode {
 		VkCommandPool                pool  = VK_NULL_HANDLE;
 		VkFence                      fence = VK_NULL_HANDLE;    //本线程命令执行完成信号
@@ -344,7 +343,7 @@ namespace cmdStruct {
 
 
 
-	//cmd结点
+	//cmd	结点
 	struct cmdNode {
 		cmdStruct::cmdThreadNode              thread{};         //线程管理器
 		cmdStruct::cmdRecorderNode            recorder{};       //录制管理器
@@ -590,7 +589,10 @@ namespace uiStruct {
 			//3、命中缓存：直接读回像素与字形度量，连 FreeType 都不必初始化
 			engineStruct::timeNode cacheTime;
 			if (loadCache(fontPath, fingerprint)) {
-				Log::print("uiText 图集：" + getAtlasText() + "（缓存命中 " + cacheTime.end() + " ms）");
+				if (debugInfo::LogSwitch) { 
+					Log::print("uiText 图集：" + getAtlasText() + "（缓存命中 " + cacheTime.end() + " ms）"); 
+				}
+
 				return;
 			}
 
@@ -699,7 +701,9 @@ namespace uiStruct {
 			//12、落盘缓存：下次启动直接命中
 			const std::string bakeMs  = bakeTime.end();
 			const bool        isSaved = saveCache(fontPath, fingerprint);
-			Log::print("uiText 图集：" + getAtlasText() + "（烘焙 " + bakeMs + " ms，" + (isSaved ? "已写缓存" : "缓存写入失败") + "）");
+			if (debugInfo::LogSwitch) { 
+				Log::print("uiText 图集：" + getAtlasText() + "（烘焙 " + bakeMs + " ms，" + (isSaved ? "已写缓存" : "缓存写入失败") + "）"); 
+			}
 		}
 
 		msdfGlyphAtlasNode() = delete;
@@ -915,7 +919,9 @@ namespace uiStruct {
 			//魔数（含格式版本）/指纹/尺寸自检
 			const bool isValid = file && std::memcmp(magic, getCacheMagic(), 8) == 0 && fileFingerprint == fingerprint && fileEmSize == emSize && fileWidth && fileHeight && fileGlyphCount && filePixelBytes == fileWidth * fileHeight * 4;
 			if (!isValid) {
-				Log::print("uiText 图集缓存已失效，重新烘焙：" + cacheFile);
+				if (debugInfo::LogSwitch) { 
+					Log::print("uiText 图集缓存已失效，重新烘焙：" + cacheFile);
+				}
 				return false;
 			}
 
@@ -2189,8 +2195,8 @@ namespace renderStruct {
 
 	//render模板结点
 	struct renderTemplateNode {
-		renderEnum::renderAttId::type      renderAttType      = renderEnum::renderAttId::count;
-		renderEnum::renderTemplateId::type renderTemplateType = renderEnum::renderTemplateId::count;
+		renderEnum::renderAttId::type      renderAttType      = renderEnum::renderAttId::enumNull;			//未指定附件
+		renderEnum::renderTemplateId::type renderTemplateType = renderEnum::renderTemplateId::enumNull;		//未指定模板
 
 		VkRenderPass render{};      //渲染通道
 
@@ -2292,7 +2298,7 @@ namespace renderStruct {
 
 			switch (renderTemplate.renderTemplateType) {
 			case renderEnum::renderTemplateId::swapChain_rt: {
-				frameImageList.resize(renderEnum::renderFrameId::count);
+				frameImageList.resize(renderEnum::renderFrameId::enumCount);
 
 				//color、depth
 				frameImageList[renderEnum::renderFrameId::conv_rf].imageList = {
@@ -2514,7 +2520,7 @@ namespace descStruct {
 			descReflectConfigList.push_back(descReflectConfigNode{ tPipeType, std::move(tShaderFileList) });
 		}
 		
-		void createReflectLayout(bufferEnum::procDescType::type tDescType, const VkDevice& device) {
+		void createReflectLayout(descEnum::descType::type tDescType, const VkDevice& device) {
 			for (const descReflectConfigNode& reflectConfig : descReflectConfigList) {
 				for (const std::string& file : reflectConfig.shaderFileList) {
 					for (const spvStruct::bindingNode& reflect : descStruct::reflectFile(file)) {
@@ -2673,6 +2679,180 @@ namespace descStruct {
 	};
 }
 
+//sampler	结构空间
+namespace samplerStruct {
+	//samplerConfig 传参结点
+	struct samplerConfigParamNode {
+		//预设指定
+		samplerEnum::magId::type		 magType		 = samplerEnum::magId::linear;					//放大过滤
+		samplerEnum::minId::type         minType		 = samplerEnum::minId::linear;					//缩小过滤
+		samplerEnum::mipmapId::type		 mipmapType		 = samplerEnum::mipmapId::nearest;				//mip 过滤
+		samplerEnum::addressId::type	 addressType	 = samplerEnum::addressId::repeat;				//寻址模式（U/V/W 同值）
+		samplerEnum::anisoId::type		 anisoType		 = samplerEnum::anisoId::x16;					//各向异性
+		samplerEnum::lodSourceId::type   lodSourceType	 = samplerEnum::lodSourceId::none;				//maxLod 两态：none 不运算 / runtime 运行期取值
+		samplerEnum::compareId::type     compareType     = samplerEnum::compareId::off;					//比较采样（阴影）
+		samplerEnum::borderColorId::type borderColorType = samplerEnum::borderColorId::intOpaqueBlack;	//越界返回色
+
+		//运行指定
+		float maxLod = 0.0f;																			//运行期 maxLod（lodSourceType = runtime 时生效）
+	};
+
+	//samplerConfig 结点
+	struct samplerConfigNode {
+		VkSamplerCreateInfo samplerInfo{};
+
+
+
+		//创建 采样器配置
+		void createSamplerConfigNode(const samplerConfigParamNode& param) {
+			samplerInfo = {};
+			samplerInfo.sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+			samplerInfo.minFilter    = createMin(param.minType);			//预设：缩小过滤
+			samplerInfo.borderColor  = createBorderColor(param);			//预设：越界返回色
+			createCompare(param);											//预设：比较采样
+
+			samplerInfo.mipLodBias	 = 0.0f;								//无预设项
+			samplerInfo.minLod		 = 0.0f;								//无预设项
+			samplerInfo.unnormalizedCoordinates = VK_FALSE;					//无预设项：只用归一化坐标
+
+			//预设指定
+			samplerInfo.magFilter    = createMag(param.magType);
+			samplerInfo.mipmapMode   = createMipmap(param.mipmapType);
+			samplerInfo.addressModeU = createAddress(param.addressType);
+			samplerInfo.addressModeV = samplerInfo.addressModeU;
+			samplerInfo.addressModeW = samplerInfo.addressModeU;
+			createAniso(param.anisoType);
+			samplerInfo.maxLod = createMaxLod(param);
+		}
+
+	private:
+		//映射 放大过滤预设 → VkFilter
+		VkFilter createMag(const samplerEnum::magId::type& magType) const {
+			VkFilter filter = VK_FILTER_NEAREST;
+
+			switch (magType) {
+			case samplerEnum::magId::nearest: { filter = VK_FILTER_NEAREST;	break; }
+			case samplerEnum::magId::linear:  { filter = VK_FILTER_LINEAR;	break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "samplerMagId 未写预设处理：值 " + std::to_string(static_cast<int>(magType)));
+				break;
+			}}
+
+			return filter;
+		}
+
+		//映射 缩小过滤预设 → VkFilter
+		VkFilter createMin(const samplerEnum::minId::type& minType) const {
+			VkFilter filter = VK_FILTER_LINEAR;
+
+			switch (minType) {
+			case samplerEnum::minId::nearest: { filter = VK_FILTER_NEAREST;	break; }
+			case samplerEnum::minId::linear:  { filter = VK_FILTER_LINEAR;	break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "minId 未写预设处理：值 " + std::to_string(static_cast<int>(minType)));
+				break;
+			}}
+
+			return filter;
+		}
+
+		//映射 mip 过滤预设 → VkSamplerMipmapMode
+		VkSamplerMipmapMode createMipmap(const samplerEnum::mipmapId::type& mipmapType) const {
+			VkSamplerMipmapMode mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+
+			switch (mipmapType) {
+			case samplerEnum::mipmapId::nearest: { mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;	break; }
+			case samplerEnum::mipmapId::linear:  { mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;	break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "samplerMipmapId 未写预设处理：值 " + std::to_string(static_cast<int>(mipmapType)));
+				break;
+			}}
+
+			return mipmapMode;
+		}
+
+		//映射 寻址预设 → VkSamplerAddressMode
+		VkSamplerAddressMode createAddress(const samplerEnum::addressId::type& addressType) const {
+			VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+			switch (addressType) {
+			case samplerEnum::addressId::repeat:       { addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;			break; }
+			case samplerEnum::addressId::clampEdge:    { addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;	break; }
+			case samplerEnum::addressId::mirrorRepeat: { addressMode = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;	break; }
+			case samplerEnum::addressId::clampBorder:  { addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;	break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "samplerAddressId 未写预设处理：值 " + std::to_string(static_cast<int>(addressType)));
+				break;
+			}}
+
+			return addressMode;
+		}
+
+		//填 各向异性（预设等级 → enable + maxAnisotropy；这里只填请求值，设备限制在创建时夹取）
+		void createAniso(const samplerEnum::anisoId::type& anisoType) {
+			switch (anisoType) {
+			case samplerEnum::anisoId::off: { samplerInfo.anisotropyEnable = VK_FALSE;	samplerInfo.maxAnisotropy = 1.0f;	break; }
+			case samplerEnum::anisoId::x1:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 1.0f;	break; }
+			case samplerEnum::anisoId::x2:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 2.0f;	break; }
+			case samplerEnum::anisoId::x4:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 4.0f;	break; }
+			case samplerEnum::anisoId::x8:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 8.0f;	break; }
+			case samplerEnum::anisoId::x16: { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 16.0f;	break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "samplerAnisoId 未写预设处理：值 " + std::to_string(static_cast<int>(anisoType)));
+				break;
+			}}
+		}
+
+		//填 比较采样（compareId 预设 → compareEnable + compareOp）
+		void createCompare(const samplerConfigParamNode& param) {
+			switch (param.compareType) {
+			case samplerEnum::compareId::off:         { samplerInfo.compareEnable = VK_FALSE;	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;		 break; }	//无比较
+			case samplerEnum::compareId::lessOrEqual: { samplerInfo.compareEnable = VK_TRUE;	samplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL; break; }	//阴影比较
+			default: {
+				Log::printError(__FILE__, __LINE__, "compareId 未写预设处理：值 " + std::to_string(static_cast<int>(param.compareType)));
+				break;
+			}}
+		}
+
+		//映射 越界返回色预设 → VkBorderColor
+		VkBorderColor createBorderColor(const samplerConfigParamNode& param) const {
+			VkBorderColor borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+
+			switch (param.borderColorType) {
+			case samplerEnum::borderColorId::intOpaqueBlack:        { borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;		 break; }
+			case samplerEnum::borderColorId::floatOpaqueBlack:      { borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;		 break; }
+			case samplerEnum::borderColorId::floatOpaqueWhite:      { borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;		 break; }
+			case samplerEnum::borderColorId::floatTransparentBlack: { borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "borderColorId 未写预设处理：值 " + std::to_string(static_cast<int>(param.borderColorType)));
+				break;
+			}}
+
+			//校验 开了比较却用整数越界色 ⇒ 采样器创建会失败
+			if (param.compareType != samplerEnum::compareId::off && borderColor == VK_BORDER_COLOR_INT_OPAQUE_BLACK) {
+				Log::printError(__FILE__, __LINE__, "比较采样（compareId != off）必须用 FLOAT 系越界色");
+			}
+
+			return borderColor;
+		}
+
+		//映射 maxLod 来源预设 → maxLod（唯一从运行期取值的维度）
+		float createMaxLod(const samplerConfigParamNode& param) const {
+			float maxLod = 0.0f;
+
+			switch (param.lodSourceType) {
+			case samplerEnum::lodSourceId::none:    { maxLod = 0.0f;		 break; }	//无：不运算
+			case samplerEnum::lodSourceId::runtime: { maxLod = param.maxLod; break; }	//有：运行期取值
+			default: {
+				Log::printError(__FILE__, __LINE__, "samplerLodSourceId 未写预设处理：值 " + std::to_string(static_cast<int>(param.lodSourceType)));
+				break;
+			}}
+
+			return maxLod;
+		}
+	};
+}
+
 //vertex	结构空间
 namespace vertexStruct {
 	//顶点绑定配置结点
@@ -2783,7 +2963,7 @@ namespace vertexStruct {
 			inline static const vertexLayoutNode layout{ createLayout() };
 		};
 
-		vertexMeshNode<vertexNode> mesh[plateEnum::terrainLayer::count];	//顶点网格（按层）
+		vertexMeshNode<vertexNode> mesh[plateEnum::terrainLayer::enumCount];	//顶点网格（按层）
 	}
 
 	//model
@@ -2824,8 +3004,8 @@ namespace vertexStruct {
 			}
 		};
 
-		vertexMeshNode<vertexNode>				sMesh[bufferEnum::procStaticModelId::count];	//静态模型网格
-		std::vector<vertexMeshNode<vertexNode>>	dMesh[bufferEnum::procDynamicModelId::count];	//动态模型网格
+		vertexMeshNode<vertexNode>				sMesh[bufferEnum::procStaticModelId::enumCount];	//静态模型网格
+		std::vector<vertexMeshNode<vertexNode>>	dMesh[bufferEnum::procDynamicModelId::enumCount];	//动态模型网格
 	}
 
 	//pipeSkybox
@@ -3027,9 +3207,9 @@ namespace vertexStruct {
 			inline static const vertexLayoutNode layout{ createLayout() };
 		};
 
-		vertexMeshNode<vertexNode> tMesh[plateEnum::terrainLayer::count];						//地形网格
-		vertexMeshNode<vertexNode> sMesh[bufferEnum::procStaticModelId::count];					//静态模型网格
-		std::vector<vertexMeshNode<vertexNode>> dMesh[bufferEnum::procDynamicModelId::count];	//动态模型网格
+		vertexMeshNode<vertexNode> tMesh[plateEnum::terrainLayer::enumCount];						//地形网格
+		vertexMeshNode<vertexNode> sMesh[bufferEnum::procStaticModelId::enumCount];					//静态模型网格
+		std::vector<vertexMeshNode<vertexNode>> dMesh[bufferEnum::procDynamicModelId::enumCount];	//动态模型网格
 
 
 
@@ -4101,7 +4281,7 @@ namespace pipelineStruct {
 		std::vector<std::string>              shaderFileList{};			//着色文件
 		const vertexStruct::vertexLayoutNode* vertexLayout{};			//顶点布局
 		renderEnum::renderTemplateId::type    renderTemplateType{};		//渲染类型
-		bufferEnum::procDescType::type		  descType{};				//描述类型
+		descEnum::descType::type			  descType{};				//描述类型
 		pipelineEnum::dynamicId::type         dynamicType{};			//动态类型
 		pipelineStruct::pipeConfigParamNode   param{};					//管线配置参数
 
@@ -4111,7 +4291,7 @@ namespace pipelineStruct {
 
 
 
-		void createPipelineNode(pipelineEnum::shaderFlowId::type tShaderFlowType, const std::vector<std::string>& tShaderFileList, const vertexStruct::vertexLayoutNode& tVertexLayout, renderEnum::renderTemplateId::type tRenderTemplateType, bufferEnum::procDescType::type tDescType, VkSampleCountFlagBits tMsaa, const renderStruct::renderTemplateNode& tRenderTemplateNode, const pipelineStruct::pipeLayoutNode& tPipeLayout, const pipelineStruct::pipeConfigParamNode& tParam, const VkDevice& tDevice) {
+		void createPipelineNode(pipelineEnum::shaderFlowId::type tShaderFlowType, const std::vector<std::string>& tShaderFileList, const vertexStruct::vertexLayoutNode& tVertexLayout, renderEnum::renderTemplateId::type tRenderTemplateType, descEnum::descType::type tDescType, VkSampleCountFlagBits tMsaa, const renderStruct::renderTemplateNode& tRenderTemplateNode, const pipelineStruct::pipeLayoutNode& tPipeLayout, const pipelineStruct::pipeConfigParamNode& tParam, const VkDevice& tDevice) {
 			shaderFlowType     = tShaderFlowType;
 			shaderFileList     = tShaderFileList;
 			vertexLayout       = &tVertexLayout;
@@ -4145,6 +4325,7 @@ namespace pipelineStruct {
 //todo后续慢慢拆分
 //buffer    结构空间
 namespace bufferStruct {
+	//todo 后续放到ubo结构空间
 	//点光源结点
 	struct pointLightNode {
 		glm::vec3 position;     //位置
@@ -4232,22 +4413,23 @@ namespace bufferStruct {
 
 
 
+	//todo 后续放到pipelineStruct结构空间
 	/*管线缓冲区*/
 	struct pipeTerrainNode {
-		bool isEnable;																			//启用标识
-		pipelineEnum::procPipelineId::type pipeType;											//管线索引
-		bufferEnum::procSamplerId::type samplerType;											//采样索引
+		bool isEnable;																					//启用标识
+		pipelineEnum::procPipelineId::type pipeType;													//管线索引
+		samplerEnum::procSamplerId::type samplerType;													//采样索引
 
-		meshBufferNode    mesh[pipelineInfo::commandThreadCount][plateEnum::terrainLayer::count];	//网格缓冲
-		textureBufferNode texture{};															//纹理缓冲
-		baseBufferNode    uniform;																//统一缓冲
+		meshBufferNode    mesh[pipelineInfo::commandThreadCount][plateEnum::terrainLayer::enumCount];	//网格缓冲
+		textureBufferNode texture{};																	//纹理缓冲
+		baseBufferNode    uniform;																		//统一缓冲
 		mvpUBO            ubo;
 
-		VkDescriptorSet descriptorSet;															//描述缓冲
+		VkDescriptorSet descriptorSet;																	//描述缓冲
 
 
 
-		pipeTerrainNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, bufferEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
+		pipeTerrainNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, samplerEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
 
 		pipeTerrainNode() = delete;
 
@@ -4261,7 +4443,7 @@ namespace bufferStruct {
 				texture.createKtxArray(colorFormat, tileExtent, atlasExtent, cmd, device, graphicsQueue, memAllocator);
 
 				for (int thread = 0; thread < pipelineInfo::commandThreadCount; thread++) {
-					for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
+					for (int layer = 0; layer < plateEnum::terrainLayer::enumCount; layer++) {
 						mesh[thread][layer].create(vertexStruct::terrainVertex::mesh[layer].vertexs, vertexStruct::terrainVertex::mesh[layer].indexs, cmd, device, graphicsQueue, memAllocator);
 					}
 				}
@@ -4273,7 +4455,7 @@ namespace bufferStruct {
 		//清理结构体，descriptorSet由描述符池管理，无需手动清理
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
 			for (int thread = 0; thread < pipelineInfo::commandThreadCount; thread++) {
-				for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
+				for (int layer = 0; layer < plateEnum::terrainLayer::enumCount; layer++) {
 					mesh[thread][layer].clear(memAllocator);
 				}
 			}
@@ -4301,7 +4483,7 @@ namespace bufferStruct {
 
 
 	struct modelStaticNode {
-		bufferEnum::procSamplerId::type samplerType;	//采样索引
+		samplerEnum::procSamplerId::type samplerType;	//采样索引
 
 		meshBufferNode    mesh;							//网格缓冲
 		textureBufferNode texture{};					//纹理缓冲
@@ -4317,7 +4499,7 @@ namespace bufferStruct {
 
 
 
-		modelStaticNode(bufferEnum::procSamplerId::type tSamplerType, const glm::dvec3& tModelWorldPos, const std::string& tTextureFile /*, const std::string& tNormalFile*/) :samplerType(tSamplerType) {
+		modelStaticNode(samplerEnum::procSamplerId::type tSamplerType, const glm::dvec3& tModelWorldPos, const std::string& tTextureFile /*, const std::string& tNormalFile*/) :samplerType(tSamplerType) {
 
 			texture.textureFile = tTextureFile;
 			//texture.normalFile = tNormalFile;
@@ -4356,7 +4538,7 @@ namespace bufferStruct {
 
 	struct modelDynamicNode {
 		//程序化索引
-		bufferEnum::procSamplerId::type samplerType;  //采样索引
+		samplerEnum::procSamplerId::type samplerType;  //采样索引
 
 		//动态模型结点列表
 		std::vector<modelDynamicSubNode> node;
@@ -4368,7 +4550,7 @@ namespace bufferStruct {
 
 
 
-		modelDynamicNode(bufferEnum::procSamplerId::type tSamplerType, const glm::dvec3& tModelWorldPos, const std::vector<std::string>& tTextureFile /*, const std::vector<std::string>& tNormalFile*/) :samplerType(tSamplerType) {
+		modelDynamicNode(samplerEnum::procSamplerId::type tSamplerType, const glm::dvec3& tModelWorldPos, const std::vector<std::string>& tTextureFile /*, const std::vector<std::string>& tNormalFile*/) :samplerType(tSamplerType) {
 
 			node.resize(tTextureFile.size());
 			for (int i = 0; i < tTextureFile.size(); i++) {
@@ -4406,11 +4588,11 @@ namespace bufferStruct {
 
 
 		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
-			sNode.resize(bufferEnum::procStaticModelId::count);
-			dNode.resize(bufferEnum::procDynamicModelId::count);
+			sNode.resize(bufferEnum::procStaticModelId::enumCount);
+			dNode.resize(bufferEnum::procDynamicModelId::enumCount);
 
-			sNode[bufferEnum::procStaticModelId::temple_m] = bufferStruct::modelStaticNode { bufferEnum::procSamplerId::staticModel_sn,  glm::dvec3(0, 32, 0), fileInfo::image::temple };
-			dNode[bufferEnum::procDynamicModelId::droid_m] = bufferStruct::modelDynamicNode{ bufferEnum::procSamplerId::dynamicModel_sl, glm::dvec3(0, 32, 0), std::vector<std::string>{ fileInfo::image::droidBodyC, fileInfo::image::droidHeadC, fileInfo::image::droidMiscC } /*, std::vector<std::string>{ fileInfo::image::droidBodyN, fileInfo::image::droidHeadN, fileInfo::image::droidMiscN }*/ };
+			sNode[bufferEnum::procStaticModelId::temple_m] = bufferStruct::modelStaticNode { samplerEnum::procSamplerId::staticModel_sn,  glm::dvec3(0, 32, 0), fileInfo::image::temple };
+			dNode[bufferEnum::procDynamicModelId::droid_m] = bufferStruct::modelDynamicNode{ samplerEnum::procSamplerId::dynamicModel_sl, glm::dvec3(0, 32, 0), std::vector<std::string>{ fileInfo::image::droidBodyC, fileInfo::image::droidHeadC, fileInfo::image::droidMiscC } /*, std::vector<std::string>{ fileInfo::image::droidBodyN, fileInfo::image::droidHeadN, fileInfo::image::droidMiscN }*/ };
 
 			if (debugInfo::LogSwitch) {
 				for (int i = 0; i < sNode.size(); i++) {
@@ -4841,7 +5023,7 @@ namespace bufferStruct {
 	struct pipeUITextNode {
 		bool isEnable;																		//启用标识
 		pipelineEnum::procPipelineId::type pipeType;										//管线索引
-		bufferEnum::procSamplerId::type samplerType;										//采样索引
+		samplerEnum::procSamplerId::type samplerType;										//采样索引
 
 		baseBufferNode vertex{};															//网格缓冲
 		uiStruct::msdfGlyphAtlasNode msdfGlyphAtlas{ fileInfo::font::mapleMonoNormalNFCN, fileInfo::font::uiTextCharset };	//字体图集
@@ -4851,7 +5033,7 @@ namespace bufferStruct {
 
 
 
-		pipeUITextNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, bufferEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
+		pipeUITextNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, samplerEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
 
 		pipeUITextNode() = delete;
 
@@ -4875,7 +5057,7 @@ namespace bufferStruct {
 	struct pipeOSMirrorNode {
 		bool isEnable;									//启用标识
 		pipelineEnum::procPipelineId::type pipeType;	//管线索引
-		bufferEnum::procSamplerId::type samplerType;	//采样索引
+		samplerEnum::procSamplerId::type samplerType;	//采样索引
 
 		meshBufferNode  mesh;							//网格缓冲
 		baseBufferNode  uniform;						//统一缓冲
@@ -4887,7 +5069,7 @@ namespace bufferStruct {
 
 
 
-		pipeOSMirrorNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, bufferEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
+		pipeOSMirrorNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, samplerEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
 
 		pipeOSMirrorNode() = delete;
 
@@ -4915,13 +5097,13 @@ namespace bufferStruct {
 	struct pipeOSScenceNode {
 		bool isEnable;									//启用标识
 		pipelineEnum::procPipelineId::type pipeType;	//管线索引
-		bufferEnum::procSamplerId::type samplerType;	//采样索引
+		samplerEnum::procSamplerId::type samplerType;	//采样索引
 
 		VkDescriptorSet descriptorSet;					//描述缓冲
 
 
 
-		pipeOSScenceNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, bufferEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
+		pipeOSScenceNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, samplerEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
 
 		pipeOSScenceNode() = delete;
 
@@ -4935,7 +5117,7 @@ namespace bufferStruct {
 	struct pipeDSScenceNode {
 		bool isEnable;									//启用标识
 		pipelineEnum::procPipelineId::type pipeType;	//管线索引
-		bufferEnum::procSamplerId::type samplerType;	//采样索引
+		samplerEnum::procSamplerId::type samplerType;	//采样索引
 
 		baseBufferNode    lightUniform;					//统一缓冲
 		deferredLightUBO  lightUbo;
@@ -4946,7 +5128,7 @@ namespace bufferStruct {
 
 
 
-		pipeDSScenceNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, bufferEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
+		pipeDSScenceNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, samplerEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
 
 		pipeDSScenceNode() = delete;
 
@@ -4969,7 +5151,7 @@ namespace bufferStruct {
 
 
 	struct shadowTerrainNode {
-		meshBufferNode mesh[pipelineInfo::commandThreadCount][plateEnum::terrainLayer::count];	//网格缓冲，索引直接用源网格的
+		meshBufferNode mesh[pipelineInfo::commandThreadCount][plateEnum::terrainLayer::enumCount];	//网格缓冲，索引直接用源网格的
 		baseBufferNode shadowMvpUniform;														//统一缓冲
 		shadowMvpUBO   shadowMvpUbo;
 
@@ -4979,7 +5161,7 @@ namespace bufferStruct {
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
 			for (int thread = 0; thread < pipelineInfo::commandThreadCount; thread++) {
-				for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
+				for (int layer = 0; layer < plateEnum::terrainLayer::enumCount; layer++) {
 					mesh[thread][layer].clear(memAllocator);
 				}
 			}
@@ -5007,7 +5189,7 @@ namespace bufferStruct {
 	struct pipeShadowNode {
 		bool isEnable;															//启用标识
 		pipelineEnum::procPipelineId::type pipeType;							//管线索引
-		bufferEnum::procSamplerId::type samplerType;							//采样索引
+		samplerEnum::procSamplerId::type samplerType;							//采样索引
 
 		bufferStruct::shadowTerrainNode shadow_t{};								//地形阴影
 		std::vector<bufferStruct::shadowModelNode> shadow_ms{};					//静态模型阴影
@@ -5018,7 +5200,7 @@ namespace bufferStruct {
 
 
 
-		pipeShadowNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, bufferEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
+		pipeShadowNode(bool tEnable, pipelineEnum::procPipelineId::type tPipeType, samplerEnum::procSamplerId::type tSamplerType) :isEnable(tEnable), pipeType(tPipeType), samplerType(tSamplerType) {}
 
 		pipeShadowNode() = delete;
 
@@ -5026,8 +5208,8 @@ namespace bufferStruct {
 
 		//创建阴影结点列表与网格缓冲（顶点随源网格，索引直接用源网格的）
 		void create(bool terrainEnable, bool modelEnable, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
-			shadow_ms.resize(bufferEnum::procStaticModelId::count);
-			shadow_md.resize(bufferEnum::procDynamicModelId::count);
+			shadow_ms.resize(bufferEnum::procStaticModelId::enumCount);
+			shadow_md.resize(bufferEnum::procDynamicModelId::enumCount);
 
 			if (modelEnable) {
 				for (int i = 0; i < shadow_md.size(); i++) {
@@ -5038,7 +5220,7 @@ namespace bufferStruct {
 			if (isEnable) {
 				//shadow-pipeTerrain
 				if (terrainEnable) {
-					for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
+					for (int layer = 0; layer < plateEnum::terrainLayer::enumCount; layer++) {
 						vertexStruct::shadowVertex::loadTerrainVertexs(layer);
 
 						for (int thread = 0; thread < pipelineInfo::commandThreadCount; thread++) {

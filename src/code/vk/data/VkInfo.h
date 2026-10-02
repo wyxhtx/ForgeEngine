@@ -26,15 +26,12 @@ namespace engineInfo {
 
 //debug		信息，全局
 namespace debugInfo {
-#ifdef NDEBUG
-	//const bool LayerSwitch = false;
-	//const bool LogSwitch = false;
-
-	const bool LayerSwitch = true;										//校验开关																
-	const bool LogSwitch   = true;										//调试开关																
+#ifndef FORGE_DEV_BUILD
+	const bool LayerSwitch = false;			//校验开关
+	const bool LogSwitch   = false;			//调试开关
 #else
-	const bool LayerSwitch = true;										//校验开关																
-	const bool LogSwitch   = true;										//调试开关																
+	const bool LayerSwitch = true;			//校验开关
+	const bool LogSwitch   = true;			//调试开关
 #endif
 }
 
@@ -304,12 +301,12 @@ namespace renderInfo {
 //pipeline	信息
 namespace pipelineInfo {
 	//管线 id → 日志名字（顺序必须与 pipelineEnum::procPipelineId 一致）
-	const std::array<std::string, pipelineEnum::procPipelineId::count> procPipelineName{
+	const std::array<std::string, pipelineEnum::procPipelineId::enumCount> procPipelineName{
 		"terrain", "model", "skybox", "mine", "uiText", "osMirror", "osScence", "dsScence", "shadowMap"
 	};
 
-	//描述符 id → 日志名字（顺序必须与 bufferEnum::procDescType 一致）
-	const std::array<std::string, bufferEnum::procDescType::count> procDescName{ 
+	//描述符 id → 日志名字（顺序必须与 descEnum::descType 一致）
+	const std::array<std::string, descEnum::descType::enumCount> procDescName{ 
 		"scenceForward", "scenceDeferred", "uiText", "dsScence", "shadowMap" 
 	};
 

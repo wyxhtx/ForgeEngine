@@ -12,7 +12,7 @@ public:
 		engineStruct::timeNode time{};
 
 		if (debugInfo::LogSwitch) {
-			if (cubeEnum::cubeId::count != cubeEnum::coverageId::count) {
+			if (cubeEnum::cubeId::enumCount != cubeEnum::coverageId::enumCount) {
 				Log::printError(__FILE__, __LINE__, "方块索引与覆盖索引数量不一致");
 			}
 		}
@@ -46,21 +46,21 @@ private:
 	Debug	InitDebug{};
 	Storage InitStorage{};
 
-	noiseList::procNoiseNode procNoise{};																		//程序化噪音
+	noiseList::procNoiseNode procNoise{};																			//程序化噪音
 
-	std::unordered_map<glm::dvec3, Chunk> chunkMap;																//区块map，存储区块数据
-	std::unordered_map<glm::dvec3, Chunk> updateChunkMap;														//更新区块map，临时存储区块数据，存储当前视距内未加载区块
-	std::forward_list<plateStruct::terrainMeshSignNode> terrainMeshSignList[plateEnum::terrainLayer::count];	//标识地形管线各层网格中，区块顶点数组和索引数组的大小，为裁剪区块截层网格服务
+	std::unordered_map<glm::dvec3, Chunk> chunkMap;																	//区块map，存储区块数据
+	std::unordered_map<glm::dvec3, Chunk> updateChunkMap;															//更新区块map，临时存储区块数据，存储当前视距内未加载区块
+	std::forward_list<plateStruct::terrainMeshSignNode> terrainMeshSignList[plateEnum::terrainLayer::enumCount];	//标识地形管线各层网格中，区块顶点数组和索引数组的大小，为裁剪区块截层网格服务
 
-	const int maxThreadCount = std::thread::hardware_concurrency();												//设备最大核心数量，用于板块多线程创建，在Plate赋值
-	plateStruct::linkStructManagerNode linkStructManager;														//链结构管理器[0,33]，只管理小于等于32并且无空气的结构，超出32会产生很多问题，比如区块存储加载，方块更新后的网格更新
+	const int maxThreadCount = std::thread::hardware_concurrency();													//设备最大核心数量，用于板块多线程创建，在Plate赋值
+	plateStruct::linkStructManagerNode linkStructManager;															//链结构管理器[0,33]，只管理小于等于32并且无空气的结构，超出32会产生很多问题，比如区块存储加载，方块更新后的网格更新
 
 
 
 	//创建板块，RM_0.4.6（8_32：1300）
 	void createPlate() {
-		std::vector<glm::dvec3> updateChunkLoop;								//更新区块循环
-		plateStruct::kMeansNode partChunkLoop;									//分区区块循环，用于并行生成地形
+		std::vector<glm::dvec3> updateChunkLoop;									//更新区块循环
+		plateStruct::kMeansNode partChunkLoop;										//分区区块循环，用于并行生成地形
 		std::vector<plateStruct::linkStructManagerNode> linkStructPartManager;		//链结构分区管理器
 
 		const glm::dvec3 playerChunkPos = glm::floor(playerInfo::initSpawnPos / static_cast<double>(plateInfo::chunkLength));
@@ -677,7 +677,7 @@ public:
 
 
 		//卸载视距外区块网格，因为原点未迁移处理耗时太高，所以全采用原点迁移处理，RM_0.4.6（8_32：20）
-		for (int layer = 0; layer < plateEnum::terrainLayer::count; layer++) {
+		for (int layer = 0; layer < plateEnum::terrainLayer::enumCount; layer++) {
 			//清空全部区块网格
 			vertexStruct::terrainVertex::mesh[layer].vertexs.clear();
 			vertexStruct::terrainVertex::mesh[layer].indexs.clear();

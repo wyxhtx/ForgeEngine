@@ -34,7 +34,7 @@ namespace noiseList {
 
 
 
-		procNoiseNode() : node(noiseEnum::noiseId::count), xPosArray2D(plateInfo::cubeArraySquare), zPosArray2D(plateInfo::cubeArraySquare), xPosArray3D(plateInfo::cubeArrayVolume), yPosArray3D(plateInfo::cubeArrayVolume), zPosArray3D(plateInfo::cubeArrayVolume) {
+		procNoiseNode() : node(noiseEnum::noiseId::enumCount), xPosArray2D(plateInfo::cubeArraySquare), zPosArray2D(plateInfo::cubeArraySquare), xPosArray3D(plateInfo::cubeArrayVolume), yPosArray3D(plateInfo::cubeArrayVolume), zPosArray3D(plateInfo::cubeArrayVolume) {
 			node[noiseEnum::noiseId::elevation].create("D@BCBBCS4JDQAH@BCQYAAEAcRgQDAACAPwsAAIA/DAMAAIA/BA==", worldSeed);	//elevation根据海拔划分群系，所以种子必须和ground一样
 			node[noiseEnum::noiseId::ground]   .create("KQkuCSgAAQ@ABEVCScJDQAH@BC@AQEAJBg@AMhDCAM@BQmpkZvxg@CBAOamRk/CwAAgD8MAwAAgMAEKAAB@BERUJ/wIAAw@AMAEKAAB@BERUJJwkNAAc@BJBg@AEhDCAI@BQ@CBjNzEw+BAOamRk/CzMzMz8UKAAB@BERUJ/wcAAw@AEAEFQkNAAc@BI@AgQAkG@BFkQIAQ@BQDmpkZPwsAAIA/BAMAAIBABAIpCRUJJwkNAAc@BJBgAAQBxGBAMAAIA/CwAAgD8MAwAAgL8EEwAAwL8bAADAPwwCKQkVCf8PAAPNzEw+BBMAAMC/GwAAwD8MAikJFQn/DwADzczMPgQTAADAvxsAAMA/DAIpCRUJ/w8AA5qZGT8EEwAAwL8bAADAPxQTAADIwhsAAMhCBA==", worldSeed);
 			node[noiseEnum::noiseId::cave]	   .create("KAAB@BESQI@BQAkuAAE@BJFQkeCQ0AB@CkIBAs@B/DAM@AC/FBYCHAklAAI@BJCw@AEhDCAE@BQzczMPRg@ADAIAM@B4Ag@BMAAIA/C83MTD8TzcxMPgwCLgAB@BCf8GAAQLzcxMPgQKFwkNCQg@BgQQgD@BBAs@B/BAMK1yM9DAIoAAE@BRBAgK16M9CwAAyEMEBggE@BG@AoEEU", randomSeed(worldSeed));
@@ -132,7 +132,7 @@ namespace noiseList {
 
 
 
-		procStructureNode() : treeNode(noiseEnum::treeId::count) {
+		procStructureNode() : treeNode(noiseEnum::treeId::enumCount) {
 			treeNode[noiseEnum::treeId::oak].create(5, 10, cubeEnum::cubeId::oakLeaf, cubeEnum::cubeId::oakTrunk);
 		}
 	};
@@ -145,7 +145,7 @@ namespace cubeList {
 
 
 
-		procCubeNode() : node(cubeEnum::cubeId::count) {
+		procCubeNode() : node(cubeEnum::cubeId::enumCount) {
 			node[cubeEnum::cubeId::dirt]		.create({ { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2}, { 0,  2} }, cubeEnum::coverageId::dirt);
 			node[cubeEnum::cubeId::grass]		.create({ { 0,  0}, { 0,  2}, { 0,  1}, { 0,  1}, { 0,  1}, { 0,  1} }, cubeEnum::coverageId::grass);
 			node[cubeEnum::cubeId::stone]		.create({ {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0}, {16,  0} }, cubeEnum::coverageId::stone);

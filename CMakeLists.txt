@@ -77,6 +77,7 @@ set_target_properties(ForgeFastNoise PROPERTIES
 # 5. 主程序目标（ForgeEngine.exe；游戏逻辑在 src\code\forge）
 add_executable(ForgeEngine src/code/vk/Main.cpp)                                                # 单 TU（Main.cpp 内含全部实现）
 target_compile_definitions(ForgeEngine PRIVATE UNICODE _UNICODE)                                # Unicode（WinAPI W 版）
+target_compile_definitions(ForgeEngine PRIVATE $<$<NOT:$<CONFIG:Release>>:FORGE_DEV_BUILD>)              # 开发档宏（Debug/RelWithDebInfo）：校验层与日志开关随它走，Release 不带 ⇒ 自动关闭
 target_compile_options(ForgeEngine PRIVATE /bigobj)                                             # 单 TU 节数超限需大目标
 target_compile_options(ForgeEngine PRIVATE $<$<NOT:$<CONFIG:Debug>>:/U_DEBUG>)                  # 非 Debug 撤 _DEBUG（防 LNK2038）
 target_compile_options(ForgeEngine PRIVATE $<$<CONFIG:Release>:/Zi>)                            # Release 产 PDB（/O2 下可断点/看调用栈）

@@ -7,8 +7,9 @@ public:
 	VkSurfaceKHR presentSurface;                                //呈现表面，vulkan和操作系统窗口之间的桥梁，让GPU知道画到哪里去
 
 	std::vector<deviceStruct::gpuNode> gpuCandidateList{};      //gpu候选列表
-	int enableGpuIndex = -1;                                    //启用gpu索引
-	deviceStruct::gpuNode* enableGpu = nullptr;                 //启用gpu
+	int						   enableGpuIndex = -1;				//启用gpu索引
+	deviceStruct::gpuNode*	   enableGpu = nullptr;				//启用gpu
+	VkPhysicalDeviceProperties enableGpuInfo{};                 //启用gpu的属性（设备限制：maxSamplerAnisotropy/maxSamplerLodBias 等）
 
 	VkDevice device;                                            //逻辑设备，vulkan和gpu之间的api接口
 	VkQueue graphicsQueue;                                      //渲染队列
@@ -123,11 +124,14 @@ private:
 		}
 		
 		//显卡信息列表
-		std::vector<VkPhysicalDeviceProperties> gpuInfoList(gpuCount);          //todo 到时候看看能不能封装进LogSwitch里面
+		std::vector<VkPhysicalDeviceProperties> gpuInfoList(gpuCount);
+		for (uint32_t i = 0; i < gpuCandidateList.size(); i++) {
+			vkGetPhysicalDeviceProperties(gpuCandidateList[i].gpu, &gpuInfoList[i]);
+		}
+
 		if (debugInfo::LogSwitch) {
 			Log::printTitle("可用显卡");
 			for (uint32_t i = 0; i < gpuCandidateList.size(); i++) {
-				vkGetPhysicalDeviceProperties(gpuCandidateList[i].gpu, &gpuInfoList[i]);
 				Log::print(gpuInfoList[i].deviceName);
 			}
 			Log::delimiter();
@@ -146,7 +150,8 @@ private:
 				enableGpuIndex = i;
 			}
 		}
-		enableGpu = &gpuCandidateList[enableGpuIndex];
+		enableGpu	  = &gpuCandidateList[enableGpuIndex];
+		enableGpuInfo = gpuInfoList[enableGpuIndex];
 
 		//显卡支持检测
 		gpuSupportCheck(enableGpu->gpu, engineInfo::enableDeviceExtensionList);

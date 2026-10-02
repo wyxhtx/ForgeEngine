@@ -256,7 +256,7 @@ private:
 		//读取cubeDeltaSet
 		size_t cubeDeltaSetSize = readChunkFile.readValue<size_t>();
 		std::array<short, 3> cubePos{};
-		short newCubeId = cubeEnum::cubeId::count;
+		short newCubeId = cubeEnum::cubeId::enumNull;		//未指定方块
 		for (size_t i = 0; i < cubeDeltaSetSize; i++) {
 			readChunkFile.readData(cubePos);
 			readChunkFile.readData(newCubeId);

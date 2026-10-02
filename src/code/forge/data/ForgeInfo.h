@@ -44,7 +44,7 @@ namespace plateInfo {
 	const int originShiftThreshold = static_cast<int>(pow(2, 8));									//测试用256
 	//const int originShiftThreshold = (int)pow(2, 13);									//原点迁移阈值8192，小数点后还有三位能准确表示精度
 
-	const int terrainLayerSight[plateEnum::terrainLayer::count] = { 4,plateInfo::sightRange };	//地形管线各层视距列表
+	const int terrainLayerSight[plateEnum::terrainLayer::enumCount] = { 4,plateInfo::sightRange };	//地形管线各层视距列表
 }
 
 //存储信息

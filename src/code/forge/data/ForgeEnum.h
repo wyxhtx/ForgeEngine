@@ -12,7 +12,8 @@ namespace noiseEnum {
 			cave,		//洞穴
 			tree,		//树
 
-			count
+			enumCount,	//枚举长度
+			enumNull	//枚举空值
 		};
 	}
 
@@ -21,7 +22,8 @@ namespace noiseEnum {
 		enum type {
 			oak,		//橡树
 
-			count
+			enumCount,	//枚举长度
+			enumNull	//枚举空值
 		};
 	}
 }
@@ -43,7 +45,8 @@ namespace cubeEnum {
 
 			stoneSquared,		//石料
 
-			count				//枚举长度
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 
@@ -59,7 +62,8 @@ namespace cubeEnum {
 			stone,				//石头
 			stoneSquared,		//石料
 
-			count				//枚举长度
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 }
@@ -72,7 +76,8 @@ namespace plateEnum {
 			Layer_0,			//Layer_0：可破坏方块、	无lod合并、	  服务于玩家快速破坏方块
 			Layer_1,			//Layer_1：不可破坏方块、	从1x到32x合并、服务于玩家观赏地形
 
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 
@@ -87,7 +92,8 @@ namespace plateEnum {
 			Lod_4,              //16x合并
 			Lod_5,              //32x合并
 
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 	*/

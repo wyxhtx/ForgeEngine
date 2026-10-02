@@ -6,12 +6,13 @@
 namespace engineEnum {
 	namespace tickEnum {
 		enum type {
-			key,        //按键获取刷新率
-			uiText,     //文本UI刷新率
-			plate,      //板块更新刷新率
-			cube,       //方块更新刷新率
+			key,				//按键获取刷新率
+			uiText,				//文本UI刷新率
+			plate,				//板块更新刷新率
+			cube,				//方块更新刷新率
 
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 }
@@ -20,13 +21,14 @@ namespace engineEnum {
 
 //ui        枚举空间
 namespace uiEnum {
-	//uiText锚点枚举
+	//uiText 锚点枚举
 	namespace uiTextAnchorEnum {
 		enum type {
-			topLeft,     //左上：行标签列左对齐，值区跨行列对齐
-			topRight,    //右上：整行右端对齐视口右缘
+			topLeft,			//左上：行标签列左对齐，值区跨行列对齐
+			topRight,			//右上：整行右端对齐视口右缘
 
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 }
@@ -35,49 +37,179 @@ namespace uiEnum {
 
 //render    枚举空间
 namespace renderEnum {
-	//render附件枚举
+	//render 附件枚举
 	namespace renderAttId {
 		enum type {
-			forward_ra,     //前向渲染附件
-			deferred_ra,    //延迟渲染附件
-			shadowMap_ra,   //阴影映射附件
+			forward_ra,			//前向渲染附件
+			deferred_ra,		//延迟渲染附件
+			shadowMap_ra,		//阴影映射附件
 
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 
-	//render帧图像枚举
+	//render 帧图像枚举
 	namespace renderFrameId {
 		enum type {
-			conv_rf,        //常规：颜色、深度、视图
-			swap_rf,        //交换链
+			conv_rf,			//常规：颜色、深度、视图
+			swap_rf,			//交换链
 
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 
-	//render模板枚举
+	//render 模板枚举
 	namespace renderTemplateId {
 		enum type {
-			swapChain_rt,   //交换链
-			offScreen_rt,   //离屏
-			deferred_rt,    //延迟渲染
-			shadowMap_rt,   //阴影映射
+			swapChain_rt,		//交换链
+			offScreen_rt,		//离屏
+			deferred_rt,		//延迟渲染
+			shadowMap_rt,		//阴影映射
 
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 
-	//render实例枚举
+	//render 实例枚举
 	namespace renderInstanceId {
 		enum type {
-			scScence_ri,    //交换链场景
-			osScence_ri,    //离屏场景
-			osMirror_ri,    //离屏镜面
-			dsScence_ri,    //延迟渲染场景
-			shadowMap_ri,   //阴影映射
+			scScence_ri,		//交换链场景
+			osScence_ri,		//离屏场景
+			osMirror_ri,		//离屏镜面
+			dsScence_ri,		//延迟渲染场景
+			shadowMap_ri,		//阴影映射
 
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
+		};
+	}
+}
+
+//desc		枚举空间
+namespace descEnum {
+	namespace descType {
+		enum type {
+			scenceForward_d,    //场景前向描述符
+			scenceDeferred_d,   //场景延迟描述符
+			uiText_d,           //文本描述符
+			dsScence_d,         //延迟渲染描述符
+			shadowMap_d,        //阴影映射描述符
+
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
+		};
+	}
+}
+
+//sampler   枚举空间
+namespace samplerEnum {
+	//mag		枚举（放大过滤）
+	namespace magId {
+		enum type {
+			nearest,			//邻近（体素/像素风：不糊）
+			linear,				//线性（平滑）
+
+			enumCount			//枚举长度
+		};
+	}
+
+	//min		枚举（缩小过滤）
+	namespace minId {
+		enum type {
+			nearest,			//邻近（像素风：远看也不糊）
+			linear,				//线性（平滑）
+
+			enumCount			//枚举长度
+		};
+	}
+
+	//mipmap	枚举（级间 mip 过滤）
+	namespace mipmapId {
+		enum type {
+			nearest,			//邻近
+			linear,				//线性
+
+			enumCount			//枚举长度
+		};
+	}
+
+	//address	枚举（寻址模式，U/V/W 同值）
+	namespace addressId {
+		enum type {
+			repeat,				//循环平铺（地形/模型）
+			clampEdge,			//边缘钳制（图集/离屏：防跨图集出血）
+			mirrorRepeat,		//镜像循环
+			clampBorder,		//边框色钳制
+
+			enumCount			//枚举长度
+		};
+	}
+
+	//aniso		枚举（各向异性等级；创建时按设备限制夹取）
+	namespace anisoId {
+		enum type {
+			off,
+			x1,
+			x2,
+			x4,
+			x8,
+			x16,
+
+			enumCount			//枚举长度
+		};
+	}
+
+	//maxLod	枚举（唯一需要运行期取值的维度）
+	namespace lodSourceId {
+		enum type {
+			none,				//无：不运算（maxLod = 0）
+			runtime,			//有：运行期取值
+
+			enumCount			//枚举长度
+		};
+	}
+
+	//compare	枚举（比较采样，阴影用）
+	namespace compareId {
+		enum type {
+			off,				//无比较（普通采样）
+			lessOrEqual,		//≤ 比较（阴影映射）
+
+			enumCount			//枚举长度
+		};
+	}
+
+	//borderColor	枚举（越界返回色）
+	namespace borderColorId {
+		enum type {
+			intOpaqueBlack,			//整数·不透明黑（普通采样默认）
+			floatOpaqueBlack,		//浮点·不透明黑
+			floatOpaqueWhite,		//浮点·不透明白（阴影：图外视为受光）
+			floatTransparentBlack,	//浮点·透明黑
+
+			enumCount				//枚举长度
+		};
+	}
+
+
+
+	//sampler	枚举
+	namespace procSamplerId {
+		enum type {
+			terrain_s,          //地形采样器
+			staticModel_sn,     //静态模型邻近采样器
+			staticModel_sl,     //静态模型线性采样器
+			dynamicModel_sn,    //动态模型邻近采样器
+			dynamicModel_sl,    //动态模型线性采样器
+			uiText_s,           //文本采样器
+			offScreen_s,        //离屏渲染采样器
+			shadowMap_s,        //阴影映射采样器
+
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 }
@@ -87,20 +219,20 @@ namespace vertexEnum {
 	//顶点属性格式枚举
 	namespace formatId {
 		enum type {
-			float2,		//2×float：uiText 的字形位置 / 纹理坐标
-			float3,		//3×float：坐标 / uv3 / 法线
+			float2,				//2×float：uiText 的字形位置 / 纹理坐标
+			float3,				//3×float：坐标 / uv3 / 法线
 
-			count
+			enumCount			//枚举长度
 		};
 	}
 
 	//顶点输入速率枚举
 	namespace rateId {
 		enum type {
-			vertex,		//逐顶点：VK_VERTEX_INPUT_RATE_VERTEX（默认）
-			instance,	//逐实例：VK_VERTEX_INPUT_RATE_INSTANCE
+			vertex,				//逐顶点：VK_VERTEX_INPUT_RATE_VERTEX（默认）
+			instance,			//逐实例：VK_VERTEX_INPUT_RATE_INSTANCE
 
-			count
+			enumCount			//枚举长度
 		};
 	}
 }
@@ -110,10 +242,11 @@ namespace pipelineEnum {
 	//shaderFlow 枚举
 	namespace shaderFlowId {
 		enum type {
-			vert,					//顶点流程：VERTEX + FRAGMENT
-			mesh,					//网格流程：TASK + MESH + FRAGMENT
+			vert,				//顶点流程：VERTEX + FRAGMENT
+			mesh,				//网格流程：TASK + MESH + FRAGMENT
 
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 
@@ -137,7 +270,7 @@ namespace pipelineEnum {
 			// ---- 细分图元（需 tessellationShader） ----
 			patchList,					//面片列表										每 N 顶点一个面片：						细分着色器输入
 
-			count
+			enumCount					//枚举长度
 		};
 	}
 
@@ -175,7 +308,7 @@ namespace pipelineEnum {
 			fill_back_ccw_clampDepth,	//填充·剔背面·逆时针·夹紧深度					深度夹紧进 [0,1]：						深度精度不足/大幅近平面时防穿透（需 depthClamp）
 			discardAll,					//丢弃全部图元									rasterizerDiscardEnable=true：			只走顶点/网格阶段（只写时间戳、纯测性能）
 
-			count
+			enumCount					//枚举长度
 		};
 	}
 
@@ -186,7 +319,7 @@ namespace pipelineEnum {
 			polygonOffset,				//多边形偏移									常量 1.0 / 斜率 1.0 / 不夹紧（选择框覆盖、共面贴合）
 			shadowOffset,				//阴影斜率偏移									常量 0.0 / 斜率 1.0 / 不夹紧（阴影贴图防 acne 常用）
 
-			count
+			enumCount					//枚举长度
 		};
 	}
 
@@ -219,14 +352,13 @@ namespace pipelineEnum {
 			test_write_less_bounds,		//测·写·小于·范围								级联阴影：								只处理本层深度切片
 			test_noWrite_less_bounds,	//测·不写·小于·范围								同上但不写深度
 
-			count
+			enumCount					//枚举长度
 		};
 	}
 
 	//stencil	枚举（模板）
 	namespace stencilId {
 		enum type {
-			// ---- 默认 ----
 			none,						//不测试										stencilTestEnable=false，其余字段被忽略
 
 			// ---- 遮罩类 ----
@@ -239,7 +371,7 @@ namespace pipelineEnum {
 			zPass,						//阴影体										Z-pass 正面 passOp=INCR_WRAP、	   背面 passOp=DECR_WRAP，	   compare=ALWAYS
 			zFail,						//阴影体										Z-fail 正面 depthFailOp=INCR_WRAP、背面 depthFailOp=DECR_WRAP，compare=ALWAYS
 
-			count
+			enumCount					//枚举长度
 		};
 	}
 
@@ -266,19 +398,19 @@ namespace pipelineEnum {
 			darken,						//变暗											逐通道取小：							NPR、光照贴图取暗部
 			lighten,					//变亮											逐通道取大：							NPR、光照贴图取亮部
 
-			count
+			enumCount					//枚举长度
 		};
 	}
 
 	//writeMask	枚举（颜色写入，blend -> colorWriteMask）
 	namespace writeMaskId {
 		enum type {
+			none,						//不写颜色										颜色附件仅供深度/模板流程用（占位）
 			rgba,						//写											RGBA 默认：颜色与透明度都写
 			rgb,						//只写											RGB 保留目标 alpha（后续合成/透明度累积）
 			alphaOnly,					//只写											alpha 只生成透明度通道（透明通道预通道）
-			none,						//不写颜色										颜色附件仅供深度/模板流程用（占位）
 
-			count
+			enumCount					//枚举长度
 		};
 	}
 
@@ -290,7 +422,7 @@ namespace pipelineEnum {
 			invert,						//颜色取反										写入取反后的目标颜色		（位运算）
 			xorOp,						//异或											源与目标逐位异或			（位运算，特异效果）
 
-			count
+			enumCount					//枚举长度
 		};
 	}
 
@@ -310,7 +442,7 @@ namespace pipelineEnum {
 			viewportScissorRasterDepth,	// + 光栅/深度批处理							一条管线服务多材质/双面/多图元（1.3 核心）
 			viewportScissorAll,			// + 全部可选									上述 8 项 + 深度范围/混合常量/模板，不含线宽与深度偏移
 
-			count
+			enumCount					//枚举长度
 		};
 	}
 
@@ -321,7 +453,8 @@ namespace pipelineEnum {
 			fullscreen,					//全屏三角形											
 			text,						//UI文本												
 
-			count
+			enumCount,					//枚举长度
+			enumNull					//枚举空值
 		};
 	}
 
@@ -340,7 +473,8 @@ namespace pipelineEnum {
 			dsScence_p,					//延迟渲染场景											
 			shadowMap_p,				//阴影映射												
 
-			count
+			enumCount,					//枚举长度
+			enumNull					//枚举空值
 		};
 	}
 }
@@ -354,50 +488,28 @@ namespace bufferEnum {
 		enum type {
 			left,
 			center,
-			right
-		};
-	}
+			right,
 
-	namespace procDescType {
-		enum type {
-			scenceForward_d,    //场景前向描述符
-			scenceDeferred_d,   //场景延迟描述符，用于将纹理贴图和法线贴图转换为3大附件
-			uiText_d,           //文本描述符
-			dsScence_d,         //延迟渲染描述符，用于将3大附件和光照处理成最终结果
-			shadowMap_d,        //阴影映射描述符
-
-			count
-		};
-	}
-
-	namespace procSamplerId {
-		enum type {
-			terrain_s,          //地形采样器
-			staticModel_sn,     //静态模型邻近采样器
-			staticModel_sl,     //静态模型线性采样器
-			dynamicModel_sn,    //动态模型邻近采样器
-			dynamicModel_sl,    //动态模型线性采样器
-			uiText_s,           //文本采样器
-			offScreen_s,        //离屏渲染采样器
-			shadowMap_s,        //阴影映射采样器
-
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 
 	namespace procStaticModelId {
 		enum type {
-			temple_m,   //神庙
+			temple_m,			//神庙
 
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 
 	namespace procDynamicModelId {
 		enum type {
-			droid_m,		//机器人
+			droid_m,			//机器人
 
-			count
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
 		};
 	}
 }

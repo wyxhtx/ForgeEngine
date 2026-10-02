@@ -12,7 +12,7 @@ public:
 	bool isFull = false;																						//标识区块是否为全存
 
 	int isVisible = 0;																							//标识区块是否可见，如果全空或全满为不可见(但是不能排除[1,32]全空但[0/33]非空的情况)，用于优化生成区块网格
-	int layerId = plateEnum::terrainLayer::count;																//区块所在地形管线层
+	int layerId = plateEnum::terrainLayer::enumNull;		//未指定地形层														//区块所在地形管线层
 
 	//由InitChunk初始化
 	glm::dvec3 originOffset{};																					//区块原点偏移（d世界坐标系），用于Plate.joinTerrainMesh处理世界原点迁移
