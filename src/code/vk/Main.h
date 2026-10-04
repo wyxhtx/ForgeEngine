@@ -62,5 +62,4 @@
 #include "base/Device.hpp"
 
 #include "graphic/Swapchain.hpp"
-#include "graphic/Buffer.hpp"
 #include "graphic/Pipeline.hpp"

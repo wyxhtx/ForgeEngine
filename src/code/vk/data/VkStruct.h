@@ -2394,6 +2394,177 @@ namespace renderStruct {
 	};
 }
 
+//sampler	结构空间
+namespace samplerStruct {
+	//samplerConfig 传参结点
+	struct samplerConfigParamNode {
+		//预设指定
+		samplerEnum::magId::type		 magType		 = samplerEnum::magId::linear;					//放大过滤
+		samplerEnum::minId::type         minType		 = samplerEnum::minId::linear;					//缩小过滤
+		samplerEnum::mipmapId::type		 mipmapType		 = samplerEnum::mipmapId::nearest;				//mip 过滤
+		samplerEnum::addressId::type	 addressType	 = samplerEnum::addressId::repeat;				//寻址模式（U/V/W 同值）
+		samplerEnum::anisoId::type		 anisoType		 = samplerEnum::anisoId::x16;					//各向异性
+		samplerEnum::lodSourceId::type   lodSourceType	 = samplerEnum::lodSourceId::none;				//maxLod 两态：none = 0（不运算）/ clampNone = 不限制（交给纹理 mip 链）
+		samplerEnum::compareId::type     compareType     = samplerEnum::compareId::off;					//比较采样（阴影）
+		samplerEnum::borderColorId::type borderColorType = samplerEnum::borderColorId::intOpaqueBlack;	//越界返回色
+	};
+
+	//samplerConfig 结点
+	struct samplerConfigNode {
+		VkSamplerCreateInfo samplerInfo{};
+
+
+
+		//创建 采样器配置
+		void createSamplerConfigNode(const samplerConfigParamNode& param) {
+			samplerInfo = {};
+			samplerInfo.sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+			samplerInfo.minFilter    = createMin(param.minType);			//预设：缩小过滤
+			samplerInfo.borderColor  = createBorderColor(param);			//预设：越界返回色
+			createCompare(param);											//预设：比较采样
+
+			samplerInfo.mipLodBias	 = 0.0f;								//无预设项
+			samplerInfo.minLod		 = 0.0f;								//无预设项
+			samplerInfo.unnormalizedCoordinates = VK_FALSE;					//无预设项：只用归一化坐标
+
+			//预设指定
+			samplerInfo.magFilter    = createMag(param.magType);
+			samplerInfo.mipmapMode   = createMipmap(param.mipmapType);
+			samplerInfo.addressModeU = createAddress(param.addressType);
+			samplerInfo.addressModeV = samplerInfo.addressModeU;
+			samplerInfo.addressModeW = samplerInfo.addressModeU;
+			createAniso(param.anisoType);
+			samplerInfo.maxLod = createMaxLod(param);
+		}
+
+	private:
+		//映射 放大过滤预设 → VkFilter
+		VkFilter createMag(const samplerEnum::magId::type& magType) const {
+			VkFilter filter = VK_FILTER_NEAREST;
+
+			switch (magType) {
+			case samplerEnum::magId::nearest: { filter = VK_FILTER_NEAREST;	break; }
+			case samplerEnum::magId::linear:  { filter = VK_FILTER_LINEAR;	break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "samplerMagId 未写预设处理：值 " + std::to_string(static_cast<int>(magType)));
+				break;
+			}}
+
+			return filter;
+		}
+
+		//映射 缩小过滤预设 → VkFilter
+		VkFilter createMin(const samplerEnum::minId::type& minType) const {
+			VkFilter filter = VK_FILTER_LINEAR;
+
+			switch (minType) {
+			case samplerEnum::minId::nearest: { filter = VK_FILTER_NEAREST;	break; }
+			case samplerEnum::minId::linear:  { filter = VK_FILTER_LINEAR;	break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "minId 未写预设处理：值 " + std::to_string(static_cast<int>(minType)));
+				break;
+			}}
+
+			return filter;
+		}
+
+		//映射 mip 过滤预设 → VkSamplerMipmapMode
+		VkSamplerMipmapMode createMipmap(const samplerEnum::mipmapId::type& mipmapType) const {
+			VkSamplerMipmapMode mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+
+			switch (mipmapType) {
+			case samplerEnum::mipmapId::nearest: { mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;	break; }
+			case samplerEnum::mipmapId::linear:  { mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;	break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "samplerMipmapId 未写预设处理：值 " + std::to_string(static_cast<int>(mipmapType)));
+				break;
+			}}
+
+			return mipmapMode;
+		}
+
+		//映射 寻址预设 → VkSamplerAddressMode
+		VkSamplerAddressMode createAddress(const samplerEnum::addressId::type& addressType) const {
+			VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+			switch (addressType) {
+			case samplerEnum::addressId::repeat:       { addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;			break; }
+			case samplerEnum::addressId::clampEdge:    { addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;	break; }
+			case samplerEnum::addressId::mirrorRepeat: { addressMode = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;	break; }
+			case samplerEnum::addressId::clampBorder:  { addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;	break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "samplerAddressId 未写预设处理：值 " + std::to_string(static_cast<int>(addressType)));
+				break;
+			}}
+
+			return addressMode;
+		}
+
+		//填 各向异性（预设等级 → enable + maxAnisotropy；这里只填请求值，设备限制在创建时夹取）
+		void createAniso(const samplerEnum::anisoId::type& anisoType) {
+			switch (anisoType) {
+			case samplerEnum::anisoId::off: { samplerInfo.anisotropyEnable = VK_FALSE;	samplerInfo.maxAnisotropy = 1.0f;	break; }
+			case samplerEnum::anisoId::x1:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 1.0f;	break; }
+			case samplerEnum::anisoId::x2:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 2.0f;	break; }
+			case samplerEnum::anisoId::x4:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 4.0f;	break; }
+			case samplerEnum::anisoId::x8:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 8.0f;	break; }
+			case samplerEnum::anisoId::x16: { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 16.0f;	break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "samplerAnisoId 未写预设处理：值 " + std::to_string(static_cast<int>(anisoType)));
+				break;
+			}}
+		}
+
+		//填 比较采样（compareId 预设 → compareEnable + compareOp）
+		void createCompare(const samplerConfigParamNode& param) {
+			switch (param.compareType) {
+			case samplerEnum::compareId::off:         { samplerInfo.compareEnable = VK_FALSE;	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;		 break; }	//无比较
+			case samplerEnum::compareId::lessOrEqual: { samplerInfo.compareEnable = VK_TRUE;	samplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL; break; }	//阴影比较
+			default: {
+				Log::printError(__FILE__, __LINE__, "compareId 未写预设处理：值 " + std::to_string(static_cast<int>(param.compareType)));
+				break;
+			}}
+		}
+
+		//映射 越界返回色预设 → VkBorderColor
+		VkBorderColor createBorderColor(const samplerConfigParamNode& param) const {
+			VkBorderColor borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+
+			switch (param.borderColorType) {
+			case samplerEnum::borderColorId::intOpaqueBlack:        { borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;		 break; }
+			case samplerEnum::borderColorId::floatOpaqueBlack:      { borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;		 break; }
+			case samplerEnum::borderColorId::floatOpaqueWhite:      { borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;		 break; }
+			case samplerEnum::borderColorId::floatTransparentBlack: { borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; break; }
+			default: {
+				Log::printError(__FILE__, __LINE__, "borderColorId 未写预设处理：值 " + std::to_string(static_cast<int>(param.borderColorType)));
+				break;
+			}}
+
+			//校验 开了比较却用整数越界色 ⇒ 采样器创建会失败
+			if (param.compareType != samplerEnum::compareId::off && borderColor == VK_BORDER_COLOR_INT_OPAQUE_BLACK) {
+				Log::printError(__FILE__, __LINE__, "比较采样（compareId != off）必须用 FLOAT 系越界色");
+			}
+
+			return borderColor;
+		}
+
+		//映射 maxLod 来源预设 → maxLod（唯一从运行期取值的维度）
+		float createMaxLod(const samplerConfigParamNode& param) const {
+			float maxLod = 0.0f;
+
+			switch (param.lodSourceType) {
+			case samplerEnum::lodSourceId::none:      { maxLod = 0.0f;				 break; }	//无：不运算
+			case samplerEnum::lodSourceId::clampNone: { maxLod = VK_LOD_CLAMP_NONE;	 break; }	//不限制：由纹理 mip 链兜底
+			default: {
+				Log::printError(__FILE__, __LINE__, "samplerLodSourceId 未写预设处理：值 " + std::to_string(static_cast<int>(param.lodSourceType)));
+				break;
+			}}
+
+			return maxLod;
+		}
+	};
+}
+
 //desc		结构空间
 namespace descStruct {
 	//描述符 配置结点
@@ -2675,180 +2846,6 @@ namespace descStruct {
 			if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
 				Log::printError(__FILE__, __LINE__, "描述符布局配置失败");
 			}
-		}
-	};
-}
-
-//sampler	结构空间
-namespace samplerStruct {
-	//samplerConfig 传参结点
-	struct samplerConfigParamNode {
-		//预设指定
-		samplerEnum::magId::type		 magType		 = samplerEnum::magId::linear;					//放大过滤
-		samplerEnum::minId::type         minType		 = samplerEnum::minId::linear;					//缩小过滤
-		samplerEnum::mipmapId::type		 mipmapType		 = samplerEnum::mipmapId::nearest;				//mip 过滤
-		samplerEnum::addressId::type	 addressType	 = samplerEnum::addressId::repeat;				//寻址模式（U/V/W 同值）
-		samplerEnum::anisoId::type		 anisoType		 = samplerEnum::anisoId::x16;					//各向异性
-		samplerEnum::lodSourceId::type   lodSourceType	 = samplerEnum::lodSourceId::none;				//maxLod 两态：none 不运算 / runtime 运行期取值
-		samplerEnum::compareId::type     compareType     = samplerEnum::compareId::off;					//比较采样（阴影）
-		samplerEnum::borderColorId::type borderColorType = samplerEnum::borderColorId::intOpaqueBlack;	//越界返回色
-
-		//运行指定
-		float maxLod = 0.0f;																			//运行期 maxLod（lodSourceType = runtime 时生效）
-	};
-
-	//samplerConfig 结点
-	struct samplerConfigNode {
-		VkSamplerCreateInfo samplerInfo{};
-
-
-
-		//创建 采样器配置
-		void createSamplerConfigNode(const samplerConfigParamNode& param) {
-			samplerInfo = {};
-			samplerInfo.sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-			samplerInfo.minFilter    = createMin(param.minType);			//预设：缩小过滤
-			samplerInfo.borderColor  = createBorderColor(param);			//预设：越界返回色
-			createCompare(param);											//预设：比较采样
-
-			samplerInfo.mipLodBias	 = 0.0f;								//无预设项
-			samplerInfo.minLod		 = 0.0f;								//无预设项
-			samplerInfo.unnormalizedCoordinates = VK_FALSE;					//无预设项：只用归一化坐标
-
-			//预设指定
-			samplerInfo.magFilter    = createMag(param.magType);
-			samplerInfo.mipmapMode   = createMipmap(param.mipmapType);
-			samplerInfo.addressModeU = createAddress(param.addressType);
-			samplerInfo.addressModeV = samplerInfo.addressModeU;
-			samplerInfo.addressModeW = samplerInfo.addressModeU;
-			createAniso(param.anisoType);
-			samplerInfo.maxLod = createMaxLod(param);
-		}
-
-	private:
-		//映射 放大过滤预设 → VkFilter
-		VkFilter createMag(const samplerEnum::magId::type& magType) const {
-			VkFilter filter = VK_FILTER_NEAREST;
-
-			switch (magType) {
-			case samplerEnum::magId::nearest: { filter = VK_FILTER_NEAREST;	break; }
-			case samplerEnum::magId::linear:  { filter = VK_FILTER_LINEAR;	break; }
-			default: {
-				Log::printError(__FILE__, __LINE__, "samplerMagId 未写预设处理：值 " + std::to_string(static_cast<int>(magType)));
-				break;
-			}}
-
-			return filter;
-		}
-
-		//映射 缩小过滤预设 → VkFilter
-		VkFilter createMin(const samplerEnum::minId::type& minType) const {
-			VkFilter filter = VK_FILTER_LINEAR;
-
-			switch (minType) {
-			case samplerEnum::minId::nearest: { filter = VK_FILTER_NEAREST;	break; }
-			case samplerEnum::minId::linear:  { filter = VK_FILTER_LINEAR;	break; }
-			default: {
-				Log::printError(__FILE__, __LINE__, "minId 未写预设处理：值 " + std::to_string(static_cast<int>(minType)));
-				break;
-			}}
-
-			return filter;
-		}
-
-		//映射 mip 过滤预设 → VkSamplerMipmapMode
-		VkSamplerMipmapMode createMipmap(const samplerEnum::mipmapId::type& mipmapType) const {
-			VkSamplerMipmapMode mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-
-			switch (mipmapType) {
-			case samplerEnum::mipmapId::nearest: { mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;	break; }
-			case samplerEnum::mipmapId::linear:  { mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;	break; }
-			default: {
-				Log::printError(__FILE__, __LINE__, "samplerMipmapId 未写预设处理：值 " + std::to_string(static_cast<int>(mipmapType)));
-				break;
-			}}
-
-			return mipmapMode;
-		}
-
-		//映射 寻址预设 → VkSamplerAddressMode
-		VkSamplerAddressMode createAddress(const samplerEnum::addressId::type& addressType) const {
-			VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-			switch (addressType) {
-			case samplerEnum::addressId::repeat:       { addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;			break; }
-			case samplerEnum::addressId::clampEdge:    { addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;	break; }
-			case samplerEnum::addressId::mirrorRepeat: { addressMode = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;	break; }
-			case samplerEnum::addressId::clampBorder:  { addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;	break; }
-			default: {
-				Log::printError(__FILE__, __LINE__, "samplerAddressId 未写预设处理：值 " + std::to_string(static_cast<int>(addressType)));
-				break;
-			}}
-
-			return addressMode;
-		}
-
-		//填 各向异性（预设等级 → enable + maxAnisotropy；这里只填请求值，设备限制在创建时夹取）
-		void createAniso(const samplerEnum::anisoId::type& anisoType) {
-			switch (anisoType) {
-			case samplerEnum::anisoId::off: { samplerInfo.anisotropyEnable = VK_FALSE;	samplerInfo.maxAnisotropy = 1.0f;	break; }
-			case samplerEnum::anisoId::x1:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 1.0f;	break; }
-			case samplerEnum::anisoId::x2:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 2.0f;	break; }
-			case samplerEnum::anisoId::x4:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 4.0f;	break; }
-			case samplerEnum::anisoId::x8:  { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 8.0f;	break; }
-			case samplerEnum::anisoId::x16: { samplerInfo.anisotropyEnable = VK_TRUE;	samplerInfo.maxAnisotropy = 16.0f;	break; }
-			default: {
-				Log::printError(__FILE__, __LINE__, "samplerAnisoId 未写预设处理：值 " + std::to_string(static_cast<int>(anisoType)));
-				break;
-			}}
-		}
-
-		//填 比较采样（compareId 预设 → compareEnable + compareOp）
-		void createCompare(const samplerConfigParamNode& param) {
-			switch (param.compareType) {
-			case samplerEnum::compareId::off:         { samplerInfo.compareEnable = VK_FALSE;	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;		 break; }	//无比较
-			case samplerEnum::compareId::lessOrEqual: { samplerInfo.compareEnable = VK_TRUE;	samplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL; break; }	//阴影比较
-			default: {
-				Log::printError(__FILE__, __LINE__, "compareId 未写预设处理：值 " + std::to_string(static_cast<int>(param.compareType)));
-				break;
-			}}
-		}
-
-		//映射 越界返回色预设 → VkBorderColor
-		VkBorderColor createBorderColor(const samplerConfigParamNode& param) const {
-			VkBorderColor borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-
-			switch (param.borderColorType) {
-			case samplerEnum::borderColorId::intOpaqueBlack:        { borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;		 break; }
-			case samplerEnum::borderColorId::floatOpaqueBlack:      { borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;		 break; }
-			case samplerEnum::borderColorId::floatOpaqueWhite:      { borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;		 break; }
-			case samplerEnum::borderColorId::floatTransparentBlack: { borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; break; }
-			default: {
-				Log::printError(__FILE__, __LINE__, "borderColorId 未写预设处理：值 " + std::to_string(static_cast<int>(param.borderColorType)));
-				break;
-			}}
-
-			//校验 开了比较却用整数越界色 ⇒ 采样器创建会失败
-			if (param.compareType != samplerEnum::compareId::off && borderColor == VK_BORDER_COLOR_INT_OPAQUE_BLACK) {
-				Log::printError(__FILE__, __LINE__, "比较采样（compareId != off）必须用 FLOAT 系越界色");
-			}
-
-			return borderColor;
-		}
-
-		//映射 maxLod 来源预设 → maxLod（唯一从运行期取值的维度）
-		float createMaxLod(const samplerConfigParamNode& param) const {
-			float maxLod = 0.0f;
-
-			switch (param.lodSourceType) {
-			case samplerEnum::lodSourceId::none:    { maxLod = 0.0f;		 break; }	//无：不运算
-			case samplerEnum::lodSourceId::runtime: { maxLod = param.maxLod; break; }	//有：运行期取值
-			default: {
-				Log::printError(__FILE__, __LINE__, "samplerLodSourceId 未写预设处理：值 " + std::to_string(static_cast<int>(param.lodSourceType)));
-				break;
-			}}
-
-			return maxLod;
 		}
 	};
 }
@@ -4425,7 +4422,7 @@ namespace bufferStruct {
 		baseBufferNode    uniform;																		//统一缓冲
 		mvpUBO            ubo;
 
-		VkDescriptorSet descriptorSet;																	//描述缓冲
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;																	//描述缓冲
 
 
 
@@ -4436,7 +4433,7 @@ namespace bufferStruct {
 
 
 		//创建地形纹理（KTX 图集按 tile 切成纹理数组）与网格缓冲
-		void create(const std::string& imageFile, VkFormat colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+		void create(const std::string& imageFile, VkFormat colorFormat, const VkExtent2D& tileExtent, const VkExtent2D& atlasExtent, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator, descStruct::descNode& descriptor, const std::vector<VkSampler>& samplerList) {
 			texture.textureFile = imageFile;
 
 			if (isEnable) {
@@ -4449,6 +4446,16 @@ namespace bufferStruct {
 				}
 
 				uniform = baseBufferNode{ sizeof(ubo), memAllocator };
+			}
+
+			//描述符集（本管线自己的那套）
+			if (isEnable) {
+				if (descriptor.alloc(device, descriptorSet, pipeType)) {
+					descriptor.writeFrom(device, descriptorSet, {
+						{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer  = uniform.buffer,			.range = sizeof(ubo) },
+						{ .binding = 1, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = texture.imageNode.view }
+					});
+				}
 			}
 		}
 
@@ -4464,20 +4471,6 @@ namespace bufferStruct {
 
 			vmaDestroyBuffer(memAllocator, uniform.buffer, uniform.bufferMem);
 		}
-
-
-
-		//创建描述符集
-		void createDescSet(descStruct::descNode& descriptor, const std::vector<VkSampler>& samplerList, const VkDevice& device) {
-			if (isEnable) {
-				if (descriptor.alloc(device, descriptorSet, pipelineEnum::procPipelineId::terrain_p)) {
-					descriptor.writeFrom(device, descriptorSet, {
-						{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer  = uniform.buffer,			.range = sizeof(ubo) },
-						{ .binding = 1, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = texture.imageNode.view }
-					});
-				}
-			}
-		}
 	};
 
 
@@ -4490,7 +4483,7 @@ namespace bufferStruct {
 		baseBufferNode    uniform;						//统一缓冲
 		mvpUBO            ubo;
 
-		VkDescriptorSet descriptorSet;					//描述缓冲
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;	//描述缓冲
 
 		//用于屏蔽超出视觉范围模型的命令提交和统一缓冲更新
 		glm::dvec3 modelWorldPos;						//模型世界坐标（d世界坐标系），在初始化时赋值
@@ -4519,12 +4512,12 @@ namespace bufferStruct {
 	};
 
 	struct modelDynamicSubNode {
-		meshBufferNode    mesh;			//网格缓冲
-		textureBufferNode texture{};	//纹理缓冲
-		baseBufferNode    uniform;		//统一缓冲
+		meshBufferNode    mesh;							//网格缓冲
+		textureBufferNode texture{};					//纹理缓冲
+		baseBufferNode    uniform;						//统一缓冲
 		mvpUBO            ubo;
 
-		VkDescriptorSet descriptorSet;	//描述缓冲
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;	//描述缓冲
 
 
 
@@ -4587,7 +4580,7 @@ namespace bufferStruct {
 
 
 
-		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator, descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList) {
 			sNode.resize(bufferEnum::procStaticModelId::enumCount);
 			dNode.resize(bufferEnum::procDynamicModelId::enumCount);
 
@@ -4663,6 +4656,27 @@ namespace bufferStruct {
 					}
 				}
 			}
+
+			//描述符集（本管线自己的那套：UBO + 贴图采样 ✓）
+			for (int i = 0; i < (int)sNode.size(); i++) {
+				if (descFamily.alloc(device, sNode[i].descriptorSet, pipeType)) {
+					descFamily.writeFrom(device, sNode[i].descriptorSet, {
+						{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = sNode[i].uniform.buffer, .range = sizeof(sNode[i].ubo) },
+						{ .binding = 1, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[sNode[i].samplerType], .view = sNode[i].texture.imageNode.view },
+					});
+				}
+			}
+
+			for (int i = 0; i < (int)dNode.size(); i++) {
+				for (int j = 0; j < (int)dNode[i].node.size(); j++) {
+					if (descFamily.alloc(device, dNode[i].node[j].descriptorSet, pipeType)) {
+						descFamily.writeFrom(device, dNode[i].node[j].descriptorSet, {
+							{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = dNode[i].node[j].uniform.buffer, .range = sizeof(dNode[i].node[j].ubo) },
+							{ .binding = 1, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[dNode[i].samplerType], .view = dNode[i].node[j].texture.imageNode.view },
+						});
+					}
+				}
+			}
 		}
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
@@ -4676,24 +4690,6 @@ namespace bufferStruct {
 		}
 
 
-
-		//获取最大模型mip
-		std::pair<uint32_t, uint32_t> getMaxModelMip() {
-			uint32_t sModelMip = 0;         //无模型时保持 0，避免对空列表取 max 的未定义行为
-			uint32_t dModelMip = 0;
-
-			for (const bufferStruct::modelStaticNode& i : sNode) {
-				sModelMip = std::max(sModelMip, i.texture.mipLevel);
-			}
-
-			for (const bufferStruct::modelDynamicNode& i : dNode) {
-				for (const bufferStruct::modelDynamicSubNode& j : i.node) {
-					dModelMip = std::max(dModelMip, j.texture.mipLevel);
-				}
-			}
-
-			return { sModelMip, dModelMip };   //使用模型最大mip创建采样器
-		}
 
 		//加载静态模型
 		void loadStaticModel(const std::string& filename, vertexStruct::vertexMeshNode<vertexStruct::modelVertex::vertexNode>& meshNode, vertexStruct::vertexMeshNode<vertexStruct::shadowVertex::vertexNode>& shadowMeshNode) {
@@ -4956,7 +4952,7 @@ namespace bufferStruct {
 		baseBufferNode  lightUniform;
 		forwardLightUBO lightUbo;
 
-		VkDescriptorSet descriptorSet;					//描述缓冲
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;	//描述缓冲
 
 
 
@@ -4967,13 +4963,21 @@ namespace bufferStruct {
 
 
 		//创建网格缓冲
-		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator, descStruct::descNode& descriptor) {
 			if (isEnable) {
 				mesh.create(vertexStruct::skyboxVertex::vertexs, vertexStruct::skyboxVertex::indexs, cmd, device, graphicsQueue, memAllocator);
 
 				//统一缓冲
 				uniform      = baseBufferNode{ sizeof(ubo),      memAllocator };
 				lightUniform = baseBufferNode{ sizeof(lightUbo), memAllocator };
+
+				//描述符集（本管线自己的那套：纯 UBO，无全局资源依赖）
+				if (descriptor.alloc(device, descriptorSet, pipeType)) {
+					descriptor.writeFrom(device, descriptorSet, {
+						{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .buffer = uniform.buffer,      .range = sizeof(ubo) },
+						{ .binding = 1, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .buffer = lightUniform.buffer, .range = sizeof(lightUbo) },
+					});
+				}
 			}
 		}
 
@@ -4993,7 +4997,7 @@ namespace bufferStruct {
 		baseBufferNode uniform;							//统一缓冲
 		mvpUBO         ubo;
 
-		VkDescriptorSet descriptorSet;					//描述缓冲
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;	//描述缓冲
 
 
 
@@ -5004,12 +5008,19 @@ namespace bufferStruct {
 
 
 		//创建网格缓冲
-		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator, descStruct::descNode& descriptor) {
 			if (isEnable) {
 				mesh.create(vertexStruct::mineVertex::vertexs, vertexStruct::mineVertex::indexs, cmd, device, graphicsQueue, memAllocator);
 
 				//统一缓冲
 				uniform = baseBufferNode{ sizeof(ubo), memAllocator };
+
+				//描述符集（本管线自己的那套：纯 UBO）
+				if (descriptor.alloc(device, descriptorSet, pipeType)) {
+					descriptor.writeFrom(device, descriptorSet, {
+						{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .buffer = uniform.buffer, .range = sizeof(ubo) },
+					});
+				}
 			}
 		}
 
@@ -5029,7 +5040,7 @@ namespace bufferStruct {
 		uiStruct::msdfGlyphAtlasNode msdfGlyphAtlas{ fileInfo::font::mapleMonoNormalNFCN, fileInfo::font::uiTextCharset };	//字体图集
 		textureBufferNode texture{};														//纹理缓冲，MTSDF 图集，RGBA8，mip=1
 
-		VkDescriptorSet descriptorSet;														//描述缓冲
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;										//描述缓冲
 
 
 
@@ -5040,11 +5051,18 @@ namespace bufferStruct {
 
 
 		//创建字体图集纹理与顶点缓冲
-		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator, descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList) {
 			if (isEnable) {
 				vertex = baseBufferNode{ pipelineInfo::uiTextGlyphCount * 6 * sizeof(glm::vec4), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memAllocator };	//6 顶点/字形 × uiTextGlyphCount 字形上限
 
 				texture.createText(msdfGlyphAtlas.data.data(), msdfGlyphAtlas.data.size(), static_cast<uint32_t>(msdfGlyphAtlas.width), static_cast<uint32_t>(msdfGlyphAtlas.height), cmd, device, graphicsQueue, memAllocator);
+			}
+
+			//描述符集（本管线自己的那套：图集采样 ✓）
+			if (descFamily.alloc(device, descriptorSet, pipeType)) {
+				descFamily.writeFrom(device, descriptorSet, {
+					{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = texture.imageNode.view },
+				});
 			}
 		}
 
@@ -5065,7 +5083,7 @@ namespace bufferStruct {
 		baseBufferNode  lightUniform;
 		forwardLightUBO lightUbo;
 
-		VkDescriptorSet descriptorSet;					//描述缓冲
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;	//描述缓冲
 
 
 
@@ -5076,14 +5094,33 @@ namespace bufferStruct {
 
 
 		//创建网格缓冲
-		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+		void create(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator, descStruct::descNode& descriptor, const std::vector<VkSampler>& samplerList, VkImageView frameView) {
 			if (isEnable) {
 				mesh.create(vertexStruct::osMirrorVertex::vertexs, vertexStruct::osMirrorVertex::indexs, cmd, device, graphicsQueue, memAllocator);
 
 				//统一缓冲
 				uniform      = baseBufferNode{ sizeof(ubo),      memAllocator };
 				lightUniform = baseBufferNode{ sizeof(lightUbo), memAllocator };
+
+				//描述符集（本管线自己的那套：UBO×2 + 帧图组合采样）
+				if (descriptor.alloc(device, descriptorSet, pipeType)) {
+					descriptor.writeFrom(device, descriptorSet, {
+						{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = uniform.buffer,      .range = sizeof(ubo) },
+						{ .binding = 1, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = lightUniform.buffer, .range = sizeof(lightUbo) },
+						{ .binding = 2, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = frameView },
+					});
+				}
 			}
+		}
+
+		//交换链重建刷新（方案②：重写全部绑定，幂等无害 ✓）
+		void updateFrameDesc(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, VkImageView frameView, const VkDevice& device) {
+			if (!isEnable) { return; }
+			descFamily.writeFrom(device, descriptorSet, {
+				{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = uniform.buffer,      .range = sizeof(ubo) },
+				{ .binding = 1, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = lightUniform.buffer, .range = sizeof(lightUbo) },
+				{ .binding = 2, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = frameView },
+			});
 		}
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
@@ -5099,7 +5136,7 @@ namespace bufferStruct {
 		pipelineEnum::procPipelineId::type pipeType;	//管线索引
 		samplerEnum::procSamplerId::type samplerType;	//采样索引
 
-		VkDescriptorSet descriptorSet;					//描述缓冲
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;	//描述缓冲
 
 
 
@@ -5108,6 +5145,25 @@ namespace bufferStruct {
 		pipeOSScenceNode() = delete;
 
 
+
+		//创建描述符集（本管线自己的那套：仅帧图组合采样 ✓）
+		void create(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, VkImageView frameView, const VkDevice& device) {
+			if (!isEnable) { return; }
+
+			if (descFamily.alloc(device, descriptorSet, pipeType)) {
+				descFamily.writeFrom(device, descriptorSet, {
+					{ .binding = 2, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = frameView },
+				});
+			}
+		}
+
+		//交换链重建刷新（方案②：重写全部绑定，幂等无害 ✓）
+		void updateFrameDesc(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, VkImageView frameView, const VkDevice& device) {
+			if (!isEnable) { return; }
+			descFamily.writeFrom(device, descriptorSet, {
+				{ .binding = 2, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = frameView },
+			});
+		}
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
 
@@ -5124,7 +5180,7 @@ namespace bufferStruct {
 		baseBufferNode    shadowUniform;
 		deferredShadowUBO shadowUbo;
 
-		VkDescriptorSet descriptorSet;					//描述缓冲
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;	//描述缓冲
 
 
 
@@ -5134,12 +5190,36 @@ namespace bufferStruct {
 
 
 
-		//创建统一缓冲
-		void create(const VmaAllocator& memAllocator) {
+		void create(const VmaAllocator& memAllocator, descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList,
+			const std::array<VkImageView, 3>& dsScenceViews, VkSampler shadowSampler, VkImageView shadowView, const VkDevice& device) {
 			if (isEnable) {
 				lightUniform  = baseBufferNode{ sizeof(lightUbo),  memAllocator };
 				shadowUniform = baseBufferNode{ sizeof(shadowUbo), memAllocator };
+
+				if (descFamily.alloc(device, descriptorSet, pipeType)) {
+					descFamily.writeFrom(device, descriptorSet, {
+						{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = lightUniform.buffer,  .range = sizeof(lightUbo) },
+						{ .binding = 1, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = shadowUniform.buffer, .range = sizeof(shadowUbo) },
+						{ .binding = 2, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = dsScenceViews[0] },
+						{ .binding = 3, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = dsScenceViews[1] },
+						{ .binding = 4, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = dsScenceViews[2] },
+						{ .binding = 5, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = shadowSampler,               .view = shadowView },
+					});
+				}
 			}
+		}
+
+		//交换链重建刷新（方案②：重写全部绑定，幂等无害 ✓）
+		void updateFrameDesc(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, const std::array<VkImageView, 3>& dsScenceViews, VkSampler shadowSampler, VkImageView shadowView, const VkDevice& device) {
+			if (!isEnable) { return; }
+			descFamily.writeFrom(device, descriptorSet, {
+				{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = lightUniform.buffer,  .range = sizeof(lightUbo) },
+				{ .binding = 1, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = shadowUniform.buffer, .range = sizeof(shadowUbo) },
+				{ .binding = 2, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = dsScenceViews[0] },
+				{ .binding = 3, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = dsScenceViews[1] },
+				{ .binding = 4, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = dsScenceViews[2] },
+				{ .binding = 5, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = shadowSampler,            .view = shadowView },
+			});
 		}
 
 		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
@@ -5152,10 +5232,10 @@ namespace bufferStruct {
 
 	struct shadowTerrainNode {
 		meshBufferNode mesh[pipelineInfo::commandThreadCount][plateEnum::terrainLayer::enumCount];	//网格缓冲，索引直接用源网格的
-		baseBufferNode shadowMvpUniform;														//统一缓冲
+		baseBufferNode shadowMvpUniform;															//统一缓冲
 		shadowMvpUBO   shadowMvpUbo;
 
-		VkDescriptorSet descriptorSet;															//描述缓冲
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;												//描述缓冲
 
 
 
@@ -5171,11 +5251,11 @@ namespace bufferStruct {
 	};
 
 	struct shadowModelNode {
-		meshBufferNode mesh;				//网格缓冲，索引直接用源网格的
-		baseBufferNode shadowMvpUniform;	//统一缓冲
+		meshBufferNode mesh;							//网格缓冲，索引直接用源网格的
+		baseBufferNode shadowMvpUniform;				//统一缓冲
 		shadowMvpUBO   shadowMvpUbo;
 
-		VkDescriptorSet descriptorSet;		//描述缓冲
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;	//描述缓冲
 
 
 
@@ -5207,7 +5287,7 @@ namespace bufferStruct {
 
 
 		//创建阴影结点列表与网格缓冲（顶点随源网格，索引直接用源网格的）
-		void create(bool terrainEnable, bool modelEnable, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator) {
+		void create(bool terrainEnable, bool modelEnable, cmdStruct::cmdNode& cmd, const VkDevice& device, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator, descStruct::descNode& descFamily) {
 			shadow_ms.resize(bufferEnum::procStaticModelId::enumCount);
 			shadow_md.resize(bufferEnum::procDynamicModelId::enumCount);
 
@@ -5258,6 +5338,31 @@ namespace bufferStruct {
 						for (bufferStruct::shadowModelNode& shadowNode : shadowNodeList) {
 							shadowNode.shadowMvpUniform = baseBufferNode{ sizeof(shadowNode.shadowMvpUbo), memAllocator };
 						}
+					}
+				}
+			}
+
+			//描述符集（本管线自己的那套：每套 1 条 UBO 绑定，循环也在本管线内 ✓）
+			if (descFamily.alloc(device, shadow_t.descriptorSet, pipeType)) {
+				descFamily.writeFrom(device, shadow_t.descriptorSet, {
+					{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .buffer = shadow_t.shadowMvpUniform.buffer, .range = sizeof(shadow_t.shadowMvpUbo) },
+				});
+			}
+
+			for (bufferStruct::shadowModelNode& shadowNode : shadow_ms) {
+				if (descFamily.alloc(device, shadowNode.descriptorSet, pipeType)) {
+					descFamily.writeFrom(device, shadowNode.descriptorSet, {
+						{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .buffer = shadowNode.shadowMvpUniform.buffer, .range = sizeof(shadowNode.shadowMvpUbo) },
+					});
+				}
+			}
+
+			for (std::vector<bufferStruct::shadowModelNode>& shadowNodeList : shadow_md) {
+				for (bufferStruct::shadowModelNode& shadowNode : shadowNodeList) {
+					if (descFamily.alloc(device, shadowNode.descriptorSet, pipeType)) {
+						descFamily.writeFrom(device, shadowNode.descriptorSet, {
+							{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .buffer = shadowNode.shadowMvpUniform.buffer, .range = sizeof(shadowNode.shadowMvpUbo) },
+						});
 					}
 				}
 			}

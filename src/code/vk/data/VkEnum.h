@@ -88,22 +88,6 @@ namespace renderEnum {
 	}
 }
 
-//desc		枚举空间
-namespace descEnum {
-	namespace descType {
-		enum type {
-			scenceForward_d,    //场景前向描述符
-			scenceDeferred_d,   //场景延迟描述符
-			uiText_d,           //文本描述符
-			dsScence_d,         //延迟渲染描述符
-			shadowMap_d,        //阴影映射描述符
-
-			enumCount,			//枚举长度
-			enumNull			//枚举空值
-		};
-	}
-}
-
 //sampler   枚举空间
 namespace samplerEnum {
 	//mag		枚举（放大过滤）
@@ -166,7 +150,7 @@ namespace samplerEnum {
 	namespace lodSourceId {
 		enum type {
 			none,				//无：不运算（maxLod = 0）
-			runtime,			//有：运行期取值
+			clampNone,			//不限制：maxLod = VK_LOD_CLAMP_NONE（由纹理 mip 链兜底）
 
 			enumCount			//枚举长度
 		};
@@ -207,6 +191,22 @@ namespace samplerEnum {
 			uiText_s,           //文本采样器
 			offScreen_s,        //离屏渲染采样器
 			shadowMap_s,        //阴影映射采样器
+
+			enumCount,			//枚举长度
+			enumNull			//枚举空值
+		};
+	}
+}
+
+//desc		枚举空间
+namespace descEnum {
+	namespace descType {
+		enum type {
+			scenceForward_d,    //场景前向描述符
+			scenceDeferred_d,   //场景延迟描述符
+			uiText_d,           //文本描述符
+			dsScence_d,         //延迟渲染描述符
+			shadowMap_d,        //阴影映射描述符
 
 			enumCount,			//枚举长度
 			enumNull			//枚举空值

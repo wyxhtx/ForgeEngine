@@ -89,94 +89,34 @@ namespace pipelineList {
 		}
 	};
 
-	struct procDescNode {
-		VkDescriptorSetAllocateInfo		  allocInfo{};
-		descEnum::descType::type		  descType = descEnum::descType::enumNull;
-		std::vector<descStruct::descNode> node{};
-
-
-
-		procDescNode(const VkDevice& device) : node(descEnum::descType::enumCount) {
-			allocInfo.sType				 = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocInfo.pNext				 = nullptr;
-			allocInfo.descriptorSetCount = 1;
-			
-			node[descEnum::descType::scenceForward_d] .maxSet = pipelineInfo::scenceForwardCount;
-			node[descEnum::descType::scenceDeferred_d].maxSet = pipelineInfo::scenceDeferredCount;
-			node[descEnum::descType::uiText_d]		  .maxSet = pipelineInfo::uiTextCount;
-			node[descEnum::descType::dsScence_d]	  .maxSet = pipelineInfo::dsScenceCount;
-			node[descEnum::descType::shadowMap_d]	  .maxSet = pipelineInfo::shadowCount;
-
-			node[descEnum::descType::scenceDeferred_d].createReflectConfig(pipelineEnum::procPipelineId::terrain_p,    { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag  });
-			node[descEnum::descType::scenceDeferred_d].createReflectConfig(pipelineEnum::procPipelineId::model_p,      { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag	  });
-			node[descEnum::descType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::skybox_p,     { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag   });
-			node[descEnum::descType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::mine_p,       { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag	  });
-			node[descEnum::descType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::osMirror_p,   { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag });
-			node[descEnum::descType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::osScence_p,   { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag });
-			node[descEnum::descType::uiText_d]		  .createReflectConfig(pipelineEnum::procPipelineId::uiText_p,     { fileInfo::shader::uiTextVert,   fileInfo::shader::uiTextFrag   });
-			node[descEnum::descType::dsScence_d]	  .createReflectConfig(pipelineEnum::procPipelineId::dsScence_p,   { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag });
-			node[descEnum::descType::shadowMap_d]	  .createReflectConfig(pipelineEnum::procPipelineId::shadowMap_p,  { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   });
-
-			for (int i = 0; i < descEnum::descType::enumCount; i++) {
-				node[i].createReflectLayout(static_cast<descEnum::descType::type>(i), device);
-			}
-		}
-
-		procDescNode() = delete;
-
-
-
-		void clear(const VkDevice& device) {
-			for (descStruct::descNode& desc : node) {
-				desc.clear(device);
-			}
-		}
-
-		void setAllocInfo(descEnum::descType::type tDescType) {
-			allocInfo.descriptorPool = node[tDescType].pool;
-			allocInfo.pSetLayouts    = &node[tDescType].layout;
-
-			descType = tDescType;
-		}
-
-		const VkWriteDescriptorSet& getWrite(int writeId, const VkDescriptorSet& dstSet, const VkBuffer& buffer, VkDeviceSize range) {
-			if (debugInfo::LogSwitch && descType == descEnum::descType::enumNull) { Log::printError(__FILE__, __LINE__, "getWrite 前必须先 setAllocInfo（当前家族未设置）"); }
-
-			return node[descType].descConfig[writeId].setWrite(dstSet, buffer, range);
-		}
-
-		const VkWriteDescriptorSet& getWrite(int writeId, const VkDescriptorSet& dstSet, const VkSampler& sampler, const VkImageView& imageView) {
-			if (debugInfo::LogSwitch && descType == descEnum::descType::enumNull) { Log::printError(__FILE__, __LINE__, "getWrite 前必须先 setAllocInfo（当前家族未设置）"); }
-
-			return node[descType].descConfig[writeId].setWrite(dstSet, sampler, imageView);
-		}
-	};
-
 	struct procSamplerNode {
 		std::vector<samplerStruct::samplerConfigNode> config{};
 		std::vector<VkSampler>                        node{};
 
 
 
-		procSamplerNode() : config(samplerEnum::procSamplerId::enumCount), node(samplerEnum::procSamplerId::enumCount) {}
+		procSamplerNode(const VkDevice& device, const VkPhysicalDeviceLimits& limits)
+			: config(samplerEnum::procSamplerId::enumCount), node(samplerEnum::procSamplerId::enumCount) {
+			createSamplerList(device, limits);
+		}
 
 
 
 		//创建 全部采样器
-		void createSamplerList(const VkDevice& device, const VkPhysicalDeviceLimits& limits, const uint32_t& terrainMip, const uint32_t& sModelMip, const uint32_t& dModelMip) {
+		void createSamplerList(const VkDevice& device, const VkPhysicalDeviceLimits& limits) {
 			if (limits.maxSamplerAnisotropy < 1.0f) {
 				Log::printError(__FILE__, __LINE__, "设备限制非法：maxSamplerAnisotropy = " + std::to_string(limits.maxSamplerAnisotropy) + "（应 ≥1；多半是 enableGpuInfo 未被正确填充）");
 			}
 
 			const std::vector<samplerStruct::samplerConfigParamNode> presetList{
-				/* terrain_s        */ { .magType = samplerEnum::magId::nearest, .lodSourceType = samplerEnum::lodSourceId::runtime, .maxLod = static_cast<float>(terrainMip) },
-				/* staticModel_sn   */ { .magType = samplerEnum::magId::nearest, .lodSourceType = samplerEnum::lodSourceId::runtime, .maxLod = static_cast<float>(sModelMip) },
-				/* staticModel_sl   */ { .lodSourceType = samplerEnum::lodSourceId::runtime, .maxLod = static_cast<float>(sModelMip) },
-				/* dynamicModel_sn  */ { .magType = samplerEnum::magId::nearest, .lodSourceType = samplerEnum::lodSourceId::runtime, .maxLod = static_cast<float>(dModelMip) },
-				/* dynamicModel_sl  */ { .lodSourceType = samplerEnum::lodSourceId::runtime, .maxLod = static_cast<float>(dModelMip) },
+				/* terrain_s        */ { .magType = samplerEnum::magId::nearest, .lodSourceType = samplerEnum::lodSourceId::clampNone },
+				/* staticModel_sn   */ { .magType = samplerEnum::magId::nearest, .lodSourceType = samplerEnum::lodSourceId::clampNone },
+				/* staticModel_sl   */ { .lodSourceType = samplerEnum::lodSourceId::clampNone },
+				/* dynamicModel_sn  */ { .magType = samplerEnum::magId::nearest, .lodSourceType = samplerEnum::lodSourceId::clampNone },
+				/* dynamicModel_sl  */ { .lodSourceType = samplerEnum::lodSourceId::clampNone },
 				/* uiText_s         */ { .addressType = samplerEnum::addressId::clampEdge, .anisoType = samplerEnum::anisoId::off },	//无 mip ⇒ 各向异性无意义，显式关掉
 				/* offScreen_s      */ { .addressType = samplerEnum::addressId::clampEdge, .anisoType = samplerEnum::anisoId::x1 },
-				/* shadowMap_s      */ { .magType = samplerEnum::magId::nearest, .mipmapType = samplerEnum::mipmapId::linear, .addressType = samplerEnum::addressId::clampEdge, .anisoType = samplerEnum::anisoId::off },
+				/* shadowMap_s      */ { .magType = samplerEnum::magId::nearest, .mipmapType = samplerEnum::mipmapId::linear, .addressType = samplerEnum::addressId::clampEdge, .anisoType = samplerEnum::anisoId::off , .compareType = samplerEnum::compareId::lessOrEqual, .borderColorType = samplerEnum::borderColorId::floatOpaqueWhite },
 			};
 
 			//dev 期自检：预设表与 procSamplerId
@@ -210,6 +150,44 @@ namespace pipelineList {
 					vkDestroySampler(device, sampler, nullptr);
 					sampler = VK_NULL_HANDLE;
 				}
+			}
+		}
+	};
+
+	struct procDescNode {
+		std::vector<descStruct::descNode> node{};
+
+
+
+		procDescNode(const VkDevice& device) : node(descEnum::descType::enumCount) {
+			node[descEnum::descType::scenceForward_d] .maxSet = pipelineInfo::scenceForwardCount;
+			node[descEnum::descType::scenceDeferred_d].maxSet = pipelineInfo::scenceDeferredCount;
+			node[descEnum::descType::uiText_d]		  .maxSet = pipelineInfo::uiTextCount;
+			node[descEnum::descType::dsScence_d]	  .maxSet = pipelineInfo::dsScenceCount;
+			node[descEnum::descType::shadowMap_d]	  .maxSet = pipelineInfo::shadowCount;
+
+			node[descEnum::descType::scenceDeferred_d].createReflectConfig(pipelineEnum::procPipelineId::terrain_p,    { fileInfo::shader::terrainVert,  fileInfo::shader::terrainFrag  });
+			node[descEnum::descType::scenceDeferred_d].createReflectConfig(pipelineEnum::procPipelineId::model_p,      { fileInfo::shader::pbrVert,      fileInfo::shader::pbrFrag	  });
+			node[descEnum::descType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::skybox_p,     { fileInfo::shader::skyboxVert,   fileInfo::shader::skyboxFrag   });
+			node[descEnum::descType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::mine_p,       { fileInfo::shader::mineVert,     fileInfo::shader::mineFrag	  });
+			node[descEnum::descType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::osMirror_p,   { fileInfo::shader::osMirrorVert, fileInfo::shader::osMirrorFrag });
+			node[descEnum::descType::scenceForward_d] .createReflectConfig(pipelineEnum::procPipelineId::osScence_p,   { fileInfo::shader::osScenceVert, fileInfo::shader::osScenceFrag });
+			node[descEnum::descType::uiText_d]		  .createReflectConfig(pipelineEnum::procPipelineId::uiText_p,     { fileInfo::shader::uiTextVert,   fileInfo::shader::uiTextFrag   });
+			node[descEnum::descType::dsScence_d]	  .createReflectConfig(pipelineEnum::procPipelineId::dsScence_p,   { fileInfo::shader::dsScenceVert, fileInfo::shader::dsScenceFrag });
+			node[descEnum::descType::shadowMap_d]	  .createReflectConfig(pipelineEnum::procPipelineId::shadowMap_p,  { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   });
+
+			for (int i = 0; i < descEnum::descType::enumCount; i++) {
+				node[i].createReflectLayout(static_cast<descEnum::descType::type>(i), device);
+			}
+		}
+
+		procDescNode() = delete;
+
+
+
+		void clear(const VkDevice& device) {
+			for (descStruct::descNode& desc : node) {
+				desc.clear(device);
 			}
 		}
 	};

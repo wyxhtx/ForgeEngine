@@ -57,7 +57,7 @@ layout(binding = 1) uniform dsScenceShadowUBO {
 layout(binding = 2) uniform sampler2D samplerPosition;              //世界空间位置，rgb兼前向颜色，a兼前向标识
 layout(binding = 3) uniform sampler2D samplerNormal;                //世界空间法线，a兼前向skybox标识
 layout(binding = 4) uniform sampler2D samplerAlbedo;                //漫反射颜色，  a兼延迟高光强度
-layout(binding = 5) uniform sampler2D samplerShadowMap;             //阴影贴图
+layout(binding = 5) uniform sampler2DShadow samplerShadowMap;       //阴影贴图
 
 layout(location = 0) in  vec2 fragUV;
 
@@ -202,39 +202,59 @@ vec2 getBlueNoiseJitter(vec2 uv) {
 
 //PCF阴影采样
 float shadowPCF(vec4 shadowCoord, vec2 offset, float bias) {
-    float shadow = 1.0;
-    
-    if (shadowCoord.z > -1.0 && shadowCoord.z < 1.0) {
-        float adjustedDepth = shadowCoord.z - bias;     //应用深度偏移
-        float dist          = texture(samplerShadowMap, shadowCoord.st + offset).r;
-        
-        if (shadowCoord.w > 0.0 && dist < adjustedDepth) {
-            shadow = 0.5;
-        }
+    if (shadowCoord.z > -1.0 && shadowCoord.z < 1.0 && shadowCoord.w > 0.0) {
+        float adjustedDepth = shadowCoord.z - bias;     // depth offset
+        return texture(samplerShadowMap, vec3(shadowCoord.st + offset, adjustedDepth));   // hardware compare: 1 = lit, 0 = occluded
     }
-    
-    return shadow;
+
+    return 1.0;
 }
 
 //PCF阴影计算
+// ---- PCF tunables (edit these only) ----
+#define PCF_SWITCH      1.6      // near/far switch on radius
+#define PCF_RADIUS_BASE 1.0      // penumbra radius at light-space w = 0
+#define PCF_RADIUS_GAIN 0.35     // penumbra growth per unit w
+#define PCF_RADIUS_MAX  2.0      // penumbra radius clamp
+#define PCF_FAR_STRIDE  1.6      // far 2x2 grid stride compensation
+#define PCF_JITTER      0.25     // sub-texel position jitter (breaks grid banding)
+#define PCF_DARKEST     0.5      // darkest factor (1.0 = unshadowed)
+
 float filterPCF(vec4 shadowCoord, vec2 fragUV) {
-    float dx           = 1.0 / shadow.shadowExtent.x;
-    float dy           = 1.0 / shadow.shadowExtent.y;
-    float shadowFactor = 0.0;
-    
-    //生成蓝噪音抖动
-    vec2 jitter = getBlueNoiseJitter(fragUV) * 0.5; //抖动范围控制
-    
-    //3x3 PCF滤波 + 蓝噪音抖动
-    for (int x = -1; x <= 1; x++) {
-        for (int y = -1; y <= 1; y++) {
-            //基础偏移量加上抖动
-            vec2 offset = vec2(dx * (float(x) + jitter.x), dy * (float(y) + jitter.y));
-            shadowFactor += shadowPCF(shadowCoord, offset, shadowBias);
+    float dx = 1.0 / shadow.shadowExtent.x;
+    float dy = 1.0 / shadow.shadowExtent.y;
+
+    // per-pixel rotation from 8 fixed angles (22.5 deg steps), no trig
+    const vec2 ROT[8] = vec2[8](vec2(1.0, 0.0), vec2(0.9238795, 0.3826834), vec2(0.7071068, 0.7071068), vec2(0.3826834, 0.9238795),
+                                vec2(0.0, 1.0), vec2(-0.3826834, 0.9238795), vec2(-0.7071068, 0.7071068), vec2(-0.9238795, 0.3826834));
+    vec2 noise = getBlueNoiseJitter(fragUV);
+    vec2 ca    = ROT[int(abs(noise.x) * 7.999)];
+    vec2 jit   = noise * PCF_JITTER;
+    float lit  = 0.0;
+
+    float radius = clamp(PCF_RADIUS_BASE + shadowCoord.w * PCF_RADIUS_GAIN, PCF_RADIUS_BASE, PCF_RADIUS_MAX);
+
+    if (radius < PCF_SWITCH) {
+        // near: 3x3 rotated grid (9 taps)
+        for (int x = -1; x <= 1; x++) {
+            for (int y = -1; y <= 1; y++) {
+                vec2 g = vec2(float(x) + jit.x, float(y) + jit.y);
+                vec2 r = vec2(g.x * ca.x - g.y * ca.y, g.x * ca.y + g.y * ca.x);
+                lit += shadowPCF(shadowCoord, vec2(dx * r.x * radius, dy * r.y * radius), shadowBias);
+            }
+        }
+        return mix(PCF_DARKEST, 1.0, lit / 9.0);
+    }
+
+    // far: 2x2 rotated grid (4 taps), stride scaled to cover a similar area
+    for (int x = -1; x <= 0; x++) {
+        for (int y = -1; y <= 0; y++) {
+            vec2 g = vec2(float(x) + 0.5 + jit.x, float(y) + 0.5 + jit.y) * PCF_FAR_STRIDE;
+            vec2 r = vec2(g.x * ca.x - g.y * ca.y, g.x * ca.y + g.y * ca.x);
+            lit += shadowPCF(shadowCoord, vec2(dx * r.x * radius, dy * r.y * radius), shadowBias);
         }
     }
-    
-    return shadowFactor / 9.0;
+    return mix(PCF_DARKEST, 1.0, lit / 4.0);
 }
 
 
