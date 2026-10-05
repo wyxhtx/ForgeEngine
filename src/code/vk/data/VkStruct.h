@@ -4,6 +4,27 @@
 
 //engine    结构空间
 namespace engineStruct {
+	//instance	层结点
+	struct instanceLayerNode {
+		const char* name;
+		bool        enable;
+	};
+
+	//instance	扩展结点
+	struct instanceExtensionNode {
+		const char* name;
+		bool        enable;
+		bool        layerSwitch;	//仅当 debugInfo::LayerSwitch 开启时才启用
+	};
+
+	//device	扩展结点
+	struct deviceExtensionNode {
+		const char* name;
+		bool        enable;
+	};
+
+
+
 	struct tickNode {
 		double time0 = glfwGetTime();
 		double time1 = 0.0;
@@ -1387,6 +1408,39 @@ namespace bufferStruct {
 		}
 	};
 
+	//descBuffer		结点
+	struct descBufferNode {
+		VkDeviceSize              setSize{};			//每 set 字节数，布局反射得出
+		std::vector<VkDeviceSize> bindingOffset{};		//各 binding 在 set 内偏移
+		std::vector<VkDeviceSize> bindingStride{};		//各 binding 数组步长
+		baseBufferNode            descGpuBuffer{};		//GPU 缓冲
+		baseBufferNode            descCpuBuffer{};		//CPU 缓冲
+		VkDeviceAddress           descAddress{};		//GPU 地址
+
+		//函数指针
+		PFN_vkGetDescriptorSetLayoutSizeEXT          pfnGetSetLayoutSize{};
+		PFN_vkGetDescriptorSetLayoutBindingOffsetEXT pfnGetBindingOffset{};
+		PFN_vkGetDescriptorEXT                       pfnGetDescriptor{};
+
+
+
+		//创建 descGpuBuffer、descCpuBuffer
+		void createBuffer(const VkDevice& tDevice, const VmaAllocator& tAllocator, uint32_t tMaxSet) {
+			const VkDeviceSize size = tMaxSet * setSize;
+
+			descGpuBuffer = baseBufferNode{ size, VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT | VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tAllocator };
+			descCpuBuffer = baseBufferNode{ size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tAllocator };
+
+			VkBufferDeviceAddressInfo addrInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = descGpuBuffer.buffer };
+			descAddress = vkGetBufferDeviceAddress(tDevice, &addrInfo);
+		}
+
+		//上传 CPU 缓冲 -> GPU 缓冲
+		void upload(cmdStruct::cmdNode& tCmd, const VkDevice& tDevice, const VkQueue& tQueue, uint32_t tMaxSet) {
+			tCmd.copyBufferToBuffer(tDevice, tQueue, descCpuBuffer.buffer, descGpuBuffer.buffer, tMaxSet * setSize);
+		}
+	};
+
 
 
 	//imageBuffer		结点
@@ -2681,9 +2735,10 @@ namespace descStruct {
 		std::vector<descStruct::descConfigNode> descConfig{};
 		std::vector<descReflectConfigNode>		descReflectConfigList{};
 
-		VkDescriptorPool	  pool{};			//描述符池
-		VkDescriptorSetLayout layout{};			//描述符布局
-		uint32_t			  maxSet{};			//描述符池上限
+		VkDescriptorPool			 pool{};			//描述符池
+		VkDescriptorSetLayout		 layout{};			//描述符布局
+		uint32_t					 maxSet{};			//描述符池上限
+		bufferStruct::descBufferNode descBuffer{};		//描述符缓冲
 
 
 
@@ -4448,7 +4503,7 @@ namespace bufferStruct {
 				uniform = baseBufferNode{ sizeof(ubo), memAllocator };
 			}
 
-			//描述符集（本管线自己的那套）
+			//描述符集
 			if (isEnable) {
 				if (descriptor.alloc(device, descriptorSet, pipeType)) {
 					descriptor.writeFrom(device, descriptorSet, {
@@ -5059,7 +5114,7 @@ namespace bufferStruct {
 			}
 
 			//描述符集（本管线自己的那套：图集采样 ✓）
-			if (descFamily.alloc(device, descriptorSet, pipeType)) {
+			if (isEnable && descFamily.alloc(device, descriptorSet, pipeType)) {
 				descFamily.writeFrom(device, descriptorSet, {
 					{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = texture.imageNode.view },
 				});
@@ -5113,8 +5168,8 @@ namespace bufferStruct {
 			}
 		}
 
-		//交换链重建刷新（方案②：重写全部绑定，幂等无害 ✓）
-		void updateFrameDesc(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, VkImageView frameView, const VkDevice& device) {
+		//交换链重建刷新
+		void updateFrameDesc(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, VkImageView frameView, const VkDevice& device, const VmaAllocator& memAllocator) {
 			if (!isEnable) { return; }
 			descFamily.writeFrom(device, descriptorSet, {
 				{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = uniform.buffer,      .range = sizeof(ubo) },
@@ -5146,8 +5201,8 @@ namespace bufferStruct {
 
 
 
-		//创建描述符集（本管线自己的那套：仅帧图组合采样 ✓）
-		void create(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, VkImageView frameView, const VkDevice& device) {
+		//创建描述符集
+		void create(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, VkImageView frameView, const VkDevice& device, const VmaAllocator& memAllocator) {
 			if (!isEnable) { return; }
 
 			if (descFamily.alloc(device, descriptorSet, pipeType)) {
@@ -5157,8 +5212,8 @@ namespace bufferStruct {
 			}
 		}
 
-		//交换链重建刷新（方案②：重写全部绑定，幂等无害 ✓）
-		void updateFrameDesc(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, VkImageView frameView, const VkDevice& device) {
+		//交换链重建刷新
+		void updateFrameDesc(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, VkImageView frameView, const VkDevice& device, const VmaAllocator& memAllocator) {
 			if (!isEnable) { return; }
 			descFamily.writeFrom(device, descriptorSet, {
 				{ .binding = 2, .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .sampler = samplerList[samplerType], .view = frameView },
@@ -5209,8 +5264,8 @@ namespace bufferStruct {
 			}
 		}
 
-		//交换链重建刷新（方案②：重写全部绑定，幂等无害 ✓）
-		void updateFrameDesc(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, const std::array<VkImageView, 3>& dsScenceViews, VkSampler shadowSampler, VkImageView shadowView, const VkDevice& device) {
+		//交换链重建刷新
+		void updateFrameDesc(descStruct::descNode& descFamily, const std::vector<VkSampler>& samplerList, const std::array<VkImageView, 3>& dsScenceViews, VkSampler shadowSampler, VkImageView shadowView, const VkDevice& device, const VmaAllocator& memAllocator) {
 			if (!isEnable) { return; }
 			descFamily.writeFrom(device, descriptorSet, {
 				{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         .buffer = lightUniform.buffer,  .range = sizeof(lightUbo) },
@@ -5342,15 +5397,15 @@ namespace bufferStruct {
 				}
 			}
 
-			//描述符集（本管线自己的那套：每套 1 条 UBO 绑定，循环也在本管线内 ✓）
-			if (descFamily.alloc(device, shadow_t.descriptorSet, pipeType)) {
+			//描述符集
+			if (isEnable && terrainEnable && descFamily.alloc(device, shadow_t.descriptorSet, pipeType)) {
 				descFamily.writeFrom(device, shadow_t.descriptorSet, {
 					{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .buffer = shadow_t.shadowMvpUniform.buffer, .range = sizeof(shadow_t.shadowMvpUbo) },
 				});
 			}
 
 			for (bufferStruct::shadowModelNode& shadowNode : shadow_ms) {
-				if (descFamily.alloc(device, shadowNode.descriptorSet, pipeType)) {
+				if (isEnable && modelEnable && descFamily.alloc(device, shadowNode.descriptorSet, pipeType)) {
 					descFamily.writeFrom(device, shadowNode.descriptorSet, {
 						{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .buffer = shadowNode.shadowMvpUniform.buffer, .range = sizeof(shadowNode.shadowMvpUbo) },
 					});
@@ -5359,7 +5414,7 @@ namespace bufferStruct {
 
 			for (std::vector<bufferStruct::shadowModelNode>& shadowNodeList : shadow_md) {
 				for (bufferStruct::shadowModelNode& shadowNode : shadowNodeList) {
-					if (descFamily.alloc(device, shadowNode.descriptorSet, pipeType)) {
+					if (isEnable && modelEnable && descFamily.alloc(device, shadowNode.descriptorSet, pipeType)) {
 						descFamily.writeFrom(device, shadowNode.descriptorSet, {
 							{ .binding = 0, .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .buffer = shadowNode.shadowMvpUniform.buffer, .range = sizeof(shadowNode.shadowMvpUbo) },
 						});

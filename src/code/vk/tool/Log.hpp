@@ -28,7 +28,14 @@ namespace Log {
 			<< "------" << file << std::endl 
 			<< "------" << line << std::endl 
 			<< "------" << text << std::endl;
-		while (true);
+
+		//写错误日志文件
+		if (FILE* errorFile = nullptr; fopen_s(&errorFile, "build\\temp\\log\\error.log", "a") == 0 && errorFile) {
+			fprintf(errorFile, "%s : %d : %s\n", file.c_str(), line, text.c_str());
+			fclose(errorFile);
+		}
+
+		std::abort();	//立即终止（触发崩溃转储便于事后分析）
 	}
 
 	//输出警告

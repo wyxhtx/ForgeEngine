@@ -4,6 +4,25 @@
 
 //engine	列表空间
 namespace engineList {
+	//instance	层表
+	inline const engineStruct::instanceLayerNode instanceLayerList[] = {
+		{ "VK_LAYER_KHRONOS_validation", true },				//必需：校验层
+	};
+
+	//instance	扩展表
+	inline const engineStruct::instanceExtensionNode instanceExtensionList[] = {
+		{ VK_EXT_DEBUG_UTILS_EXTENSION_NAME, false, true },		//可选：调试，仅校验层开启时启用
+	};
+
+	//device	扩展表
+	inline const engineStruct::deviceExtensionNode deviceExtensionList[] = {
+		{ VK_KHR_SWAPCHAIN_EXTENSION_NAME,         true  },		//必需：呈现
+		{ VK_EXT_MESH_SHADER_EXTENSION_NAME,       true  },		//必需：MeshShader
+		{ VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME, false },		//可选：descriptor buffer
+	};
+
+
+
 	struct procTickNode {
 		std::vector<engineStruct::tickNode> node{};
 
@@ -159,7 +178,13 @@ namespace pipelineList {
 
 
 
-		procDescNode(const VkDevice& device) : node(descEnum::descType::enumCount) {
+		procDescNode(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkPhysicalDevice& gpu, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator, PFN_vkGetDescriptorSetLayoutSizeEXT tPfnSize, PFN_vkGetDescriptorSetLayoutBindingOffsetEXT tPfnOffset, PFN_vkGetDescriptorEXT tPfnGet) : node(descEnum::descType::enumCount) {
+			for (descStruct::descNode& n : node) {
+				n.descBuffer.pfnGetSetLayoutSize = tPfnSize;
+				n.descBuffer.pfnGetBindingOffset = tPfnOffset;
+				n.descBuffer.pfnGetDescriptor    = tPfnGet;
+			}
+
 			node[descEnum::descType::scenceForward_d] .maxSet = pipelineInfo::scenceForwardCount;
 			node[descEnum::descType::scenceDeferred_d].maxSet = pipelineInfo::scenceDeferredCount;
 			node[descEnum::descType::uiText_d]		  .maxSet = pipelineInfo::uiTextCount;

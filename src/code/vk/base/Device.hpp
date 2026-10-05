@@ -7,14 +7,18 @@ public:
 	VkSurfaceKHR presentSurface;                                //呈现表面，vulkan和操作系统窗口之间的桥梁，让GPU知道画到哪里去
 
 	std::vector<deviceStruct::gpuNode> gpuCandidateList{};      //gpu候选列表
-	int						   enableGpuIndex = -1;				//启用gpu索引
 	deviceStruct::gpuNode*	   enableGpu = nullptr;				//启用gpu
 	VkPhysicalDeviceProperties enableGpuInfo{};                 //启用gpu的属性（设备限制：maxSamplerAnisotropy/maxSamplerLodBias 等）
+	int						   enableGpuIndex = -1;				//启用gpu索引
 
-	VkDevice device;                                            //逻辑设备，vulkan和gpu之间的api接口
-	VkQueue graphicsQueue;                                      //渲染队列
-
+	VkDevice	 device;										//逻辑设备，vulkan和gpu之间的api接口
+	VkQueue		 graphicsQueue;									//渲染队列
 	VmaAllocator memAllocator;                                  //内存分配器
+
+	//descriptor buffer 函数指针
+	PFN_vkGetDescriptorSetLayoutSizeEXT          pfnGetSetLayoutSize{};
+	PFN_vkGetDescriptorSetLayoutBindingOffsetEXT pfnGetBindingOffset{};
+	PFN_vkGetDescriptorEXT                       pfnGetDescriptor{};
 
 
 
@@ -25,7 +29,7 @@ public:
 		}
 
 		getGpuIndex();
-		createDevice(engineInfo::enableDeviceExtensionList);
+		createDevice();
 
 		createVMA();
 
@@ -53,7 +57,7 @@ private:
 
 
 	//创建逻辑设备
-	void createDevice(const std::vector<const char*>& enableDeviceExtensionList) {
+	void createDevice() {
 		//队列创建信息
 		VkDeviceQueueCreateInfo queueCreateInfo{};
 		queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -61,28 +65,56 @@ private:
 		queueCreateInfo.queueFamilyIndex = enableGpu->graphicsQueueFamily.index;
 		queueCreateInfo.pQueuePriorities = &enableGpu->graphicsQueueFamily.priority;
 
-		//网格着色器特性，由gpuFeatures2自动填充
-		//包含taskShader（任务着色器）、meshShader（网格着色器）、multiviewMeshShader（多视图网格着色器，用于VR双视角渲染）、primitiveFragmentShadingRateMeshShader（逐图元可变着色率网格着色器，用于meshShader输出的每个图元指定不同着色率）、meshShaderQueries（网格着色器查询，用于GPU性能分析）
+		//启用设备特性、属性
+		//taskShader							（任务着色器）
+		//meshShader							（网格着色器）
+		//multiviewMeshShader					（多视图网格着色器，用于VR双视角渲染）
+		//primitiveFragmentShadingRateMeshShader（逐图元可变着色率网格着色器，用于meshShader输出的每个图元指定不同着色率）
+		//meshShaderQueries						（网格着色器查询，用于GPU性能分析）
+		VkPhysicalDeviceBufferDeviceAddressFeatures bufferAddressFeatures{};
+		bufferAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+
+		VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptorBufferFeatures{};
+		descriptorBufferFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+		descriptorBufferFeatures.pNext = &bufferAddressFeatures;
+
 		VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{};
 		meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+		meshShaderFeatures.pNext = &descriptorBufferFeatures;
 
-		//获取gpu特性支持
 		VkPhysicalDeviceFeatures2 gpuFeatures2{};
 		gpuFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 		gpuFeatures2.pNext = &meshShaderFeatures;
 		vkGetPhysicalDeviceFeatures2(enableGpu->gpu, &gpuFeatures2);
-		
+
+		VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptorBufferProperties{};
+		descriptorBufferProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+
+		VkPhysicalDeviceProperties2 gpuProperties2{};
+		gpuProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		gpuProperties2.pNext = &descriptorBufferProperties;
+		vkGetPhysicalDeviceProperties2(enableGpu->gpu, &gpuProperties2);
+
 		//关闭无需gpu特性
-		meshShaderFeatures.multiviewMeshShader                    = VK_FALSE;   //多视图网格着色器，用于VR双视角渲染
-		meshShaderFeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;   //逐图元可变着色率网格着色器，用于meshShader输出的每个图元指定不同着色率
+		descriptorBufferFeatures.descriptorBuffer						= VK_TRUE;
+		bufferAddressFeatures	.bufferDeviceAddress				    = VK_TRUE;
+		meshShaderFeatures		.multiviewMeshShader                    = VK_FALSE;		//多视图网格着色器，用于VR双视角渲染
+		meshShaderFeatures		.primitiveFragmentShadingRateMeshShader = VK_FALSE;		//逐图元可变着色率网格着色器，用于meshShader输出的每个图元指定不同着色率
+
+		if (meshShaderFeatures.meshShader != VK_TRUE) {
+			Log::printError(__FILE__, __LINE__, "设备不支持 MeshShader");
+		}
+
+
 
 		//创建device
+		std::vector<const char*> deviceExtensionList = extensionSupportCheck(enableGpu->gpu, engineList::deviceExtensionList, std::size(engineList::deviceExtensionList));
 		VkDeviceCreateInfo deviceCreateInfo{};
 		deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		deviceCreateInfo.queueCreateInfoCount    = 1;
 		deviceCreateInfo.pQueueCreateInfos       = &queueCreateInfo;
-		deviceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>(enableDeviceExtensionList.size());
-		deviceCreateInfo.ppEnabledExtensionNames = enableDeviceExtensionList.data();
+		deviceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>(deviceExtensionList.size());
+		deviceCreateInfo.ppEnabledExtensionNames = deviceExtensionList.data();
 		deviceCreateInfo.pNext                   = &gpuFeatures2;
 		if (vkCreateDevice(enableGpu->gpu, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS) {
 			Log::printError(__FILE__, __LINE__, "设备创建失败");
@@ -90,14 +122,21 @@ private:
 
 		//创建graphicsQueue
 		vkGetDeviceQueue(device, enableGpu->graphicsQueueFamily.index, 0, &graphicsQueue);
+
+		//descriptor buffer 设备函数取址
+		pfnGetSetLayoutSize = reinterpret_cast<PFN_vkGetDescriptorSetLayoutSizeEXT>			(vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutSizeEXT"));
+		pfnGetBindingOffset = reinterpret_cast<PFN_vkGetDescriptorSetLayoutBindingOffsetEXT>(vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutBindingOffsetEXT"));
+		pfnGetDescriptor    = reinterpret_cast<PFN_vkGetDescriptorEXT>						(vkGetDeviceProcAddr(device, "vkGetDescriptorEXT"));
 	}
 
 	//创建内存管理
 	void createVMA() {
 		VmaAllocatorCreateInfo allocatorInfo{};
-		allocatorInfo.physicalDevice = enableGpu->gpu;
-		allocatorInfo.device         = device;
-		allocatorInfo.instance       = InitInstance.instance;
+		allocatorInfo.physicalDevice   = enableGpu->gpu;
+		allocatorInfo.device           = device;
+		allocatorInfo.instance         = InitInstance.instance;
+		allocatorInfo.flags            = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+		allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2;
 		vmaCreateAllocator(&allocatorInfo, &memAllocator);
 	}
 
@@ -154,15 +193,12 @@ private:
 		enableGpuInfo = gpuInfoList[enableGpuIndex];
 
 		//显卡支持检测
-		gpuSupportCheck(enableGpu->gpu, engineInfo::enableDeviceExtensionList);
 		if (debugInfo::LogSwitch) {
 			Log::printTitle("选择显卡");
 			Log::print(gpuInfoList[enableGpuIndex].deviceName);
 			Log::delimiter();
 		}
 	}
-
-
 
 	//获取最优队列族
 	void getQueueFamilyIndex(deviceStruct::gpuNode& node, const VkPhysicalDeviceProperties& gpuInfo, const VkSurfaceKHR& presentSurface) {
@@ -233,55 +269,39 @@ private:
 	}
 
 	//显卡支持检测
-	void gpuSupportCheck(const VkPhysicalDevice& gpu, const std::vector<const char*>& enableDeviceExtensionList) {
-		//支持device扩展数量
-		uint32_t supportExtensionCount;
-		vkEnumerateDeviceExtensionProperties(gpu, nullptr, &supportExtensionCount, nullptr);
+	std::vector<const char*> extensionSupportCheck(const VkPhysicalDevice& gpu, const engineStruct::deviceExtensionNode* table, size_t count) {
+		uint32_t n = 0; 
+		vkEnumerateDeviceExtensionProperties(gpu, nullptr, &n, nullptr);
+		std::vector<VkExtensionProperties> supported(n);
+		vkEnumerateDeviceExtensionProperties(gpu, nullptr, &n, supported.data());
 
-		//支持device扩展信息
-		std::vector<VkExtensionProperties> supportExtensionList(supportExtensionCount);
-		vkEnumerateDeviceExtensionProperties(gpu, nullptr, &supportExtensionCount, supportExtensionList.data());
-
-		if (debugInfo::LogSwitch) {
-			//太长了所以注释掉
-			//Log::printTitle("Vulkan Device 支持扩展");
-			//for (const auto& supportExtensionNode : supportExtensionList) {
-			//    Log::print(supportExtensionNode.extensionName);
-			//    Log::print("------");
-			//}
-			//Log::delimiter();
-
-			Log::printTitle("Vulkan Device 启用扩展");
-			for (const auto& enableDeviceExtensionNode : enableDeviceExtensionList) {
-				Log::print(enableDeviceExtensionNode);
-			}
-			Log::delimiter();
-		}
-
-		//启用扩展支持查询
-		for (const auto& enableDeviceExtensionNode : enableDeviceExtensionList) {
-			bool isSupport = false;     //支持标识
-
-			for (const auto& supportExtensionNode : supportExtensionList) {
-				if (std::strcmp(enableDeviceExtensionNode, supportExtensionNode.extensionName) == 0) {
-					isSupport = true;
-					break;
-				}
+		std::vector<const char*> enableList{};
+		for (size_t i = 0; i < count; i++) {
+			bool ok = false;
+			for (const VkExtensionProperties& s : supported) { 
+				if (std::strcmp(table[i].name, s.extensionName) == 0) { 
+					ok = true; 
+					break; 
+				} 
 			}
 
-			if (!isSupport) {
-				Log::print(enableDeviceExtensionNode);
-				Log::printError(__FILE__, __LINE__, "缺少启用device扩展支持");
+			if (ok) { 
+				enableList.push_back(table[i].name); 
+			}
+			else if (table[i].enable) { 
+				Log::printError(__FILE__, __LINE__, std::string("缺少必需设备扩展：") + table[i].name); 
+			}
+			else if (debugInfo::LogSwitch) { 
+				Log::print(std::string("可选扩展缺失（不启用）：") + table[i].name); 
 			}
 		}
 
-		//显卡功能支持
 		VkPhysicalDeviceFeatures gpuFeaturesSupported;
 		vkGetPhysicalDeviceFeatures(gpu, &gpuFeaturesSupported);
-
-		//几何着色器支持检测
-		if (!gpuFeaturesSupported.geometryShader) {
-			Log::printError(__FILE__, __LINE__, "设备不支持几何着色器");
+		if (!gpuFeaturesSupported.geometryShader) { 
+			Log::printError(__FILE__, __LINE__, "设备不支持几何着色器"); 
 		}
+
+		return enableList;
 	}
 };

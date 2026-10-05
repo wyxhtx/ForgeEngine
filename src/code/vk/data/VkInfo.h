@@ -4,22 +4,6 @@
 
 //engine	信息
 namespace engineInfo {
-	//层启用，目前只适用于开启校验层
-	std::vector<const char*> enableLayerList = {
-		"VK_LAYER_KHRONOS_validation"
-	};
-
-	//Instance扩展启用
-	std::vector<const char*> enableInstanceExtensionList = {
-		VK_EXT_DEBUG_UTILS_EXTENSION_NAME
-	};
-
-	//Device扩展启用
-	std::vector<const char*> enableDeviceExtensionList = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-		VK_EXT_MESH_SHADER_EXTENSION_NAME
-	};
-
 	const bool ktxCacheSwitch  = true;		//ktx缓存开关		（开：首次启动转码并缓存，之后命中缓存；关：每次启动运行期转码 ⇒ 不产生缓存）
 	const bool msdfCacheSwitch = true;		//MSDF图集缓存开关	（开：首次烘焙落盘，之后命中缓存；关：每次启动都烘焙 ⇒ 不产生缓存）
 }

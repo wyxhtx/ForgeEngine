@@ -75,11 +75,12 @@ private:
 		debugCreateInfo.pfnUserCallback = debugCallbackFunc;
 
 		//启用层
+		std::vector<const char*> enableLayerList{};
 		if (debugInfo::LayerSwitch) {
-			enableLayerListSupport(engineInfo::enableLayerList);
+			enableLayerList                = instanceLayerSupportCheck(engineList::instanceLayerList, std::size(engineList::instanceLayerList));
 			createInfo.pNext               = &debugCreateInfo;
-			createInfo.enabledLayerCount   = static_cast<uint32_t>(engineInfo::enableLayerList.size());
-			createInfo.ppEnabledLayerNames = engineInfo::enableLayerList.data();
+			createInfo.enabledLayerCount   = static_cast<uint32_t>(enableLayerList.size());
+			createInfo.ppEnabledLayerNames = enableLayerList.data();
 		}
 		else {
 			createInfo.pNext               = nullptr;
@@ -88,7 +89,7 @@ private:
 		}
 
 		//启用扩展
-		std::vector<const char*> extensionList = enableInstanceExtensionListSupport(engineInfo::enableInstanceExtensionList);
+		std::vector<const char*> extensionList = instanceExtensionSupportCheck(engineList::instanceExtensionList, std::size(engineList::instanceExtensionList));
 		createInfo.enabledExtensionCount       = static_cast<uint32_t>(extensionList.size());
 		createInfo.ppEnabledExtensionNames     = extensionList.data();
 
@@ -112,103 +113,77 @@ private:
 
 
 
-	//enableLayerList支持
-	void enableLayerListSupport(const std::vector<const char*>& enableLayerList) {
-		//支持层数量
-		uint32_t supportLayerCount;
+	//instance 层支持检查
+	std::vector<const char*> instanceLayerSupportCheck(const engineStruct::instanceLayerNode* table, size_t count) {
+		uint32_t supportLayerCount = 0;
 		vkEnumerateInstanceLayerProperties(&supportLayerCount, nullptr);
-
-		//支持层信息
 		std::vector<VkLayerProperties> supportLayerList(supportLayerCount);
 		vkEnumerateInstanceLayerProperties(&supportLayerCount, supportLayerList.data());
 
-		//输出支持层与启用层
-		if (debugInfo::LogSwitch) {
-			//Log::printTitle("Vulkan Instance 支持层");
-			//for (const auto& supportLayerNode : supportLayerList) {
-			//    Log::print(supportLayerNode.layerName);
-			//    Log::print(supportLayerNode.description);
-			//    Log::print("------");
-			//}
-			//Log::delimiter();
-
-			Log::printTitle("Vulkan Instance 启用层");
-			for (const auto& enableLayerNode : enableLayerList) {
-				Log::print(enableLayerNode);
-			}
-			Log::delimiter();
-		}
-
-		//启用层支持查询
-		for (const auto& enableLayerNode : enableLayerList) {
-			bool isSupport = false;     //支持标识
-
-			for (const auto& supportLayerNode : supportLayerList) {
-				if (std::strcmp(enableLayerNode, supportLayerNode.layerName) == 0) {
-					isSupport = true;
-					break;
+		std::vector<const char*> enableList{};
+		for (size_t i = 0; i < count; i++) {
+			bool isSupport = false;
+			for (const VkLayerProperties& supportLayerNode : supportLayerList) {
+				if (std::strcmp(table[i].name, supportLayerNode.layerName) == 0) { 
+					isSupport = true; 
+					break; 
 				}
 			}
 
-			if (!isSupport) {
-				Log::print(enableLayerNode);
-				Log::printError(__FILE__, __LINE__, "缺少启用层支持");
+			if (isSupport) { 
+				enableList.push_back(table[i].name); 
+			}
+			else if (table[i].enable) { 
+				Log::printError(__FILE__, __LINE__, std::string("缺少启用层支持：") + table[i].name);
+			}
+			else if (debugInfo::LogSwitch) { 
+				Log::print(std::string("层缺失（不启用）：") + table[i].name); 
 			}
 		}
+
+		return enableList;
 	}
 
-	//enableInstanceExtensionList支持
-	std::vector<const char*> enableInstanceExtensionListSupport(const std::vector<const char*>& enableInstanceExtensionList) {
-		uint32_t                 platformExtensionCount;                                                                            //平台扩展数量
-		const char**             platformExtensionInfo = glfwGetRequiredInstanceExtensions(&platformExtensionCount);                //平台扩展信息
-		std::vector<const char*> platformExtensionList(platformExtensionInfo, platformExtensionInfo + platformExtensionCount);      //平台扩展列表
-	
-		if (debugInfo::LayerSwitch) {
-			platformExtensionList.insert(platformExtensionList.end(), enableInstanceExtensionList.begin(), enableInstanceExtensionList.end());
-		}
+	//instance 扩展支持检查
+	std::vector<const char*> instanceExtensionSupportCheck(const engineStruct::instanceExtensionNode* table, size_t count) {
+		uint32_t                 platformExtensionCount;
+		const char**             platformExtensionInfo = glfwGetRequiredInstanceExtensions(&platformExtensionCount);
+		std::vector<const char*> extensionList(platformExtensionInfo, platformExtensionInfo + platformExtensionCount);
 
-		//支持instance扩展数量
-		uint32_t supportExtensionCount;
+		uint32_t supportExtensionCount = 0;
 		vkEnumerateInstanceExtensionProperties(nullptr, &supportExtensionCount, nullptr);
-	
-		//支持instance扩展信息
 		std::vector<VkExtensionProperties> supportExtensionList(supportExtensionCount);
 		vkEnumerateInstanceExtensionProperties(nullptr, &supportExtensionCount, supportExtensionList.data());
-	
-		//输出支持扩展与启用扩展
-		if (debugInfo::LogSwitch) {
-			//Log::printTitle("Vulkan Instance 支持扩展");
-			//for (const auto& supportExtensionNode : supportExtensionList) {
-			//    Log::print(supportExtensionNode.extensionName);
-			//    Log::print("------");
-			//}
-			//Log::delimiter();
-	
-			Log::printTitle("Vulkan Instance 启用扩展");
-			for (const auto& platformExtensionNode : platformExtensionList) {
-				Log::print(platformExtensionNode);
-			}
-			Log::delimiter();
-		}
-	
-		//启用扩展支持查询
-		for (const auto& platformExtensionNode : platformExtensionList) {
-			bool isSupport = false;     //支持标识
-	
-			for (const auto& supportExtensionNode : supportExtensionList) {
-				if (std::strcmp(platformExtensionNode, supportExtensionNode.extensionName) == 0) {
-					isSupport = true;
-					break;
+
+		for (size_t i = 0; i < count; i++) {
+			if (table[i].layerSwitch && !debugInfo::LayerSwitch) { continue; }
+
+			bool isSupport = false;
+			for (const VkExtensionProperties& supportExtensionNode : supportExtensionList) {
+				if (std::strcmp(table[i].name, supportExtensionNode.extensionName) == 0) { 
+					isSupport = true; 
+					break; 
 				}
 			}
-	
-			if (!isSupport) {
-				Log::print(platformExtensionNode);
-				Log::printError(__FILE__, __LINE__, "缺少启用instance扩展支持");
+
+			if (isSupport) { 
+				extensionList.push_back(table[i].name); 
+			}
+			else if (table[i].enable) { 
+				Log::printError(__FILE__, __LINE__, std::string("缺少启用instance扩展支持：") + table[i].name); 
+			}
+			else if (debugInfo::LogSwitch) { 
+				Log::print(std::string("instance 扩展缺失（不启用）：") + table[i].name); 
 			}
 		}
 
-		return platformExtensionList;
+		if (debugInfo::LogSwitch) {
+			Log::printTitle("Vulkan Instance 启用扩展");
+			for (const char* extensionNode : extensionList) { Log::print(extensionNode); }
+			Log::delimiter();
+		}
+
+		return extensionList;
 	}
 
 
