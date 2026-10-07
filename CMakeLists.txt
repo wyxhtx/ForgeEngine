@@ -21,7 +21,7 @@ set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /INCREMENTAL")                
 
 # 1. MSVC 全局配置
 if(MSVC)
-    add_compile_options(/utf-8 /W3)                                             # /utf-8：源码按 UTF-8 编译（防中文注释乱码）；/W3：警告级别 3
+    add_compile_options(/utf-8 /W3 /external:W0)                                             # /utf-8：源码按 UTF-8 编译（防中文注释乱码）；/W3：警告级别 3
 endif()
 
 
@@ -131,6 +131,15 @@ target_include_directories(ForgeEngine PRIVATE
 )
 
 # 库链接清单
+# 第三方/vcpkg 头标记为 external（CMake 无 SYSTEM 关键字版本也适用）⇒ MSVC 以 /external:I 传入 + /external:W0
+foreach(_t glfw glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator KTX::ktx ForgeTinygltf OpenAL::OpenAL FreeALUT::alut ForgeKmeans ForgeFastNoise msdfgen::msdfgen-full)
+  if(TARGET ${_t})
+    get_target_property(_d ${_t} INTERFACE_INCLUDE_DIRECTORIES)
+    if(_d)
+      set_property(TARGET ${_t} APPEND PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ${_d})
+    endif()
+  endif()
+endforeach()
 target_link_libraries(ForgeEngine PRIVATE
     glfw                                       # GLFW:                  框架库，    lib
     glm::glm                                   # GLM:                   数学库，    header-only

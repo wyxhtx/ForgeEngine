@@ -9,15 +9,15 @@ public:
 		cubeWorker .start();
 		cmdWorker  .start();
 
-		pipeTerrain .create(fileInfo::image::cube, textureInfo::terrain::colorFormat, textureInfo::terrain::tileExtent, textureInfo::terrain::atlasExtent, cmd, Device.device, Device.graphicsQueue, Device.memAllocator, descFamily(pipeTerrain.pipeType), procSampler.node);
-		pipeModel   .create(cmd, Device.device, Device.graphicsQueue, Device.memAllocator, descFamily(pipeModel.pipeType), procSampler.node);
-		pipeSkybox  .create(cmd, Device.device, Device.graphicsQueue, Device.memAllocator, descFamily(pipeSkybox.pipeType));
-		pipeMine    .create(cmd, Device.device, Device.graphicsQueue, Device.memAllocator, descFamily(pipeMine.pipeType));
-		pipeUIText  .create(cmd, Device.device, Device.graphicsQueue, Device.memAllocator, descFamily(pipeUIText.pipeType), procSampler.node);
-		pipeOSMirror.create(cmd, Device.device, Device.graphicsQueue, Device.memAllocator, descFamily(pipeOSMirror.pipeType), procSampler.node, frameView(pipeOSMirror.pipeType));
-		pipeDSScence.create(Device.memAllocator, descFamily(pipeDSScence.pipeType), procSampler.node, { frameView(renderEnum::renderInstanceId::dsScence_ri, 0), frameView(renderEnum::renderInstanceId::dsScence_ri, 1), frameView(pipeDSScence.pipeType) }, procSampler.node[pipeShadow.samplerType], frameView(renderEnum::renderInstanceId::shadowMap_ri, 0), Device.device);
-		pipeShadow	.create(pipeTerrain.isEnable, pipeModel.isEnable, cmd, Device.device, Device.graphicsQueue, Device.memAllocator, descFamily(pipeShadow.pipeType));
-		pipeOSScence.create(descFamily(pipeOSScence.pipeType), procSampler.node, frameView(pipeOSScence.pipeType), Device.device, Device.memAllocator);
+		pipeTerrain .create(fileInfo::image::cube, textureInfo::terrain::colorFormat, textureInfo::terrain::tileExtent, textureInfo::terrain::atlasExtent, cmd, procSampler.node, descFamily(pipeTerrain.pipeType), Device.device, Device.graphicsQueue, Device.memAllocator);
+		pipeModel   .create(cmd, procSampler.node, descFamily(pipeModel.pipeType), Device.device, Device.graphicsQueue, Device.memAllocator);
+		pipeSkybox  .create(cmd, descFamily(pipeSkybox.pipeType), Device.device, Device.graphicsQueue, Device.memAllocator);
+		pipeMine    .create(cmd, descFamily(pipeMine.pipeType), Device.device, Device.graphicsQueue, Device.memAllocator);
+		pipeUIText  .create(cmd, procSampler.node, descFamily(pipeUIText.pipeType), Device.device, Device.graphicsQueue, Device.memAllocator);
+		pipeOSMirror.create(cmd, procSampler.node, descFamily(pipeOSMirror.pipeType), frameView(pipeOSMirror.pipeType), Device.device, Device.graphicsQueue, Device.memAllocator);
+		pipeDSScence.create(procSampler.node, descFamily(pipeDSScence.pipeType), { frameView(renderEnum::renderInstanceId::dsScence_ri, 0), frameView(renderEnum::renderInstanceId::dsScence_ri, 1), frameView(pipeDSScence.pipeType) }, procSampler.node[pipeShadow.samplerType], frameView(renderEnum::renderInstanceId::shadowMap_ri, 0), Device.memAllocator, Device.device);
+		pipeShadow	.create(cmd, descFamily(pipeShadow.pipeType), pipeTerrain.isEnable, pipeModel.isEnable, Device.device, Device.graphicsQueue, Device.memAllocator);
+		pipeOSScence.create(procSampler.node, descFamily(pipeOSScence.pipeType), frameView(pipeOSScence.pipeType), Device.device, Device.memAllocator);
 
 		initUniformBuffer();	//初始化Uniform
 		drawUIText(0);			//初始化uiText
@@ -40,10 +40,9 @@ public:
 
 		cmd.clear(Device.device);
 
-		procRender .clear(Device.device, Device.memAllocator);
-		procSampler.clear(Device.device);
-		procDesc   .clear(Device.device);
-
+		procRender  .clear(Device.device, Device.memAllocator);
+		procSampler .clear(Device.device);
+		procDesc    .clear(Device.device, Device.memAllocator);
 		procPipeline.clear(Device.device);
 
 		if (pipeTerrain.isEnable)	 { pipeTerrain .clear(Device.device, Device.memAllocator); }
@@ -102,13 +101,12 @@ public:
 
 
 		lockInfo::drawFuncLock.lock();
-		const int currentThread = cmd.thread.current.load();								//必须在 drawFuncLock 内读，和cmd.thread.swap()互斥
-
 		if (lockInfo::getLock(lockInfo::chunkMapDataLock)) {
 			selectBox = InitPlate.getSelectBox(playerInfo::logicOriginPos, Camera.node);	//当前帧获取的方块更新列表在下一帧更新
 			lockInfo::chunkMapDataLock.store(false);
 		}
 
+		const int currentThread = cmd.thread.current.load();								//必须在 drawFuncLock 内读，和cmd.thread.swap()互斥
 		updateUniform(playerInfo::logicOriginPos, Camera.node, selectBox);
 		if (InitSwapchain.drawFrame(cmd.renderCmd[currentThread].list, cmd.renderCmd[currentThread].fence)) {
 			lockInfo::drawFuncLock.unlock();
@@ -131,7 +129,7 @@ private:
 
 	pipelineList::procRenderNode   procRender  { InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.swapExtent, InitSwapchain.msaa, Device.device, Device.memAllocator };
 	pipelineList::procSamplerNode  procSampler { Device.device, Device.enableGpuInfo.limits };
-	pipelineList::procDescNode     procDesc    { cmd, Device.device, Device.enableGpu->gpu, Device.graphicsQueue, Device.memAllocator, Device.pfnGetSetLayoutSize, Device.pfnGetBindingOffset, Device.pfnGetDescriptor };
+	pipelineList::procDescNode     procDesc    { cmd, Device.device, Device.enableGpu->gpu, Device.memAllocator };
 	pipelineList::procPipelineNode procPipeline{ procRender.renderTemplateList, procDesc.node, InitSwapchain.msaa, Device.device };
 
 	bufferStruct::pipeTerrainNode  pipeTerrain { true,  pipelineEnum::procPipelineId::terrain_p,   samplerEnum::procSamplerId::terrain_s };
@@ -248,6 +246,8 @@ private:
 	void createCmd(int threadId) {
 		for (int frameId = 0; frameId < cmd.renderCmd[threadId].size(); frameId++) {
 			cmd.recordCmd(threadId, frameId, [&](cmdStruct::cmdRecorderNode& recorder) {
+				procDesc.uploadDesc(recorder.cmd);	//上传描述符缓冲
+
 				/*shadowMap_ri*/
 				{
 					recorder.beginRender(&procRender.getRenderBegin(renderEnum::renderInstanceId::shadowMap_ri));
@@ -257,7 +257,7 @@ private:
 						if (pipeTerrain.isEnable) {
 							for (int layer = 0; layer < plateEnum::terrainLayer::enumCount; layer++) {
 								if (isNullTerrainMesh(layer)) {
-									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_t.descriptorSet, pipeShadow.shadow_t.mesh[threadId][layer].vertex.buffer, pipeTerrain.mesh[threadId][layer].index.buffer, static_cast<uint32_t>(vertexStruct::terrainVertex::mesh[layer].indexs.size()));
+									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_t.mesh[threadId][layer].vertex.buffer, pipeTerrain.mesh[threadId][layer].index.buffer, static_cast<uint32_t>(vertexStruct::terrainVertex::mesh[layer].indexs.size()), VkExtent2D{}, descFamily(pipeShadow.pipeType).descBufferList[0].descAddress, 0);
 								}
 							}
 						}
@@ -266,14 +266,14 @@ private:
 						if (pipeModel.isEnable) {
 							for (int nodeId = 0; nodeId < pipeModel.sNode.size(); nodeId++) {
 								if (pipeModel.sNode[nodeId].isVisible) {
-									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_ms[nodeId].descriptorSet, pipeShadow.shadow_ms[nodeId].mesh.vertex.buffer, pipeModel.sNode[nodeId].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::sMesh[nodeId].indexs.size()));
+									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_ms[nodeId].mesh.vertex.buffer, pipeModel.sNode[nodeId].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::sMesh[nodeId].indexs.size()), VkExtent2D{}, descFamily(pipeShadow.pipeType).descBufferList[(1 + nodeId)].descAddress, 0);
 								}
 							}
 
 							for (int nodeId = 0; nodeId < pipeModel.dNode.size(); nodeId++) {
 								if (pipeModel.dNode[nodeId].isVisible) {
 									for (int subNode = 0; subNode < pipeShadow.shadow_md[nodeId].size(); subNode++) {
-										recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_md[nodeId][subNode].descriptorSet, pipeShadow.shadow_md[nodeId][subNode].mesh.vertex.buffer, pipeModel.dNode[nodeId].node[subNode].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::dMesh[nodeId][subNode].indexs.size()));
+										recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeShadow.pipeType), procPipeline.getPipeLayout(pipeShadow.pipeType), pipeShadow.shadow_md[nodeId][subNode].mesh.vertex.buffer, pipeModel.dNode[nodeId].node[subNode].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::dMesh[nodeId][subNode].indexs.size()), VkExtent2D{}, descFamily(pipeShadow.pipeType).descBufferList[(1 + pipeShadow.shadow_ms.size() + [&]{ uint32_t s = 0; for (int k = 0; k < nodeId; k++) { s += (uint32_t)pipeShadow.shadow_md[k].size(); } return s; }() + subNode)].descAddress, 0);
 									}
 								}
 							}
@@ -291,7 +291,7 @@ private:
 					if (pipeTerrain.isEnable) {
 						for (int layer = 0; layer < plateEnum::terrainLayer::enumCount; layer++) {
 							if (isNullTerrainMesh(layer)) {
-								recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeTerrain.pipeType), procPipeline.getPipeLayout(pipeTerrain.pipeType), pipeTerrain.descriptorSet, pipeTerrain.mesh[threadId][layer].vertex.buffer, pipeTerrain.mesh[threadId][layer].index.buffer, static_cast<uint32_t>(vertexStruct::terrainVertex::mesh[layer].indexs.size()));
+								recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeTerrain.pipeType), procPipeline.getPipeLayout(pipeTerrain.pipeType), pipeTerrain.mesh[threadId][layer].vertex.buffer, pipeTerrain.mesh[threadId][layer].index.buffer, static_cast<uint32_t>(vertexStruct::terrainVertex::mesh[layer].indexs.size()), VkExtent2D{}, descFamily(pipeTerrain.pipeType).descBufferList[0].descAddress, 0);
 							}
 						}
 					}
@@ -300,14 +300,14 @@ private:
 					if (pipeModel.isEnable) {
 						for (int nodeId = 0; nodeId < pipeModel.sNode.size(); nodeId++) {
 							if (pipeModel.sNode[nodeId].isVisible) {
-								recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeType), procPipeline.getPipeLayout(pipeModel.pipeType), pipeModel.sNode[nodeId].descriptorSet, pipeModel.sNode[nodeId].mesh.vertex.buffer, pipeModel.sNode[nodeId].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::sMesh[nodeId].indexs.size()));
+								recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeType), procPipeline.getPipeLayout(pipeModel.pipeType), pipeModel.sNode[nodeId].mesh.vertex.buffer, pipeModel.sNode[nodeId].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::sMesh[nodeId].indexs.size()), VkExtent2D{}, descFamily(pipeModel.pipeType).descBufferList[1 + (uint32_t)nodeId].descAddress, 0);
 							}
 						}
 
 						for (int nodeId = 0; nodeId < pipeModel.dNode.size(); nodeId++) {
 							if (pipeModel.dNode[nodeId].isVisible) {
 								for (int subNode = 0; subNode < pipeModel.dNode[nodeId].node.size(); subNode++) {
-									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeType), procPipeline.getPipeLayout(pipeModel.pipeType), pipeModel.dNode[nodeId].node[subNode].descriptorSet, pipeModel.dNode[nodeId].node[subNode].mesh.vertex.buffer, pipeModel.dNode[nodeId].node[subNode].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::dMesh[nodeId][subNode].indexs.size()));
+									recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeModel.pipeType), procPipeline.getPipeLayout(pipeModel.pipeType), pipeModel.dNode[nodeId].node[subNode].mesh.vertex.buffer, pipeModel.dNode[nodeId].node[subNode].mesh.index.buffer, static_cast<uint32_t>(vertexStruct::modelVertex::dMesh[nodeId][subNode].indexs.size()), VkExtent2D{}, descFamily(pipeModel.pipeType).descBufferList[(1 + (uint32_t)pipeModel.sNode.size() + [&]{ uint32_t s = 0; for (int k = 0; k < nodeId; k++) { s += (uint32_t)pipeModel.dNode[k].node.size(); } return s; }() + (uint32_t)subNode)].descAddress, 0);
 								}
 							}
 						}
@@ -315,12 +315,12 @@ private:
 
 					//pipeSkybox
 					if (pipeSkybox.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeSkybox.pipeType), procPipeline.getPipeLayout(pipeSkybox.pipeType), pipeSkybox.descriptorSet, pipeSkybox.mesh.vertex.buffer, pipeSkybox.mesh.index.buffer, static_cast<uint32_t>(vertexStruct::skyboxVertex::indexs.size()));
+						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeSkybox.pipeType), procPipeline.getPipeLayout(pipeSkybox.pipeType), pipeSkybox.mesh.vertex.buffer, pipeSkybox.mesh.index.buffer, static_cast<uint32_t>(vertexStruct::skyboxVertex::indexs.size()), VkExtent2D{}, descFamily(pipeSkybox.pipeType).descBufferList[0].descAddress, 0);
 					}
 
 					//pipeMine
 					if (pipeMine.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeMine.pipeType), procPipeline.getPipeLayout(pipeMine.pipeType), pipeMine.descriptorSet, pipeMine.mesh.vertex.buffer, pipeMine.mesh.index.buffer, static_cast<uint32_t>(vertexStruct::mineVertex::indexs.size()));
+						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeMine.pipeType), procPipeline.getPipeLayout(pipeMine.pipeType), pipeMine.mesh.vertex.buffer, pipeMine.mesh.index.buffer, static_cast<uint32_t>(vertexStruct::mineVertex::indexs.size()), VkExtent2D{}, descFamily(pipeMine.pipeType).descBufferList[0].descAddress, 0);
 					}
 
 					recorder.endRender();
@@ -339,7 +339,7 @@ private:
 
 					//pipeOSMirror
 					if (pipeOSMirror.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeOSMirror.pipeType), procPipeline.getPipeLayout(pipeOSMirror.pipeType), pipeOSMirror.descriptorSet, pipeOSMirror.mesh.vertex.buffer, pipeOSMirror.mesh.index.buffer, static_cast<uint32_t>(vertexStruct::osMirrorVertex::indexs.size()));
+						recorder.draw(pipelineEnum::cmdDrawId::indexed, procPipeline.getPipeline(pipeOSMirror.pipeType), procPipeline.getPipeLayout(pipeOSMirror.pipeType), pipeOSMirror.mesh.vertex.buffer, pipeOSMirror.mesh.index.buffer, static_cast<uint32_t>(vertexStruct::osMirrorVertex::indexs.size()), VkExtent2D{}, descFamily(pipeOSMirror.pipeType).descBufferList[0].descAddress, 0);
 					}
 
 					recorder.endRender();
@@ -352,16 +352,16 @@ private:
 
 					//pipeOSScence
 					if (pipeOSScence.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::fullscreen, procPipeline.getPipeline(pipeOSScence.pipeType), procPipeline.getPipeLayout(pipeOSScence.pipeType), pipeOSScence.descriptorSet, VK_NULL_HANDLE, VK_NULL_HANDLE, 0, InitSwapchain.swapExtent);
+						recorder.draw(pipelineEnum::cmdDrawId::fullscreen, procPipeline.getPipeline(pipeOSScence.pipeType), procPipeline.getPipeLayout(pipeOSScence.pipeType), VK_NULL_HANDLE, VK_NULL_HANDLE, 0, InitSwapchain.swapExtent, descFamily(pipeOSScence.pipeType).descBufferList[0].descAddress, 0);
 					}
 
 					//pipeDSScence
 					if (pipeDSScence.isEnable) {
-						recorder.draw(pipelineEnum::cmdDrawId::fullscreen, procPipeline.getPipeline(pipeDSScence.pipeType), procPipeline.getPipeLayout(pipeDSScence.pipeType), pipeDSScence.descriptorSet, VK_NULL_HANDLE, VK_NULL_HANDLE, 0, InitSwapchain.swapExtent);
+						recorder.draw(pipelineEnum::cmdDrawId::fullscreen, procPipeline.getPipeline(pipeDSScence.pipeType), procPipeline.getPipeLayout(pipeDSScence.pipeType), VK_NULL_HANDLE, VK_NULL_HANDLE, 0, InitSwapchain.swapExtent, descFamily(pipeDSScence.pipeType).descBufferList[0].descAddress, 0);
 
 						//pipeUIText
 						if (pipeUIText.isEnable) {
-							recorder.draw(pipelineEnum::cmdDrawId::text, procPipeline.getPipeline(pipeUIText.pipeType), procPipeline.getPipeLayout(pipeUIText.pipeType), pipeUIText.descriptorSet, pipeUIText.vertex.buffer, VK_NULL_HANDLE, pipeUIText.msdfGlyphAtlas.glyphCount);
+							recorder.draw(pipelineEnum::cmdDrawId::text, procPipeline.getPipeline(pipeUIText.pipeType), procPipeline.getPipeLayout(pipeUIText.pipeType), pipeUIText.vertex.buffer, VK_NULL_HANDLE, pipeUIText.msdfGlyphAtlas.glyphCount, VkExtent2D{}, descFamily(pipeUIText.pipeType).descBufferList[0].descAddress, 0);
 						}
 					}
 
@@ -485,9 +485,9 @@ private:
 		InitSwapchain.recreateSwapChain();
 		procRender.recreateSwapChain(InitSwapchain.swapExtent, InitSwapchain.colorFormat, InitSwapchain.depthFormat, InitSwapchain.msaa, Device.device, Device.memAllocator);
 
-		pipeOSMirror.updateFrameDesc(descFamily(pipeOSMirror.pipeType), procSampler.node, frameView(pipeOSMirror.pipeType), Device.device, Device.memAllocator);
-		pipeOSScence.updateFrameDesc(descFamily(pipeOSScence.pipeType), procSampler.node, frameView(pipeOSScence.pipeType), Device.device, Device.memAllocator);
-		pipeDSScence.updateFrameDesc(descFamily(pipeDSScence.pipeType), procSampler.node, { frameView(renderEnum::renderInstanceId::dsScence_ri, 0), frameView(renderEnum::renderInstanceId::dsScence_ri, 1), frameView(pipeDSScence.pipeType) }, procSampler.node[pipeShadow.samplerType], frameView(renderEnum::renderInstanceId::shadowMap_ri, 0), Device.device, Device.memAllocator);
+		pipeOSMirror.updateDesc(procSampler.node, descFamily(pipeOSMirror.pipeType), frameView(pipeOSMirror.pipeType), Device.device, Device.memAllocator);
+		pipeOSScence.updateDesc(procSampler.node, descFamily(pipeOSScence.pipeType), frameView(pipeOSScence.pipeType), Device.device, Device.memAllocator);
+		pipeDSScence.updateDesc(procSampler.node, descFamily(pipeDSScence.pipeType), { frameView(renderEnum::renderInstanceId::dsScence_ri, 0), frameView(renderEnum::renderInstanceId::dsScence_ri, 1), frameView(pipeDSScence.pipeType) }, procSampler.node[pipeShadow.samplerType], frameView(renderEnum::renderInstanceId::shadowMap_ri, 0), Device.device, Device.memAllocator);
 		
 		createPipeline();
 		lockInfo::queueThreadLock.unlock();

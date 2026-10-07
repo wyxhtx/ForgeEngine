@@ -15,11 +15,6 @@ public:
 	VkQueue		 graphicsQueue;									//渲染队列
 	VmaAllocator memAllocator;                                  //内存分配器
 
-	//descriptor buffer 函数指针
-	PFN_vkGetDescriptorSetLayoutSizeEXT          pfnGetSetLayoutSize{};
-	PFN_vkGetDescriptorSetLayoutBindingOffsetEXT pfnGetBindingOffset{};
-	PFN_vkGetDescriptorEXT                       pfnGetDescriptor{};
-
 
 
 	Device(GLFWwindow* window) {
@@ -124,9 +119,7 @@ private:
 		vkGetDeviceQueue(device, enableGpu->graphicsQueueFamily.index, 0, &graphicsQueue);
 
 		//descriptor buffer 设备函数取址
-		pfnGetSetLayoutSize = reinterpret_cast<PFN_vkGetDescriptorSetLayoutSizeEXT>			(vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutSizeEXT"));
-		pfnGetBindingOffset = reinterpret_cast<PFN_vkGetDescriptorSetLayoutBindingOffsetEXT>(vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutBindingOffsetEXT"));
-		pfnGetDescriptor    = reinterpret_cast<PFN_vkGetDescriptorEXT>						(vkGetDeviceProcAddr(device, "vkGetDescriptorEXT"));
+		deviceStruct::deviceFunc.create(device);
 	}
 
 	//创建内存管理

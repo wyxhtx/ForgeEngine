@@ -175,16 +175,11 @@ namespace pipelineList {
 
 	struct procDescNode {
 		std::vector<descStruct::descNode> node{};
+		bool descUploaded{};	//描述符是否已上传（首帧全量；之后按 descDirty 增量）
 
 
 
-		procDescNode(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkPhysicalDevice& gpu, const VkQueue& graphicsQueue, const VmaAllocator& memAllocator, PFN_vkGetDescriptorSetLayoutSizeEXT tPfnSize, PFN_vkGetDescriptorSetLayoutBindingOffsetEXT tPfnOffset, PFN_vkGetDescriptorEXT tPfnGet) : node(descEnum::descType::enumCount) {
-			for (descStruct::descNode& n : node) {
-				n.descBuffer.pfnGetSetLayoutSize = tPfnSize;
-				n.descBuffer.pfnGetBindingOffset = tPfnOffset;
-				n.descBuffer.pfnGetDescriptor    = tPfnGet;
-			}
-
+		procDescNode(cmdStruct::cmdNode& cmd, const VkDevice& device, const VkPhysicalDevice& gpu, const VmaAllocator& memAllocator) : node(descEnum::descType::enumCount) {
 			node[descEnum::descType::scenceForward_d] .maxSet = pipelineInfo::scenceForwardCount;
 			node[descEnum::descType::scenceDeferred_d].maxSet = pipelineInfo::scenceDeferredCount;
 			node[descEnum::descType::uiText_d]		  .maxSet = pipelineInfo::uiTextCount;
@@ -202,17 +197,44 @@ namespace pipelineList {
 			node[descEnum::descType::shadowMap_d]	  .createReflectConfig(pipelineEnum::procPipelineId::shadowMap_p,  { fileInfo::shader::shadowVert,   fileInfo::shader::shadowFrag   });
 
 			for (int i = 0; i < descEnum::descType::enumCount; i++) {
-				node[i].createReflectLayout(static_cast<descEnum::descType::type>(i), device);
+				node[i].createReflectLayout(static_cast<descEnum::descType::type>(i), device, gpu, memAllocator);
 			}
 		}
 
 		procDescNode() = delete;
 
-
-
-		void clear(const VkDevice& device) {
+		void clear(const VkDevice& device, const VmaAllocator& memAllocator) {
 			for (descStruct::descNode& desc : node) {
-				desc.clear(device);
+				desc.clear(device, memAllocator);
+			}
+		}
+
+
+
+		//上传 描述符缓冲：CPU → GPU（首次全量；之后仅脏节点）
+		void uploadDesc(const VkCommandBuffer& tCmd) {
+			bool uploaded = false;
+
+			for (int i = 0; i < descEnum::descType::enumCount; i++) {
+				for (uint32_t j = 0; j < node[i].descBufferList.size(); j++) {
+					bufferStruct::descBufferNode& descBuffer = node[i].descBufferList[j];
+					if (descUploaded && !descBuffer.descDirty) { 
+						continue; 
+					}
+
+					VkBufferCopy region{ .srcOffset = 0, .dstOffset = 0, .size = node[i].descLayout.setSize };
+					vkCmdCopyBuffer(tCmd, descBuffer.descCpuBuffer.buffer, descBuffer.descGpuBuffer.buffer, 1, &region);
+
+					descBuffer.descDirty = false;
+					uploaded             = true;
+				}
+			}
+
+			if (uploaded) {
+				VkMemoryBarrier descBarrier{ .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = VK_ACCESS_SHADER_READ_BIT };
+				vkCmdPipelineBarrier(tCmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, &descBarrier, 0, nullptr, 0, nullptr);
+
+				descUploaded = true;
 			}
 		}
 	};
@@ -233,7 +255,7 @@ namespace pipelineList {
 		procPipelineNode(const std::vector<renderStruct::renderTemplateNode>& tRenderList, const std::vector<descStruct::descNode>& tDescList, VkSampleCountFlagBits tMsaa, const VkDevice& tDevice)
 			: nodeLayout(descEnum::descType::enumCount), node(pipelineEnum::procPipelineId::enumCount), renderTemplateList(tRenderList), descList(tDescList), msaa(tMsaa), device(tDevice) {
 			for (int i = 0; i < descEnum::descType::enumCount; i++) {
-				nodeLayout[i].createPipeLayoutNode(device, tDescList[i].layout);
+				nodeLayout[i].createPipeLayoutNode(device, tDescList[i].descLayout.setLayout);
 			}
 
 			createPipelineNode(pipelineEnum::procPipelineId::terrain_p,   renderEnum::renderTemplateId::deferred_rt,  descEnum::descType::scenceDeferred_d, vertexStruct::terrainVertex::vertexNode::layout,   pipelineEnum::shaderFlowId::vert, pipelineStruct::pipeConfigParamNode{  });

@@ -318,8 +318,7 @@ namespace reflectGen {
 
 
 
-    //生成
-    //把传进来的路径归一成与引擎 fileInfo::shader::* 相同的相对键（构建期 CMake 传的是绝对路径）
+    //生成 把传进来的路径归一成与引擎 fileInfo::shader::* 相同的相对键（构建期 CMake 传的是绝对路径）
     std::string keyOf(const std::string& file) {
         const size_t at = file.find("src/assets/");
 
@@ -481,20 +480,24 @@ namespace reflectGen {
 }
 
 int main(int argc, char** argv) {
-    std::string       outPath{};
-    std::string       nameSpace = "descStruct";		//生成物的命名空间（引擎域）
-    bool              verify = false;
+    // 阶段 1 · 参数解析：--out / --namespace / --verify / 其余为 spv 路径列表
+    std::string outPath{};
+    std::string nameSpace = "descStruct";
+    bool        verify    = false;
     std::vector<std::string> fileList{};
 
     for (int i = 1; i < argc; i++) {
         const std::string arg = argv[i];
-        if (arg == "--out" && i + 1 < argc) { outPath = argv[++i]; continue; }
+        if (arg == "--out" && i + 1 < argc)       { outPath   = argv[++i]; continue; }
         if (arg == "--namespace" && i + 1 < argc) { nameSpace = argv[++i]; continue; }
-        if (arg == "--verify") { verify = true; continue; }
+        if (arg == "--verify")                    { verify    = true;      continue; }
 
         fileList.push_back(arg);
     }
 
+
+
+    // 阶段 2 · 参数校验：缺 --out 或缺 spv ⇒ 打印 usage 并返回 2
     if (outPath.empty() || fileList.empty()) {
         std::cerr << "usage: reflect-gen --out <header> [--namespace <ns>] [--verify] <spv...>\n";
         return 2;
@@ -503,9 +506,18 @@ int main(int argc, char** argv) {
     const size_t slash = outPath.find_last_of("/\\");
     const std::string dumpDir = slash == std::string::npos ? std::string(".") : outPath.substr(0, slash);
 
-    std::ofstream out(outPath, std::ios::trunc | std::ios::binary);		//二进制：生成物统一 LF，不受 Windows 文本模式影响
-    if (!out.is_open()) { std::cerr << "cannot write: " << outPath << "\n"; return 2; }
 
+
+    // 阶段 3 · 打开产物：二进制模式 ⇒ 生成物统一 LF
+    std::ofstream out(outPath, std::ios::trunc | std::ios::binary);		//二进制：生成物统一 LF，不受 Windows 文本模式影响
+    if (!out.is_open()) { 
+        std::cerr << "cannot write: " << outPath << "\n"; 
+        return 2; 
+    }
+
+
+
+    // 阶段 4 · 写文件头与类型段（bindingNode / inputNode / moduleNode）
     out << "//本文件由 config\\tool\\reflect-gen 生成：类型 ＋ 反射数据（勿手改）\n"
         << "//命名空间：" << nameSpace << "（类型与数据表平铺在同一命名空间；引擎侧查表在 descStruct::spvData）\n"
         << "//生成命令：reflect-gen --out " << outPath << " <src/assets/shader/**/*.spv>\n"
@@ -539,6 +551,9 @@ int main(int argc, char** argv) {
         << "\t\tuint32_t                   inputCount{};\n"
         << "\t};\n\n";		//类型段结束；数据段紧接着同一个命名空间（全部平铺）
 
+
+
+    // 阶段 5 · 逐 spv 解析：readFile → tagOf → parseShader → emitModule → 收集进 moduleList
     std::vector<reflectGen::Module> moduleList{};
 
     for (const std::string& file : fileList) {
@@ -555,11 +570,21 @@ int main(int argc, char** argv) {
         moduleList.push_back(std::move(module));
     }
 
+
+
+    // 阶段 6 · moduleList 按 file 排序（跨文件确定性）
     std::sort(moduleList.begin(), moduleList.end(), [](const reflectGen::Module& left, const reflectGen::Module& right) { return left.file < right.file; });
 
+
+
+    // 阶段 7 · 发射 moduleList 并收尾（末尾不留换行）
     out << "\tinline constexpr moduleNode const* const moduleList[]{\n";
     for (const reflectGen::Module& module : moduleList) { out << "\t\t&" << module.tag << ",\n"; }
     out << "\t};\n}";		//末尾不留换行（生成物 LF）
+
+
+
+    // 阶段 8 · --verify：找 %VULKAN_SDK%\Bin\spirv-reflect.exe → 逐模块对拍 → 汇总 ok/跳过
     if (verify) {
         std::string sdkTool{};
         if (!reflectGen::findSdkTool(sdkTool)) { std::cout << "[verify] spirv-reflect not found (VULKAN_SDK) - skipped\n"; }
@@ -578,6 +603,9 @@ int main(int argc, char** argv) {
         }
     }
 
+
+
+    // 阶段 9 · 收尾输出：generated: <产物路径> (N spv)
     std::cout << "generated: " << outPath << " (" << moduleList.size() << " spv)\n";
     return 0;
 }
